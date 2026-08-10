@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero;
 using PitHero.Dining;
@@ -138,10 +139,10 @@ namespace PitHero.Tests
             var service = CreateHeadlessService(roster);
 
             service.TickCadence(0f, isNighttime: false);
-            service.TickCadence(30f, isNighttime: true);
+            service.TickCadence(GameConfig.AutoJobReassessIntervalSeconds / 3f, isNighttime: true);
 
             Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job,
-                "Day→night boundary reassesses immediately, well before the 60-minute cadence");
+                "Day→night boundary reassesses immediately, well before the reassess cadence");
         }
 
         [TestMethod]
@@ -150,17 +151,18 @@ namespace PitHero.Tests
             var roster = new AlliedMonsterManager();
             var service = CreateHeadlessService(roster);
 
+            float interval = GameConfig.AutoJobReassessIntervalSeconds;
             service.TickCadence(0f, isNighttime: false);
-            service.TickCadence(50f, isNighttime: true);   // boundary reassess at t=50
+            service.TickCadence(interval - 5f, isNighttime: true);   // boundary reassess before the cadence
 
-            // Now give the monster a job and verify the next cadence fire is 60s after the
-            // boundary (t=110), not 60s after the original init (t=60).
+            // Now give the monster a job and verify the next cadence fire is one interval after
+            // the boundary reassess, not one interval after the original init.
             roster.AddAlliedMonster(Monster("Bob", 1, 5, 1, MonsterJob.Farming));
-            service.TickCadence(65f, isNighttime: true);
+            service.TickCadence(interval - 5f + interval - 1f, isNighttime: true);
             Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[0].Job,
-                "Boundary reassess restarted the interval — t=65 is too early");
+                "Boundary reassess restarted the interval — one second early must not fire");
 
-            service.TickCadence(50f + GameConfig.AutoJobReassessIntervalSeconds, isNighttime: true);
+            service.TickCadence(interval - 5f + interval, isNighttime: true);
             Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job,
                 "Cadence fires one full interval after the boundary reassess");
         }
@@ -248,35 +250,33 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void ReassessNow_TwoMonstersWithFarmWorkload_BothFarm()
+        public void ReassessNow_TwoMonstersWithPlansOnly_OneCaretakerOneHome()
         {
-            // The reported bug: with only 2 workers and farm work outstanding, both used to be
-            // sunk into a dead-end kitchen. Farming now takes priority and the kitchen (which
-            // can't field its 3-monster crew anyway) stands down.
+            // Issue #375 honest farm demand: placed plans with no outstanding tasks keep exactly
+            // one caretaker on the field. The other monster goes home rather than staffing a
+            // kitchen that can't field its 3-monster crew.
             var roster = new AlliedMonsterManager();
             roster.AddAlliedMonster(Monster("A", 1, 5, 5));
             roster.AddAlliedMonster(Monster("B", 1, 5, 5));
-            var service = CreateServiceWithFarmWorkload(roster,
-                planCount: GameConfig.AutoJobFarmCropsPerWorkerBaseline + 1);   // farming desired = 2
+            var service = CreateServiceWithFarmWorkload(roster, planCount: 13);
 
             service.ReassessNow();
 
-            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[0].Job, "Both workers farm");
-            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[1].Job, "Both workers farm");
+            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[0].Job, "One caretaker farms");
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[1].Job,
+                "No idle second farmer, and the kitchen can't field a functional crew of 2");
         }
 
         [TestMethod]
         public void ReassessNow_FourMonsters_OneFarmerThreeKitchen()
         {
-            // With 4 monsters the kitchen's full crew fits alongside the guaranteed farmer:
-            // 1 farms (even though farming wants 2), 3 staff the kitchen.
+            // With 4 monsters the kitchen's full crew fits alongside the guaranteed caretaker.
             var roster = new AlliedMonsterManager();
             roster.AddAlliedMonster(Monster("A", 1, 5, 5));
             roster.AddAlliedMonster(Monster("B", 1, 5, 5));
             roster.AddAlliedMonster(Monster("C", 1, 5, 5));
             roster.AddAlliedMonster(Monster("D", 1, 5, 5));
-            var service = CreateServiceWithFarmWorkload(roster,
-                planCount: GameConfig.AutoJobFarmCropsPerWorkerBaseline + 1);   // farming desired = 2
+            var service = CreateServiceWithFarmWorkload(roster, planCount: 13);
 
             service.ReassessNow();
 
@@ -365,6 +365,8 @@ namespace PitHero.Tests
                 => _entry = new JobDemandEntry { Job = job, MinWorkers = min, DesiredWorkers = desired, Sticky = false };
             public MonsterJob Job => _entry.Job;
             public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers) => _entry;
+            public void SamplePressure(float nowSeconds) { }
+            public void ResetPressure(float nowSeconds) { }
         }
 
         // ── Farming demand math ──────────────────────────────────────────────
@@ -372,52 +374,64 @@ namespace PitHero.Tests
         [TestMethod]
         public void FarmingDemand_ZeroWorkload_WantsNoWorkers()
         {
-            var d = FarmingJobDemandEvaluator.ComputeDemand(0, 0, availableWorkers: 10);
+            var d = FarmingJobDemandEvaluator.ComputeDemand(0, 0, grantedWorkers: 0, availableWorkers: 10);
             Assert.AreEqual(0, d.DesiredWorkers);
             Assert.AreEqual(0, d.MinWorkers);
             Assert.IsFalse(d.Sticky, "Farming is not sticky — farmers are released during lulls");
         }
 
         [TestMethod]
-        public void FarmingDemand_BaselineScalesByCeilingDivision()
+        public void FarmingDemand_CareLoadAlone_KeepsOneCaretaker()
         {
-            int per = GameConfig.AutoJobFarmCropsPerWorkerBaseline;
-            Assert.AreEqual(1, FarmingJobDemandEvaluator.ComputeDemand(0, 1, 10).DesiredWorkers);
-            Assert.AreEqual(1, FarmingJobDemandEvaluator.ComputeDemand(0, per, 10).DesiredWorkers);
-            Assert.AreEqual(2, FarmingJobDemandEvaluator.ComputeDemand(0, per + 1, 10).DesiredWorkers);
+            // Issue #375: crops growing but nothing to do right now = exactly one caretaker for
+            // the coming watering wave. The old baseline staffed careLoad/12 farmers who wandered.
+            var d = FarmingJobDemandEvaluator.ComputeDemand(0, careLoad: 40,
+                grantedWorkers: 0, availableWorkers: 10);
+            Assert.AreEqual(1, d.DesiredWorkers, "Idle care load never staffs more than the caretaker");
+            Assert.AreEqual(1, d.MinWorkers);
         }
 
         [TestMethod]
-        public void FarmingDemand_BurstOutranksBaseline()
+        public void FarmingDemand_BurstScalesWithOutstandingTasks()
         {
-            // A watering/harvest wave (many outstanding tasks) demands more workers than the
-            // baseline care load alone would.
             int tasksPer = GameConfig.AutoJobFarmTasksPerWorker;
-            var d = FarmingJobDemandEvaluator.ComputeDemand(tasksPer * 3, careLoad: 1, availableWorkers: 10);
-            Assert.AreEqual(3, d.DesiredWorkers, "Burst signal should win when larger than baseline");
+            var d = FarmingJobDemandEvaluator.ComputeDemand(tasksPer * 3, careLoad: 1,
+                grantedWorkers: 0, availableWorkers: 10);
+            Assert.AreEqual(3, d.DesiredWorkers, "A watering/harvest wave staffs up instantly");
             Assert.AreEqual(1, d.MinWorkers, "At least one farmer whenever any workload exists");
+        }
+
+        [TestMethod]
+        public void FarmingDemand_GrantedWorkersHoldAfterBurstClears()
+        {
+            // The tracker's drain-limited grant keeps recent-wave farmers on the field for a
+            // while after the outstanding tasks hit zero, so staffing ramps down instead of
+            // collapsing between waves.
+            var d = FarmingJobDemandEvaluator.ComputeDemand(0, careLoad: 5,
+                grantedWorkers: 3, availableWorkers: 10);
+            Assert.AreEqual(3, d.DesiredWorkers, "Granted workers outrank the live lull");
         }
 
         [TestMethod]
         public void FarmingDemand_ClampsToAvailableWorkers()
         {
-            var d = FarmingJobDemandEvaluator.ComputeDemand(1000, 1000, availableWorkers: 4);
+            var d = FarmingJobDemandEvaluator.ComputeDemand(1000, 1000, grantedWorkers: 0, availableWorkers: 4);
             Assert.AreEqual(4, d.DesiredWorkers, "Demand can never exceed the available workers");
         }
 
         [TestMethod]
-        public void FarmingEvaluator_CountsPlansFromCropPlantingService()
+        public void FarmingEvaluator_PlansAloneKeepACaretaker()
         {
             var planting = new CropPlantingService();
             var growth = new CropGrowthService(planting);
-            int per = GameConfig.AutoJobFarmCropsPerWorkerBaseline;
-            for (int i = 0; i < per + 1; i++)
+            for (int i = 0; i < 13; i++)
                 planting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = i, TileY = 0 });
             var evaluator = new FarmingJobDemandEvaluator(null, growth, planting);
 
             var d = evaluator.EvaluateDemand(rosterSize: 10, availableWorkers: 10);
 
-            Assert.AreEqual(2, d.DesiredWorkers, "Placed plans count toward the baseline care load");
+            Assert.AreEqual(1, d.DesiredWorkers,
+                "Placed plans with no outstanding tasks staff exactly the caretaker");
         }
 
         // ── Kitchen demand math ──────────────────────────────────────────────
@@ -425,12 +439,12 @@ namespace PitHero.Tests
         [TestMethod]
         public void KitchenDemand_ZeroBacklog_StillWantsBaseCrew()
         {
-            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 10, availableWorkers: 10);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, 0, rosterSize: 10, availableWorkers: 10);
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.DesiredWorkers,
                 "Kitchen keeps a cook + server + runner crew even with no orders");
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.MinWorkers,
                 "Base crew is a firm minimum so it fills before farming's desired extras");
-            Assert.IsTrue(d.Sticky, "Kitchen workers must never be pulled away");
+            Assert.IsTrue(d.Sticky, "Kitchen workers only leave via the trim or starvation passes");
         }
 
         [TestMethod]
@@ -438,7 +452,7 @@ namespace PitHero.Tests
         {
             // Available equals the full roster (no farming reservation), so a partial crew is
             // still fielded on tiny rosters, exactly as before the farming-priority change.
-            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 2, availableWorkers: 2);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, 0, rosterSize: 2, availableWorkers: 2);
             Assert.AreEqual(2, d.DesiredWorkers);
         }
 
@@ -447,7 +461,7 @@ namespace PitHero.Tests
         {
             // Farming reserved a worker and fewer than cook+server+runner remain: a partial
             // kitchen has no runner and is pointless, so the kitchen cedes the shortage entirely.
-            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 3, availableWorkers: 2);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, 0, rosterSize: 3, availableWorkers: 2);
             Assert.AreEqual(0, d.DesiredWorkers, "All-or-nothing when competing with farming");
             Assert.AreEqual(0, d.MinWorkers);
         }
@@ -456,15 +470,34 @@ namespace PitHero.Tests
         public void KitchenDemand_BacklogAddsExtraWorkers()
         {
             int per = GameConfig.AutoJobKitchenBacklogPerExtraWorker;
-            var d = KitchenJobDemandEvaluator.ComputeDemand(per * 2, rosterSize: 10, availableWorkers: 10);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(per * 2, 0, rosterSize: 10, availableWorkers: 10);
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff + 2, d.DesiredWorkers);
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.MinWorkers);
         }
 
         [TestMethod]
+        public void KitchenDemand_HighPatronWait_AddsAWorker()
+        {
+            // A patron waiting a long time proves the pipeline is behind even when the raw
+            // backlog count looks modest.
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, 0, rosterSize: 10, availableWorkers: 10,
+                anyDishOrderable: true, patronWaitHigh: true);
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff + 1, d.DesiredWorkers);
+        }
+
+        [TestMethod]
+        public void KitchenDemand_GrantedExtrasHoldAfterBacklogClears()
+        {
+            // The rush just ended: live backlog is zero but the tracker still grants two extras,
+            // draining one per interval instead of dumping the whole crew at once.
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, 2, rosterSize: 10, availableWorkers: 10);
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff + 2, d.DesiredWorkers);
+        }
+
+        [TestMethod]
         public void KitchenDemand_CapsAtMaxWorkers()
         {
-            var d = KitchenJobDemandEvaluator.ComputeDemand(1000, rosterSize: 20, availableWorkers: 20);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(1000, 0, rosterSize: 20, availableWorkers: 20);
             Assert.AreEqual(GameConfig.AutoJobKitchenMaxWorkers, d.DesiredWorkers,
                 "Kitchen demand is capped at the coordinator's worker limit");
         }
@@ -474,12 +507,12 @@ namespace PitHero.Tests
         {
             // No coverable dish means servers can never take an order, so no ticket can ever
             // exist — staffing the kitchen would be dead weight.
-            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 10, availableWorkers: 10,
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, 0, rosterSize: 10, availableWorkers: 10,
                 anyDishOrderable: false);
             Assert.AreEqual(0, d.DesiredWorkers);
             Assert.AreEqual(0, d.MinWorkers);
             Assert.IsTrue(d.Sticky,
-                "Workers already in the kitchen stay put when the larder runs dry mid-day");
+                "Workers already in the kitchen drain out one per solve when the larder runs dry");
         }
 
         // ── Kitchen evaluator: empty-larder gate ─────────────────────────────
@@ -526,6 +559,89 @@ namespace PitHero.Tests
 
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.DesiredWorkers,
                 "One coverable dish is enough to staff the kitchen");
+        }
+
+        // ── End-to-end backpressure scaling (issue #375) ─────────────────────
+
+        private static int CountJobs(AlliedMonsterManager roster, MonsterJob job)
+        {
+            int count = 0;
+            for (int i = 0; i < roster.AlliedMonsters.Count; i++)
+                if (roster.AlliedMonsters[i].Job == job)
+                    count++;
+            return count;
+        }
+
+        [TestMethod]
+        public void EndToEnd_KitchenScalesPastBaseCrewUnderBacklog_ThenDrainsStepwise()
+        {
+            // The previously untested seam: a packed ticket board must staff the kitchen ABOVE
+            // its base crew through the real sampler + evaluator + solver, even while farming has
+            // its own workload — and once the rush ends, the crew drains back one worker per
+            // drain interval, never in one layoff.
+            var coordinator = CreateHeadlessKitchen(out _, out var storage);
+            var def = DishConfig.GetDefinition((DishType)0);
+            const int backlogTickets = 9;
+            // One serving beyond the backlog: ticket creation physically withdraws crops, and the
+            // kitchen only staffs while at least one dish remains orderable.
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.IsTrue(storage.TryDeposit(1, def.Recipe[i].Crop, def.Recipe[i].Qty * (backlogTickets + 1)));
+            var tickets = new List<KitchenTicket>();
+            for (int i = 0; i < backlogTickets; i++)
+            {
+                var t = coordinator.CreateTicket((DishType)0, false, -1, null,
+                    new Microsoft.Xna.Framework.Point(96, 7));
+                Assert.IsNotNull(t, $"Ticket {i} must be coverable from the stocked storage");
+                tickets.Add(t);
+            }
+
+            var planting = new CropPlantingService();
+            var growth = new CropGrowthService(planting);
+            for (int i = 0; i < 13; i++)
+                planting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = i, TileY = 0 });
+
+            var roster = new AlliedMonsterManager();
+            for (int i = 0; i < 12; i++)
+                roster.AddAlliedMonster(Monster($"M{i}", 1, 5, 5));
+            var service = new AutoJobAssignmentService(roster,
+                new KitchenJobDemandEvaluator(coordinator, null, null),
+                new FarmingJobDemandEvaluator(null, growth, planting));
+
+            float sample = GameConfig.AutoJobPressureSampleIntervalSeconds;
+            service.TickCadence(0f, isNighttime: false);       // init
+            service.TickCadence(sample, isNighttime: false);   // first pressure sample sees the rush
+            service.ReassessNow();
+
+            int extras = backlogTickets / GameConfig.AutoJobKitchenBacklogPerExtraWorker;
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff + extras,
+                CountJobs(roster, MonsterJob.Cooking),
+                "The rush staffs the kitchen past its base crew despite farming being listed first");
+            Assert.AreEqual(1, CountJobs(roster, MonsterJob.Farming),
+                "Farming keeps its caretaker alongside the scaled-up kitchen");
+
+            // The rush ends all at once.
+            for (int i = 0; i < tickets.Count; i++)
+                coordinator.CancelTicket(tickets[i]);
+            Assert.AreEqual(0, coordinator.ActiveTicketCount);
+
+            // Let the real cadence run: samples decay the pressure, grants drain one worker per
+            // KITCHEN drain interval (slower than farming's — service-area departures are highly
+            // visible), and each reassessment releases at most one cook.
+            int cooks = CountJobs(roster, MonsterJob.Cooking);
+            float drainWindow = GameConfig.AutoJobKitchenScaleDownDrainIntervalSeconds * 3f
+                + GameConfig.AutoJobReassessIntervalSeconds + sample;
+            for (float t = sample * 2f; t <= drainWindow; t += sample)
+            {
+                service.TickCadence(t, isNighttime: false);
+                int now = CountJobs(roster, MonsterJob.Cooking);
+                Assert.IsTrue(cooks - now <= 1,
+                    $"Scale-down must be a slow drain: went {cooks}→{now} in one tick at t={t}");
+                Assert.IsTrue(now >= GameConfig.AutoJobKitchenBaseStaff,
+                    "The kitchen never drops below its base crew while dishes are orderable");
+                cooks = now;
+            }
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, cooks,
+                "After the drain intervals elapse the kitchen is back to cook + server + runner");
         }
 
         [TestMethod]

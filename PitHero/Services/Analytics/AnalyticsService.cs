@@ -887,6 +887,43 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs an allied monster leaving one MonsterJob for another (issue #375 staffing analysis).</summary>
+        [Conditional("DEBUG")]
+        public static void LogMonsterJobChanged(string monster, string monsterType,
+            string fromJob, string toJob, string trigger)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("monster_job_changed"))
+                return;
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            _json.Field("fromJob", fromJob);
+            _json.Field("toJob", toJob);
+            _json.Field("trigger", trigger);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a kitchen worker being sent home to respawn in a different role (issue #375 churn analysis).</summary>
+        [Conditional("DEBUG")]
+        public static void LogKitchenRoleChanged(string monster, string monsterType,
+            string fromRole, string toRole)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("kitchen_role_changed"))
+                return;
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            _json.Field("fromRole", fromRole);
+            _json.Field("toRole", toRole);
+            EndEvent();
+#endif
+        }
+
 #if DEBUG
         /// <summary>Opens a new event object with timestamp, in-game time and event type. Returns false if output is unavailable.</summary>
         private static bool BeginEvent(string eventType)

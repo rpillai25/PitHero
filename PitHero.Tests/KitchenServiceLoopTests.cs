@@ -466,6 +466,160 @@ namespace PitHero.Tests
                 "the auto-job cap must mirror the coordinator's post cap");
         }
 
+        // ── Demand-weighted role mix (issue #375) ──
+
+        private static System.Collections.Generic.List<KitchenRole> WeightedRoleMix(
+            int postCount, int cookPressure, int serverPressure, int runnerPressure)
+        {
+            var roles = new System.Collections.Generic.List<KitchenRole>();
+            KitchenTaskCoordinator.FillRoleMix(postCount, cookPressure, serverPressure,
+                runnerPressure, roles);
+            return roles;
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_BaseCrewInvariantUnderAllWeights()
+        {
+            // Whatever the pressure skew, posts 0-2 stay Cook, Server, Runner — the crew that
+            // opens the kitchen and keeps it fed and cleared.
+            var roles = WeightedRoleMix(3, 0, 0, 99);
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner }, roles);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_HeavyRunnerPressure_FillsRunnersFirst()
+        {
+            // A backlog of ingredient fetches and dirty plates: posts 3+ go to runners until
+            // their cap, then fall back to the neutral cycle.
+            var roles = WeightedRoleMix(5, 0, 0, 10);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Runner, KitchenRole.Runner,
+                }, roles);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_ServerPressure_CapsAtTwoServers()
+        {
+            // Server zoning only supports 2 servers (ServerZone design limit); pressure past the
+            // cap spills into the neutral cycle.
+            var roles = WeightedRoleMix(8, 0, 50, 0);
+            Assert.AreEqual(GameConfig.MaxKitchenServers,
+                roles.FindAll(r => r == KitchenRole.Server).Count);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_SplitsProportionallyByPressurePerWorker()
+        {
+            // D'Hondt greedy: cook pressure 6 vs server 3 vs runner 2 — the second and third
+            // extra posts still favor cooks (6/2 then 6/3 beat 3/2 and 2/2) before the server.
+            var roles = WeightedRoleMix(6, 6, 3, 2);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Cook, KitchenRole.Cook, KitchenRole.Server,
+                }, roles);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_ZeroPressures_MatchesNeutralCycle()
+        {
+            var neutral = RoleMix(KitchenTaskCoordinator.MaxWorkerPosts);
+            var weighted = WeightedRoleMix(KitchenTaskCoordinator.MaxWorkerPosts, 0, 0, 0);
+            CollectionAssert.AreEqual(neutral, weighted,
+                "The weighted mix with no pressure is exactly the legacy Cook→Server→Runner cycle");
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_IsDeterministic()
+        {
+            var first = WeightedRoleMix(8, 4, 4, 4);
+            var second = WeightedRoleMix(8, 4, 4, 4);
+            CollectionAssert.AreEqual(first, second);
+        }
+
+        // ── Role retention (issue #375 follow-up: no cook-leaves-cook-arrives shuffles) ──
+
+        private static System.Collections.Generic.List<KitchenRole> Retained(
+            KitchenRole[] mix, int[] currentRoles)
+        {
+            var mixList = new System.Collections.Generic.List<KitchenRole>(mix);
+            var currentList = new System.Collections.Generic.List<int>(currentRoles);
+            var into = new System.Collections.Generic.List<KitchenRole>();
+            KitchenTaskCoordinator.AssignRolesWithRetention(mixList, currentList, into);
+            return into;
+        }
+
+        private const int NoWorker = -1;
+        private const int C = (int)KitchenRole.Cook;
+        private const int S = (int)KitchenRole.Server;
+        private const int R = (int)KitchenRole.Runner;
+
+        [TestMethod]
+        public void Retention_SameCounts_NobodyChangesRole()
+        {
+            // The mix pattern flipped positions (C,S,R,C,R → recompute) but the COUNTS are the
+            // same — every live worker keeps its current role, zero churn.
+            var roles = Retained(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner, KitchenRole.Cook, KitchenRole.Runner },
+                new[] { R, C, S, R, C });
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Runner, KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner, KitchenRole.Cook },
+                roles);
+        }
+
+        [TestMethod]
+        public void Retention_RoleShrinks_OnlyWorstHolderReassigned()
+        {
+            // Three cooks on shift but the mix now wants one: quota is consumed in post order
+            // (best proficiency first), so the two lower posts are the ones reassigned.
+            var roles = Retained(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner },
+                new[] { C, C, C });
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner }, roles);
+        }
+
+        [TestMethod]
+        public void Retention_NewJoiner_TakesOnlyTheNewPost()
+        {
+            // Crew of three grows to four: the incumbents keep their roles, the joiner takes
+            // exactly the added quota.
+            var roles = Retained(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner, KitchenRole.Runner },
+                new[] { S, C, R, NoWorker });
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Server, KitchenRole.Cook, KitchenRole.Runner, KitchenRole.Runner },
+                roles);
+        }
+
+        [TestMethod]
+        public void Retention_FreshSpawn_AssignsBaseRolesInOrder()
+        {
+            var roles = Retained(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner },
+                new[] { NoWorker, NoWorker, NoWorker });
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner }, roles);
+        }
+
+        [TestMethod]
+        public void Retention_AlwaysPreservesTheMixRoleCounts()
+        {
+            // Whatever the current holders look like, the output multiset is exactly the mix's —
+            // the kitchen-open guarantees (≥1 cook, ≥1 server) ride on the counts.
+            var roles = Retained(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner, KitchenRole.Cook },
+                new[] { R, R, R, R });
+            Assert.AreEqual(2, roles.FindAll(r => r == KitchenRole.Cook).Count);
+            Assert.AreEqual(1, roles.FindAll(r => r == KitchenRole.Server).Count);
+            Assert.AreEqual(1, roles.FindAll(r => r == KitchenRole.Runner).Count);
+        }
+
         // ── Bus queue (issue #327: runners own plate clearing) ──
 
         private static KitchenTaskCoordinator.BusJob MakeBusJob(Vector2 pos, float enqueuedTime)

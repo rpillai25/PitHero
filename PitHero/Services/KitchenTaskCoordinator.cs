@@ -5,6 +5,7 @@ using PitHero.Config;
 using PitHero.Dining;
 using PitHero.ECS.Components;
 using PitHero.Farming;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
 
@@ -55,6 +56,26 @@ namespace PitHero.Services
         private DroppedCropService _droppedCrops;
         private DishEntityService _dishService;
         private GameStateService _gameState;
+        private MercenaryManager _mercenaryManager;
+
+        // ── Role-mix dwell (issue #375) ─────────────────────────────────────────
+        // A role change sends the worker home to respawn, so the demand-weighted mix is
+        // recomputed at most once per dwell period (head-count changes recompute immediately —
+        // spawns/despawns are happening anyway).
+        private readonly List<KitchenRole> _cachedRoles = new List<KitchenRole>(8);
+        private readonly List<int> _currentRoleByPost = new List<int>(8);
+        private int _cachedPostCount = -1;
+        private float _roleMixElapsed = GameConfig.KitchenRoleMixDwellSeconds;
+
+        // Per-role pressures seesaw within a single service cycle (orders just taken → runner
+        // work spikes; dishes plated → server work spikes), so an instantaneous reading at
+        // recompute time hands the marginal post to whichever side of the seesaw got sampled —
+        // and back again at the next dwell. EMA-smoothed pressures see the cycle's AVERAGE, so
+        // the marginal post only moves on a sustained shift in where the bottleneck really is.
+        private float _rolePressureSampleElapsed = GameConfig.KitchenRolePressureSampleIntervalSeconds;
+        private float _smoothedCookPressure;
+        private float _smoothedServerPressure;
+        private float _smoothedRunnerPressure;
 
         // ── Workers ─────────────────────────────────────────────────────────────
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(8);
@@ -112,21 +133,64 @@ namespace PitHero.Services
             GameConfig.MaxKitchenCooks + GameConfig.MaxKitchenServers + GameConfig.MaxKitchenRunners;
 
         /// <summary>
-        /// Fills <paramref name="into"/> with the role for each of the first postCount posts by
-        /// cycling Cook → Server → Runner and skipping roles that are already full, which yields
-        /// cook1, server1, runner1, cook2, server2, runner2, cook3, runner3. Ordering is what
-        /// makes the crew grow sensibly: a two-monster kitchen is a cook and a server (the pair
-        /// that opens it), the third is the runner that keeps the fridge stocked and the tables
-        /// clear. Stations and zones are then claimed dynamically by the FSMs.
+        /// Neutral role mix (no pressure signals): cycles Cook → Server → Runner, yielding
+        /// cook1, server1, runner1, cook2, server2, runner2, cook3, runner3.
         /// </summary>
         public static void FillRoleMix(int postCount, List<KitchenRole> into)
+            => FillRoleMix(postCount, 0, 0, 0, into);
+
+        /// <summary>
+        /// Fills <paramref name="into"/> with the role for each of the first postCount posts.
+        /// Posts 0–2 are always Cook, Server, Runner — the base crew: a two-monster kitchen is a
+        /// cook and a server (the pair that opens it), the third is the runner that keeps the
+        /// fridge stocked and the tables clear. Posts beyond the base crew go to the role with
+        /// the highest pressure per worker already assigned to it (D'Hondt greedy, issue #375),
+        /// honoring the per-role caps; roles with zero pressure fall back to the neutral
+        /// Cook → Server → Runner cycle. Stations and zones are then claimed dynamically by
+        /// the FSMs.
+        /// </summary>
+        public static void FillRoleMix(int postCount, int cookPressure, int serverPressure,
+            int runnerPressure, List<KitchenRole> into)
         {
             if (postCount > MaxWorkerPosts)
                 postCount = MaxWorkerPosts;
-            int cooks = 0, servers = 0, runners = 0, cursor = 0;
-            for (int i = 0; i < postCount; i++)
+            int cooks = 0, servers = 0, runners = 0;
+
+            if (postCount >= 1) { cooks++; into.Add(KitchenRole.Cook); }
+            if (postCount >= 2) { servers++; into.Add(KitchenRole.Server); }
+            if (postCount >= 3) { runners++; into.Add(KitchenRole.Runner); }
+
+            int cursor = 0;
+            for (int i = 3; i < postCount; i++)
             {
-                // postCount never exceeds the sum of the per-role caps, so this always resolves
+                // Highest pressure/(count+1) among roles under cap, compared by integer
+                // cross-multiplication; strict > breaks ties toward Cook, then Server, then Runner.
+                int bestRole = -1, bestNum = 0, bestDen = 1;
+                if (cooks < GameConfig.MaxKitchenCooks)
+                {
+                    bestRole = 0; bestNum = cookPressure; bestDen = cooks + 1;
+                }
+                if (servers < GameConfig.MaxKitchenServers
+                    && (bestRole < 0 || serverPressure * bestDen > bestNum * (servers + 1)))
+                {
+                    bestRole = 1; bestNum = serverPressure; bestDen = servers + 1;
+                }
+                if (runners < GameConfig.MaxKitchenRunners
+                    && (bestRole < 0 || runnerPressure * bestDen > bestNum * (runners + 1)))
+                {
+                    bestRole = 2; bestNum = runnerPressure; bestDen = runners + 1;
+                }
+
+                if (bestRole >= 0 && bestNum > 0)
+                {
+                    if (bestRole == 0) { cooks++; into.Add(KitchenRole.Cook); }
+                    else if (bestRole == 1) { servers++; into.Add(KitchenRole.Server); }
+                    else { runners++; into.Add(KitchenRole.Runner); }
+                    continue;
+                }
+
+                // No pressured role can take the post — continue the neutral cycle. postCount
+                // never exceeds the sum of the per-role caps, so this always resolves.
                 while (true)
                 {
                     int slot = cursor % 3;
@@ -147,8 +211,127 @@ namespace PitHero.Services
             }
         }
 
+        /// <summary>
+        /// Maps the role mix onto the actual posts with minimum churn (issue #375 follow-up): the
+        /// mix is treated as a multiset of role COUNTS, and a live worker keeps its current role
+        /// as long as that role still has quota — quota is consumed in post order (= proficiency
+        /// order), so when a role shrinks, the best holders keep it and only the worst is
+        /// reassigned. Remaining quota goes to unmatched posts in Cook → Server → Runner order.
+        /// Without this, roles were tied to sorted-list positions, and any recompute could flip
+        /// two positions' roles — sending BOTH workers home to respawn in each other's role, a
+        /// pure-waste "cook leaves, different cook walks in" shuffle.
+        /// currentRoleByPost[j] = (int)KitchenRole of post j's live worker, or -1 if none.
+        /// </summary>
+        public static void AssignRolesWithRetention(List<KitchenRole> mix,
+            List<int> currentRoleByPost, List<KitchenRole> into)
+        {
+            int cooks = 0, servers = 0, runners = 0;
+            for (int j = 0; j < mix.Count; j++)
+            {
+                if (mix[j] == KitchenRole.Cook) cooks++;
+                else if (mix[j] == KitchenRole.Server) servers++;
+                else runners++;
+            }
+
+            // Pass 1: retention. keptMask bit j = post j kept its current role (mix.Count ≤ 8).
+            int keptMask = 0;
+            for (int j = 0; j < mix.Count; j++)
+            {
+                into.Add(KitchenRole.Cook);   // placeholder; every post is overwritten below
+                int current = currentRoleByPost[j];
+                if (current == (int)KitchenRole.Cook && cooks > 0)
+                {
+                    cooks--; into[j] = KitchenRole.Cook; keptMask |= 1 << j;
+                }
+                else if (current == (int)KitchenRole.Server && servers > 0)
+                {
+                    servers--; into[j] = KitchenRole.Server; keptMask |= 1 << j;
+                }
+                else if (current == (int)KitchenRole.Runner && runners > 0)
+                {
+                    runners--; into[j] = KitchenRole.Runner; keptMask |= 1 << j;
+                }
+            }
+
+            // Pass 2: remaining quota to unmatched posts, best proficiency toward Cook first.
+            for (int j = 0; j < mix.Count; j++)
+            {
+                if ((keptMask & (1 << j)) != 0)
+                    continue;
+                if (cooks > 0) { cooks--; into[j] = KitchenRole.Cook; }
+                else if (servers > 0) { servers--; into[j] = KitchenRole.Server; }
+                else { runners--; into[j] = KitchenRole.Runner; }
+            }
+        }
+
         /// <summary>Number of open kitchen tickets (any state) — the order backlog.</summary>
         public int ActiveTicketCount => _tickets.Count;
+
+        // ── Per-role backpressure signals (issue #375) ──────────────────────────
+        // Each counter isolates the pipeline stage one role is responsible for, so the role mix
+        // can put extra posts where the actual bottleneck is.
+
+        /// <summary>Tickets stalled until a runner delivers their storage shortfall — runner pressure.</summary>
+        public int AwaitingIngredientsTicketCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _tickets.Count; i++)
+                    if (_tickets[i].State == TicketState.AwaitingIngredients)
+                        count++;
+                return count;
+            }
+        }
+
+        /// <summary>Posted tickets no cook has picked up yet — cook pressure.</summary>
+        public int ReadyToCookUnclaimedCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _tickets.Count; i++)
+                {
+                    var t = _tickets[i];
+                    if (t.PostedToBoard && !t.CookClaimed
+                        && (t.State == TicketState.ReadyToCook || t.State == TicketState.AwaitingIngredients))
+                        count++;
+                }
+                return count;
+            }
+        }
+
+        /// <summary>Cooked dishes sitting on serving tables waiting for a server — server pressure.</summary>
+        public int PlatedAwaitingPickupCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _tickets.Count; i++)
+                    if (_tickets[i].State == TicketState.Plated)
+                        count++;
+                return count;
+            }
+        }
+
+        /// <summary>Tickets queued for a runner's storage→fridge trip — runner pressure.</summary>
+        public int FetchQueueDepth => _fetchQueue.Count;
+
+        /// <summary>Empty plates queued for bussing — runner pressure.</summary>
+        public int BusJobCount => _busJobs.Count;
+
+        /// <summary>Age in seconds of the oldest open ticket, or 0 with an empty board.</summary>
+        public float OldestOpenTicketAgeSeconds(float nowTotalTime)
+        {
+            float oldest = 0f;
+            for (int i = 0; i < _tickets.Count; i++)
+            {
+                float age = nowTotalTime - _tickets[i].CreatedTime;
+                if (age > oldest)
+                    oldest = age;
+            }
+            return oldest;
+        }
 
         /// <summary>True while the ticket board has room for another order.</summary>
         public bool HasTicketCapacity => _tickets.Count < MaxOpenTickets;
@@ -266,7 +449,54 @@ namespace PitHero.Services
 
             int postCount = _wantedAssignments.Count < MaxWorkerPosts
                 ? _wantedAssignments.Count : MaxWorkerPosts;
-            FillRoleMix(postCount, _wantedRoles);
+
+            _rolePressureSampleElapsed += Time.DeltaTime;
+            if (_rolePressureSampleElapsed >= GameConfig.KitchenRolePressureSampleIntervalSeconds)
+            {
+                _rolePressureSampleElapsed = 0f;
+                EnsureServices();
+                // AwaitingIngredients tickets already cover the queued fetch jobs, so the fetch
+                // queue isn't added again on top of them.
+                int rawRunner = AwaitingIngredientsTicketCount + BusJobCount;
+                int rawCook = ReadyToCookUnclaimedCount;
+                int rawServer = PlatedAwaitingPickupCount
+                    + (_mercenaryManager != null ? _mercenaryManager.CountPatronsWaitingToOrder() : 0);
+                float alpha = GameConfig.KitchenRolePressureEmaAlpha;
+                _smoothedCookPressure += (rawCook - _smoothedCookPressure) * alpha;
+                _smoothedServerPressure += (rawServer - _smoothedServerPressure) * alpha;
+                _smoothedRunnerPressure += (rawRunner - _smoothedRunnerPressure) * alpha;
+            }
+
+            _roleMixElapsed += Time.DeltaTime;
+            if (postCount != _cachedPostCount || _roleMixElapsed >= GameConfig.KitchenRoleMixDwellSeconds)
+            {
+                _roleMixElapsed = 0f;
+                _cachedPostCount = postCount;
+                _cachedRoles.Clear();
+                FillRoleMix(postCount,
+                    (int)(_smoothedCookPressure + 0.5f),
+                    (int)(_smoothedServerPressure + 0.5f),
+                    (int)(_smoothedRunnerPressure + 0.5f), _cachedRoles);
+            }
+
+            // Map the mix's role COUNTS onto posts so live workers keep their roles wherever the
+            // quota allows — only genuine count changes cause a walk-home/respawn.
+            _currentRoleByPost.Clear();
+            for (int j = 0; j < postCount; j++)
+            {
+                int currentRole = -1;
+                for (int wi = 0; wi < _workers.Count; wi++)
+                {
+                    if (ReferenceEquals(_workers[wi].Monster, _wantedAssignments[j])
+                        && !_workers[wi].Entity.IsDestroyed)
+                    {
+                        currentRole = (int)_workers[wi].Role;
+                        break;
+                    }
+                }
+                _currentRoleByPost.Add(currentRole);
+            }
+            AssignRolesWithRetention(_cachedRoles, _currentRoleByPost, _wantedRoles);
 
             // SpawnWorker appends to _workers mid-pass, so snapshot the count and never index past it.
             int existingWorkerCount = _workers.Count;
@@ -294,7 +524,13 @@ namespace PitHero.Services
                 }
                 else
                 {
-                    // Role changed — send home; will be respawned next reconcile
+                    // Role changed — send home; will be respawned next reconcile. Log only on the
+                    // transition (this branch repeats every frame until the worker despawns).
+                    if (!w.Fsm.IsReturningHome)
+                    {
+                        AnalyticsService.LogKitchenRoleChanged(w.Monster.Name, w.Monster.MonsterTypeName,
+                            w.Role.ToString(), _wantedRoles[wantedIdx].ToString());
+                    }
                     w.Fsm.RequestReturnHome();
                 }
             }
@@ -547,6 +783,7 @@ namespace PitHero.Services
             var ticket = new KitchenTicket
             {
                 TicketId = ++_nextTicketId,
+                CreatedTime = Time.TotalTime,
                 Dish = dish,
                 IsPartyTicket = isParty,
                 PartySlot = partySlot,
@@ -588,6 +825,7 @@ namespace PitHero.Services
             var ticket = new KitchenTicket
             {
                 TicketId = ++_nextTicketId,
+                CreatedTime = Time.TotalTime,
                 Dish = dish,
                 IsPartyTicket = true,
                 PartySlot = partySlot,
@@ -1402,6 +1640,8 @@ namespace PitHero.Services
                 _dishService = Core.Services.GetService<DishEntityService>();
             if (_gameState == null)
                 _gameState = Core.Services.GetService<GameStateService>();
+            if (_mercenaryManager == null)
+                _mercenaryManager = Core.Services.GetService<MercenaryManager>();
         }
 
         /// <summary>

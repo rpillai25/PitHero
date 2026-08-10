@@ -1,15 +1,17 @@
 using System.Collections.Generic;
 using Nez;
 using PitHero.Config;
+using PitHero.Services.Analytics;
 using PitHero.Services.AutoJob;
 using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.Services
 {
     /// <summary>
-    /// Automates allied-monster job assignment (issue #321). When enabled, reassesses per-job worker
-    /// demand every GameConfig.AutoJobReassessIntervalSeconds of in-game time (60 in-game minutes)
-    /// and reassigns monsters via JobAssignmentSolver. Day and nocturnal monsters are disjoint
+    /// Automates allied-monster job assignment (issue #321; backpressure scaling issue #375).
+    /// When enabled, samples each job's backpressure every AutoJobPressureSampleIntervalSeconds
+    /// and reassesses worker demand every AutoJobReassessIntervalSeconds of in-game time,
+    /// reassigning monsters via JobAssignmentSolver. Day and nocturnal monsters are disjoint
     /// workforces (MonsterScheduleConfig: 6AM–10PM vs 10PM–6AM), so each shift is solved separately
     /// and every job gets both a day crew and a night crew. The coordinators reconcile worker
     /// entities off AlliedMonster.Job every frame, so writing the job field is the entire
@@ -26,6 +28,7 @@ namespace PitHero.Services
         private readonly List<MonsterJob> _resultJobs = new List<MonsterJob>(64);
 
         private float _lastAssessSeconds = -1f;
+        private float _lastSampleSeconds = -1f;
         private bool _wasNighttime;
 
         /// <summary>Whether automatic job assignment is active.</summary>
@@ -79,10 +82,24 @@ namespace PitHero.Services
         {
             if (_lastAssessSeconds < 0f || nowSeconds < _lastAssessSeconds)
             {
-                // First tick after enable/load, or time rewound by a load — restart the interval.
+                // First tick after enable/load, or time rewound by a load — restart the interval
+                // and clear the backpressure trackers (their timestamps are from the old clock).
                 _lastAssessSeconds = nowSeconds;
+                _lastSampleSeconds = nowSeconds;
                 _wasNighttime = isNighttime;
+                for (int i = 0; i < _evaluators.Count; i++)
+                    _evaluators[i].ResetPressure(nowSeconds);
                 return;
+            }
+
+            // Backpressure sampling runs on its own faster cadence so trackers see rushes start
+            // and end between reassessments. Sampled before any reassess below so a solve always
+            // works from fresh grants.
+            if (nowSeconds - _lastSampleSeconds >= GameConfig.AutoJobPressureSampleIntervalSeconds)
+            {
+                _lastSampleSeconds = nowSeconds;
+                for (int i = 0; i < _evaluators.Count; i++)
+                    _evaluators[i].SamplePressure(nowSeconds);
             }
 
             if (isNighttime != _wasNighttime)
@@ -158,7 +175,11 @@ namespace PitHero.Services
             {
                 var monster = roster[_snapshots[i].RosterIndex];
                 if (monster.Job != _resultJobs[i])
+                {
+                    AnalyticsService.LogMonsterJobChanged(monster.Name, monster.MonsterTypeName,
+                        monster.Job.ToString(), _resultJobs[i].ToString(), "auto");
                     monster.Job = _resultJobs[i];
+                }
             }
         }
     }

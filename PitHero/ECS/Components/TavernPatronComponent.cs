@@ -37,6 +37,9 @@ namespace PitHero.ECS.Components
         /// <summary>The ticket assigned to this patron's order; null until ordered.</summary>
         public KitchenTicket ActiveTicket { get; set; }
 
+        /// <summary>Seconds spent in the current state (resets on each transition) — the patron's live wait time.</summary>
+        public float StateElapsedSeconds => _elapsed;
+
         /// <summary>Seat tile this patron occupies; used to derive the table plate position.</summary>
         public Point SeatTile { get; set; }
 
