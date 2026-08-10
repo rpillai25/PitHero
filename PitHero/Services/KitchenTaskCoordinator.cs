@@ -67,6 +67,16 @@ namespace PitHero.Services
         private int _cachedPostCount = -1;
         private float _roleMixElapsed = GameConfig.KitchenRoleMixDwellSeconds;
 
+        // Per-role pressures seesaw within a single service cycle (orders just taken → runner
+        // work spikes; dishes plated → server work spikes), so an instantaneous reading at
+        // recompute time hands the marginal post to whichever side of the seesaw got sampled —
+        // and back again at the next dwell. EMA-smoothed pressures see the cycle's AVERAGE, so
+        // the marginal post only moves on a sustained shift in where the bottleneck really is.
+        private float _rolePressureSampleElapsed = GameConfig.KitchenRolePressureSampleIntervalSeconds;
+        private float _smoothedCookPressure;
+        private float _smoothedServerPressure;
+        private float _smoothedRunnerPressure;
+
         // ── Workers ─────────────────────────────────────────────────────────────
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(8);
         private readonly List<IMonsterWorkerHost> _peers = new List<IMonsterWorkerHost>(2);
@@ -440,20 +450,33 @@ namespace PitHero.Services
             int postCount = _wantedAssignments.Count < MaxWorkerPosts
                 ? _wantedAssignments.Count : MaxWorkerPosts;
 
+            _rolePressureSampleElapsed += Time.DeltaTime;
+            if (_rolePressureSampleElapsed >= GameConfig.KitchenRolePressureSampleIntervalSeconds)
+            {
+                _rolePressureSampleElapsed = 0f;
+                EnsureServices();
+                // AwaitingIngredients tickets already cover the queued fetch jobs, so the fetch
+                // queue isn't added again on top of them.
+                int rawRunner = AwaitingIngredientsTicketCount + BusJobCount;
+                int rawCook = ReadyToCookUnclaimedCount;
+                int rawServer = PlatedAwaitingPickupCount
+                    + (_mercenaryManager != null ? _mercenaryManager.CountPatronsWaitingToOrder() : 0);
+                float alpha = GameConfig.KitchenRolePressureEmaAlpha;
+                _smoothedCookPressure += (rawCook - _smoothedCookPressure) * alpha;
+                _smoothedServerPressure += (rawServer - _smoothedServerPressure) * alpha;
+                _smoothedRunnerPressure += (rawRunner - _smoothedRunnerPressure) * alpha;
+            }
+
             _roleMixElapsed += Time.DeltaTime;
             if (postCount != _cachedPostCount || _roleMixElapsed >= GameConfig.KitchenRoleMixDwellSeconds)
             {
                 _roleMixElapsed = 0f;
                 _cachedPostCount = postCount;
                 _cachedRoles.Clear();
-                EnsureServices();
-                // AwaitingIngredients tickets already cover the queued fetch jobs, so the fetch
-                // queue isn't added again on top of them.
-                int runnerPressure = AwaitingIngredientsTicketCount + BusJobCount;
-                int cookPressure = ReadyToCookUnclaimedCount;
-                int serverPressure = PlatedAwaitingPickupCount
-                    + (_mercenaryManager != null ? _mercenaryManager.CountPatronsWaitingToOrder() : 0);
-                FillRoleMix(postCount, cookPressure, serverPressure, runnerPressure, _cachedRoles);
+                FillRoleMix(postCount,
+                    (int)(_smoothedCookPressure + 0.5f),
+                    (int)(_smoothedServerPressure + 0.5f),
+                    (int)(_smoothedRunnerPressure + 0.5f), _cachedRoles);
             }
 
             // Map the mix's role COUNTS onto posts so live workers keep their roles wherever the

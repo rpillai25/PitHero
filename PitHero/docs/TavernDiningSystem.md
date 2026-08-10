@@ -122,7 +122,8 @@ the sink by the carrier's FSM when it sees `Canceled`.
 system), sorted by `CookingProficiency` descending. `FillRoleMix` fixes posts 0–2 as Cook,
 Server, Runner, then gives posts 3+ to the role with the highest backpressure per assigned
 worker (issue #375: stalled-fetch tickets + dirty plates → runners, unclaimed board tickets →
-cooks, plated dishes + patrons waiting to order → servers; D'Hondt greedy). With no pressure it
+cooks, plated dishes + patrons waiting to order → servers; D'Hondt greedy over EMA-smoothed
+pressures so a single service cycle's seesaw can't flip the marginal post). With no pressure it
 falls back to the legacy Cook → Server → Runner cycle — **cook1, server1, runner1, cook2,
 server2, runner2, cook3, runner3** (`MaxWorkerPosts` = 8 = 3 cooks + 2 servers + 3 runners). The
 weighted mix is recomputed at most once per `KitchenRoleMixDwellSeconds` (role changes are

@@ -172,13 +172,22 @@ per-role caps (3 cooks / 2 servers / 3 runners; 2 servers is a hard `ServerZone`
 Zero-pressure roles fall back to the legacy Cook → Server → Runner cycle, and the zero-pressure
 overload *is* the legacy cycle.
 
-Per-role pressure signals, computed in the coordinator's `Update()`:
+Per-role pressure signals, sampled in the coordinator's `Update()`:
 
 - **Runner**: `AwaitingIngredientsTicketCount` (tickets stalled on a storage fetch — this already
   covers the queued fetch jobs) + `BusJobCount` (dirty plates).
 - **Cook**: `ReadyToCookUnclaimedCount` (posted tickets no cook has picked up).
 - **Server**: `PlatedAwaitingPickupCount` (dishes cooling on serving tables) +
   `MercenaryManager.CountPatronsWaitingToOrder()`.
+
+**Pressure smoothing:** these counts seesaw within a single service cycle — orders just taken
+spike runner work, plated dishes spike server work — so an instantaneous reading at recompute
+time would hand the marginal post to whichever side of the seesaw got sampled, then hand it
+back at the next dwell (observed in playtesting as a worker ping-ponging Runner↔Server at
+exactly the dwell cadence). The mix therefore reads EMA-smoothed pressures, sampled every
+`KitchenRolePressureSampleIntervalSeconds` (5 scaled seconds) with weight
+`KitchenRolePressureEmaAlpha` (0.1 ≈ 50 scaled-second time constant, spanning a full cycle),
+rounded to the nearest worker — the marginal post only moves on a sustained bottleneck shift.
 
 **Anti-thrash dwell:** a role change sends the worker home to despawn and respawn, so the
 weighted mix is recomputed at most once per `GameConfig.KitchenRoleMixDwellSeconds` (45 scaled

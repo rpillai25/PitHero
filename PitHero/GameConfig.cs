@@ -259,6 +259,8 @@ namespace PitHero
         public const int AutoJobKitchenBacklogPerExtraWorker = 3;  // tickets/patrons per extra kitchen worker beyond base staff
         public const int AutoJobKitchenMaxWorkers = 8;             // mirrors KitchenTaskCoordinator.MaxWorkerPosts (3 cooks + 2 servers + 3 runners)
         public const float KitchenRoleMixDwellSeconds = 45f;       // min scaled seconds between demand-weighted role-mix recomputes (anti-thrash)
+        public const float KitchenRolePressureSampleIntervalSeconds = 5f; // scaled seconds between per-role pressure samples
+        public const float KitchenRolePressureEmaAlpha = 0.1f;     // per-sample EMA weight; ~50 scaled-sec time constant spans a full service cycle
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
