@@ -6,9 +6,10 @@ using RolePlayingFramework.AlliedMonsters;
 namespace PitHero.Tests
 {
     /// <summary>
-    /// Tests for the pure JobAssignmentSolver: sticky/min/desired fill order, proficiency selection
-    /// with deterministic tie-breaks, surplus demotion, the starvation release pass (the one
-    /// exception to stickiness), and the strict-double-improvement swap pass.
+    /// Tests for the pure JobAssignmentSolver: sticky/min fill order, the round-robin desired
+    /// fill, proficiency selection with deterministic tie-breaks, the one-per-solve sticky trim
+    /// (issue #375 slow-drain scale-down), the starvation release pass, and the
+    /// strict-double-improvement swap pass.
     /// </summary>
     [TestClass]
     public class JobAssignmentSolverTests
@@ -136,8 +137,10 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Solve_StickyCookingWorkers_KeptEvenAboveDesired()
+        public void Solve_StickyExcess_TrimsOneWorstWorkerPerSolve()
         {
+            // Issue #375 scale-down: three sticky cooks but the kitchen only wants one. Exactly
+            // ONE worker (the worst cook) is released per solve — a slow drain, never a layoff.
             var monsters = new List<MonsterJobSnapshot>
             {
                 Monster(0, MonsterJob.Cooking, 1, 4),
@@ -151,9 +154,50 @@ namespace PitHero.Tests
 
             JobAssignmentSolver.Solve(monsters, demands, _result);
 
-            Assert.AreEqual(MonsterJob.Cooking, _result[0], "Sticky worker is never demoted");
-            Assert.AreEqual(MonsterJob.Cooking, _result[1], "Sticky worker is never demoted");
-            Assert.AreEqual(MonsterJob.Cooking, _result[2], "Sticky worker is never demoted");
+            Assert.AreEqual(MonsterJob.None, _result[0], "Worst cook is released first");
+            Assert.AreEqual(MonsterJob.Cooking, _result[1], "Only one worker is trimmed per solve");
+            Assert.AreEqual(MonsterJob.Cooking, _result[2], "Best cook is never the one trimmed");
+        }
+
+        [TestMethod]
+        public void Solve_StickyAtDesired_NothingTrimmed()
+        {
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 1, 4),
+                Monster(1, MonsterJob.Cooking, 1, 6),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Cooking, 0, 2, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Cooking, _result[0], "Held workers within desired are untouched");
+            Assert.AreEqual(MonsterJob.Cooking, _result[1], "Held workers within desired are untouched");
+        }
+
+        [TestMethod]
+        public void Solve_TrimmedWorker_ReassignedToNeedyJobSameSolve()
+        {
+            // The trim runs before the fill passes, so the released cook lands on the farm in the
+            // SAME solve instead of walking home first.
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 7, 3),
+                Monster(1, MonsterJob.Cooking, 2, 9),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 1, sticky: false),
+                Demand(MonsterJob.Cooking, 0, 1, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Farming, _result[0], "Trimmed worst cook is picked up by farming immediately");
+            Assert.AreEqual(MonsterJob.Cooking, _result[1], "Best cook keeps the kitchen");
         }
 
         [TestMethod]
@@ -264,10 +308,11 @@ namespace PitHero.Tests
         // ── Starvation release: the one exception to kitchen stickiness ──────
 
         [TestMethod]
-        public void Solve_StarvedFarming_PullsStickyKitchenWorker()
+        public void Solve_StarvedFarming_PullsStickyKitchenWorkersStepwise()
         {
-            // Every monster is sticky-locked in the kitchen while farming demands workers:
-            // with no kitchen floor (min 0), farming pulls as many as it needs.
+            // Every monster is sticky-locked in a kitchen that wants nobody while farming demands
+            // workers. The drain is stepwise: each solve trims one cook for the farm, so farming
+            // reaches its desired count over successive solves rather than in one layoff.
             var monsters = new List<MonsterJobSnapshot>
             {
                 Monster(0, MonsterJob.Cooking, 5, 5),
@@ -280,9 +325,18 @@ namespace PitHero.Tests
             };
 
             JobAssignmentSolver.Solve(monsters, demands, _result);
+            Assert.AreEqual(MonsterJob.Farming, _result[0], "First solve releases one cook to the farm");
+            Assert.AreEqual(MonsterJob.Cooking, _result[1], "The second cook drains on a later solve, not this one");
 
-            Assert.AreEqual(MonsterJob.Farming, _result[0], "Sticky cook is released when farming has zero workers");
-            Assert.AreEqual(MonsterJob.Farming, _result[1], "Farming pulls up to its desired count");
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                var m = monsters[i];
+                m.CurrentJob = _result[i];
+                monsters[i] = m;
+            }
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+            Assert.AreEqual(MonsterJob.Farming, _result[0]);
+            Assert.AreEqual(MonsterJob.Farming, _result[1], "Second solve drains the remaining cook");
         }
 
         [TestMethod]
@@ -364,6 +418,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void Solve_StarvedDemand_NeverRaidsHigherPriorityStickyJob()
         {
+            // Kitchen still wants both its workers (desired 2, so no trim), and starved farming
+            // sits BELOW it in the demand list: the release pass only raids lower-priority jobs.
             var monsters = new List<MonsterJobSnapshot>
             {
                 Monster(0, MonsterJob.Cooking, 5, 5),
@@ -371,7 +427,7 @@ namespace PitHero.Tests
             };
             var demands = new List<JobDemandEntry>
             {
-                Demand(MonsterJob.Cooking, 0, 0, sticky: true),
+                Demand(MonsterJob.Cooking, 0, 2, sticky: true),
                 Demand(MonsterJob.Farming, 1, 2, sticky: false),
             };
 
@@ -379,6 +435,65 @@ namespace PitHero.Tests
 
             Assert.AreEqual(MonsterJob.Cooking, _result[0], "A starved demand only raids lower-priority jobs");
             Assert.AreEqual(MonsterJob.Cooking, _result[1], "A starved demand only raids lower-priority jobs");
+        }
+
+        // ── Round-robin desired fill (issue #375) ────────────────────────────
+
+        [TestMethod]
+        public void Solve_DesiredExtras_SplitRoundRobinAcrossDemands()
+        {
+            // The original bug: farming's desired extras consumed every spare monster before the
+            // kitchen's desired pass ran, freezing the kitchen at its minimum. Desired slots now
+            // fill one per demand per cycle, so both jobs grow together.
+            var monsters = new List<MonsterJobSnapshot>();
+            for (int i = 0; i < 10; i++)
+                monsters.Add(Monster(i, MonsterJob.None, 5, 5));
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 8, sticky: false),
+                Demand(MonsterJob.Cooking, 3, 6, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            int farmers = 0, cooks = 0;
+            for (int i = 0; i < _result.Count; i++)
+            {
+                if (_result[i] == MonsterJob.Farming) farmers++;
+                if (_result[i] == MonsterJob.Cooking) cooks++;
+            }
+            // Mins take 1 + 3; the 6 spares alternate farming/cooking (farming first per cycle)
+            // until the kitchen hits its desired 6, leaving farming the rest.
+            Assert.AreEqual(6, cooks, "Kitchen reaches its full desired count despite farming being listed first");
+            Assert.AreEqual(4, farmers, "Farming grows with the remaining spares instead of monopolizing all six");
+        }
+
+        [TestMethod]
+        public void Solve_DesiredRoundRobin_ListOrderBreaksTheTie()
+        {
+            // One spare after mins: the first-listed demand wins each cycle's first slot.
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.None, 5, 5),
+                Monster(1, MonsterJob.None, 5, 5),
+                Monster(2, MonsterJob.None, 5, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 3, sticky: false),
+                Demand(MonsterJob.Cooking, 1, 3, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            int farmers = 0, cooks = 0;
+            for (int i = 0; i < _result.Count; i++)
+            {
+                if (_result[i] == MonsterJob.Farming) farmers++;
+                if (_result[i] == MonsterJob.Cooking) cooks++;
+            }
+            Assert.AreEqual(2, farmers, "First-listed farming takes the lone contested spare");
+            Assert.AreEqual(1, cooks);
         }
 
         [TestMethod]

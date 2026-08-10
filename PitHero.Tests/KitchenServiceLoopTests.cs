@@ -466,6 +466,82 @@ namespace PitHero.Tests
                 "the auto-job cap must mirror the coordinator's post cap");
         }
 
+        // ── Demand-weighted role mix (issue #375) ──
+
+        private static System.Collections.Generic.List<KitchenRole> WeightedRoleMix(
+            int postCount, int cookPressure, int serverPressure, int runnerPressure)
+        {
+            var roles = new System.Collections.Generic.List<KitchenRole>();
+            KitchenTaskCoordinator.FillRoleMix(postCount, cookPressure, serverPressure,
+                runnerPressure, roles);
+            return roles;
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_BaseCrewInvariantUnderAllWeights()
+        {
+            // Whatever the pressure skew, posts 0-2 stay Cook, Server, Runner — the crew that
+            // opens the kitchen and keeps it fed and cleared.
+            var roles = WeightedRoleMix(3, 0, 0, 99);
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner }, roles);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_HeavyRunnerPressure_FillsRunnersFirst()
+        {
+            // A backlog of ingredient fetches and dirty plates: posts 3+ go to runners until
+            // their cap, then fall back to the neutral cycle.
+            var roles = WeightedRoleMix(5, 0, 0, 10);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Runner, KitchenRole.Runner,
+                }, roles);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_ServerPressure_CapsAtTwoServers()
+        {
+            // Server zoning only supports 2 servers (ServerZone design limit); pressure past the
+            // cap spills into the neutral cycle.
+            var roles = WeightedRoleMix(8, 0, 50, 0);
+            Assert.AreEqual(GameConfig.MaxKitchenServers,
+                roles.FindAll(r => r == KitchenRole.Server).Count);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_SplitsProportionallyByPressurePerWorker()
+        {
+            // D'Hondt greedy: cook pressure 6 vs server 3 vs runner 2 — the second and third
+            // extra posts still favor cooks (6/2 then 6/3 beat 3/2 and 2/2) before the server.
+            var roles = WeightedRoleMix(6, 6, 3, 2);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Cook, KitchenRole.Cook, KitchenRole.Server,
+                }, roles);
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_ZeroPressures_MatchesNeutralCycle()
+        {
+            var neutral = RoleMix(KitchenTaskCoordinator.MaxWorkerPosts);
+            var weighted = WeightedRoleMix(KitchenTaskCoordinator.MaxWorkerPosts, 0, 0, 0);
+            CollectionAssert.AreEqual(neutral, weighted,
+                "The weighted mix with no pressure is exactly the legacy Cook→Server→Runner cycle");
+        }
+
+        [TestMethod]
+        public void WeightedRoleMix_IsDeterministic()
+        {
+            var first = WeightedRoleMix(8, 4, 4, 4);
+            var second = WeightedRoleMix(8, 4, 4, 4);
+            CollectionAssert.AreEqual(first, second);
+        }
+
         // ── Bus queue (issue #327: runners own plate clearing) ──
 
         private static KitchenTaskCoordinator.BusJob MakeBusJob(Vector2 pos, float enqueuedTime)

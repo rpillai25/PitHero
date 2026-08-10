@@ -754,6 +754,53 @@ namespace PitHero.Services
             return count;
         }
 
+        /// <summary>Seated patrons still waiting for a server to take their order — server pressure (issue #375).</summary>
+        public int CountPatronsWaitingToOrder()
+        {
+            int count = 0;
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                if (entity == null)
+                    continue;
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp == null || comp.IsHired)
+                    continue;
+                var patron = entity.GetComponent<ECS.Components.TavernPatronComponent>();
+                if (patron != null && patron.State == ECS.Components.PatronState.WaitingToOrder)
+                    count++;
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Longest current wait among patrons who haven't been served yet (waiting to order, or
+        /// ordered and waiting for food). 0 when nobody is waiting. Backpressure signal: a long
+        /// wait means the kitchen is understaffed even if the raw backlog count looks modest.
+        /// </summary>
+        public float MaxPatronWaitSeconds()
+        {
+            float max = 0f;
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                if (entity == null)
+                    continue;
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp == null || comp.IsHired)
+                    continue;
+                var patron = entity.GetComponent<ECS.Components.TavernPatronComponent>();
+                if (patron == null)
+                    continue;
+                if (patron.State != ECS.Components.PatronState.WaitingToOrder
+                    && patron.State != ECS.Components.PatronState.Ordered)
+                    continue;
+                if (patron.StateElapsedSeconds > max)
+                    max = patron.StateElapsedSeconds;
+            }
+            return max;
+        }
+
         /// <summary>
         /// Gets an available tavern position, preferring one whose table is already cleared —
         /// a seat with an un-bussed plate would park the arriving patron at the door.

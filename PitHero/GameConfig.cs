@@ -247,13 +247,17 @@ namespace PitHero
         public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
         public const float DishTipMaxPercent = 0.15f;
 
-        // Automated monster job assignment (issue #321)
-        public const float AutoJobReassessIntervalSeconds = 60f;   // scaled seconds between reassessments (60 in-game minutes)
+        // Automated monster job assignment (issue #321, backpressure scaling issue #375)
+        public const float AutoJobReassessIntervalSeconds = 15f;   // scaled seconds between solve/apply passes (15 in-game minutes)
+        public const float AutoJobPressureSampleIntervalSeconds = 5f;  // scaled seconds between backpressure signal samples
+        public const float AutoJobScaleDownDrainIntervalSeconds = 60f; // min scaled seconds between releasing successive workers per job
+        public const float AutoJobPressureDecayAlpha = 0.15f;      // per-sample EMA decay on falling pressure (rising pressure is instant)
+        public const float AutoJobKitchenHighWaitSeconds = 60f;    // a patron waiting this long (1 in-game hour) adds a worker of pressure
         public const int AutoJobFarmTasksPerWorker = 6;            // burst demand: outstanding farm tasks each farmer can absorb
-        public const int AutoJobFarmCropsPerWorkerBaseline = 12;   // quiet-period demand: crops + plans each farmer can tend
         public const int AutoJobKitchenBaseStaff = 3;              // cook + server + runner minimum (no runner -> fridge runs dry)
         public const int AutoJobKitchenBacklogPerExtraWorker = 3;  // tickets/patrons per extra kitchen worker beyond base staff
         public const int AutoJobKitchenMaxWorkers = 8;             // mirrors KitchenTaskCoordinator.MaxWorkerPosts (3 cooks + 2 servers + 3 runners)
+        public const float KitchenRoleMixDwellSeconds = 45f;       // min scaled seconds between demand-weighted role-mix recomputes (anti-thrash)
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level

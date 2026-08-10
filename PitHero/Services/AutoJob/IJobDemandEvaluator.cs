@@ -14,5 +14,15 @@ namespace PitHero.Services.AutoJob
         /// evaluators (registration order = priority), so lower-priority jobs only claim what's left.
         /// </summary>
         JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers);
+
+        /// <summary>
+        /// Samples the live workload into the evaluator's backpressure tracker (issue #375).
+        /// Called once per sampling interval (scaled seconds) — never from EvaluateDemand, which
+        /// runs twice per reassessment (once per shift) and would double-sample.
+        /// </summary>
+        void SamplePressure(float nowSeconds);
+
+        /// <summary>Clears smoothing/drain state. Called when the clock rewinds (save load).</summary>
+        void ResetPressure(float nowSeconds);
     }
 }

@@ -40,10 +40,12 @@ namespace PitHero.Services.AutoJob
 
     /// <summary>
     /// Pure, deterministic assignment solver: fills each job's minimum staffing first (by proficiency),
-    /// then desired staffing, honoring sticky jobs whose workers are never demoted — except that a
-    /// higher-priority job left with zero workers may pull sticky workers from lower-priority jobs
-    /// (StarvationReleasePass). Monsters left unassigned get MonsterJob.None so the coordinators
-    /// send them home.
+    /// then desired staffing round-robin across jobs so no single job's extras monopolize the spare
+    /// workers (issue #375). Sticky jobs keep their workers between solves, but a sticky job holding
+    /// more workers than it wants sheds exactly one per solve (StickyTrimPass — the slow-drain
+    /// scale-down), and a higher-priority job left with zero workers may pull sticky workers from
+    /// lower-priority jobs (StarvationReleasePass). Monsters left unassigned get MonsterJob.None so
+    /// the coordinators send them home.
     /// </summary>
     public static class JobAssignmentSolver
     {
@@ -87,42 +89,116 @@ namespace PitHero.Services.AutoJob
                 }
             }
 
-            FillPass(monsters, demands, resultJobs, true);
-            FillPass(monsters, demands, resultJobs, false);
+            StickyTrimPass(monsters, demands, resultJobs);
+            MinFillPass(monsters, demands, resultJobs);
+            DesiredFillRoundRobin(monsters, demands, resultJobs);
             StarvationReleasePass(monsters, demands, resultJobs);
             SwapPass(monsters, demands, resultJobs);
         }
 
-        /// <summary>Fills each demand up to MinWorkers (minPass) or DesiredWorkers by best proficiency.</summary>
-        private static void FillPass(List<MonsterJobSnapshot> monsters, List<JobDemandEntry> demands,
-            List<MonsterJob> resultJobs, bool minPass)
+        /// <summary>
+        /// Scale-down path (issue #375), deliberately replacing the original "sticky workers are
+        /// never demoted, even above desired" rule: a sticky demand holding more workers than
+        /// max(MinWorkers, DesiredWorkers) releases its LOWEST-proficiency worker — at most ONE per
+        /// solve per demand, so downscaling is a slow drain rather than a mass layoff even if a
+        /// demand gate suddenly zeroes out. Runs before the fill passes so the freed monster is
+        /// immediately claimable by whichever job needs it in this same solve.
+        /// </summary>
+        private static void StickyTrimPass(List<MonsterJobSnapshot> monsters,
+            List<JobDemandEntry> demands, List<MonsterJob> resultJobs)
         {
             for (int d = 0; d < demands.Count; d++)
             {
                 var demand = demands[d];
-                int target = minPass ? demand.MinWorkers : demand.DesiredWorkers;
-                int assigned = CountAssigned(resultJobs, demand.Job);
-                while (assigned < target)
+                if (!demand.Sticky)
+                    continue;
+                int wanted = demand.MinWorkers > demand.DesiredWorkers
+                    ? demand.MinWorkers : demand.DesiredWorkers;
+                if (CountAssigned(resultJobs, demand.Job) <= wanted)
+                    continue;
+
+                int worst = -1;
+                int worstProficiency = int.MaxValue;
+                for (int i = 0; i < monsters.Count; i++)
                 {
-                    int best = -1;
-                    int bestProficiency = -1;
-                    for (int i = 0; i < monsters.Count; i++)
+                    if (resultJobs[i] != demand.Job || monsters[i].CurrentJob != demand.Job)
+                        continue;
+                    int proficiency = GetProficiency(monsters[i], demand.Job);
+                    if (proficiency < worstProficiency)
                     {
-                        if (resultJobs[i] != MonsterJob.None)
-                            continue;
-                        int proficiency = GetProficiency(monsters[i], demand.Job);
-                        if (proficiency > bestProficiency)
-                        {
-                            best = i;
-                            bestProficiency = proficiency;
-                        }
+                        worst = i;
+                        worstProficiency = proficiency;
                     }
+                }
+                if (worst >= 0)
+                    resultJobs[worst] = MonsterJob.None;
+            }
+        }
+
+        /// <summary>Fills each demand up to MinWorkers by best proficiency, in demand-list order.</summary>
+        private static void MinFillPass(List<MonsterJobSnapshot> monsters, List<JobDemandEntry> demands,
+            List<MonsterJob> resultJobs)
+        {
+            for (int d = 0; d < demands.Count; d++)
+            {
+                var demand = demands[d];
+                int assigned = CountAssigned(resultJobs, demand.Job);
+                while (assigned < demand.MinWorkers)
+                {
+                    int best = SelectBestFree(monsters, resultJobs, demand.Job);
                     if (best < 0)
                         break;
                     resultJobs[best] = demand.Job;
                     assigned++;
                 }
             }
+        }
+
+        /// <summary>
+        /// Fills desired staffing one worker per demand per cycle instead of whole-demand-at-a-time,
+        /// so an early-listed job's extras can't monopolize every spare monster before later jobs
+        /// see any (the issue #375 "kitchen frozen at its minimum" bug). List order still decides
+        /// who gets each cycle's first spare, making priority a tiebreak rather than a monopoly.
+        /// </summary>
+        private static void DesiredFillRoundRobin(List<MonsterJobSnapshot> monsters,
+            List<JobDemandEntry> demands, List<MonsterJob> resultJobs)
+        {
+            bool assignedAny = true;
+            while (assignedAny)
+            {
+                assignedAny = false;
+                for (int d = 0; d < demands.Count; d++)
+                {
+                    var demand = demands[d];
+                    if (CountAssigned(resultJobs, demand.Job) >= demand.DesiredWorkers)
+                        continue;
+                    int best = SelectBestFree(monsters, resultJobs, demand.Job);
+                    if (best < 0)
+                        continue;
+                    resultJobs[best] = demand.Job;
+                    assignedAny = true;
+                }
+            }
+        }
+
+        /// <summary>Unassigned monster with the best proficiency for the job; ties break to lowest index. -1 if none.</summary>
+        private static int SelectBestFree(List<MonsterJobSnapshot> monsters, List<MonsterJob> resultJobs,
+            MonsterJob job)
+        {
+            int best = -1;
+            int bestProficiency = -1;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                if (resultJobs[i] != MonsterJob.None)
+                    continue;
+                int proficiency = GetProficiency(monsters[i], job);
+                if (proficiency > bestProficiency)
+                {
+                    best = i;
+                    bestProficiency = proficiency;
+                }
+            }
+            return best;
         }
 
         /// <summary>
@@ -175,8 +251,11 @@ namespace PitHero.Services.AutoJob
         }
 
         /// <summary>
-        /// One deterministic improvement pass: a sticky worker swaps jobs with a non-sticky worker only
-        /// when BOTH jobs strictly gain proficiency, so assignments never oscillate between solves.
+        /// One deterministic improvement pass: a sticky worker swaps jobs with a non-sticky worker
+        /// only when the other job strictly gains proficiency and the sticky job doesn't lose any.
+        /// Every swap strictly raises total proficiency, so the reverse swap can never qualify and
+        /// assignments never oscillate between solves. (The zero-loss case matters after a trim:
+        /// equal cooks but one is the far better farmer — the farm should get that one.)
         /// </summary>
         private static void SwapPass(List<MonsterJobSnapshot> monsters, List<JobDemandEntry> demands,
             List<MonsterJob> resultJobs)
@@ -201,7 +280,7 @@ namespace PitHero.Services.AutoJob
                             continue;
                         int stickyGain = GetProficiency(monsters[f], stickyJob) - GetProficiency(monsters[w], stickyJob);
                         int otherGain = GetProficiency(monsters[w], otherJob) - GetProficiency(monsters[f], otherJob);
-                        if (stickyGain <= 0 || otherGain <= 0)
+                        if (stickyGain < 0 || otherGain <= 0)
                             continue;
                         if (stickyGain + otherGain > bestGain)
                         {
