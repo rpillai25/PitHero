@@ -29,7 +29,26 @@ The same gate covers kitchen role changes (the replacement waits for the old wor
 | UI gating | `PitHero/UI/SettingsUI.cs` (checkbox), `PitHero/UI/MonsterUI.cs` (job buttons non-clickable while enabled) | |
 | Persistence | `SaveData.AutomateMonsterJobs` (v19, section 34) → `AutoJobAssignmentService.Enabled` | Loading never forces a reshuffle; persisted jobs stand until the next cadence tick. |
 
-Tunables live in `GameConfig` under the `AutoJob*` prefix.
+## Tunables
+
+All in `GameConfig` (`AutoJob*` prefix for headcount scaling, `KitchenRole*` for the role mix).
+Times are scaled seconds (1 scaled second = 1 in-game minute; pause freezes them all).
+
+| Constant | Value | What it does / when to change it |
+|---|---|---|
+| `AutoJobReassessIntervalSeconds` | 15 | Solve/apply cadence. Raise if assignments visibly change too often overall; lower for snappier reaction to demand. |
+| `AutoJobPressureSampleIntervalSeconds` | 5 | Headcount backpressure sampling cadence. Rarely needs touching. |
+| `AutoJobScaleDownDrainIntervalSeconds` | 60 | Min gap between releasing successive FARM workers. Raise if farmers leave/return too often between waves. |
+| `AutoJobKitchenScaleDownDrainIntervalSeconds` | 180 | Min gap between releasing successive KITCHEN workers. Raise if kitchen departures look churny; lower if surplus staff linger too long. |
+| `AutoJobPressureDecayAlpha` | 0.15 | EMA decay on falling headcount pressure. Lower = grants hold longer after a rush. |
+| `AutoJobKitchenHighWaitSeconds` | 60 | Patron wait (to order or be served) that adds +1 worker of kitchen pressure. Lower to react to unhappy patrons sooner. |
+| `AutoJobFarmTasksPerWorker` | 6 | Outstanding farm tasks each farmer absorbs. Lower = more farmers per wave. |
+| `AutoJobKitchenBaseStaff` | 3 | Cook + server + runner floor. Do not lower — a runner-less kitchen runs the fridge dry. |
+| `AutoJobKitchenBacklogPerExtraWorker` | 3 | Backlog items per extra kitchen worker. Lower = kitchen scales up harder during rushes. |
+| `AutoJobKitchenMaxWorkers` | 8 | Kitchen headcount cap. Must equal `KitchenTaskCoordinator.MaxWorkerPosts` (test-asserted). |
+| `KitchenRoleMixDwellSeconds` | 45 | Min gap between role-mix recomputes. Raise if `kitchen_role_changed` events stream (see Diagnosing below). |
+| `KitchenRolePressureSampleIntervalSeconds` | 5 | Per-role pressure sampling cadence. |
+| `KitchenRolePressureEmaAlpha` | 0.1 | Per-role pressure smoothing (~50s time constant). Lower if the marginal role post still flips on service-cycle noise. |
 
 ## When sampling and reassessment run
 
@@ -212,6 +231,49 @@ Workload getters: `FarmTaskCoordinator.OutstandingTaskCount`,
 `PartyDiningService.CountPendingPartyDiners()`. `KitchenTicket.CreatedTime` stamps ticket
 creation (`Time.TotalTime`, mirroring `BusJob.EnqueuedTime`; not persisted).
 
+## Diagnosing staffing behavior
+
+Staffing decisions are observable in the debug-build analytics JSONL
+(`%LOCALAPPDATA%\<exeName>\analytics\session_*.jsonl`; schema in
+`PitHero/docs/AnalyticsSchema.md` → "Monster job staffing"). Grep for `monster_job_changed`
+(headcount) and `kitchen_role_changed` (role mix), read `gt` for in-game time, and compare
+against these signatures:
+
+- **Healthy**: rush scale-ups arrive as a burst of `toJob:"Cooking"` lines at one timestamp;
+  scale-downs release exactly one worker per drain interval (e.g. one farmer `toJob:"None"` per
+  hour through the afternoon); `kitchen_role_changed` is rare and coincides with crew-size
+  changes.
+- **Role-mix thrash**: the same monster flips A→B→A→B in `kitchen_role_changed` at intervals
+  matching `KitchenRoleMixDwellSeconds`. Every role change is a walk-home/despawn/respawn round
+  trip, so this is highly visible in-game. First check `KitchenRolePressureEmaAlpha` (smoothing
+  too reactive), then the dwell.
+- **Headcount churn**: a monster leaves a job and returns within an hour or two
+  (`monster_job_changed` pairs). Distinguish real demand cycles (see Known behaviors) from
+  boundary oscillation — a backlog hovering at a multiple of
+  `AutoJobKitchenBacklogPerExtraWorker` flips desired by ±1; the drain interval bounds the cycle
+  to one departure per interval.
+
+This exact workflow (previous session vs. new session event counts + per-monster timelines) is
+how the role-retention and pressure-smoothing fixes were validated.
+
+## Known behaviors (intended — do not "fix" without a design decision)
+
+- **The noon bounce**: the backlog dips between breakfast and lunch, so the kitchen trims a
+  worker around midday and re-staffs them about an hour later when the lunch rush hits. That's
+  demand-following working as designed; the cost is one walk-home/return round trip per day for
+  the marginal worker. Softening it further means longer drain intervals (slower response
+  everywhere), not a bug fix.
+- **Small-crew night wobble**: on a small night shift a single marginal post covers the whole
+  crew, and smoothed role pressures near a rounding boundary (~half a worker) can occasionally
+  flip it (observed: one Runner↔Cook reversal pair per session). Accepted; if it worsens, lower
+  `KitchenRolePressureEmaAlpha` or add an incumbent-bias margin to the D'Hondt comparison.
+- **Suboptimal-but-stable role holders**: role retention deliberately keeps a worker in its
+  current role even when a higher-proficiency colleague would ideally hold it — stability beats
+  marginal cook-speed. Fresh optimal assignments happen naturally at shift changes and respawns.
+- **05:37 pre-dawn send-home**: outstanding farm work often hits zero just before dawn, so the
+  whole day crew drains right before the 6AM shift-change reassess re-staffs it. Harmless — the
+  monsters are asleep/home anyway.
+
 ## Adding a new job (e.g. Fishing)
 
 The solver never changes. Steps:
@@ -243,9 +305,18 @@ The solver never changes. Steps:
 
 ## Testing
 
-- `PitHero.Tests/JobAssignmentSolverTests.cs` — solver passes, tie-breaks, stickiness, swaps,
-  extensibility.
+- `PitHero.Tests/JobAssignmentSolverTests.cs` — solver passes, tie-breaks, round-robin desired
+  fairness, one-per-solve sticky trim, starvation release, swaps, extensibility.
+- `PitHero.Tests/BackpressureTrackerTests.cs` — instant attack, EMA decay, one drain per
+  interval, rebound regrant, reset.
 - `PitHero.Tests/AutoJobAssignmentServiceTests.cs` — service wiring, cadence/shift-boundary
   triggers (`TickCadence` is public precisely so tests can drive it without `Core.Services`),
-  per-shift segregation, evaluator math. Construct everything directly (no `Core.Services`);
-  evaluators accept null dependencies for headless runs.
+  per-shift segregation, evaluator math, and the end-to-end
+  `EndToEnd_KitchenScalesPastBaseCrewUnderBacklog_ThenDrainsStepwise` (a real ticket rush staffs
+  the kitchen past 3 while farming keeps its caretaker, then drains back one worker at a time —
+  note ticket creation withdraws crops, so the test stocks backlog+1 servings to keep
+  `HasAnyOrderableDish` true). Construct everything directly (no `Core.Services`); evaluators
+  accept null dependencies for headless runs.
+- `PitHero.Tests/KitchenServiceLoopTests.cs` — `RoleMix_*` (neutral cycle, pinned base-crew
+  posts, caps), `WeightedRoleMix_*` (D'Hondt splits), `Retention_*` (no churn on count-neutral
+  recomputes, worst-holder-first shrink, count preservation).
