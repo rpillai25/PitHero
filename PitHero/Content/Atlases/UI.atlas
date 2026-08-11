@@ -400,14 +400,20 @@ NinePatchButton_Over
 NinePatchButton_Up
 	136,485,12,12
 	0.5,0.5
+NinePatchSpeechBubble
+	149,485,12,12
+	0.5,0.5
 UISortOrderArrow
-	149,485,10,13
+	162,485,10,13
 	0.5,0.5
 NinePatchScroll
 	408,117,9,9
 	0.5,0.5
 NinePatchScrollKnob
 	123,498,9,9
+	0.5,0.5
+SpeechBubbleTail
+	133,498,9,8
 	0.5,0.5
 HPUnit2x
 	322,171,2,8
