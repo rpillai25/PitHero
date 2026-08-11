@@ -41,6 +41,7 @@ namespace PitHero.Services
             LoadFile(TextType.Skill, "Skill.txt");
             LoadFile(TextType.Job, "Job.txt");
             LoadFile(TextType.Monster, "Monster.txt");
+            LoadFile(TextType.Dialogue, "Dialogue.txt");
         }
 
         /// <summary>

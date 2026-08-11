@@ -1550,6 +1550,7 @@ namespace PitHero.ECS.Scenes
 
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
+            hero.AddComponent(new SpeechBubbleComponent());
             hero.AddComponent(new CharacterSelectorComponent());
 
             // Wait for pathfinding initialization then add obstacles

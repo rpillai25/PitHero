@@ -212,6 +212,7 @@ namespace PitHero.Services
 
             _autoResumeWhenDone = true;
             stopUI.SetStopped(true);
+            EmitBreakfastBubble();
             Debug.Log("[PartyDiningService] Party heading to the tavern for breakfast");
         }
 
@@ -514,6 +515,19 @@ namespace PitHero.Services
         }
 
         // ── Helpers ─────────────────────────────────────────────────────────────
+
+        /// <summary>Shows the breakfast speech bubble on the hero entity.</summary>
+        private void EmitBreakfastBubble()
+        {
+            if (Core.Instance == null)
+                return;
+            var textService = Core.Services.GetService<TextService>();
+            if (textService == null)
+                return;
+            Core.Scene?.FindEntity("hero")
+                ?.GetComponent<SpeechBubbleComponent>()
+                ?.Say(textService.DisplayText(TextType.Dialogue, DialogueTextKey.HeroBreakfast));
+        }
 
         /// <summary>Session-log line explaining why the wake-up breakfast trip was skipped.</summary>
         private void EmitBreakfastSkipped(string textKey, DishType favorite)

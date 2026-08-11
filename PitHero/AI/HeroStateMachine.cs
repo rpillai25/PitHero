@@ -32,6 +32,7 @@ namespace PitHero.AI
         private WalkToTavernForStopAction _walkToTavernForStopAction;
         private bool _lastStoppedAdventure;
         private bool _innRestEmitted;
+        private bool _pitBubbleEmitted;
 
         // Healing priority tracking for replanning when priorities change
         private HeroHealPriority _lastHealPriority1;
@@ -211,6 +212,13 @@ namespace PitHero.AI
 
                 _hero.PitIntent = ComputePitIntentFromPlan(_actionPlan);
 
+                if (_hero.PitIntent == HeroPitIntent.EnteringPit)
+                {
+                    if (!_pitBubbleEmitted) { EmitPitAdventureBubble(); _pitBubbleEmitted = true; }
+                }
+                else
+                    _pitBubbleEmitted = false;
+
                 if (PlanContainsSleepInBed(_actionPlan))
                 {
                     if (!_innRestEmitted)
@@ -276,6 +284,13 @@ namespace PitHero.AI
                         _hasTrackedPriorities = true;
 
                         _hero.PitIntent = ComputePitIntentFromPlan(_actionPlan);
+
+                        if (_hero.PitIntent == HeroPitIntent.EnteringPit)
+                        {
+                            if (!_pitBubbleEmitted) { EmitPitAdventureBubble(); _pitBubbleEmitted = true; }
+                        }
+                        else
+                            _pitBubbleEmitted = false;
 
                         if (PlanContainsSleepInBed(_actionPlan))
                         {
@@ -988,6 +1003,18 @@ namespace PitHero.AI
             var timeService = Core.Services.GetService<InGameTimeService>();
             var key = timeService?.IsNighttime == true ? UITextKey.ConsoleNightSleep : UITextKey.ConsoleInnRest;
             Core.Services.GetService<GameEventService>()?.EmitLocalized(key);
+        }
+
+        /// <summary>Shows the pit-adventure speech bubble on the hero entity (one-shot per trip).</summary>
+        private void EmitPitAdventureBubble()
+        {
+            if (Core.Instance == null)
+                return;
+            var textService = Core.Services.GetService<TextService>();
+            if (textService == null)
+                return;
+            Entity?.GetComponent<SpeechBubbleComponent>()
+                ?.Say(textService.DisplayText(TextType.Dialogue, DialogueTextKey.HeroPitAdventure));
         }
 
         #endregion
