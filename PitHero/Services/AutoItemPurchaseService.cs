@@ -132,6 +132,8 @@ namespace PitHero.Services
             if (_purchased.Count == 0)
                 return;
 
+            SpeechBubbleDialogue.SayGearUp(heroComp.Entity);
+
             for (int i = 0; i < _purchased.Count; i++)
             {
                 UnviewedGearTracker.MarkNew(_purchased[i]);

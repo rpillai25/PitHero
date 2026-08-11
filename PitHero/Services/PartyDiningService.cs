@@ -194,6 +194,7 @@ namespace PitHero.Services
             if (!coordinator.CanCoverRecipe(favorite))
             {
                 EmitBreakfastSkipped(UITextKey.ConsoleBreakfastSkipped, favorite);
+                SpeechBubbleDialogue.SayBreakfastNoIngredients(Core.Scene?.FindEntity("hero"));
                 Debug.Log("[PartyDiningService] Skipping breakfast trip — no ingredients for favorite dish");
                 return;
             }
@@ -519,14 +520,7 @@ namespace PitHero.Services
         /// <summary>Shows the breakfast speech bubble on the hero entity.</summary>
         private void EmitBreakfastBubble()
         {
-            if (Core.Instance == null)
-                return;
-            var textService = Core.Services.GetService<TextService>();
-            if (textService == null)
-                return;
-            Core.Scene?.FindEntity("hero")
-                ?.GetComponent<SpeechBubbleComponent>()
-                ?.Say(textService.DisplayText(TextType.Dialogue, DialogueTextKey.HeroBreakfast));
+            SpeechBubbleDialogue.SayBreakfast(Core.Scene?.FindEntity("hero"));
         }
 
         /// <summary>Session-log line explaining why the wake-up breakfast trip was skipped.</summary>

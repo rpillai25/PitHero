@@ -1,3 +1,13 @@
 # Dialogue lines shown in speech bubbles
 HeroPitAdventure,Time for some adventuring!
 HeroBreakfast,Some breakfast sounds good.
+HeroGearUp,Better gear up...
+HeroPitEntryGreatRun,This will be a great run!
+HeroPitEntryWeGotThis,We got this!
+HeroBedtime,Looks like it's bedtime.
+HeroRestSleepOff,Better sleep this off!
+HeroRestHealAtInn,Yikes! Time to heal at the inn
+HeroRestWouldBeGood,Some rest would be good
+HeroBreakfastNoIngredients,Breakfast options aren't great today.
+HeroBossTeamwork,Team work really pays off!
+HeroBossWorthyFoe,A worthy foe!

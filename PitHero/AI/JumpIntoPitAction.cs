@@ -69,6 +69,8 @@ namespace PitHero.AI
 
                 hero.InsidePit = true;
 
+                SpeechBubbleDialogue.SayPitEntry(hero.Entity);
+
                 // Log hero tile position at end of execution
                 var endTile = currentTile;
                 Debug.Log($"[JumpIntoPit] Hero tile position at end of execution: X={endTile.X}, Y={endTile.Y}");
