@@ -775,6 +775,10 @@ namespace PitHero.Services
             carryRight.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
             carryRight.SetEnabled(false);
 
+            // Speech bubble — AnchorRenderer drives bubble height from the monster sprite
+            var kitchenBubble = entity.AddComponent(new SpeechBubbleComponent());
+            kitchenBubble.AnchorRenderer = bodyAnimator;
+
             var fsm = entity.AddComponent(new KitchenMonsterStateMachine(
                 monster, this, new Point(house.TileX, house.TileY), role));
             fsm.BodyAnimator = bodyAnimator;

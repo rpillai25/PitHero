@@ -54,6 +54,13 @@ namespace PitHero.ECS.Components
         // Pre-allocated tail destination rectangle (mutated in Render, no per-frame alloc)
         private Rectangle _tailDestRect;
 
+        /// <summary>
+        /// Optional body renderer whose sprite height anchors the bubble. When set, the tail
+        /// tip offset is derived per-frame from the sprite height (workers vary 28–90 px).
+        /// Null = hero/patron default (uses <see cref="GameConfig.SpeechBubbleTailTipOffsetY"/>).
+        /// </summary>
+        public Nez.Sprites.SpriteRenderer AnchorRenderer;
+
         /// <inheritdoc/>
         public override float Width => GameConfig.SpeechBubbleWidth;
 
@@ -144,17 +151,32 @@ namespace PitHero.ECS.Components
             base.OnRemovedFromEntity();
         }
 
+        /// <summary>
+        /// Returns the Y offset from the entity's origin to the tip of the speech bubble tail.
+        /// When an <see cref="AnchorRenderer"/> is set, the value is computed from the sprite's
+        /// height so the bubble clears the top of the monster sprite by 4 px. Falls back to
+        /// <see cref="GameConfig.SpeechBubbleTailTipOffsetY"/> for hero/patron paperdolls.
+        /// No allocation: the null-conditional on Sprite is a reference comparison.
+        /// </summary>
+        private float GetTailTipOffsetY()
+        {
+            return AnchorRenderer?.Sprite != null
+                ? (GameConfig.TileSize / 2 - AnchorRenderer.Sprite.SourceRect.Height - 4)
+                : GameConfig.SpeechBubbleTailTipOffsetY;
+        }
+
         public override bool IsVisibleFromCamera(Camera camera)
         {
             if (!_active)
                 return false;
 
             var p = Entity.Position;
-            // Bubble top = p.Y - 90; tail bottom = p.Y - 36
-            float visualTop = p.Y + GameConfig.SpeechBubbleTailTipOffsetY
+            float tailTipOffsetY = GetTailTipOffsetY();
+            // Bubble top = tailTip - tail height + tail overlap - bubble height; bottom = tailTip
+            float visualTop = p.Y + tailTipOffsetY
                               - TailSpriteH + GameConfig.SpeechBubbleTailOverlap
                               - GameConfig.SpeechBubbleHeight;
-            float visualBottom = p.Y + GameConfig.SpeechBubbleTailTipOffsetY;
+            float visualBottom = p.Y + tailTipOffsetY;
             float visualLeft   = p.X - GameConfig.SpeechBubbleWidth / 2f;
             float visualRight  = visualLeft + GameConfig.SpeechBubbleWidth;
 
@@ -171,11 +193,11 @@ namespace PitHero.ECS.Components
             var p = Entity.Position;
 
             // Position math (world pixels):
-            //   tail bottom Y = p.Y - 36  (4 px clearance above head top at p.Y - 32)
-            //   tail top Y    = p.Y - 44  (tail sprite is 8 px tall)
-            //   bubble bottom = p.Y - 42  (tail top overlaps bottom 2 rows of bubble border)
-            //   bubble top    = p.Y - 90  (bubble is 48 px tall)
-            float tailBottomY   = p.Y + GameConfig.SpeechBubbleTailTipOffsetY;
+            //   tail bottom Y = p.Y + tailTipOffsetY  (4 px clearance above sprite top)
+            //   tail top Y    = tail bottom - tail height  (tail sprite is 8 px tall)
+            //   bubble bottom = tail top + tail overlap with bubble border (2 px)
+            //   bubble top    = bubble bottom - bubble height  (48 px)
+            float tailBottomY   = p.Y + GetTailTipOffsetY();
             float tailTopY      = tailBottomY - TailSpriteH;
             float bubbleBottomY = tailTopY + GameConfig.SpeechBubbleTailOverlap;
             float bubbleTopY    = bubbleBottomY - GameConfig.SpeechBubbleHeight;

@@ -49,6 +49,9 @@ namespace PitHero.ECS.Components
         private float _elapsed;
         private bool _walkedOff;
 
+        /// <summary>The server worker entity who took this patron's order; null until ordered.</summary>
+        private Entity _serverEntity;
+
         public override void OnAddedToEntity()
         {
             // Core.Services requires a running game instance; headless tests inject via SetHeadlessServices.
@@ -75,8 +78,10 @@ namespace PitHero.ECS.Components
         public void OnOrderTaken(KitchenTicket ticket)
         {
             ActiveTicket = ticket;
+            _serverEntity = ticket?.ServerEntity;
             State = PatronState.Ordered;
             _elapsed = 0f;
+            SpeechBubbleDialogue.SayPatronOrder(Entity, ticket.Dish);
         }
 
         /// <summary>Transition to FoodDelivered/Eating state once the dish lands on the table.</summary>
@@ -140,6 +145,8 @@ namespace PitHero.ECS.Components
                     if (!_walkedOff && _elapsed >= GameConfig.PatronLingerAfterEatingSeconds)
                     {
                         _walkedOff = true;
+                        if (_serverEntity != null && !_serverEntity.IsDestroyed)
+                            SpeechBubbleDialogue.SayServerFarewell(_serverEntity);
                         WalkOffViaMercenaryManager();
                     }
                     break;
@@ -175,6 +182,8 @@ namespace PitHero.ECS.Components
 
                     PitHero.Services.Analytics.AnalyticsService.LogDishServed(
                         ActiveTicket.Dish.ToString(), price, tip, false, ActiveTicket.IsDeluxe);
+
+                    SpeechBubbleDialogue.SayPatronPaid(Entity, tip > 0);
                 }
 
                 _coordinator?.NotifyPatronFinishedEating(ActiveTicket);

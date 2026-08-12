@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.FSM;
+using PitHero.Config;
 using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Services.Analytics;
@@ -267,8 +268,10 @@ namespace PitHero.ECS.Components
 
         private void EmergeFromHouse_Tick()
         {
-            if (!_mover.IsMoving)
-                CurrentState = FarmingMonsterState.Idle;
+            if (_mover.IsMoving)
+                return;
+            SpeechBubbleDialogue.SayWorkerShiftStart(Entity);
+            CurrentState = FarmingMonsterState.Idle;
         }
 
         // ---------------------------------------------------------------- Idle
@@ -909,6 +912,7 @@ namespace PitHero.ECS.Components
         {
             if (_mover.IsMoving)
                 return;
+            SpeechBubbleDialogue.SayFarmerStore(Entity);
             DepositAndFinish();
         }
 
@@ -1136,7 +1140,16 @@ namespace PitHero.ECS.Components
 
             // No way back (shouldn't happen on the open farm) — vanish in place
             if (!TrySetPathTo(ExitTile))
+            {
                 Entity.Destroy();
+                return;
+            }
+            // Only bubble on a real shift end (worker going to sleep, not a mid-shift role change)
+            var timeService = Core.Instance != null
+                ? Core.Services.GetService<InGameTimeService>()
+                : null;
+            if (timeService != null && MonsterScheduleConfig.IsAsleep(_monster.MonsterTypeName, timeService))
+                SpeechBubbleDialogue.SayWorkerShiftEnd(Entity);
         }
 
         private void ReturnHome_Tick()

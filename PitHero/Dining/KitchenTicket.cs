@@ -46,6 +46,9 @@ namespace PitHero.Dining
         /// <summary>Unhired patron entity this ticket belongs to (null for party tickets).</summary>
         public Entity PatronEntity;
 
+        /// <summary>The server worker entity who took this order; null for party orders.</summary>
+        public Entity ServerEntity;
+
         /// <summary>Seat tile the order was taken at — where the dish is delivered.</summary>
         public Point SeatTile;
 

@@ -60,6 +60,8 @@ namespace PitHero.AI
 
             Debug.Log($"[WalkToStatueForCrystalAction] Hero walking to statue at ({StatueTileX},{StatueTileY}) to receive crystal");
 
+            SpeechBubbleDialogue.SayRespawn(hero.Entity);
+
             if (hero.LinkedHero != null)
                 Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHeroRespawn,
                     (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName));
