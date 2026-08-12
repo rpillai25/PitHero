@@ -238,6 +238,10 @@ namespace PitHero.Services
             if (hoeAnimation != null)
                 hoeAnimator.AddAnimation("ForkedHoe", hoeAnimation);
 
+            // Speech bubble — AnchorRenderer drives bubble height from the monster sprite
+            var farmBubble = entity.AddComponent(new SpeechBubbleComponent());
+            farmBubble.AnchorRenderer = bodyAnimator;
+
             var fsm = entity.AddComponent(new FarmingMonsterStateMachine(monster, this, new Point(house.TileX, house.TileY)));
             fsm.HoeAnimator = hoeAnimator;
             fsm.BodyAnimator = bodyAnimator;

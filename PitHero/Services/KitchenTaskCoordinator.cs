@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
@@ -147,7 +148,8 @@ namespace PitHero.Services
         /// the highest pressure per worker already assigned to it (D'Hondt greedy, issue #375),
         /// honoring the per-role caps; roles with zero pressure fall back to the neutral
         /// Cook → Server → Runner cycle. Stations and zones are then claimed dynamically by
-        /// the FSMs.
+        /// the FSMs. This is the from-scratch reference mix; live recomputes go through
+        /// ReconcileRoleMix instead so occupied posts never chase pressure noise.
         /// </summary>
         public static void FillRoleMix(int postCount, int cookPressure, int serverPressure,
             int runnerPressure, List<KitchenRole> into)
@@ -209,6 +211,153 @@ namespace PitHero.Services
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Incremental role-mix update (issue #375 follow-up): starts from the previous mix's
+        /// role COUNTS and only (a) adds posts when the crew grew — base-crew floors first, then
+        /// D'Hondt greedy on the smoothed pressures, least-staffed role when nothing is
+        /// pressured — (b) removes the lowest pressure-per-worker role above its floor when the
+        /// crew shrank, and (c) moves at most ONE occupied post per recompute between roles, and
+        /// only when the gaining role's smoothed pressure exceeds the losing role's by
+        /// GameConfig.KitchenRoleMixSwitchMargin AND the move strictly improves the D'Hondt
+        /// balance. Early service the entire kitchen signal is a single ticket pulsing
+        /// runner → cook → server pressure as it moves through the pipeline; recomputing the mix
+        /// from scratch (FillRoleMix) made the extra posts chase that 0↔1 pulse, and every chase
+        /// is a walk-home/respawn round trip. With the margin, pulse noise can never flip an
+        /// occupied post, while a sustained multi-ticket imbalance still re-skews the crew one
+        /// post per dwell period. Output order: posts 0–2 are Cook, Server, Runner (the
+        /// base-crew invariant), then extras grouped by role — AssignRolesWithRetention only
+        /// consumes the counts, so extra ordering is cosmetic.
+        /// </summary>
+        public static void ReconcileRoleMix(int postCount, float cookPressure,
+            float serverPressure, float runnerPressure, int prevCooks, int prevServers,
+            int prevRunners, List<KitchenRole> into)
+        {
+            if (postCount > MaxWorkerPosts)
+                postCount = MaxWorkerPosts;
+            if (postCount < 0)
+                postCount = 0;
+
+            Span<int> caps = stackalloc int[3]
+            {
+                GameConfig.MaxKitchenCooks, GameConfig.MaxKitchenServers, GameConfig.MaxKitchenRunners
+            };
+            Span<float> pressure = stackalloc float[3] { cookPressure, serverPressure, runnerPressure };
+            Span<int> counts = stackalloc int[3] { prevCooks, prevServers, prevRunners };
+            Span<int> floors = stackalloc int[3]
+            {
+                postCount >= 1 ? 1 : 0, postCount >= 2 ? 1 : 0, postCount >= 3 ? 1 : 0
+            };
+
+            for (int r = 0; r < 3; r++)
+            {
+                if (counts[r] > caps[r]) counts[r] = caps[r];
+                if (counts[r] < 0) counts[r] = 0;
+            }
+            int total = counts[0] + counts[1] + counts[2];
+
+            // Grow — new posts are fresh spawns, so assigning them by pressure is churn-free.
+            while (total < postCount)
+            {
+                int pick = -1;
+                for (int r = 0; r < 3; r++)
+                    if (counts[r] < floors[r]) { pick = r; break; }
+                if (pick < 0)
+                {
+                    float bestScore = 0f;
+                    for (int r = 0; r < 3; r++)
+                    {
+                        if (counts[r] >= caps[r])
+                            continue;
+                        float score = pressure[r] / (counts[r] + 1);
+                        if (score > bestScore) { bestScore = score; pick = r; }
+                    }
+                }
+                if (pick < 0)
+                {
+                    for (int r = 0; r < 3; r++)
+                        if (counts[r] < caps[r] && (pick < 0 || counts[r] < counts[pick]))
+                            pick = r;
+                }
+                counts[pick]++;
+                total++;
+            }
+
+            // Shrink — drop the lowest pressure-per-worker role above its floor; ties drop the
+            // most-staffed role (undoing neutral extras symmetrically), then Runner, Server, Cook.
+            while (total > postCount)
+            {
+                int pick = -1;
+                for (int r = 2; r >= 0; r--)
+                {
+                    if (counts[r] <= floors[r])
+                        continue;
+                    if (pick < 0) { pick = r; continue; }
+                    float cur = pressure[r] / counts[r];
+                    float best = pressure[pick] / counts[pick];
+                    if (cur < best || (cur == best && counts[r] > counts[pick]))
+                        pick = r;
+                }
+                counts[pick]--;
+                total--;
+            }
+
+            // Repair — a stale mix can under-fill a base-crew role after roster churn; refill it
+            // from the lowest-pressure role above its floor (always feasible: Σfloors ≤ postCount).
+            for (int r = 0; r < 3; r++)
+            {
+                while (counts[r] < floors[r])
+                {
+                    int from = -1;
+                    for (int o = 2; o >= 0; o--)
+                    {
+                        if (o == r || counts[o] <= floors[o])
+                            continue;
+                        if (from < 0 || pressure[o] / counts[o] < pressure[from] / counts[from])
+                            from = o;
+                    }
+                    counts[from]--;
+                    counts[r]++;
+                }
+            }
+
+            // Rebalance — the only path that reassigns an occupied post, margin-gated and
+            // limited to one move per recompute.
+            int gain = -1;
+            float gainScore = 0f;
+            for (int r = 0; r < 3; r++)
+            {
+                if (counts[r] >= caps[r])
+                    continue;
+                float score = pressure[r] / (counts[r] + 1);
+                if (score > gainScore) { gainScore = score; gain = r; }
+            }
+            int lose = -1;
+            for (int r = 2; r >= 0; r--)
+            {
+                if (r == gain || counts[r] <= floors[r])
+                    continue;
+                if (lose < 0) { lose = r; continue; }
+                float cur = pressure[r] / counts[r];
+                float best = pressure[lose] / counts[lose];
+                if (cur < best || (cur == best && counts[r] > counts[lose]))
+                    lose = r;
+            }
+            if (gain >= 0 && lose >= 0
+                && pressure[gain] - pressure[lose] >= GameConfig.KitchenRoleMixSwitchMargin
+                && pressure[gain] * counts[lose] > pressure[lose] * (counts[gain] + 1))
+            {
+                counts[gain]++;
+                counts[lose]--;
+            }
+
+            if (postCount >= 1) into.Add(KitchenRole.Cook);
+            if (postCount >= 2) into.Add(KitchenRole.Server);
+            if (postCount >= 3) into.Add(KitchenRole.Runner);
+            for (int i = 1; i < counts[0]; i++) into.Add(KitchenRole.Cook);
+            for (int i = 1; i < counts[1]; i++) into.Add(KitchenRole.Server);
+            for (int i = 1; i < counts[2]; i++) into.Add(KitchenRole.Runner);
         }
 
         /// <summary>
@@ -472,11 +621,19 @@ namespace PitHero.Services
             {
                 _roleMixElapsed = 0f;
                 _cachedPostCount = postCount;
+                // Recompute incrementally from the previous mix's counts — never from scratch.
+                // A from-scratch FillRoleMix here chased single-ticket pressure pulses early in
+                // service, flipping occupied posts (walk-home/respawn round trips) every dwell.
+                int prevCooks = 0, prevServers = 0, prevRunners = 0;
+                for (int j = 0; j < _cachedRoles.Count; j++)
+                {
+                    if (_cachedRoles[j] == KitchenRole.Cook) prevCooks++;
+                    else if (_cachedRoles[j] == KitchenRole.Server) prevServers++;
+                    else prevRunners++;
+                }
                 _cachedRoles.Clear();
-                FillRoleMix(postCount,
-                    (int)(_smoothedCookPressure + 0.5f),
-                    (int)(_smoothedServerPressure + 0.5f),
-                    (int)(_smoothedRunnerPressure + 0.5f), _cachedRoles);
+                ReconcileRoleMix(postCount, _smoothedCookPressure, _smoothedServerPressure,
+                    _smoothedRunnerPressure, prevCooks, prevServers, prevRunners, _cachedRoles);
             }
 
             // Map the mix's role COUNTS onto posts so live workers keep their roles wherever the
@@ -617,6 +774,10 @@ namespace PitHero.Services
             var carryRight = entity.AddComponent(new Nez.Sprites.SpriteRenderer());
             carryRight.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
             carryRight.SetEnabled(false);
+
+            // Speech bubble — AnchorRenderer drives bubble height from the monster sprite
+            var kitchenBubble = entity.AddComponent(new SpeechBubbleComponent());
+            kitchenBubble.AnchorRenderer = bodyAnimator;
 
             var fsm = entity.AddComponent(new KitchenMonsterStateMachine(
                 monster, this, new Point(house.TileX, house.TileY), role));

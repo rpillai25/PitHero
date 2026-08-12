@@ -7,6 +7,7 @@ namespace PitHero
         Inventory,
         Skill,
         Job,
-        Monster
+        Monster,
+        Dialogue
     }
 }

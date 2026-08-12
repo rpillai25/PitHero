@@ -248,6 +248,9 @@ namespace PitHero.Services
                 headAnimator, eyesAnimator, hairAnimator, hand1Animator));
             mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
+            // Speech bubble (paperdoll is 32 px — same as hero; no AnchorRenderer needed)
+            mercEntity.AddComponent(new SpeechBubbleComponent());
+
             // Add collider (non-blocking - mercenaries should not hinder hero movement)
             var collider = mercEntity.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             collider.IsTrigger = true; // Make it a trigger so it doesn't block movement
@@ -1096,6 +1099,9 @@ namespace PitHero.Services
                 hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
                 headAnimator, eyesAnimator, hairAnimator, hand1Animator));
             mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+
+            // Speech bubble (paperdoll is 32 px — same as hero; no AnchorRenderer needed)
+            mercEntity.AddComponent(new SpeechBubbleComponent());
 
             // Collider
             var collider = mercEntity.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));

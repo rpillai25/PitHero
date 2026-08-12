@@ -66,7 +66,9 @@ Y ≥ 5. Patrons spawn at (104,11) and exit via (103,6).
 
 ## Ticket lifecycle
 
-`KitchenTicket` is a bag of public fields; `TicketState`:
+`KitchenTicket` is a bag of public fields (including `ServerEntity` — the worker who took the
+order, set in `TakeOrderAtTarget` and cached on `TavernPatronComponent` for the server's
+farewell speech bubble; null for party tickets); `TicketState`:
 
 ```
 AwaitingIngredients → ReadyToCook → Cooking → Plated → Delivering → Delivered
@@ -119,15 +121,19 @@ the sink by the carrier's FSM when it sees `Canceled`.
 
 **Staffing** (coordinator `Update`, per frame): candidates = allied monsters with
 `Job == Cooking` that are awake per `MonsterScheduleConfig.IsAsleep` (in-game time = the shift
-system), sorted by `CookingProficiency` descending. `FillRoleMix` fixes posts 0–2 as Cook,
+system), sorted by `CookingProficiency` descending. The role mix fixes posts 0–2 as Cook,
 Server, Runner, then gives posts 3+ to the role with the highest backpressure per assigned
 worker (issue #375: stalled-fetch tickets + dirty plates → runners, unclaimed board tickets →
 cooks, plated dishes + patrons waiting to order → servers; D'Hondt greedy over EMA-smoothed
-pressures so a single service cycle's seesaw can't flip the marginal post). With no pressure it
-falls back to the legacy Cook → Server → Runner cycle — **cook1, server1, runner1, cook2,
-server2, runner2, cook3, runner3** (`MaxWorkerPosts` = 8 = 3 cooks + 2 servers + 3 runners). The
-weighted mix is recomputed at most once per `KitchenRoleMixDwellSeconds` (role changes are
-expensive walk-home/respawn round trips), except immediately on head-count changes. The mix is
+pressures). With no pressure it falls back to the legacy Cook → Server → Runner cycle —
+**cook1, server1, runner1, cook2, server2, runner2, cook3, runner3** (`MaxWorkerPosts` = 8 =
+3 cooks + 2 servers + 3 runners). Live recomputes are **incremental** (`ReconcileRoleMix`):
+crew growth only adds posts, shrink drops the lowest-pressure role, and an occupied post only
+switches role when the smoothed-pressure gap clears `GameConfig.KitchenRoleMixSwitchMargin`
+(one move max per recompute) — a lone early-morning ticket pulsing through the pipeline can
+never flip a post (`FillRoleMix` is the from-scratch reference used at spin-up and in tests).
+The mix is reconciled at most once per `KitchenRoleMixDwellSeconds` (role changes are expensive
+walk-home/respawn round trips), except immediately on head-count changes. The mix is
 applied as role *counts* with retention (`AssignRolesWithRetention`): live workers keep their
 current role while quota remains, so a recompute with unchanged counts never reshuffles anyone.
 Change a `GameConfig.MaxKitchen*` constant and the order re-derives — but keep
@@ -209,6 +215,11 @@ after eating they linger 5 min. On delivery the patron faces their table
 5–15% tip (rounded up), logs `dish_served`. Hiring a patron mid-order calls
 `CancelTicketForPatron` before removing the component. Patrons order a random dish from
 `GetOrderableDishes` (= every dish whose recipe fridge+storage can cover).
+
+Patrons, servers, cooks, and runners emit random speech bubbles at key moments (order taken,
+payment — tip-gated variants, patron walk-off farewell via `KitchenTicket.ServerEntity`, dish
+plated, fetch trip start) — see [SpeechBubbleSystem.md](SpeechBubbleSystem.md) for the catalog
+and hook rules (patience-expiry leavers get no farewell; these paths run headless in tests).
 
 ## Party dining
 

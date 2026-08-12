@@ -685,6 +685,7 @@ namespace PitHero.AI
             if (enemy.IsBoss)
             {
                 _heroComponent.BossDefeated = true;
+                SpeechBubbleDialogue.SayBossDefeated(_heroComponent.Entity);
                 var scene = Core.Scene;
                 if (scene != null)
                 {

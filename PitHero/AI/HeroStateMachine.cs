@@ -32,6 +32,8 @@ namespace PitHero.AI
         private WalkToTavernForStopAction _walkToTavernForStopAction;
         private bool _lastStoppedAdventure;
         private bool _innRestEmitted;
+        private bool _pitBubbleEmitted;
+        private bool _pitExitBubbleEmitted;
 
         // Healing priority tracking for replanning when priorities change
         private HeroHealPriority _lastHealPriority1;
@@ -211,6 +213,8 @@ namespace PitHero.AI
 
                 _hero.PitIntent = ComputePitIntentFromPlan(_actionPlan);
 
+                EmitPitIntentBubbles();
+
                 if (PlanContainsSleepInBed(_actionPlan))
                 {
                     if (!_innRestEmitted)
@@ -276,6 +280,8 @@ namespace PitHero.AI
                         _hasTrackedPriorities = true;
 
                         _hero.PitIntent = ComputePitIntentFromPlan(_actionPlan);
+
+                        EmitPitIntentBubbles();
 
                         if (PlanContainsSleepInBed(_actionPlan))
                         {
@@ -988,6 +994,50 @@ namespace PitHero.AI
             var timeService = Core.Services.GetService<InGameTimeService>();
             var key = timeService?.IsNighttime == true ? UITextKey.ConsoleNightSleep : UITextKey.ConsoleInnRest;
             Core.Services.GetService<GameEventService>()?.EmitLocalized(key);
+        }
+
+        /// <summary>
+        /// Emits pit-intent speech bubbles based on the current <see cref="HeroPitIntent"/>.
+        /// Called from both <c>Idle_Enter</c> and <c>Idle_Tick</c> after
+        /// <c>_hero.PitIntent</c> is updated, so both paths share identical latch logic.
+        /// </summary>
+        private void EmitPitIntentBubbles()
+        {
+            if (_hero.PitIntent == HeroPitIntent.EnteringPit)
+            {
+                if (!_pitBubbleEmitted)
+                {
+                    EmitPitAdventureBubble();
+                    _pitBubbleEmitted = true;
+                }
+                _pitExitBubbleEmitted = false;
+            }
+            else if (_hero.PitIntent == HeroPitIntent.ExitingPit && !_hero.StoppedAdventure)
+            {
+                if (!_pitExitBubbleEmitted)
+                {
+                    var timeService = Core.Services?.GetService<InGameTimeService>();
+                    if (timeService?.IsNighttime == true)
+                        SpeechBubbleDialogue.SayBedtime(Entity);
+                    else if (_hero.HPCritical || _hero.MPCritical)
+                        SpeechBubbleDialogue.SayPitRest(Entity);
+
+                    _pitExitBubbleEmitted = true;
+                }
+                _pitBubbleEmitted = false;
+            }
+            else
+            {
+                // Any other intent (None, or ExitingPit from a player Stop) — reset both latches
+                _pitBubbleEmitted     = false;
+                _pitExitBubbleEmitted = false;
+            }
+        }
+
+        /// <summary>Shows the pit-adventure speech bubble on the hero entity (one-shot per trip).</summary>
+        private void EmitPitAdventureBubble()
+        {
+            SpeechBubbleDialogue.SayPitAdventure(Entity);
         }
 
         #endregion

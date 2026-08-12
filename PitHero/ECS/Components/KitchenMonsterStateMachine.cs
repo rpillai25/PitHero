@@ -217,6 +217,7 @@ namespace PitHero.ECS.Components
         {
             if (_mover.IsMoving)
                 return;
+            SpeechBubbleDialogue.SayWorkerShiftStart(Entity);
             switch (_role)
             {
                 case KitchenRole.Cook:   CurrentState = KitchenMonsterState.CookWalkToBoard; break;
@@ -393,6 +394,7 @@ namespace PitHero.ECS.Components
             var t = _coordinator.CreateTicket(dish, false, -1, patron, comp.SeatTile);
             if (t != null)
             {
+                t.ServerEntity = Entity;
                 comp.OnOrderTaken(t);
                 _takenOrders.Add(t);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.TakeOrder, Entity.Transform.Position);
@@ -893,8 +895,10 @@ namespace PitHero.ECS.Components
                 var entity = _coordinator.DishService?.SpawnDishAtTile(_cookTicket.Dish, tile);
                 _coordinator.PlaceDishOnServing(_cookTicket, entity);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.FoodReady, Entity.Transform.Position);
+                var dish = _cookTicket.Dish;
                 HideCarryDish();
                 _cookTicket = null;
+                SpeechBubbleDialogue.SayCookServed(Entity, dish);
             }
 
             CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.CookWalkToBoard;
@@ -951,6 +955,7 @@ namespace PitHero.ECS.Components
             if (_fetchTicket != null)
             {
                 _mover.Stop();
+                SpeechBubbleDialogue.SayRunnerFetch(Entity);
                 CurrentState = KitchenMonsterState.RunnerWalkToStorage;
                 return;
             }
@@ -1163,7 +1168,16 @@ namespace PitHero.ECS.Components
             SetSprinting(false);
             _returnReachedExit = false;
             if (!TrySetPathTo(ExitTile))
+            {
                 Entity.Destroy();
+                return;
+            }
+            // Only bubble on a real shift end (worker going to sleep, not a mid-shift role change)
+            var timeService = Core.Instance != null
+                ? Core.Services.GetService<InGameTimeService>()
+                : null;
+            if (timeService != null && MonsterScheduleConfig.IsAsleep(_monster.MonsterTypeName, timeService))
+                SpeechBubbleDialogue.SayWorkerShiftEnd(Entity);
         }
 
         private void ReturnHome_Tick()

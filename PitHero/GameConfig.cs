@@ -261,6 +261,7 @@ namespace PitHero
         public const float KitchenRoleMixDwellSeconds = 45f;       // min scaled seconds between demand-weighted role-mix recomputes (anti-thrash)
         public const float KitchenRolePressureSampleIntervalSeconds = 5f; // scaled seconds between per-role pressure samples
         public const float KitchenRolePressureEmaAlpha = 0.1f;     // per-sample EMA weight; ~50 scaled-sec time constant spans a full service cycle
+        public const float KitchenRoleMixSwitchMargin = 1.5f;      // smoothed-pressure gap before an occupied post switches role; a lone ticket pulses each role's signal by 1, so noise can never flip a post
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
@@ -411,6 +412,16 @@ namespace PitHero
         public const int TreeBandRowXOffsetPx = 20;     // +/- per-row horizontal stagger so rows do not line up
         public const float TreeBandTree2Chance = 0.45f; // probability a tree uses the taller Tree2 sprite
         public const float TreeBandFlipChance = 0.5f;   // probability a tree is mirrored horizontally
+
+        // Speech bubbles
+        public const int SpeechBubbleWidth = 128;          // world px
+        public const int SpeechBubbleHeight = 48;          // world px
+        public const int SpeechBubblePadding = 4;          // inner text padding, all sides
+        public const int SpeechBubbleTailOverlap = 2;      // tail top overlaps bottom N rows of bubble
+        public const int SpeechBubbleTailTipOffsetY = -36; // tail bottom Y rel. to entity origin (head top -32, +4 clearance)
+        public const float SpeechBubbleCharsPerSecond = 20f;
+        public const float SpeechBubbleLingerSeconds = 2f;
+        public const string FontPathSpeechBubble = FontMainUI; // Express, lineHeight 9
 
         // Font paths
         public const string FontMainUI = "Content/Fonts/Express.fnt";

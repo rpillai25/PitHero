@@ -620,6 +620,118 @@ namespace PitHero.Tests
             Assert.AreEqual(1, roles.FindAll(r => r == KitchenRole.Runner).Count);
         }
 
+        // ── Incremental role-mix reconcile (issue #375 follow-up: no pulse-chasing flips) ──
+
+        private static System.Collections.Generic.List<KitchenRole> Reconciled(int postCount,
+            float cookPressure, float serverPressure, float runnerPressure,
+            int prevCooks, int prevServers, int prevRunners)
+        {
+            var into = new System.Collections.Generic.List<KitchenRole>();
+            KitchenTaskCoordinator.ReconcileRoleMix(postCount, cookPressure, serverPressure,
+                runnerPressure, prevCooks, prevServers, prevRunners, into);
+            return into;
+        }
+
+        private static (int Cooks, int Servers, int Runners) Counts(
+            System.Collections.Generic.List<KitchenRole> roles)
+            => (roles.FindAll(r => r == KitchenRole.Cook).Count,
+                roles.FindAll(r => r == KitchenRole.Server).Count,
+                roles.FindAll(r => r == KitchenRole.Runner).Count);
+
+        [TestMethod]
+        public void Reconcile_FromEmpty_MatchesNeutralMixCounts()
+        {
+            // First-ever recompute (no previous mix) with quiet pressures reproduces the
+            // neutral cycle's counts at every crew size.
+            for (int postCount = 1; postCount <= KitchenTaskCoordinator.MaxWorkerPosts; postCount++)
+            {
+                var neutral = RoleMix(postCount);
+                var reconciled = Reconciled(postCount, 0f, 0f, 0f, 0, 0, 0);
+                Assert.AreEqual(Counts(neutral), Counts(reconciled),
+                    $"neutral counts diverged at {postCount} posts");
+            }
+        }
+
+        [TestMethod]
+        public void Reconcile_BaseCrewPrefixInvariant()
+        {
+            // Posts 0-2 stay Cook, Server, Runner no matter what the previous mix looked like.
+            var roles = Reconciled(5, 0f, 0f, 99f, 0, 0, 5);
+            Assert.AreEqual(KitchenRole.Cook, roles[0]);
+            Assert.AreEqual(KitchenRole.Server, roles[1]);
+            Assert.AreEqual(KitchenRole.Runner, roles[2]);
+        }
+
+        [TestMethod]
+        public void Reconcile_Growth_NeverReshufflesExistingPosts()
+        {
+            // The observed 06:30 thrash: crew grows 4 → 6 while runner pressure reads 1 and cook
+            // 0. From-scratch recompute demoted a live cook; incremental growth only ADDS posts.
+            var roles = Reconciled(6, 0f, 0f, 1f, 2, 1, 1);
+            Assert.AreEqual((2, 1, 3), Counts(roles),
+                "growth must keep incumbent role counts and give the new posts to the pressured role");
+        }
+
+        [TestMethod]
+        public void Reconcile_PulseBelowMargin_ChangesNothing()
+        {
+            // A lone ticket moving through the pipeline pulses each role's pressure by 1 —
+            // below KitchenRoleMixSwitchMargin, so an occupied post never flips.
+            var roles = Reconciled(4, 1f, 0f, 0f, 1, 1, 2);
+            Assert.AreEqual((1, 1, 2), Counts(roles));
+            roles = Reconciled(4, 0f, 0f, 1f, 2, 1, 1);
+            Assert.AreEqual((2, 1, 1), Counts(roles));
+        }
+
+        [TestMethod]
+        public void Reconcile_SustainedImbalance_MovesOnePostPerRecompute()
+        {
+            // A real multi-ticket skew clears the margin, but the crew re-skews one post per
+            // dwell period — never a wholesale reshuffle.
+            var step1 = Reconciled(5, 0f, 0f, 3f, 3, 1, 1);
+            Assert.AreEqual((2, 1, 2), Counts(step1));
+            var step2 = Reconciled(5, 0f, 0f, 3f, 2, 1, 2);
+            Assert.AreEqual((1, 1, 3), Counts(step2));
+            var step3 = Reconciled(5, 0f, 0f, 3f, 1, 1, 3);
+            Assert.AreEqual((1, 1, 3), Counts(step3),
+                "cook is at the base-crew floor — the drain must stop");
+        }
+
+        [TestMethod]
+        public void Reconcile_Shrink_RemovesTheLowestPressureRole()
+        {
+            var roles = Reconciled(5, 0f, 0f, 2f, 2, 1, 3);
+            Assert.AreEqual((1, 1, 3), Counts(roles));
+        }
+
+        [TestMethod]
+        public void Reconcile_Shrink_NeverBreaksTheBaseCrew()
+        {
+            var roles = Reconciled(2, 0f, 0f, 99f, 1, 1, 1);
+            CollectionAssert.AreEqual(new[] { KitchenRole.Cook, KitchenRole.Server }, roles,
+                "a two-monster kitchen is always the cook + server that open it");
+        }
+
+        [TestMethod]
+        public void Reconcile_RepairsAnUnderfilledBaseRole()
+        {
+            // Stale mix lost its server (roster churn) — the floor is refilled from the
+            // lowest-pressure surplus role.
+            var roles = Reconciled(4, 0f, 0f, 2f, 2, 0, 2);
+            var counts = Counts(roles);
+            Assert.AreEqual(1, counts.Servers);
+            Assert.AreEqual((1, 1, 2), counts,
+                "the spare cook (zero pressure) is the one converted, not a pressured runner");
+        }
+
+        [TestMethod]
+        public void Reconcile_IsDeterministic()
+        {
+            var first = Reconciled(7, 2.5f, 1f, 4f, 2, 2, 2);
+            var second = Reconciled(7, 2.5f, 1f, 4f, 2, 2, 2);
+            CollectionAssert.AreEqual(first, second);
+        }
+
         // ── Bus queue (issue #327: runners own plate clearing) ──
 
         private static KitchenTaskCoordinator.BusJob MakeBusJob(Vector2 pos, float enqueuedTime)

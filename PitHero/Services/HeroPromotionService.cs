@@ -66,6 +66,10 @@ namespace PitHero.Services
                 yield break;
             }
 
+            // Prayer bubble fires immediately; the pre-strike dwell (0.5 + 3.5 = 4.0 s) is long
+            // enough to cover the reveal + linger: 38 chars @ 20 cps ≈ 1.9 s + 2 s linger = 3.9 s.
+            SpeechBubbleDialogue.SayCeremony(heroEntity);
+
             // Brief pause before the ceremony
             yield return Coroutine.WaitForSeconds(0.5f);
 
@@ -83,7 +87,8 @@ namespace PitHero.Services
             if (facingComponent != null)
                 facingComponent.SetFacing(Direction.Up);
 
-            yield return Coroutine.WaitForSeconds(1.0f);
+            // Extended dwell so the ceremony bubble finishes before the lightning strike
+            yield return Coroutine.WaitForSeconds(3.5f);
 
             // Play lightning strike animation on the hero entity
             yield return PlayLightningStrikeAtHero(heroEntity);

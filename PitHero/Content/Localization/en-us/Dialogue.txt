@@ -1,0 +1,53 @@
+# Dialogue lines shown in speech bubbles
+HeroPitAdventure,Time for some adventuring!
+HeroBreakfast,Some breakfast sounds good.
+HeroGearUp,Better gear up...
+HeroPitEntryGreatRun,This will be a great run!
+HeroPitEntryWeGotThis,We got this!
+HeroBedtime,Looks like it's bedtime.
+HeroRestSleepOff,Better sleep this off!
+HeroRestHealAtInn,Yikes! Time to heal at the inn
+HeroRestWouldBeGood,Some rest would be good
+HeroBreakfastNoIngredients,Breakfast options aren't great today.
+HeroBossTeamwork,Team work really pays off!
+HeroBossWorthyFoe,A worthy foe!
+HeroBreakfastJustWokeUp,Just woke up. Need food!
+HeroBreakfastWhatsFor,What's for breakfast?
+HeroPitAdventureLetsGo,Let's go!
+HeroPitAdventureGoodRun,Hoping for a good run.
+HeroPitAdventureLoot,I wonder what loot we'll find today?
+HeroPitAdventureExcited,I'm excited about the challenges ahead!
+HeroPitEntryWhatsAtEnd,What's at the end of it all?
+HeroRespawnToughBattle,That was a tough battle!
+HeroRespawnNextRunBetter,The next run will be better.
+HeroRespawnStronger,Each defeat makes me stronger.
+HeroRespawnOuch,Ouch! That'll leave a mark!
+HeroRespawnNotAsPlanned,That didn't go as planned...
+HeroCeremonyGrantStrength,Spirit of the Hero, grant me strength!
+PatronOrderIllHave,I'll have a {0}
+PatronOrderOnePlease,One {0} please
+PatronPaidDelicious,That was delicious!
+PatronPaidPrettyGood,Food was pretty good.
+PatronPaidGreatService,Great food, and even better service!
+PatronPaidTellFriends,Not bad. I'll tell my friends!
+PatronPaidHadBetter,I've had better...
+ServerFarewellComeBack,Hope you come back!
+ServerFarewellComeAgain,Thanks, come again!
+ServerFarewellGladToHaveYou,We were glad to have you!
+CookOrderUp,Order up!
+CookHandsPlease,Hands, please!
+CookNeedHands,I need hands!
+CookDishReady,{0} is ready!
+RunnerBusy,Busy busy busy!
+RunnerOffIGo,Off I go!
+RunnerQuick,I'll be quick!
+RunnerGoGetIt,I'll go get it!
+FarmerStorePuttingAway,Putting this away
+FarmerStoreAnotherHarvest,Another harvest
+FarmerStoreInYouGo,In you go!
+WorkerShiftDone,My shift is done
+WorkerTimeForRest,Time for some rest
+WorkerGoodWork,That was some good work
+WorkerDoMyBest,I'll do my best!
+WorkerGoingToWork,Going to work!
+WorkerHappyToHelp,Happy to help!
