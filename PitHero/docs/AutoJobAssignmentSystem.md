@@ -48,7 +48,8 @@ Times are scaled seconds (1 scaled second = 1 in-game minute; pause freezes them
 | `AutoJobKitchenMaxWorkers` | 8 | Kitchen headcount cap. Must equal `KitchenTaskCoordinator.MaxWorkerPosts` (test-asserted). |
 | `KitchenRoleMixDwellSeconds` | 45 | Min gap between role-mix recomputes. Raise if `kitchen_role_changed` events stream (see Diagnosing below). |
 | `KitchenRolePressureSampleIntervalSeconds` | 5 | Per-role pressure sampling cadence. |
-| `KitchenRolePressureEmaAlpha` | 0.1 | Per-role pressure smoothing (~50s time constant). Lower if the marginal role post still flips on service-cycle noise. |
+| `KitchenRolePressureEmaAlpha` | 0.1 | Per-role pressure smoothing (~50s time constant). |
+| `KitchenRoleMixSwitchMargin` | 1.5 | Smoothed-pressure gap before an occupied post switches role (`ReconcileRoleMix`). Raise if role flips still chase noise; lower (min ~1.1) if the crew re-skews too slowly in rushes. |
 
 ## When sampling and reassessment run
 
@@ -189,7 +190,8 @@ beyond the base crew go to the role with the highest **pressure per already-assi
 (D'Hondt greedy, integer cross-multiplication, ties toward Cook → Server → Runner), honoring the
 per-role caps (3 cooks / 2 servers / 3 runners; 2 servers is a hard `ServerZone` design limit).
 Zero-pressure roles fall back to the legacy Cook → Server → Runner cycle, and the zero-pressure
-overload *is* the legacy cycle.
+overload *is* the legacy cycle. `FillRoleMix` is the **from-scratch reference** only — live
+recomputes go through `ReconcileRoleMix` (below) so occupied posts never chase pressure noise.
 
 Per-role pressure signals, sampled in the coordinator's `Update()`:
 
@@ -205,13 +207,30 @@ time would hand the marginal post to whichever side of the seesaw got sampled, t
 back at the next dwell (observed in playtesting as a worker ping-ponging Runner↔Server at
 exactly the dwell cadence). The mix therefore reads EMA-smoothed pressures, sampled every
 `KitchenRolePressureSampleIntervalSeconds` (5 scaled seconds) with weight
-`KitchenRolePressureEmaAlpha` (0.1 ≈ 50 scaled-second time constant, spanning a full cycle),
-rounded to the nearest worker — the marginal post only moves on a sustained bottleneck shift.
+`KitchenRolePressureEmaAlpha` (0.1 ≈ 50 scaled-second time constant, spanning a full cycle) —
+the marginal post only moves on a sustained bottleneck shift.
 
-**Anti-thrash dwell:** a role change sends the worker home to despawn and respawn, so the
-weighted mix is recomputed at most once per `GameConfig.KitchenRoleMixDwellSeconds` (45 scaled
-seconds) — except when the post count itself changes, which recomputes immediately (spawns and
-despawns are happening anyway).
+**Incremental reconcile + switch margin (`ReconcileRoleMix`):** smoothing alone was not enough.
+Early in service the entire kitchen signal is a *single ticket* pulsing runner → cook → server
+pressure as it moves through the pipeline; the EMA turns over ~60% of its weight within one
+dwell period, so from-scratch recomputes still chased the 0↔1 pulse (observed 2026-08-11:
+Cook→Runner, Runner→Cook, Cook→Runner flips at exactly the dwell cadence with the tavern nearly
+empty). The mix is therefore updated **incrementally from the previous mix's counts**:
+
+- **Growth** (crew got bigger) only *adds* posts — base-crew floors first, then D'Hondt on the
+  smoothed pressures, least-staffed role when nothing is pressured. Existing posts are never
+  reshuffled; the new worker is spawning anyway, so this is churn-free.
+- **Shrink** removes the lowest pressure-per-worker role above its base-crew floor.
+- **Rebalance** — the *only* path that reassigns an occupied post — moves at most **one** post
+  per recompute, and only when the gaining role's smoothed pressure exceeds the losing role's by
+  `GameConfig.KitchenRoleMixSwitchMargin` (1.5 workers-worth) *and* the move strictly improves
+  the D'Hondt balance. A lone ticket pulses each signal by 1, so noise can never clear the
+  margin; a sustained multi-ticket imbalance re-skews the crew one post per dwell period.
+
+**Anti-thrash dwell:** a role change sends the worker home to despawn and respawn, so the mix is
+reconciled at most once per `GameConfig.KitchenRoleMixDwellSeconds` (45 scaled seconds) — except
+when the post count itself changes, which reconciles immediately (spawns and despawns are
+happening anyway, and reconcile growth/shrink can't touch unrelated posts).
 
 **Role retention:** the mix is applied as a multiset of role *counts*
 (`AssignRolesWithRetention`), not position-by-position: a live worker keeps its current role as
@@ -245,8 +264,9 @@ against these signatures:
   changes.
 - **Role-mix thrash**: the same monster flips A→B→A→B in `kitchen_role_changed` at intervals
   matching `KitchenRoleMixDwellSeconds`. Every role change is a walk-home/despawn/respawn round
-  trip, so this is highly visible in-game. First check `KitchenRolePressureEmaAlpha` (smoothing
-  too reactive), then the dwell.
+  trip, so this is highly visible in-game. The switch margin should make this impossible for
+  single-ticket noise — if it appears, first check `KitchenRoleMixSwitchMargin` (a signal with
+  pulse amplitude ≥ the margin defeats it), then `KitchenRolePressureEmaAlpha`, then the dwell.
 - **Headcount churn**: a monster leaves a job and returns within an hour or two
   (`monster_job_changed` pairs). Distinguish real demand cycles (see Known behaviors) from
   boundary oscillation — a backlog hovering at a multiple of
@@ -263,10 +283,11 @@ how the role-retention and pressure-smoothing fixes were validated.
   demand-following working as designed; the cost is one walk-home/return round trip per day for
   the marginal worker. Softening it further means longer drain intervals (slower response
   everywhere), not a bug fix.
-- **Small-crew night wobble**: on a small night shift a single marginal post covers the whole
-  crew, and smoothed role pressures near a rounding boundary (~half a worker) can occasionally
-  flip it (observed: one Runner↔Cook reversal pair per session). Accepted; if it worsens, lower
-  `KitchenRolePressureEmaAlpha` or add an incumbent-bias margin to the D'Hondt comparison.
+- **Sticky role skew after a rush**: the incremental reconcile deliberately keeps the current
+  role counts until a pressure gap clears `KitchenRoleMixSwitchMargin`, so after a runner-heavy
+  rush the crew can stay runner-skewed for a while even though a fresh `FillRoleMix` would pick
+  a different split. Stability beats the optimal split; sustained imbalances still correct one
+  post per dwell period.
 - **Suboptimal-but-stable role holders**: role retention deliberately keeps a worker in its
   current role even when a higher-proficiency colleague would ideally hold it — stability beats
   marginal cook-speed. Fresh optimal assignments happen naturally at shift changes and respawns.

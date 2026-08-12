@@ -261,6 +261,7 @@ namespace PitHero
         public const float KitchenRoleMixDwellSeconds = 45f;       // min scaled seconds between demand-weighted role-mix recomputes (anti-thrash)
         public const float KitchenRolePressureSampleIntervalSeconds = 5f; // scaled seconds between per-role pressure samples
         public const float KitchenRolePressureEmaAlpha = 0.1f;     // per-sample EMA weight; ~50 scaled-sec time constant spans a full service cycle
+        public const float KitchenRoleMixSwitchMargin = 1.5f;      // smoothed-pressure gap before an occupied post switches role; a lone ticket pulses each role's signal by 1, so noise can never flip a post
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
