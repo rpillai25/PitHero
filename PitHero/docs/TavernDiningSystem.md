@@ -66,7 +66,9 @@ Y ≥ 5. Patrons spawn at (104,11) and exit via (103,6).
 
 ## Ticket lifecycle
 
-`KitchenTicket` is a bag of public fields; `TicketState`:
+`KitchenTicket` is a bag of public fields (including `ServerEntity` — the worker who took the
+order, set in `TakeOrderAtTarget` and cached on `TavernPatronComponent` for the server's
+farewell speech bubble; null for party tickets); `TicketState`:
 
 ```
 AwaitingIngredients → ReadyToCook → Cooking → Plated → Delivering → Delivered
@@ -213,6 +215,11 @@ after eating they linger 5 min. On delivery the patron faces their table
 5–15% tip (rounded up), logs `dish_served`. Hiring a patron mid-order calls
 `CancelTicketForPatron` before removing the component. Patrons order a random dish from
 `GetOrderableDishes` (= every dish whose recipe fridge+storage can cover).
+
+Patrons, servers, cooks, and runners emit random speech bubbles at key moments (order taken,
+payment — tip-gated variants, patron walk-off farewell via `KitchenTicket.ServerEntity`, dish
+plated, fetch trip start) — see [SpeechBubbleSystem.md](SpeechBubbleSystem.md) for the catalog
+and hook rules (patience-expiry leavers get no farewell; these paths run headless in tests).
 
 ## Party dining
 
