@@ -122,6 +122,9 @@ namespace PitHero
         public const int CrystalCreationFee = 100;      // Gold cost to create a brand-new crystal
         public const int CrystalForgeFeeDivisor = 2;    // Forge fee = combined crystal buy-back price / divisor
 
+        // Minimum height for dialog buttons (Yes/No/OK) so they present a comfortable click target
+        public const float DialogButtonMinHeight = 16f;
+
         // Tavern seat configuration (for Stop Adventuring)
         public const int TavernHeroSeatTileX = 93;
         public const int TavernHeroSeatTileY = 6;

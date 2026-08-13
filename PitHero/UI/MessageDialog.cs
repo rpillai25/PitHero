@@ -31,7 +31,7 @@ namespace PitHero.UI
                 onOk?.Invoke();
                 Remove();
             };
-            dialogTable.Add(okButton).Width(80);
+            dialogTable.Add(okButton).Width(80).SetMinHeight(GameConfig.DialogButtonMinHeight);
             OkButton = okButton;
 
             Add(dialogTable).Expand().Fill();

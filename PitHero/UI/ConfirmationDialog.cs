@@ -78,7 +78,7 @@ namespace PitHero.UI
                 onYes?.Invoke();
                 Remove();
             };
-            buttonTable.Add(yesButton).Width(80).SetPadRight(10);
+            buttonTable.Add(yesButton).Width(80).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(10);
 
             var noButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
             noButton.ClickSoundCategory = ButtonClickCategory.Cancel;
@@ -87,7 +87,7 @@ namespace PitHero.UI
                 onNo?.Invoke();
                 Remove();
             };
-            buttonTable.Add(noButton).Width(80);
+            buttonTable.Add(noButton).Width(80).SetMinHeight(GameConfig.DialogButtonMinHeight);
 
             YesButton = yesButton;
             NoButton = noButton;
