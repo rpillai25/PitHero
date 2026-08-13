@@ -234,6 +234,32 @@ namespace PitHero.UI
             return _shortcutSlots[shortcutIndex]?.ReferencedSlot;
         }
 
+        /// <summary>
+        /// Clears every hero-owned skill shortcut. Called when the hero changes jobs (death
+        /// respawn or manual change) — the new job may not know the old job's skills. Mercenary
+        /// skill shortcuts and item shortcuts are untouched.
+        /// </summary>
+        public void ClearHeroSkillShortcuts()
+        {
+            bool clearedAny = false;
+            for (int i = 0; i < SHORTCUT_COUNT; i++)
+            {
+                var slot = _shortcutSlots[i];
+                if (slot != null && slot.SlotType == ShortcutSlotType.Skill && slot.OwnerMercenary == null)
+                {
+                    slot.Clear();
+                    _referencedItems[i] = null;
+                    clearedAny = true;
+                }
+            }
+
+            if (clearedAny)
+            {
+                Debug.Log("[ShortcutBar] Cleared hero skill shortcuts after job change");
+                RefreshVisualSlots();
+            }
+        }
+
         /// <summary>Clears the reference at the specified shortcut index.</summary>
         public void ClearShortcutReference(int shortcutIndex)
         {

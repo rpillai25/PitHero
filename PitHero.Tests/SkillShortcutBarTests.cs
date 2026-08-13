@@ -106,6 +106,34 @@ namespace PitHero.Tests
         }
         
         [TestMethod]
+        public void ShortcutBar_ClearHeroSkillShortcuts_RemovesOnlyHeroSkills()
+        {
+            // Job change (death or manual): hero skill shortcuts must be dropped because the
+            // new job may not know them; mercenary skills and item shortcuts must survive.
+            var bar = new ShortcutBar();
+            var heroSkill = new KnightSkills.SpinSlashSkill();
+            var mercSkill = new KnightSkills.SpinSlashSkill();
+            var merc = new RolePlayingFramework.Mercenaries.Mercenary(
+                "Fynn Swift", new RolePlayingFramework.Jobs.Primary.Knight(), 5,
+                new RolePlayingFramework.Stats.StatBlock(10, 10, 10, 5));
+            var itemSlot = new InventorySlot(new InventorySlotData(0, 0, InventorySlotType.Inventory));
+
+            bar.SetShortcutSkill(0, heroSkill);
+            bar.SetShortcutSkill(1, mercSkill, merc);
+            bar.SetShortcutReference(2, itemSlot);
+
+            bar.ClearHeroSkillShortcuts();
+
+            Assert.AreEqual(ShortcutSlotType.Empty, bar.GetShortcutSlotData(0).SlotType,
+                "Hero-owned skill shortcut must be cleared on job change");
+            Assert.AreEqual(ShortcutSlotType.Skill, bar.GetShortcutSlotData(1).SlotType,
+                "Mercenary-owned skill shortcut must survive a hero job change");
+            Assert.AreEqual(merc, bar.GetShortcutSlotData(1).OwnerMercenary);
+            Assert.AreEqual(ShortcutSlotType.Item, bar.GetShortcutSlotData(2).SlotType,
+                "Item shortcut must survive a hero job change");
+        }
+
+        [TestMethod]
         public void ShortcutBar_ConnectToDragManager_IsIdempotent()
         {
             // ReconnectUIToHero (crystal ceremony after hero death) calls ConnectToDragManager a

@@ -152,6 +152,10 @@ namespace PitHero.Services
             if (isManualJobChange)
                 FinishManualJobChange(heroComponent, oldHero);
 
+            // The new job may not know the old job's skills — drop the hero's skill shortcuts
+            // (mercenary skills and item shortcuts stay). Applies to both death and manual paths.
+            Core.Services.GetService<ShortcutBarService>()?.ShortcutBar?.ClearHeroSkillShortcuts();
+
             Debug.Log($"[HeroPromotionService] Hero granted crystal: {nextCrystal.Job.Name} Level {spawnLevel} (crystal={nextCrystal.Level}, tierBase={tierBaseLevel})");
 
             Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleCrystalPromotion,
