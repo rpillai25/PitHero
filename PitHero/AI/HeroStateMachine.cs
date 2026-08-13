@@ -31,6 +31,7 @@ namespace PitHero.AI
         private JumpOutOfPitForStopAction _jumpOutOfPitForStopAction;
         private WalkToTavernForStopAction _walkToTavernForStopAction;
         private bool _lastStoppedAdventure;
+        private bool _lastNeedsCrystal;
         private bool _innRestEmitted;
         private bool _pitBubbleEmitted;
         private bool _pitExitBubbleEmitted;
@@ -107,6 +108,9 @@ namespace PitHero.AI
 
             var walkToStatueForCrystal = new WalkToStatueForCrystalAction();
             _planner.AddAction(walkToStatueForCrystal);
+
+            var jumpOutOfPitForJobChange = new JumpOutOfPitForJobChangeAction();
+            _planner.AddAction(jumpOutOfPitForJobChange);
 
             // Add stop adventuring actions - store references for cost updates
             _jumpOutOfPitForStopAction = new JumpOutOfPitForStopAction();
@@ -395,6 +399,19 @@ namespace PitHero.AI
                 return;
             }
 
+            // Check if a manual job change flipped NeedsCrystal mid-plan
+            if (HasNeedsCrystalChanged())
+            {
+                UpdateStopAdventuringActionCosts();
+                Debug.Log("[HeroStateMachine] NeedsCrystal changed during GoTo - cancelling current plan and replanning");
+                _actionPlan = null;
+                _currentAction = null;
+                _currentPath = null;
+                _pathIndex = 0;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
             // Check if Replenish was pressed — interrupt current plan so healing starts immediately
             if (_hero.ReplenishPending)
             {
@@ -564,6 +581,17 @@ namespace PitHero.AI
             {
                 UpdateStopAdventuringActionCosts();
                 Debug.Log("[HeroStateMachine] StoppedAdventure changed during PerformAction - cancelling current plan and replanning");
+                _actionPlan.Clear();
+                _currentAction = null;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
+            // Check if a manual job change flipped NeedsCrystal mid-action (deferred while airborne)
+            if (HasNeedsCrystalChanged() && _currentAction != null && !_currentAction.ShouldNotOverride())
+            {
+                UpdateStopAdventuringActionCosts();
+                Debug.Log("[HeroStateMachine] NeedsCrystal changed during PerformAction - cancelling current plan and replanning");
                 _actionPlan.Clear();
                 _currentAction = null;
                 CurrentState = ActorState.Idle;
@@ -955,7 +983,8 @@ namespace PitHero.AI
             {
                 if (actions[i] is JumpIntoPitAction)
                     return HeroPitIntent.EnteringPit;
-                if (actions[i] is JumpOutOfPitForInnAction || actions[i] is JumpOutOfPitForStopAction)
+                if (actions[i] is JumpOutOfPitForInnAction || actions[i] is JumpOutOfPitForStopAction
+                    || actions[i] is JumpOutOfPitForJobChangeAction)
                     return HeroPitIntent.ExitingPit;
             }
             return HeroPitIntent.None;
@@ -1539,6 +1568,26 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Check if NeedsCrystal flipped since the last cost sync. Normally the flag is only set
+        /// at hero creation (respawn), but a manual job change sets it mid-life and the current
+        /// plan must be cancelled so the hero heads for the statue.
+        /// </summary>
+        private bool HasNeedsCrystalChanged()
+        {
+            if (_hero == null)
+                return false;
+
+            bool hasChanged = _hero.NeedsCrystal != _lastNeedsCrystal;
+
+            if (hasChanged)
+            {
+                Debug.Log($"[HeroStateMachine] NeedsCrystal changed from {_lastNeedsCrystal} to {_hero.NeedsCrystal} - triggering replan");
+            }
+
+            return hasChanged;
+        }
+
+        /// <summary>
         /// Update stop adventuring action costs based on current StoppedAdventure state.
         /// When StoppedAdventure is true, set costs very low (1) so planner picks them.
         /// When false, set costs very high (99) so planner ignores them.
@@ -1557,6 +1606,8 @@ namespace PitHero.AI
                 _walkToTavernForStopAction.Cost = cost;
 
             _lastStoppedAdventure = stopped;
+            // Piggyback on the same sync sites so the NeedsCrystal tracker stays current
+            _lastNeedsCrystal = _hero.NeedsCrystal;
         }
 
         #endregion

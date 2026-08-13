@@ -217,10 +217,12 @@ namespace RolePlayingFramework.Heroes
 
         /// <summary>
         /// Calculates the Second Chance buy-back price: base gold per level plus a premium for
-        /// learned skills, anchored to the JP invested in them. The premium is capped at the base
-        /// price so recovering a mastered crystal never costs more than double the flat price.
+        /// learned skills, anchored to the JP invested in them. By default the premium is capped
+        /// at the base price so recovering a mastered crystal never costs more than double the
+        /// flat price; pass capPremium: false for prices that must fully reflect skill count
+        /// (e.g. the forge fee, where a many-skill Legend combo should cost accordingly).
         /// </summary>
-        public int CalculateBuyBackPrice()
+        public int CalculateBuyBackPrice(bool capPremium = true)
         {
             int basePrice = Level * PitHero.GameConfig.CrystalBuyBackBasePrice;
 
@@ -234,7 +236,7 @@ namespace RolePlayingFramework.Heroes
 
             int premium = (int)(jpInvested * PitHero.GameConfig.CrystalJPToGoldRate)
                 + _learnedSynergySkillIds.Count * PitHero.GameConfig.CrystalSynergySkillFee;
-            if (premium > basePrice) premium = basePrice;
+            if (capPremium && premium > basePrice) premium = basePrice;
 
             return basePrice + premium;
         }

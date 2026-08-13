@@ -1636,6 +1636,15 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
+        /// Starts the wait-for-mercenaries-then-reset-pit coroutine. Called by the crystal
+        /// ceremony when a manual job change completes (the death path starts it from RespawnHero).
+        /// </summary>
+        public void StartPitResetForNewCycle()
+        {
+            Core.StartCoroutine(WaitForAllMercenariesToExitPitThenReset());
+        }
+
+        /// <summary>
         /// Resets the pit level back to 1, shrinking its width and regenerating level-1 content.
         /// </summary>
         private void ResetPitToLevelOne()
@@ -2682,6 +2691,10 @@ namespace PitHero.ECS.Scenes
             // Handle placed-building hover outline and click-to-open context menu
             HandleBuildingHover();
             HandleBuildingClicks();
+
+            // Handle hero-statue hover outline and click-to-open job change dialog
+            HandleStatueHover();
+            HandleStatueClicks();
         }
 
         /// <summary>
@@ -2944,6 +2957,98 @@ namespace PitHero.ECS.Scenes
             _buildingHoverOutlineEntity.GetComponent<BuildingOutlineRenderComponent>()?.SetSize(w, h);
             _buildingHoverOutlineEntity.SetPosition(left, top);
             _buildingHoverOutlineEntity.SetEnabled(true);
+        }
+
+        private bool _statueHovered;
+        private Entity _statueHoverOutlineEntity;
+
+        /// <summary>
+        /// True when hero-statue hover/click interactions should be suppressed — while the cursor
+        /// is outside the game window, while a confirmation is open, when the pointer is over UI,
+        /// or when no job change can currently be requested (no hero, or ceremony already pending).
+        /// </summary>
+        private bool StatueInteractionsBlocked()
+        {
+            if (!Util.MouseUtils.IsMouseInsideWindow())
+                return true;
+            if (UI.ConfirmationDialog.AnyVisible)
+                return true;
+            if (_uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null)
+                return true;
+            if (!UI.JobChangeFlow.CanRequestJobChange())
+                return true;
+            return false;
+        }
+
+        /// <summary>Returns the hero statue's renderable bounds if the cursor is over it, else null.</summary>
+        private Entity GetStatueUnderCursor()
+        {
+            var statues = FindEntitiesWithTag(GameConfig.TAG_HERO_STATUE);
+            if (statues.Count == 0)
+                return null;
+
+            var statue = statues[0];
+            var mousePos = Camera.MouseToWorldPoint();
+            var renderer = statue.GetComponent<YSortSpriteRenderer>();
+            if (renderer != null)
+                return renderer.Bounds.Contains(mousePos) ? statue : null;
+
+            return Vector2.Distance(mousePos, statue.Transform.Position) < GameConfig.TileSize ? statue : null;
+        }
+
+        /// <summary>Draws a white outline around the hero statue under the cursor to signal it is clickable.</summary>
+        private void HandleStatueHover()
+        {
+            var hovered = StatueInteractionsBlocked() ? null : GetStatueUnderCursor();
+            bool isHovered = hovered != null;
+
+            // Statue never moves, so only state changes need work
+            if (isHovered == _statueHovered)
+                return;
+
+            _statueHovered = isHovered;
+
+            if (!isHovered)
+            {
+                _statueHoverOutlineEntity?.SetEnabled(false);
+                return;
+            }
+
+            if (_statueHoverOutlineEntity == null)
+            {
+                _statueHoverOutlineEntity = CreateEntity("statue-hover-outline");
+                var outline = _statueHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
+                outline.SetRenderLayer(GameConfig.RenderLayerTop);
+                outline.SetColor(Color.White);
+            }
+
+            var renderer = hovered.GetComponent<YSortSpriteRenderer>();
+            if (renderer != null)
+            {
+                var bounds = renderer.Bounds;
+                _statueHoverOutlineEntity.GetComponent<BuildingOutlineRenderComponent>()?.SetSize(bounds.Width, bounds.Height);
+                _statueHoverOutlineEntity.SetPosition(bounds.X, bounds.Y);
+            }
+            _statueHoverOutlineEntity.SetEnabled(true);
+        }
+
+        /// <summary>Opens the job change dialog when the hero statue is clicked.</summary>
+        private void HandleStatueClicks()
+        {
+            if (!Input.LeftMouseButtonPressed)
+                return;
+            if (StatueInteractionsBlocked())
+                return;
+
+            var statue = GetStatueUnderCursor();
+            if (statue == null)
+                return;
+
+            // Clear the hover outline before the dialog opens.
+            _statueHovered = false;
+            _statueHoverOutlineEntity?.SetEnabled(false);
+
+            UI.JobChangeFlow.ShowChangeJobDialog(_uiStage, UI.PitHeroSkin.CreateSkin());
         }
 
         /// <summary>Opens the building context menu when a placed building is clicked.</summary>

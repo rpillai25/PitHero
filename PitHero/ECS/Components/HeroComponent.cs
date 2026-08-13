@@ -308,6 +308,16 @@ namespace PitHero.ECS.Components
         public bool NeedsCrystal { get; set; }
 
         /// <summary>
+        /// True while a player-requested job change is in flight (set together with NeedsCrystal).
+        /// Distinguishes the manual flow from the death-respawn flow in the crystal ceremony.
+        /// Lives on the component so a mid-flow death self-heals: the entity is destroyed, the flag
+        /// dies with it, and the normal death ceremony takes over. Never persisted — the hero keeps
+        /// its job and crystal until the ceremony grants, so a save/load mid-flow just forgets the
+        /// request and the player can re-issue it.
+        /// </summary>
+        public bool PendingManualJobChange { get; set; }
+
+        /// <summary>
         /// True when the hero has arrived at the statue tile (112,6) to receive a crystal promotion ceremony
         /// </summary>
         public bool HasArrivedAtStatueForCrystal { get; set; }
@@ -961,7 +971,18 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
-            // HIGHEST PRIORITY: Player stopped adventuring — go to tavern and stay there.
+            // HIGHEST PRIORITY: Hero needs a crystal — walk to statue for promotion ceremony.
+            // Outranks StoppedAdventure so a manual job change requested while the party is
+            // stopped (or while the dining service auto-stops for a meal trip) goes to the
+            // statue first; StoppedAdventure survives the ceremony, so the hero returns to
+            // the tavern table afterwards on its own.
+            if (NeedsCrystal)
+            {
+                goalState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
+                return;
+            }
+
+            // Player stopped adventuring — go to tavern and stay there.
             // When SeatedInTavern is already true the goal is already satisfied, so the
             // planner returns no actions and the hero stays idle until Continue is pressed.
             // Night sleep still preempts the seat: at 10 PM the party leaves the table,
@@ -977,13 +998,6 @@ namespace PitHero.ECS.Components
                 }
 
                 goalState.Set(GoapConstants.SeatedInTavern, true);
-                return;
-            }
-
-            // HIGHEST PRIORITY: Hero needs a crystal — walk to statue for promotion ceremony
-            if (NeedsCrystal)
-            {
-                goalState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
                 return;
             }
 

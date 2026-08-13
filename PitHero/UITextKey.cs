@@ -266,6 +266,13 @@ namespace PitHero
         public const string DialogConfirmForge = "DialogConfirmForge";
         public const string ConfirmForgeMessage = "ConfirmForgeMessage";
         public const string CrystalInventoryFull = "CrystalInventoryFull";
+        public const string CrystalCreationFeeLabel = "CrystalCreationFeeLabel";
+        public const string CrystalForgeFeeLabel = "CrystalForgeFeeLabel";
+        public const string DialogChangeJobTitle = "DialogChangeJobTitle";
+        public const string DialogChangeJobPrompt = "DialogChangeJobPrompt";
+        public const string DialogNoCrystalQueued = "DialogNoCrystalQueued";
+        public const string ButtonChangeJob = "ButtonChangeJob";
+        public const string ButtonChangeJobTooltip = "ButtonChangeJobTooltip";
         public const string DialogConfirmDismissMercenary = "DialogConfirmDismissMercenary";
         public const string ConfirmDismissMercenaryMessage = "ConfirmDismissMercenaryMessage";
         public const string WindowSecondChanceShop = "WindowSecondChanceShop";

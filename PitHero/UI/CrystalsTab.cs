@@ -24,6 +24,9 @@ namespace PitHero.UI
         private CrystalSlotElement _forgeInputB;
         private CrystalSlotElement _forgeOutput;
         private TextButton _forgeButton;
+        private Label _forgeFeeLabel;
+        private int _currentForgeFee;
+        private int _lastFundsSeen = -1;
         private CrystalSlotElement[] _inventorySlots;
         private CrystalSlotElement[] _queueSlots;
         private HoverableTextButton _createButton;
@@ -109,10 +112,36 @@ namespace PitHero.UI
             forgeRow.Add(new Label("=", skin, "ph-default")).Pad(2);
             forgeRow.Add(_forgeOutput).Size(SLOT_SIZE).Pad(2);
 
-            _forgeButton = new TextButton(GetText(UITextKey.CrystalForgeButton), skin, "ph-default");
+            // Forge button uses a cloned style so it has a disabled visual (shared styles must
+            // never be mutated; plain ph-default renders identically when disabled).
+            var baseButtonStyle = skin.Get<TextButtonStyle>("ph-default");
+            var forgeButtonStyle = new TextButtonStyle
+            {
+                Up = baseButtonStyle.Up,
+                Down = baseButtonStyle.Down,
+                Over = baseButtonStyle.Over,
+                FontColor = baseButtonStyle.FontColor,
+                DownFontColor = baseButtonStyle.DownFontColor,
+                OverFontColor = baseButtonStyle.OverFontColor,
+                DisabledFontColor = Color.Gray,
+                PressedOffsetX = baseButtonStyle.PressedOffsetX,
+                PressedOffsetY = baseButtonStyle.PressedOffsetY
+            };
+            _forgeButton = new TextButton(GetText(UITextKey.CrystalForgeButton), forgeButtonStyle);
             _forgeButton.OnClicked += OnForgeClicked;
             _forgeButton.SetDisabled(true);
             forgeRow.Add(_forgeButton).Height(24).Pad(4);
+
+            // Fee label appears only while both forge slots are filled
+            var defaultLabelStyle = skin.Get<LabelStyle>("ph-default");
+            var feeLabelStyle = new LabelStyle
+            {
+                Font = defaultLabelStyle.Font,
+                FontColor = new Color(184, 138, 13)
+            };
+            _forgeFeeLabel = new Label("", feeLabelStyle);
+            _forgeFeeLabel.SetVisible(false);
+            forgeRow.Add(_forgeFeeLabel).Pad(4);
 
             forgeSection.Add(forgeRow).Left().Pad(2);
 
@@ -207,9 +236,21 @@ namespace PitHero.UI
             _forgeInputA.SetCrystal(svc.ForgeSlotA);
             _forgeInputB.SetCrystal(svc.ForgeSlotB);
 
-            // Update forge button enabled state
-            bool canForge = svc.ForgeSlotA != null && svc.ForgeSlotB != null;
-            _forgeButton.SetDisabled(!canForge);
+            // Update forge fee + button enabled state (fee recomputed only here, not per frame)
+            bool bothFilled = svc.ForgeSlotA != null && svc.ForgeSlotB != null;
+            _currentForgeFee = bothFilled ? CrystalFeeCalculator.GetForgeFee(svc.ForgeSlotA, svc.ForgeSlotB) : 0;
+            if (bothFilled)
+                _forgeFeeLabel.SetText(string.Format(GetText(UITextKey.CrystalForgeFeeLabel), _currentForgeFee));
+            _forgeFeeLabel.SetVisible(bothFilled);
+            UpdateForgeAffordability(bothFilled);
+        }
+
+        /// <summary>Applies the forge button disabled state from slot fill + current funds.</summary>
+        private void UpdateForgeAffordability(bool bothFilled)
+        {
+            var funds = Core.Services?.GetService<GameStateService>()?.Funds ?? 0;
+            _lastFundsSeen = funds;
+            _forgeButton.SetDisabled(!bothFilled || funds < _currentForgeFee);
         }
 
         // ── Hover tooltip ────────────────────────────────────────────────────────
@@ -386,6 +427,14 @@ namespace PitHero.UI
 
             DismissCrystalCardOnOutsideClick();
 
+            // Keep the forge button's affordability honest while gold changes behind the UI
+            var currentFunds = Core.Services?.GetService<GameStateService>()?.Funds ?? 0;
+            if (currentFunds != _lastFundsSeen)
+            {
+                var svc = GetCrystalService();
+                UpdateForgeAffordability(svc?.ForgeSlotA != null && svc?.ForgeSlotB != null);
+            }
+
             _hoverCheckFrame++;
             if (_hoverCheckFrame % 5 != 0) return;
 
@@ -459,16 +508,28 @@ namespace PitHero.UI
 
         private void OnForgeClicked(Button b)
         {
+            if (_forgeButton.GetDisabled())
+                return;
+
             var svc = GetCrystalService();
-            if (svc != null)
+            if (svc == null)
+                return;
+
+            // Re-check funds and a free inventory slot before forging so neither the fee nor
+            // the forged crystal can be lost to a race (gold spent elsewhere, inventory filled).
+            var gameState = Core.Services?.GetService<GameStateService>();
+            if (gameState == null || gameState.Funds < _currentForgeFee)
+                return;
+            if (svc.InventoryCount >= svc.InventoryCapacity)
+                return;
+
+            var result = svc.TryForge("Combo Crystal");
+            if (result != null)
             {
-                var result = svc.TryForge("Combo Crystal");
-                if (result != null)
-                {
-                    svc.TryAddToInventory(result);
-                    RefreshAll();
-                    HideCrystalCard();
-                }
+                svc.TryAddToInventory(result);
+                gameState.Funds -= _currentForgeFee;
+                RefreshAll();
+                HideCrystalCard();
             }
         }
 
@@ -479,13 +540,15 @@ namespace PitHero.UI
             dialog.OnCrystalCreated += c => RefreshAll();
 
             // Add a full-screen dismiss layer behind the dialog so clicking outside closes it.
+            // Close via dialog.Close() so LastCloseFrame is stamped and HeroUI's outside-click
+            // poll ignores this same click.
             Element dismissLayer = null;
             dismissLayer = new DismissLayer(() =>
             {
                 dismissLayer?.SetVisible(false);
                 dismissLayer?.Remove();
                 dismissLayer = null;
-                dialog.Remove();
+                dialog.Close();
             });
             dismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
 

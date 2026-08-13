@@ -7,6 +7,8 @@ namespace PitHero.UI
     /// <summary>Simple message dialog with a single OK button.</summary>
     public class MessageDialog : Window
     {
+        public TextButton OkButton { get; }
+
         public MessageDialog(string title, string message, Skin skin, System.Action onOk = null) : base(title, skin)
         {
             var textService = Core.Services.GetService<TextService>();
@@ -29,7 +31,8 @@ namespace PitHero.UI
                 onOk?.Invoke();
                 Remove();
             };
-            dialogTable.Add(okButton).Width(80);
+            dialogTable.Add(okButton).Width(80).SetMinHeight(GameConfig.DialogButtonMinHeight);
+            OkButton = okButton;
 
             Add(dialogTable).Expand().Fill();
         }

@@ -49,6 +49,18 @@ namespace PitHero.Services
             if (!heroComponent.NeedsCrystal || !heroComponent.HasArrivedAtStatueForCrystal)
                 return;
 
+            // A manual job change must never fall back to a random crystal: if the queue was
+            // emptied during the walk to the statue, abort cleanly and keep the current job.
+            if (heroComponent.PendingManualJobChange
+                && Core.Services.GetService<CrystalCollectionService>()?.PeekQueue() == null)
+            {
+                Debug.Log("[HeroPromotionService] Crystal queue emptied before manual job change ceremony — aborting, hero keeps current job");
+                heroComponent.PendingManualJobChange = false;
+                heroComponent.NeedsCrystal = false;
+                heroComponent.HasArrivedAtStatueForCrystal = false;
+                return;
+            }
+
             Debug.Log("[HeroPromotionService] Hero has arrived at statue and needs a crystal — starting crystal ceremony");
             _isGrantingCrystal = true;
             Core.StartCoroutine(ExecuteHeroCrystalCeremony(heroEntity));
@@ -95,14 +107,38 @@ namespace PitHero.Services
 
             Debug.Log("[HeroPromotionService] Crystal ceremony lightning complete — granting crystal to hero");
 
+            // A manual job change must never fall back to a random crystal — the queue may have
+            // been emptied during the ceremony dwell. Abort cleanly; the hero keeps its job.
+            if (heroComponent.PendingManualJobChange
+                && Core.Services.GetService<CrystalCollectionService>()?.PeekQueue() == null)
+            {
+                Debug.Log("[HeroPromotionService] Crystal queue emptied during manual job change ceremony — aborting, hero keeps current job");
+                heroComponent.PendingManualJobChange = false;
+                heroComponent.NeedsCrystal = false;
+                heroComponent.HasArrivedAtStatueForCrystal = false;
+                if (tileMover != null)
+                    tileMover.SetEnabled(true);
+                if (stateMachine != null)
+                    stateMachine.SetEnabled(true);
+                _isGrantingCrystal = false;
+                yield break;
+            }
+
             // Get next crystal for hero (from pending, queue, or random)
             var nextCrystal = GetNextCrystalForHero();
-            // LinkedHero is null when hero respawned without a crystal (needsCrystal path)
-            var heroName = heroComponent.LinkedHero?.Name
+            // LinkedHero is null when hero respawned without a crystal (needsCrystal path);
+            // it is non-null when the player requested a manual job change on a living hero.
+            var oldHero = heroComponent.LinkedHero;
+            bool isManualJobChange = heroComponent.PendingManualJobChange && oldHero != null;
+            var heroName = oldHero?.Name
                 ?? Core.Services.GetService<HeroDesignService>()?.GetDesign().Name
                 ?? "Hero";
             // When tier ≥ 2 the hero starts at least at the recorded tier base level.
             var pitWidthManagerForSpawn = Core.Services.GetService<PitWidthManager>();
+            // A manual job change starts a fresh cycle: reset the tier BEFORE computing the spawn
+            // level so the new hero's floor is 1, mirroring RespawnHero's ordering on the death path.
+            if (isManualJobChange)
+                pitWidthManagerForSpawn?.ResetTierForNewCycle();
             int tierBaseLevel = pitWidthManagerForSpawn?.TierBaseLevel ?? 1;
             int spawnLevel = nextCrystal.Level > tierBaseLevel ? nextCrystal.Level : tierBaseLevel;
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
@@ -112,6 +148,13 @@ namespace PitHero.Services
                 nextCrystal.BaseStats,
                 nextCrystal
             );
+
+            if (isManualJobChange)
+                FinishManualJobChange(heroComponent, oldHero);
+
+            // The new job may not know the old job's skills — drop the hero's skill shortcuts
+            // (mercenary skills and item shortcuts stay). Applies to both death and manual paths.
+            Core.Services.GetService<ShortcutBarService>()?.ShortcutBar?.ClearHeroSkillShortcuts();
 
             Debug.Log($"[HeroPromotionService] Hero granted crystal: {nextCrystal.Job.Name} Level {spawnLevel} (crystal={nextCrystal.Level}, tierBase={tierBaseLevel})");
 
@@ -137,6 +180,38 @@ namespace PitHero.Services
 
             _isGrantingCrystal = false;
             Debug.Log("[HeroPromotionService] *** HERO CRYSTAL CEREMONY COMPLETE ***");
+        }
+
+        /// <summary>
+        /// Manual-job-change extras run right after the new Hero is constructed: the outgoing
+        /// crystal returns to the crystal inventory (crystals only go to the Second Chance Shop
+        /// on death — the vault is just the never-lose-it fallback for a full inventory), the
+        /// hero keeps their equipment, and the pit resets for the new cycle.
+        /// </summary>
+        private void FinishManualJobChange(HeroComponent heroComponent, RolePlayingFramework.Heroes.Hero oldHero)
+        {
+            var secondChanceVault = Core.Services.GetService<SecondChanceMerchantVault>();
+
+            var oldCrystal = oldHero.BoundCrystal;
+            if (oldCrystal != null)
+            {
+                var crystalService = Core.Services.GetService<CrystalCollectionService>();
+                bool inInventory = HeroJobChangeHelper.ReturnCrystalToInventory(oldCrystal, crystalService, secondChanceVault);
+                Debug.Log(inInventory
+                    ? $"[HeroPromotionService] Returned {oldCrystal.Name} to crystal inventory after manual job change"
+                    : $"[HeroPromotionService] Crystal inventory full — {oldCrystal.Name} sent to Second Chance vault instead");
+            }
+
+            // The hero didn't die: carry the six equipment slots onto the new job's hero
+            // (unequippable items fall back to bag, then vault). The bag itself lives on the
+            // component and survives untouched.
+            HeroJobChangeHelper.TransferEquipment(oldHero, heroComponent.LinkedHero, heroComponent.Bag, secondChanceVault);
+
+            heroComponent.PendingManualJobChange = false;
+
+            // New job, new cycle: shrink the pit back to level 1 (waits for any mercenaries
+            // still inside; the party followed the hero out, so this is normally immediate)
+            (_scene as MainGameScene)?.StartPitResetForNewCycle();
         }
 
         /// <summary>

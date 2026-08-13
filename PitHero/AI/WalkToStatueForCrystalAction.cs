@@ -21,6 +21,9 @@ namespace PitHero.AI
         {
             SetPrecondition(GoapConstants.HeroInitialized, true);
             SetPrecondition(GoapConstants.NeedsCrystal, true);
+            // Respawned heroes always spawn outside; requiring it lets the planner chain a
+            // jump-out first when a manual job change is requested inside the pit
+            SetPrecondition(GoapConstants.OutsidePit, true);
             SetPostcondition(GoapConstants.HasArrivedAtStatueForCrystal, true);
         }
 
@@ -36,14 +39,22 @@ namespace PitHero.AI
             if (hero.HasArrivedAtStatueForCrystal)
                 return true;
 
-            // Start walking coroutine if not already started
-            if (_walkCoroutine == null)
+            // Start walking coroutine if not already started. The NeedsCrystal guard stops a
+            // spurious restart on the frame after the walk aborts a manual job change (the
+            // state machine replans off that flag flip one tick later).
+            if (_walkCoroutine == null && hero.NeedsCrystal)
             {
                 _walkCoroutine = Core.StartCoroutine(WalkToStatue(hero));
             }
 
             return hero.HasArrivedAtStatueForCrystal;
         }
+
+        /// <summary>Give up on pathing after this long. Death path falls back to a ceremony in
+        /// place (worse than misplaced lightning is a softlocked crystal-less hero); the manual
+        /// path aborts the job change instead — the hero keeps its job and the player can retry.</summary>
+        private const float MaxPathRetrySeconds = 60f;
+        private const float PathRetryDelay = 0.5f;
 
         private IEnumerator WalkToStatue(HeroComponent hero)
         {
@@ -55,75 +66,133 @@ namespace PitHero.AI
             {
                 Debug.Warn("[WalkToStatueForCrystalAction] Missing required components on hero entity");
                 hero.HasArrivedAtStatueForCrystal = true;
+                _walkCoroutine = null;
                 yield break;
             }
 
             Debug.Log($"[WalkToStatueForCrystalAction] Hero walking to statue at ({StatueTileX},{StatueTileY}) to receive crystal");
 
-            SpeechBubbleDialogue.SayRespawn(hero.Entity);
-
-            if (hero.LinkedHero != null)
-                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHeroRespawn,
-                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName));
-
-            var currentPos = hero.Entity.Transform.Position;
-            var currentTile = new Point(
-                (int)(currentPos.X / GameConfig.TileSize),
-                (int)(currentPos.Y / GameConfig.TileSize)
-            );
-
-            var statueTile = new Point(StatueTileX, StatueTileY);
-
-            var path = pathfinding.CalculatePath(currentTile, statueTile);
-
-            if (path == null || path.Count == 0)
+            // Respawn chatter belongs to the death path only; a manual job change is not a respawn
+            if (!hero.PendingManualJobChange)
             {
-                Debug.Warn("[WalkToStatueForCrystalAction] Could not find path to hero statue — marking arrived anyway");
-                hero.HasArrivedAtStatueForCrystal = true;
-                yield break;
+                SpeechBubbleDialogue.SayRespawn(hero.Entity);
+
+                if (hero.LinkedHero != null)
+                    Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHeroRespawn,
+                        (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName));
             }
 
-            Debug.Log($"[WalkToStatueForCrystalAction] Found path with {path.Count} steps to statue");
+            var statueTile = new Point(StatueTileX, StatueTileY);
+            float retryElapsed = 0f;
+            bool arrived = false;
 
-            for (int i = 0; i < path.Count; i++)
+            // Self-healing walk: repath on any blocked step instead of silently skipping the
+            // rest of the path. A single failed StartMoving (a mercenary in the corridor, tavern
+            // furniture, a stale tile after seating) previously no-opped every remaining step
+            // and then faked arrival — putting the ceremony wherever the hero stood.
+            while (!arrived && retryElapsed < MaxPathRetrySeconds)
             {
-                var targetTile = path[i];
-                var currentTilePos = new Point(
+                if (hero.Entity == null || hero.Entity.IsDestroyed)
+                {
+                    _walkCoroutine = null;
+                    yield break;
+                }
+
+                // Let any in-flight tile move finish, then path from a clean grid position
+                while (tileMover.IsMoving)
+                    yield return null;
+                tileMover.SnapToTileGrid();
+
+                var currentTile = new Point(
                     (int)(hero.Entity.Transform.Position.X / GameConfig.TileSize),
                     (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize)
                 );
 
-                var dx = targetTile.X - currentTilePos.X;
-                var dy = targetTile.Y - currentTilePos.Y;
-
-                Direction? direction = null;
-                if (dx > 0) direction = Direction.Right;
-                else if (dx < 0) direction = Direction.Left;
-                else if (dy > 0) direction = Direction.Down;
-                else if (dy < 0) direction = Direction.Up;
-
-                if (direction.HasValue)
+                if (currentTile.X == statueTile.X && currentTile.Y == statueTile.Y)
                 {
-                    tileMover.StartMoving(direction.Value);
-
-                    while (tileMover.IsMoving)
-                    {
-                        yield return null;
-                    }
+                    arrived = true;
+                    break;
                 }
 
-                yield return Coroutine.WaitForSeconds(0.05f);
+                var path = pathfinding.CalculatePath(currentTile, statueTile);
+                if (path == null || path.Count == 0)
+                {
+                    Debug.Warn($"[WalkToStatueForCrystalAction] No path from ({currentTile.X},{currentTile.Y}) to statue — retrying in {PathRetryDelay}s");
+                    yield return Coroutine.WaitForSeconds(PathRetryDelay);
+                    retryElapsed += PathRetryDelay;
+                    continue;
+                }
+
+                bool blocked = false;
+                for (int i = 0; i < path.Count; i++)
+                {
+                    var targetTile = path[i];
+                    var currentTilePos = new Point(
+                        (int)(hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                        (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize)
+                    );
+
+                    var dx = targetTile.X - currentTilePos.X;
+                    var dy = targetTile.Y - currentTilePos.Y;
+
+                    Direction? direction = null;
+                    if (dx > 0) direction = Direction.Right;
+                    else if (dx < 0) direction = Direction.Left;
+                    else if (dy > 0) direction = Direction.Down;
+                    else if (dy < 0) direction = Direction.Up;
+
+                    if (direction.HasValue)
+                    {
+                        if (!tileMover.StartMoving(direction.Value))
+                        {
+                            blocked = true;
+                            break;
+                        }
+
+                        while (tileMover.IsMoving)
+                        {
+                            yield return null;
+                        }
+                    }
+
+                    yield return Coroutine.WaitForSeconds(0.05f);
+                }
+
+                if (blocked)
+                {
+                    Debug.Log("[WalkToStatueForCrystalAction] Step blocked — waiting and repathing to statue");
+                    yield return Coroutine.WaitForSeconds(PathRetryDelay);
+                    retryElapsed += PathRetryDelay;
+                }
+                // Loop re-checks actual arrival at the top; a fully walked path falls through
+                // to the position check instead of assuming success.
             }
 
-            // Face up toward the statue
-            if (facingComponent != null)
+            if (arrived)
             {
-                facingComponent.SetFacing(Direction.Up);
+                // Face up toward the statue
+                if (facingComponent != null)
+                {
+                    facingComponent.SetFacing(Direction.Up);
+                }
+
+                Debug.Log("[WalkToStatueForCrystalAction] Hero arrived at statue — awaiting crystal promotion ceremony");
+                hero.HasArrivedAtStatueForCrystal = true;
+            }
+            else if (hero.PendingManualJobChange)
+            {
+                // Never run a manual ceremony away from the statue — abort the request instead
+                Debug.Warn("[WalkToStatueForCrystalAction] Could not reach statue — aborting manual job change, hero keeps current job");
+                hero.PendingManualJobChange = false;
+                hero.NeedsCrystal = false;
+            }
+            else
+            {
+                // Death path: a crystal-less hero must not softlock; ceremony in place as last resort
+                Debug.Warn("[WalkToStatueForCrystalAction] Could not reach statue — marking arrived anyway to avoid softlock");
+                hero.HasArrivedAtStatueForCrystal = true;
             }
 
-            Debug.Log("[WalkToStatueForCrystalAction] Hero arrived at statue — awaiting crystal promotion ceremony");
-
-            hero.HasArrivedAtStatueForCrystal = true;
             _walkCoroutine = null;
         }
     }
