@@ -58,7 +58,6 @@ namespace PitHero.Services
                 heroComponent.PendingManualJobChange = false;
                 heroComponent.NeedsCrystal = false;
                 heroComponent.HasArrivedAtStatueForCrystal = false;
-                Core.Services.GetService<SettingsUI>()?.SetSaveEnabled(true);
                 return;
             }
 
@@ -121,7 +120,6 @@ namespace PitHero.Services
                     tileMover.SetEnabled(true);
                 if (stateMachine != null)
                     stateMachine.SetEnabled(true);
-                Core.Services.GetService<SettingsUI>()?.SetSaveEnabled(true);
                 _isGrantingCrystal = false;
                 yield break;
             }

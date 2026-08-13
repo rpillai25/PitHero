@@ -311,8 +311,9 @@ namespace PitHero.ECS.Components
         /// True while a player-requested job change is in flight (set together with NeedsCrystal).
         /// Distinguishes the manual flow from the death-respawn flow in the crystal ceremony.
         /// Lives on the component so a mid-flow death self-heals: the entity is destroyed, the flag
-        /// dies with it, and the normal death ceremony takes over. Never persisted — saving is
-        /// disabled for the entire window this can be true.
+        /// dies with it, and the normal death ceremony takes over. Never persisted — the hero keeps
+        /// its job and crystal until the ceremony grants, so a save/load mid-flow just forgets the
+        /// request and the player can re-issue it.
         /// </summary>
         public bool PendingManualJobChange { get; set; }
 

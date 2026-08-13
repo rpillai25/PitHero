@@ -52,9 +52,11 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Kicks off the manual job change: clears Stop mode so the statue goal isn't shadowed,
-        /// sets the ceremony flags (the state machine replans off the NeedsCrystal flip), and
-        /// disables saving for the duration of the transition, mirroring the respawn path.
+        /// Kicks off the manual job change: clears Stop mode so the statue goal isn't shadowed
+        /// and sets the ceremony flags (the state machine replans off the NeedsCrystal flip).
+        /// Saving stays enabled — unlike the respawn path the hero keeps its job and crystal
+        /// until the ceremony grants, and neither flag is persisted, so a save/load during the
+        /// walk simply forgets the request.
         /// </summary>
         public static void BeginManualJobChange()
         {
@@ -70,19 +72,14 @@ namespace PitHero.UI
             }
 
             var heroComponent = Core.Scene.FindEntity("hero").GetComponent<HeroComponent>();
-            var settingsUI = Core.Services.GetService<SettingsUI>();
 
             // StoppedAdventure is a higher-priority goal than NeedsCrystal; resume adventuring
             // first so the planner actually targets the statue
             if (heroComponent.StoppedAdventure)
-                settingsUI?.StopAdventuringUI?.SetStopped(false);
+                Core.Services.GetService<SettingsUI>()?.StopAdventuringUI?.SetStopped(false);
 
             heroComponent.PendingManualJobChange = true;
             heroComponent.NeedsCrystal = true;
-
-            // Same transitional-state protection as RespawnHero; re-enabled when the ceremony
-            // completes (or aborts because the queue emptied during the walk)
-            settingsUI?.SetSaveEnabled(false);
 
             Debug.Log("[JobChangeFlow] Manual job change requested - hero heading to statue");
         }
