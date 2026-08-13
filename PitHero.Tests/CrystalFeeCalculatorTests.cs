@@ -24,18 +24,18 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void ForgeFee_IsDoubleCombinedBuyBackPrice_LevelOnePair()
+        public void ForgeFee_IsDoubleUncappedBuyBackPrice_LevelOnePair()
         {
             var a = CreateCrystal(new Knight(), 1);
             var b = CreateCrystal(new Mage(), 1);
 
-            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice() * 2;
+            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice(capPremium: false) * 2;
             Assert.AreEqual(expected, CrystalFeeCalculator.GetForgeFee(a, b));
             Assert.IsTrue(expected > 0, "Forge fee for a valid pair must be positive");
         }
 
         [TestMethod]
-        public void ForgeFee_IsDoubleCombinedBuyBackPrice_MasteredWithSkills()
+        public void ForgeFee_IsDoubleUncappedBuyBackPrice_MasteredWithSkills()
         {
             var knight = new Knight();
             var mage = new Mage();
@@ -47,16 +47,16 @@ namespace PitHero.Tests
                 b.AddLearnedSkill(mage.Skills[i].Id);
             b.LearnSynergySkill("synergy.test_skill");
 
-            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice() * 2;
+            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice(capPremium: false) * 2;
             Assert.AreEqual(expected, CrystalFeeCalculator.GetForgeFee(a, b));
         }
 
         [TestMethod]
-        public void ForgeFee_MasteredLevelOnePair_CostsMoreThanShopPrice()
+        public void ForgeFee_SkillPremiumIsUncapped_ScalesBeyondShopCap()
         {
-            // Regression for the 100G Legend forge: a level-1 many-skill combo hit the
-            // buy-back premium cap and the old half-price fee undercut the shop. Forging
-            // must always cost double what the shop would charge for the same crystal.
+            // Regression for the 100G Legend forge: at level 1 the shop's premium cap makes a
+            // mastered 12+-skill combo price identical to a barely-skilled one. The forge fee
+            // must ignore the cap so skill count always raises the price.
             var knight = new Knight();
             var mage = new Mage();
             var a = CreateCrystal(knight, 1);
@@ -66,11 +66,19 @@ namespace PitHero.Tests
             for (int i = 0; i < mage.Skills.Count; i++)
                 b.AddLearnedSkill(mage.Skills[i].Id);
 
-            int shopPrice = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice();
+            int cappedShopPrice = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice();
             int fee = CrystalFeeCalculator.GetForgeFee(a, b);
 
-            Assert.AreEqual(shopPrice * 2, fee);
-            Assert.IsTrue(fee > shopPrice, "Forging must never be cheaper than buying from the shop");
+            Assert.IsTrue(fee > cappedShopPrice * 2,
+                "A fully mastered level-1 combo must forge for more than double the capped shop price");
+
+            // And more skills must always mean a higher fee than fewer skills at the same level
+            var c = CreateCrystal(new Knight(), 1);
+            var d = CreateCrystal(new Mage(), 1);
+            c.AddLearnedSkill(knight.Skills[0].Id);
+
+            Assert.IsTrue(fee > CrystalFeeCalculator.GetForgeFee(c, d),
+                "Skill count must raise the forge fee at any crystal level");
         }
 
         [TestMethod]
