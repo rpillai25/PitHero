@@ -233,25 +233,37 @@ namespace PitHero.ECS.Components
             float delay = 1f / GameConfig.SpeechBubbleCharsPerSecond;
             int length  = _wrappedText?.Length ?? 0;
 
-            for (int i = 0; i < length; i++)
+            // Accumulate scaled delta time and reveal as many characters as it covers each
+            // frame. Per-character WaitForSeconds quantized to whole frames (remainder
+            // discarded), which capped the reveal near one char per frame and made fast
+            // forward barely speed the text up.
+            float accumulated = 0f;
+            int revealed = 0;
+            while (revealed < length)
             {
                 while (_pauseService?.IsPaused == true)
-                    yield return 1;
+                    yield return null;
 
-                yield return Coroutine.WaitForSeconds(delay);
-                _visibleText.Append(_wrappedText[i]);
+                yield return null;
+                accumulated += Time.DeltaTime;
+
+                while (accumulated >= delay && revealed < length)
+                {
+                    accumulated -= delay;
+                    _visibleText.Append(_wrappedText[revealed]);
+                    revealed++;
+                }
             }
 
-            // Linger after full text is revealed; check pause in small slices
-            float lingered  = 0f;
-            const float slice = 0.1f;
+            // Linger after full text is revealed; scaled so fast forward shortens it too
+            float lingered = 0f;
             while (lingered < GameConfig.SpeechBubbleLingerSeconds)
             {
                 while (_pauseService?.IsPaused == true)
-                    yield return 1;
+                    yield return null;
 
-                yield return Coroutine.WaitForSeconds(slice);
-                lingered += slice;
+                yield return null;
+                lingered += Time.DeltaTime;
             }
 
             _active = false;
