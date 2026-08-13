@@ -47,6 +47,8 @@ namespace PitHero.UI
         private SkillTooltip _skillTooltip;
         private Stage _stage;
         private TextService _textService;
+        private Skin _skin;
+        private HoverableTextButton _changeJobButton;
 
         public HeroCrystalTab()
         {
@@ -58,6 +60,7 @@ namespace PitHero.UI
         public Table CreateContent(Skin skin, Stage stage)
         {
             _stage = stage;
+            _skin = skin;
             _mainContainer = new Table();
             _mainContainer.SetFillParent(false);
 
@@ -121,6 +124,16 @@ namespace PitHero.UI
 
             _jobLevelLabel = new Label(GetText(TextType.UI, UITextKey.HeroJobLevelLabel), skin, "ph-default");
             leftCol.Add(_jobLevelLabel).Left();
+            leftCol.Row();
+
+            _changeJobButton = new HoverableTextButton(GetText(TextType.UI, UITextKey.ButtonChangeJob), skin, "ph-default",
+                GetText(TextType.UI, UITextKey.ButtonChangeJobTooltip), _stage);
+            _changeJobButton.OnClicked += _ =>
+            {
+                _changeJobButton.HideTooltip();
+                JobChangeFlow.ShowChangeJobDialog(_stage, _skin);
+            };
+            leftCol.Add(_changeJobButton).Height(24).Left().SetPadTop(6f);
 
             // Middle column: Hero sprite preview
             _heroPreviewContainer = new Table();
@@ -209,6 +222,9 @@ namespace PitHero.UI
 
             var stats = hero.GetTotalStats();
             _statsLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroStatsLabel), stats.Strength, stats.Agility, stats.Vitality, stats.Magic));
+
+            // Hidden while a job change/respawn ceremony is already in flight
+            _changeJobButton?.SetVisible(!_heroComponent.NeedsCrystal);
 
             // Rebuild skill grid
             RebuildSkillGrid(hero);
@@ -608,6 +624,7 @@ namespace PitHero.UI
 
         private void ClearDisplay()
         {
+            _changeJobButton?.SetVisible(false);
             _jobNameLabel?.SetText("Job: Unknown");
             _levelLabel?.SetText("Level: 1");
             _jobLevelLabel?.SetText("Job Level: 1");

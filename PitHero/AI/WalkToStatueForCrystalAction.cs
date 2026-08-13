@@ -21,6 +21,9 @@ namespace PitHero.AI
         {
             SetPrecondition(GoapConstants.HeroInitialized, true);
             SetPrecondition(GoapConstants.NeedsCrystal, true);
+            // Respawned heroes always spawn outside; requiring it lets the planner chain a
+            // jump-out first when a manual job change is requested inside the pit
+            SetPrecondition(GoapConstants.OutsidePit, true);
             SetPostcondition(GoapConstants.HasArrivedAtStatueForCrystal, true);
         }
 
@@ -60,11 +63,15 @@ namespace PitHero.AI
 
             Debug.Log($"[WalkToStatueForCrystalAction] Hero walking to statue at ({StatueTileX},{StatueTileY}) to receive crystal");
 
-            SpeechBubbleDialogue.SayRespawn(hero.Entity);
+            // Respawn chatter belongs to the death path only; a manual job change is not a respawn
+            if (!hero.PendingManualJobChange)
+            {
+                SpeechBubbleDialogue.SayRespawn(hero.Entity);
 
-            if (hero.LinkedHero != null)
-                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHeroRespawn,
-                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName));
+                if (hero.LinkedHero != null)
+                    Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHeroRespawn,
+                        (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName));
+            }
 
             var currentPos = hero.Entity.Transform.Position;
             var currentTile = new Point(

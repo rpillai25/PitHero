@@ -308,6 +308,15 @@ namespace PitHero.ECS.Components
         public bool NeedsCrystal { get; set; }
 
         /// <summary>
+        /// True while a player-requested job change is in flight (set together with NeedsCrystal).
+        /// Distinguishes the manual flow from the death-respawn flow in the crystal ceremony.
+        /// Lives on the component so a mid-flow death self-heals: the entity is destroyed, the flag
+        /// dies with it, and the normal death ceremony takes over. Never persisted — saving is
+        /// disabled for the entire window this can be true.
+        /// </summary>
+        public bool PendingManualJobChange { get; set; }
+
+        /// <summary>
         /// True when the hero has arrived at the statue tile (112,6) to receive a crystal promotion ceremony
         /// </summary>
         public bool HasArrivedAtStatueForCrystal { get; set; }

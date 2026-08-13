@@ -1162,6 +1162,7 @@ namespace PitHero.UI
             if (escPressed)
             {
                 if (ConfirmationDialog.TryCancelTopMost()) return;
+                if (CrystalCreationDialog.TryCloseTopMost()) return;
                 if (_stencilLibraryPanel != null && _stencilLibraryPanel.IsVisible()) { _stencilLibraryPanel.SetVisible(false); return; }
                 var crystalCard = _crystalsTabComponent?.CrystalCardElement;
                 if (crystalCard != null && crystalCard.IsVisible()) { _crystalsTabComponent.Cleanup(); return; }
@@ -1171,6 +1172,9 @@ namespace PitHero.UI
             }
 
             if (ConfirmationDialog.AnyVisible) return;
+            // A stage-centered creation dialog sits outside the window envelope; defer while it's
+            // open and skip the click that closed it (its dismiss layer consumed that click).
+            if (CrystalCreationDialog.AnyVisible || CrystalCreationDialog.LastCloseFrame == Time.FrameCount) return;
             // Clicks on the window's own top-bar button are the toggle handler's job, not ours
             if (OutsideClickDismissal.IsMouseInside(_heroButton, _stage)) return;
             if (OutsideClickDismissal.ShouldDismiss(GetWindowBoundsElements(), _stage, _windowShownFrame))

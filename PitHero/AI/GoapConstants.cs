@@ -61,6 +61,7 @@
 
         // Stop adventuring actions
         public const string JumpOutOfPitForStopAction = "JumpOutOfPitForStopAction";
+        public const string JumpOutOfPitForJobChangeAction = "JumpOutOfPitForJobChangeAction";
         public const string WalkToTavernForStopAction = "WalkToTavernForStopAction";
     }
 }

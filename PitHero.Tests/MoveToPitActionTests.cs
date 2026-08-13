@@ -41,10 +41,10 @@ namespace PitHero.Tests
             var constantsType = typeof(GoapConstants);
             var fields = constantsType.GetFields().Where(f => f.FieldType == typeof(string) && f.IsLiteral);
             
-            // Should have exactly 43 GOAP constants:
+            // Should have exactly 44 GOAP constants:
             // 16 hero states + 5 mercenary states + 2 crystal states + 1 time-of-day state + 2 stop-adventuring states
-            // + 10 hero actions + 4 mercenary actions + 1 crystal action + 2 stop-adventuring actions
-            Assert.AreEqual(43, fields.Count(), "Should have exactly 43 GOAP constants (16 hero states + 5 mercenary states + 2 crystal states + 1 time-of-day state + 2 stop-adventuring states + 10 hero actions + 4 mercenary actions + 1 crystal action + 2 stop-adventuring actions)");
+            // + 10 hero actions + 4 mercenary actions + 1 crystal action + 2 stop-adventuring actions + 1 job-change action
+            Assert.AreEqual(44, fields.Count(), "Should have exactly 44 GOAP constants (16 hero states + 5 mercenary states + 2 crystal states + 1 time-of-day state + 2 stop-adventuring states + 10 hero actions + 4 mercenary actions + 1 crystal action + 2 stop-adventuring actions + 1 job-change action)");
         }
 
         [TestMethod]

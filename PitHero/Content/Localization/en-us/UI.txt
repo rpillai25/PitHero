@@ -248,6 +248,13 @@ CrystalInventoryEmpty,No crystals in collection
 DialogConfirmForge,Confirm Forge
 ConfirmForgeMessage,Combine these 2 crystals into a Combo Crystal?
 CrystalInventoryFull,Crystal inventory is full
+CrystalCreationFeeLabel,Fee: {0} Gold
+CrystalForgeFeeLabel,Fee: {0} Gold
+DialogChangeJobTitle,Change Job
+DialogChangeJobPrompt,Change Job to next Crystal? Resets Hero and Pit level to 1.
+DialogNoCrystalQueued,No crystal lined up. Please set a crystal
+ButtonChangeJob,Change Job
+ButtonChangeJobTooltip,Infuse the next queued crystal at the Hero Statue
 ButtonDismiss,Dismiss
 ButtonDiscard,Sell
 DialogConfirmDismissMercenary,Dismiss Mercenary
