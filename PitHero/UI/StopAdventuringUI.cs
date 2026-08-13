@@ -299,21 +299,19 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Applies button visibility based on whether the hero promotion is in progress.
-        /// Also sets _styleChanged so SettingsUI triggers a layout reflow (GetWidth/GetHeight return 0 while hidden).
+        /// The button is visible only when no hide state (promotion, sleep) wants it hidden.
+        /// Hide states MUST combine here rather than call SetVisible directly — clearing one
+        /// state while the other is still active previously re-showed the button while
+        /// GetWidth() still reported 0, overlapping it with the Fast Forward button (issue #335
+        /// lesson, applied to visibility). Also sets _styleChanged so SettingsUI reflows.
         /// </summary>
-        private void ApplyPromotionVisibility(bool hidden)
+        private void ApplyEffectiveVisibility()
         {
-            _button.SetVisible(!hidden);
+            if (_button == null)
+                return;
+            _button.SetVisible(!_isHiddenForPromotion && !_isHiddenForSleep);
             ApplyEffectiveTouchable();
             _styleChanged = true; // Triggers SettingsUI layout reflow via ConsumeStyleChangedFlag
-        }
-
-        private void ApplySleepVisibility(bool hidden)
-        {
-            _button.SetVisible(!hidden);
-            ApplyEffectiveTouchable();
-            _styleChanged = true;
         }
 
         private void UpdateSleepVisibilityIfNeeded()
@@ -328,7 +326,7 @@ namespace PitHero.UI
                 return;
 
             _isHiddenForSleep = shouldHide;
-            ApplySleepVisibility(shouldHide);
+            ApplyEffectiveVisibility();
         }
 
         /// <summary>
@@ -349,7 +347,7 @@ namespace PitHero.UI
                 return;
 
             _isHiddenForPromotion = shouldHide;
-            ApplyPromotionVisibility(shouldHide);
+            ApplyEffectiveVisibility();
         }
 
         /// <summary>

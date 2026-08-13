@@ -72,20 +72,21 @@ namespace PitHero.Tests.UI
         }
 
         [TestMethod]
-        public void StopAdventuringUI_PrivateMethod_ApplyPromotionVisibility_Exists()
+        public void StopAdventuringUI_PrivateMethod_ApplyEffectiveVisibility_Exists()
         {
+            // Visibility must be applied via a single combiner over all hide states (promotion,
+            // sleep) — per-state SetVisible calls stomped each other when one state cleared
+            // while the other was still active (Play button overlapping Fast Forward).
             var method = typeof(StopAdventuringUI).GetMethod(
-                "ApplyPromotionVisibility",
+                "ApplyEffectiveVisibility",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
             Assert.IsNotNull(method,
-                "ApplyPromotionVisibility method must exist");
+                "ApplyEffectiveVisibility method must exist");
 
             var parameters = method!.GetParameters();
-            Assert.AreEqual(1, parameters.Length,
-                "ApplyPromotionVisibility should accept exactly one parameter");
-            Assert.AreEqual(typeof(bool), parameters[0].ParameterType,
-                "ApplyPromotionVisibility parameter should be bool");
+            Assert.AreEqual(0, parameters.Length,
+                "ApplyEffectiveVisibility takes no parameters — it derives visibility from all hide-state fields");
         }
 
         [TestMethod]
