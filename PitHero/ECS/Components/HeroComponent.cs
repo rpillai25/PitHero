@@ -971,7 +971,18 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
-            // HIGHEST PRIORITY: Player stopped adventuring — go to tavern and stay there.
+            // HIGHEST PRIORITY: Hero needs a crystal — walk to statue for promotion ceremony.
+            // Outranks StoppedAdventure so a manual job change requested while the party is
+            // stopped (or while the dining service auto-stops for a meal trip) goes to the
+            // statue first; StoppedAdventure survives the ceremony, so the hero returns to
+            // the tavern table afterwards on its own.
+            if (NeedsCrystal)
+            {
+                goalState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
+                return;
+            }
+
+            // Player stopped adventuring — go to tavern and stay there.
             // When SeatedInTavern is already true the goal is already satisfied, so the
             // planner returns no actions and the hero stays idle until Continue is pressed.
             // Night sleep still preempts the seat: at 10 PM the party leaves the table,
@@ -987,13 +998,6 @@ namespace PitHero.ECS.Components
                 }
 
                 goalState.Set(GoapConstants.SeatedInTavern, true);
-                return;
-            }
-
-            // HIGHEST PRIORITY: Hero needs a crystal — walk to statue for promotion ceremony
-            if (NeedsCrystal)
-            {
-                goalState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
                 return;
             }
 

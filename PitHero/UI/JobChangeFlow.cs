@@ -52,8 +52,10 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Kicks off the manual job change: clears Stop mode so the statue goal isn't shadowed
-        /// and sets the ceremony flags (the state machine replans off the NeedsCrystal flip).
+        /// Kicks off the manual job change by setting the ceremony flags (the state machine
+        /// replans off the NeedsCrystal flip, and that goal outranks StoppedAdventure). Stop
+        /// mode is deliberately left intact: the ceremony preempts it, and afterwards the
+        /// still-stopped party returns to the tavern table on its own.
         /// Saving stays enabled — unlike the respawn path the hero keeps its job and crystal
         /// until the ceremony grants, and neither flag is persisted, so a save/load during the
         /// walk simply forgets the request.
@@ -73,10 +75,11 @@ namespace PitHero.UI
 
             var heroComponent = Core.Scene.FindEntity("hero").GetComponent<HeroComponent>();
 
-            // StoppedAdventure is a higher-priority goal than NeedsCrystal; resume adventuring
-            // first so the planner actually targets the statue
-            if (heroComponent.StoppedAdventure)
-                Core.Services.GetService<SettingsUI>()?.StopAdventuringUI?.SetStopped(false);
+            // Stand up if seated: with the flag left true the post-ceremony return-to-table
+            // goal would already read as satisfied (hero idles at the statue forever), and the
+            // kitchen would keep serving an absent hero. Mercenaries stay at their seats and
+            // are re-seated when the hero walks back after the ceremony.
+            heroComponent.SeatedInTavern = false;
 
             heroComponent.PendingManualJobChange = true;
             heroComponent.NeedsCrystal = true;

@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nez.AI.GOAP;
 using PitHero.AI;
+using PitHero.ECS.Components;
 
 namespace PitHero.Tests
 {
@@ -57,6 +58,29 @@ namespace PitHero.Tests
             Assert.IsNotNull(plan, "Hero outside the pit should walk straight to the statue");
             Assert.AreEqual(1, plan.Count);
             Assert.AreEqual(GoapConstants.WalkToStatueForCrystalAction, plan.Pop().Name);
+        }
+
+        [TestMethod]
+        public void GoalPriority_NeedsCrystal_OutranksStoppedAdventure()
+        {
+            // A job change requested while the party is stopped (or while the dining service
+            // auto-stops for a meal trip) must send the hero to the statue, not the tavern
+            // table. StoppedAdventure survives and takes over after the ceremony.
+            var planner = new ActionPlanner();
+            var hero = new HeroComponent
+            {
+                NeedsCrystal = true,
+                StoppedAdventure = true
+            };
+
+            var goal = WorldState.Create(planner);
+            hero.SetGoalState(ref goal);
+
+            var expected = WorldState.Create(planner);
+            expected.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
+
+            Assert.IsTrue(goal.Equals(expected),
+                "With both NeedsCrystal and StoppedAdventure set, the goal must be the statue, not the tavern seat");
         }
 
         [TestMethod]
