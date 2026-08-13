@@ -30,6 +30,9 @@ namespace PitHero.ECS.Scenes
         private CameraControllerComponent _cameraController;
         private TmxMap _tmxMap; // Store reference to the map
         private Entity _pauseOverlayEntity; // Pause overlay entity
+        private PrototypeSpriteRenderer _pauseOverlayRenderer; // resized when the stage size changes
+        private float _lastStageWidth;  // stage-size-change detection for right/center-anchored HUD
+        private float _lastStageHeight;
         private Label _pitLevelLabel; // UI label showing pit level
         private Label _fundsLabel; // UI label showing total funds
         private Label _clockLabel; // UI label showing in-game time
@@ -130,7 +133,9 @@ namespace PitHero.ECS.Scenes
                 SaveLoadService.PendingLoadData != null ? "load" : "new_game",
                 Core.Services.GetService<GameStateService>()?.Funds ?? 0);
 
-            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
+            // FixedHeight locks the vertical resolution at VirtualHeight and expands the render
+            // target width to match the window aspect, so ultrawide monitors see more world.
+            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.FixedHeight);
             ClearColor = Color.Transparent;
 
             var cameraEntity = CreateEntity("camera-controller");
@@ -1822,13 +1827,16 @@ namespace PitHero.ECS.Scenes
             _pauseOverlayEntity = CreateEntity("pause-overlay");
             _pauseOverlayEntity.SetPosition(0, 0); // Top-left corner
 
-            // Size to backbuffer for ScreenSpaceRenderer and set origin to top-left
+            // Size to the render target (stage space) with margin; resized on stage-size change.
+            // Under FixedHeight the render target can be wider than the backbuffer, so Screen.* is
+            // not a safe stand-in for stage dimensions.
             var pauseOverlay = _pauseOverlayEntity.AddComponent(
-                new PrototypeSpriteRenderer(Screen.Width * 2, Screen.Height * 2)
+                new PrototypeSpriteRenderer(SceneRenderTargetSize.X * 2, SceneRenderTargetSize.Y * 2)
             );
             pauseOverlay.SetOrigin(Vector2.Zero); // or pauseOverlay.SetOriginNormalized(Vector2.Zero);
             pauseOverlay.SetColor(new Color(0, 0, 0, 100));
             pauseOverlay.SetRenderLayer(GameConfig.TransparentPauseOverlay);
+            _pauseOverlayRenderer = pauseOverlay;
             _pauseOverlayEntity.SetEnabled(false); // Initially hidden
 
             var uiEntity = CreateEntity("ui-overlay");
@@ -2054,7 +2062,7 @@ namespace PitHero.ECS.Scenes
             string text = timeService.FormatTime();
             _clockLabel.SetText(text);
             float labelWidth = _hudFontNormal.MeasureString(text).X;
-            _clockLabel.SetPosition(GameConfig.VirtualWidth - labelWidth - ClockLabelRightPadding, ClockLabelBaseY);
+            _clockLabel.SetPosition(_uiStage.GetWidth() - labelWidth - ClockLabelRightPadding, ClockLabelBaseY);
         }
 
         private void UpdateTillingLabel()
@@ -2074,7 +2082,7 @@ namespace PitHero.ECS.Scenes
             // Clock left edge
             string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
             float clockWidth = _hudFontNormal.MeasureString(timeText).X;
-            float clockX = GameConfig.VirtualWidth - clockWidth - ClockLabelRightPadding;
+            float clockX = _uiStage.GetWidth() - clockWidth - ClockLabelRightPadding;
 
             // Button bar right edge (exposed by SettingsUI; falls back to 0 before first PositionUI)
             float barRight = _settingsUI?.UIBarRight ?? 0f;
@@ -2099,7 +2107,7 @@ namespace PitHero.ECS.Scenes
             float labelWidth = _hudFontNormal.MeasureString(labelText).X;
             string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
             float clockWidth = _hudFontNormal.MeasureString(timeText).X;
-            float clockX = GameConfig.VirtualWidth - clockWidth - ClockLabelRightPadding;
+            float clockX = _uiStage.GetWidth() - clockWidth - ClockLabelRightPadding;
             float barRight = _settingsUI?.UIBarRight ?? 0f;
             float midX = (barRight + clockX) / 2f;
             _plantingCropsLabel.SetPosition(midX - labelWidth / 2f, ClockLabelBaseY);
@@ -2365,12 +2373,13 @@ namespace PitHero.ECS.Scenes
                 float barWidth = 8 * (32f + 1f) * scale;
                 float barHeight = 32f * scale;
 
+                // Stage space, not Screen.* — under FixedHeight the stage width varies per monitor
                 float halfShift = WindowManager.IsHalfHeightMode() ? -64f : 0f;
-                float centerX = Screen.Width / 2f - barWidth / 2f + halfShift;
+                float centerX = _uiStage.GetWidth() / 2f - barWidth / 2f + halfShift;
                 // Add extra padding for shortcut number text below slots (14px for text + 2px offset = 16px total)
                 // Shift up by 16 pixels when in Half mode
                 float yOffset = WindowManager.IsHalfHeightMode() ? -16f : 0f;
-                float bottomY = Screen.Height - barHeight - 16f + yOffset;
+                float bottomY = _uiStage.GetHeight() - barHeight - 16f + yOffset;
 
                 _shortcutBar.SetBasePosition(centerX, bottomY);
 
@@ -2394,16 +2403,17 @@ namespace PitHero.ECS.Scenes
             float scale = halfMode ? 2f : 1f;
             float displayScale = halfMode ? 2f : 1f;
 
+            float stageW = _uiStage.GetWidth();
             float slotSize = 32f;
             float barWidth = 8 * (slotSize + 1f) * scale;
-            float barRightEdge = Screen.Width / 2f + barWidth / 2f;
+            float barRightEdge = stageW / 2f + barWidth / 2f;
             float oneSlotPadding = slotSize * scale;
 
             const float panelH = 120f;
             float visualH = panelH * displayScale;
 
             // Anchor the visual bottom edge 16px above the screen bottom.
-            float panelY = GameConfig.VirtualHeight - 16f - visualH;
+            float panelY = _uiStage.GetHeight() - 16f - visualH;
 
             // Lower bound for panelX so the console never overlaps the shortcut bar.
             float halfShift = halfMode ? -96f : 0f;
@@ -2417,12 +2427,12 @@ namespace PitHero.ECS.Scenes
             if (halfMode)
             {
                 panelX = minPanelX;
-                layoutW = (GameConfig.VirtualWidth - panelX) / displayScale;
+                layoutW = (stageW - panelX) / displayScale;
             }
             else
             {
                 layoutW = 480f;
-                panelX = System.Math.Max(minPanelX, GameConfig.VirtualWidth - layoutW * displayScale);
+                panelX = System.Math.Max(minPanelX, stageW - layoutW * displayScale);
             }
 
             _eventConsolePanel.SetDisplayScale(displayScale);
@@ -2504,6 +2514,27 @@ namespace PitHero.ECS.Scenes
         public override void Update()
         {
             base.Update();
+
+            // Re-anchor stage-space HUD when the render target size changes (window shrink/restore,
+            // dock, monitor swap). Clock/tilling/planting labels already reposition every frame.
+            if (_uiStage != null)
+            {
+                float stageW = _uiStage.GetWidth();
+                float stageH = _uiStage.GetHeight();
+                if (stageW != _lastStageWidth || stageH != _lastStageHeight)
+                {
+                    _lastStageWidth = stageW;
+                    _lastStageHeight = stageH;
+                    PositionShortcutBar();
+                    PositionEventConsolePanel();
+                    if (_pauseOverlayRenderer != null)
+                    {
+                        _pauseOverlayRenderer.SetWidth(stageW * 2f);
+                        _pauseOverlayRenderer.SetHeight(stageH * 2f);
+                    }
+                }
+            }
+
             _settingsUI?.Update();
             // Remove duplicate HeroUI update since SettingsUI handles it
 

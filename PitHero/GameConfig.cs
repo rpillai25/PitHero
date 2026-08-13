@@ -9,6 +9,10 @@ namespace PitHero
     public static class GameConfig
     {
         // Screen and Resolution
+        // Scenes use SceneResolutionPolicy.FixedHeight: VirtualHeight is the fixed design height,
+        // while the render-target width grows with the window aspect (ultrawide sees more world).
+        // VirtualWidth is only a reference width (initial backbuffer, minimum-layout reference) —
+        // runtime layout/camera code must use Stage.GetWidth()/Scene.SceneRenderTargetSize instead.
         public const int VirtualWidth = 1920;
         public const int VirtualHeight = 360;
         public const int InternalWorldWidth = 1920;
@@ -444,6 +448,8 @@ namespace PitHero
         public const float UIBarProximityY = 48f;     // Mouse Y <= this (stage coords) triggers proximity-unhide
 
         // Second Chance Shop layout positions
+        // Composed for a 1920-wide stage; SecondChanceShopUI centers the whole composition on
+        // wider stages by shifting all X positions right by (stageWidth - VirtualWidth) / 2.
         // Shop window (vault grid + tabs) positioned near left-center
         public const float SecondChanceShopWindowX = 573f;
         public const float SecondChanceShopWindowY = 12f;

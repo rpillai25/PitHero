@@ -19,6 +19,8 @@ namespace PitHero.ECS.Components
         private float _currentMaximumZoom = GameConfig.CameraMaximumZoom;
         private const float PixelPerfectZoomStep = 0.125f; // 1/8 increments keeps scaling clean (32 * 0.125 = 4)
 
+        private Point _lastRenderTargetSize; // re-clamps the camera when the render target is resized
+
         private bool _isFollowingHero = true; // camera auto-follows hero by default
         private float _manualControlTimer = 0f; // tracks time since last manual control input
         private float _keyboardPanHeldTime = 0f; // continuous seconds arrow/WASD pan keys have been held
@@ -48,22 +50,33 @@ namespace PitHero.ECS.Components
         public override void OnAddedToEntity()
         {
             _camera = Entity.GetComponent<Camera>() ?? Entity.Scene.Camera;
+            InitializeTileMapBounds();
             if (_camera != null)
             {
                 _camera.SetMinimumZoom(_currentMinimumZoom);
                 _camera.SetMaximumZoom(_currentMaximumZoom);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
-                _defaultCameraPosition = new Vector2(GameConfig.VirtualWidth / 2f, GameConfig.VirtualHeight / 2f);
+                _defaultCameraPosition = ConstrainCameraPosition(new Vector2(
+                    _tileMapBounds.X + _tileMapBounds.Width / 2f, GameConfig.VirtualHeight / 2f));
                 _camera.Position = _defaultCameraPosition;
                 QuantizeCameraPosition();
             }
-            InitializeTileMapBounds();
         }
 
         public void Update()
         {
             if (_camera == null)
                 return;
+
+            // Nothing re-clamps after a graphics reset (window shrink/restore, dock, monitor swap),
+            // and Camera.OnSceneRenderTargetSizeChanged can leave the camera out of bounds.
+            var renderTargetSize = GetSceneRenderTargetSize();
+            if (renderTargetSize != _lastRenderTargetSize)
+            {
+                _lastRenderTargetSize = renderTargetSize;
+                _camera.Position = ConstrainCameraPosition(_camera.Position);
+                QuantizeCameraPosition();
+            }
 
             // Only the manual (menu) pause freezes the camera; the farm-mode pause keeps camera
             // controls live so the player can right-mouse pan while planning crops.
@@ -525,10 +538,25 @@ namespace PitHero.ECS.Components
             }
         }
 
+        /// <summary>
+        /// Size of the scene render target in world pixels — the true visible area at 1x zoom.
+        /// Falls back to the design consts if the render target does not exist yet.
+        /// </summary>
+        private Point GetSceneRenderTargetSize()
+        {
+            var scene = Entity?.Scene;
+            if (scene?.SceneRenderTarget != null)
+                return scene.SceneRenderTargetSize;
+            return new Point(GameConfig.VirtualWidth, GameConfig.VirtualHeight);
+        }
+
         private Vector2 ConstrainCameraPosition(Vector2 desiredPosition)
         {
-            var viewportWidth = GameConfig.VirtualWidth / _camera.RawZoom;
-            var viewportHeight = GameConfig.VirtualHeight / _camera.RawZoom;
+            // Under FixedHeight the render target width varies with the window aspect, so the
+            // visible viewport must come from the actual render target, not the design consts.
+            var renderTargetSize = GetSceneRenderTargetSize();
+            var viewportWidth = renderTargetSize.X / _camera.RawZoom;
+            var viewportHeight = renderTargetSize.Y / _camera.RawZoom;
 
             var minX = _tileMapBounds.X + viewportWidth / 2f;
             var maxX = _tileMapBounds.Right - viewportWidth / 2f;

@@ -23,7 +23,7 @@ namespace PitHero.ECS.Scenes
         {
             base.Initialize();
 
-            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
+            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.FixedHeight);
             ClearColor = Color.CornflowerBlue;
         }
 
@@ -44,19 +44,21 @@ namespace PitHero.ECS.Scenes
             // Create UI entity with UICanvas
             var uiEntity = CreateEntity("hero-creation-ui");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
-            uiCanvas.IsFullScreen = true;
+            // Stage in render-target space (like MainGameScene) so layout and mouse input stay
+            // consistent under the FixedHeight policy on any aspect ratio
+            uiCanvas.IsFullScreen = false;
             uiCanvas.RenderLayer = 999;
 
             // Compute preview entity position to appear above the direction buttons in the Appearance window
-            // Window layout: totalWidth = 560 + 10 + 350 = 920, startX = (1920 - 920) / 2 = 500
+            // Window layout: totalWidth = 560 + 10 + 350 = 920, centered on the stage width
             // Controls table is ~290px wide; preview centered above the direction arrows to its right
             const float windowWidth = 560f;
             const float jobInfoWidth = 350f;
             const float gap = 10f;
             float totalWidth = windowWidth + gap + jobInfoWidth;
-            float startX = (GameConfig.VirtualWidth - totalWidth) / 2f;
+            float startX = (uiCanvas.Stage.GetWidth() - totalWidth) / 2f;
             float previewX = startX + windowWidth - 128f;
-            float previewY = GameConfig.VirtualHeight * 0.48f;
+            float previewY = uiCanvas.Stage.GetHeight() * 0.48f;
 
             var previewEntity = CreateEntity("hero-preview");
             previewEntity.SetPosition(previewX, previewY);
