@@ -120,7 +120,7 @@ namespace PitHero
         public const float CrystalJPToGoldRate = 0.5f;  // Gold per JP invested in learned job skills (buy-back premium)
         public const int CrystalSynergySkillFee = 150;  // Flat gold per learned synergy skill (buy-back premium)
         public const int CrystalCreationFee = 100;      // Gold cost to create a brand-new crystal
-        public const int CrystalForgeFeeDivisor = 2;    // Forge fee = combined crystal buy-back price / divisor
+        public const int CrystalForgeFeeMultiplier = 2; // Forge fee = combined crystal buy-back price x multiplier
 
         // Minimum height for dialog buttons (Yes/No/OK) so they present a comfortable click target
         public const float DialogButtonMinHeight = 16f;

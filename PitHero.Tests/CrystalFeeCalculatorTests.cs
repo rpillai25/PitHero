@@ -24,18 +24,18 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void ForgeFee_IsHalfCombinedBuyBackPrice_LevelOnePair()
+        public void ForgeFee_IsDoubleCombinedBuyBackPrice_LevelOnePair()
         {
             var a = CreateCrystal(new Knight(), 1);
             var b = CreateCrystal(new Mage(), 1);
 
-            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice() / 2;
+            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice() * 2;
             Assert.AreEqual(expected, CrystalFeeCalculator.GetForgeFee(a, b));
             Assert.IsTrue(expected > 0, "Forge fee for a valid pair must be positive");
         }
 
         [TestMethod]
-        public void ForgeFee_IsHalfCombinedBuyBackPrice_MasteredWithSkills()
+        public void ForgeFee_IsDoubleCombinedBuyBackPrice_MasteredWithSkills()
         {
             var knight = new Knight();
             var mage = new Mage();
@@ -47,8 +47,30 @@ namespace PitHero.Tests
                 b.AddLearnedSkill(mage.Skills[i].Id);
             b.LearnSynergySkill("synergy.test_skill");
 
-            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice() / 2;
+            var expected = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice() * 2;
             Assert.AreEqual(expected, CrystalFeeCalculator.GetForgeFee(a, b));
+        }
+
+        [TestMethod]
+        public void ForgeFee_MasteredLevelOnePair_CostsMoreThanShopPrice()
+        {
+            // Regression for the 100G Legend forge: a level-1 many-skill combo hit the
+            // buy-back premium cap and the old half-price fee undercut the shop. Forging
+            // must always cost double what the shop would charge for the same crystal.
+            var knight = new Knight();
+            var mage = new Mage();
+            var a = CreateCrystal(knight, 1);
+            var b = CreateCrystal(mage, 1);
+            for (int i = 0; i < knight.Skills.Count; i++)
+                a.AddLearnedSkill(knight.Skills[i].Id);
+            for (int i = 0; i < mage.Skills.Count; i++)
+                b.AddLearnedSkill(mage.Skills[i].Id);
+
+            int shopPrice = HeroCrystal.Combine("Combo Crystal", a, b).CalculateBuyBackPrice();
+            int fee = CrystalFeeCalculator.GetForgeFee(a, b);
+
+            Assert.AreEqual(shopPrice * 2, fee);
+            Assert.IsTrue(fee > shopPrice, "Forging must never be cheaper than buying from the shop");
         }
 
         [TestMethod]
