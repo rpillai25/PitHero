@@ -691,6 +691,7 @@ namespace PitHero.AI
                     return null;
 
                 case GoapConstants.JumpOutOfPitForStopAction:
+                case GoapConstants.JumpOutOfPitForJobChangeAction:
                     _targetLocationType = LocationType.PitInsideEdge;
                     return CalculatePitInsideEdgeLocation();
 
