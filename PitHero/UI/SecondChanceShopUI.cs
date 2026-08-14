@@ -453,22 +453,26 @@ namespace PitHero.UI
             {
                 UIWindowManager.OnUIWindowOpening();
 
+                // The layout constants compose a full-strip arrangement designed for a 1920-wide
+                // stage; center the intact composition on wider stages (FixedHeight policy).
+                float xOffset = System.Math.Max(0f, (_stage.GetWidth() - GameConfig.VirtualWidth) / 2f);
+
                 // Shop (left panel)
                 _stage.AddElement(_shopWindow);
                 _shopWindow.SetVisible(true);
-                _shopWindow.SetPosition(GameConfig.SecondChanceShopWindowX, GameConfig.SecondChanceShopWindowY);
+                _shopWindow.SetPosition(GameConfig.SecondChanceShopWindowX + xOffset, GameConfig.SecondChanceShopWindowY);
                 _shopWindow.ToFront();
 
                 // Merchant sprite (between panels)
                 _stage.AddElement(_merchantSprite);
-                _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX, GameConfig.SecondChanceMerchantSpriteY);
+                _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX + xOffset, GameConfig.SecondChanceMerchantSpriteY);
                 _merchantSprite.ToFront();
 
                 // Hero panel (right) — show the one matching the active tab
                 _stage.AddElement(_heroInventoryWindow);
                 _stage.AddElement(_heroCrystalWindow);
-                _heroInventoryWindow.SetPosition(GameConfig.SecondChanceHeroPanelX, GameConfig.SecondChanceHeroPanelY);
-                _heroCrystalWindow.SetPosition(GameConfig.SecondChanceHeroPanelX, GameConfig.SecondChanceHeroPanelY);
+                _heroInventoryWindow.SetPosition(GameConfig.SecondChanceHeroPanelX + xOffset, GameConfig.SecondChanceHeroPanelY);
+                _heroCrystalWindow.SetPosition(GameConfig.SecondChanceHeroPanelX + xOffset, GameConfig.SecondChanceHeroPanelY);
 
                 if (_activeTabIndex == 0)
                 {

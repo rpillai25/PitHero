@@ -15,7 +15,7 @@ namespace PitHero.ECS.Scenes
         {
             base.Initialize();
 
-            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
+            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.FixedHeight);
             ClearColor = Color.CornflowerBlue;
 
             // Set up UI overlay using ScreenSpaceRenderer
@@ -31,7 +31,9 @@ namespace PitHero.ECS.Scenes
             // Create UI entity with UICanvas component for screen-space UI
             var uiEntity = CreateEntity("title-ui");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
-            uiCanvas.IsFullScreen = true;
+            // Stage in render-target space (like MainGameScene) so layout and mouse input stay
+            // consistent under the FixedHeight policy on any aspect ratio
+            uiCanvas.IsFullScreen = false;
             uiCanvas.RenderLayer = 999; // Render on screen space layer
 
             // Initialize title menu UI

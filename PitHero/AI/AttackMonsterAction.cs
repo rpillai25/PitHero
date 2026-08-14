@@ -31,6 +31,16 @@ namespace PitHero.AI
             SetPostcondition(GoapConstants.BossDefeated, true);
         }
 
+        /// <summary>The battle coroutine is fire-and-forget and cannot be cancelled — a mid-battle
+        /// replan (stop, manual job change, replenish, heal-priority change) would abandon this
+        /// action while the engine keeps running and flip the hero's PitIntent, sending the
+        /// mercenaries out of the pit mid-fight. Defer all interrupts until the battle resolves;
+        /// they fire on the next tick after completion.</summary>
+        public override bool ShouldNotOverride()
+        {
+            return _battleCoroutine != null;
+        }
+
         public override bool Execute(HeroComponent hero)
         {
             if (_battleCoroutine != null)

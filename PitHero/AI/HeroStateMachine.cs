@@ -59,6 +59,11 @@ namespace PitHero.AI
         // Stuck detection: time spent in GoTo state without making path progress
         private float _goToStuckTimer;
 
+        // Re-entrancy depth for Idle_Enter. CurrentState assignments invoke the new state's
+        // Enter method synchronously, so a persistent plan/path failure would otherwise
+        // recurse Idle_Enter -> GoTo_Enter -> Idle_Enter forever and overflow the stack.
+        private int _idleEnterDepth;
+
         // Battle state tracking
         public static bool IsBattleInProgress { get; set; } = false;
 
@@ -193,6 +198,30 @@ namespace PitHero.AI
         #region State Methods
 
         void Idle_Enter()
+        {
+            // If a plan started from Idle_Enter is still on the stack, this entry came from a
+            // synchronous failure transition (e.g. GoTo_Enter found no path and set Idle).
+            // Planning again here would produce the same plan, fail the same way, and recurse
+            // until the stack overflows. Bail out and let Idle_Tick retry on its 1s throttle,
+            // which also gives world-state (pit triggers etc.) a chance to self-heal.
+            if (_idleEnterDepth > 0)
+            {
+                _actionPlan = null;
+                return;
+            }
+
+            _idleEnterDepth++;
+            try
+            {
+                IdleEnterPlan();
+            }
+            finally
+            {
+                _idleEnterDepth--;
+            }
+        }
+
+        private void IdleEnterPlan()
         {
             // Clear any pending replenish flag since we are about to re-plan
             _hero.ReplenishPending = false;
@@ -691,6 +720,7 @@ namespace PitHero.AI
                     return null;
 
                 case GoapConstants.JumpOutOfPitForStopAction:
+                case GoapConstants.JumpOutOfPitForJobChangeAction:
                     _targetLocationType = LocationType.PitInsideEdge;
                     return CalculatePitInsideEdgeLocation();
 

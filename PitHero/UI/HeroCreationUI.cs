@@ -24,6 +24,18 @@ namespace PitHero.UI
         private string _mapPath;
         private Skin _skin;
 
+        // Fixed-position windows re-centered when the stage size changes (FixedHeight policy)
+        private Window _controlsWindow;
+        private Window _jobInfoWindow;
+        private float _lastStageWidth;
+        private float _lastStageHeight;
+
+        // Shared layout constants for the Appearance + Job Info window pair
+        private const float AppearanceWindowWidth = 560f;
+        private const float CreationWindowHeight = 340f;
+        private const float CreationWindowGap = 10f;
+        private const float JobInfoWindowWidth = 350f;
+
         // Current selections
         private string _currentName;
         private int _currentJobIndex;
@@ -101,11 +113,12 @@ namespace PitHero.UI
         {
             var windowStyle = skin.Get<WindowStyle>();
             var window = new Window(_textService.DisplayText(TextType.UI, UITextKey.WindowAppearance), windowStyle);
+            _controlsWindow = window;
 
-            const float windowWidth = 560f;
-            const float windowHeight = 340f;
-            const float gap = 10f;
-            const float jobInfoWidth = 350f;
+            const float windowWidth = AppearanceWindowWidth;
+            const float windowHeight = CreationWindowHeight;
+            const float gap = CreationWindowGap;
+            const float jobInfoWidth = JobInfoWindowWidth;
             float totalWidth = windowWidth + gap + jobInfoWidth;
             float startX = (_stage.GetWidth() - totalWidth) / 2f;
 
@@ -414,11 +427,12 @@ namespace PitHero.UI
         {
             var windowStyle = skin.Get<WindowStyle>();
             var jobInfoWindow = new Window("Job Info", windowStyle);
+            _jobInfoWindow = jobInfoWindow;
 
-            const float windowWidth = 560f;
-            const float jobInfoWidth = 350f;
-            const float windowHeight = 340f;
-            const float gap = 10f;
+            const float windowWidth = AppearanceWindowWidth;
+            const float jobInfoWidth = JobInfoWindowWidth;
+            const float windowHeight = CreationWindowHeight;
+            const float gap = CreationWindowGap;
             float totalWidth = windowWidth + gap + jobInfoWidth;
             float startX = (_stage.GetWidth() - totalWidth) / 2f;
 
@@ -573,7 +587,25 @@ namespace PitHero.UI
         /// <summary>Per-frame update for the hero creation UI</summary>
         public void Update()
         {
-            // Handle any per-frame updates if needed
+            // Re-center the window pair and preview when the stage size changes. The stage reports
+            // the backbuffer size until the UICanvas is registered, and under the FixedHeight policy
+            // the render-target width varies per monitor, so init-time layout is not enough.
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+            if (stageW != _lastStageWidth || stageH != _lastStageHeight)
+            {
+                _lastStageWidth = stageW;
+                _lastStageHeight = stageH;
+
+                float totalWidth = AppearanceWindowWidth + CreationWindowGap + JobInfoWindowWidth;
+                float startX = (stageW - totalWidth) / 2f;
+                float windowY = (stageH - CreationWindowHeight) / 2f;
+
+                _controlsWindow?.SetPosition(startX, windowY);
+                _jobInfoWindow?.SetPosition(startX + AppearanceWindowWidth + CreationWindowGap, windowY);
+                // Preview sits above the direction buttons on the right side of the Appearance window
+                _previewEntity?.SetPosition(startX + AppearanceWindowWidth - 128f, stageH * 0.48f);
+            }
         }
 
         /// <summary>Skill button for job info display with hover tooltip support</summary>

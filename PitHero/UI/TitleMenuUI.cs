@@ -13,10 +13,13 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private Image _titleLogo;
+        private float _titleSpriteWidth;
         private Table _mainMenuTable;
         private Window _quitConfirmationDialog;
         private SaveLoadUI _saveLoadUI;
         private TextService _textService;
+        private float _lastStageWidth;
+        private float _lastStageHeight;
 
         public void InitializeUI(Stage stage)
         {
@@ -54,10 +57,11 @@ namespace PitHero.UI
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var titleSprite = uiAtlas.GetSprite("EverpitTitle");
             _titleLogo = new Image(titleSprite);
+            _titleSpriteWidth = titleSprite.SourceRect.Width;
 
             // Center the logo horizontally and position it higher to allow more space for buttons
-            float logoX = (_stage.GetWidth() - titleSprite.SourceRect.Width) / 2f;
-            float logoY = GameConfig.VirtualHeight * 0.30f; // 30% from top (moved higher)
+            float logoX = (_stage.GetWidth() - _titleSpriteWidth) / 2f;
+            float logoY = _stage.GetHeight() * 0.30f; // 30% from top (moved higher)
 
             _titleLogo.SetPosition(logoX, logoY);
             _stage.AddElement(_titleLogo);
@@ -168,7 +172,23 @@ namespace PitHero.UI
 
         public void Update()
         {
-            // Handle any per-frame updates if needed
+            // Re-center fixed-position elements when the stage size changes. The stage reports the
+            // backbuffer size until the UICanvas is registered, and under the FixedHeight policy the
+            // render-target width varies per monitor, so a single layout pass at init is not enough.
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+            if (stageW != _lastStageWidth || stageH != _lastStageHeight)
+            {
+                _lastStageWidth = stageW;
+                _lastStageHeight = stageH;
+
+                _titleLogo?.SetPosition((stageW - _titleSpriteWidth) / 2f, stageH * 0.30f);
+                _mainMenuTable?.SetY(stageH * 0.25f);
+                _quitConfirmationDialog?.SetPosition(
+                    (stageW - _quitConfirmationDialog.GetWidth()) / 2,
+                    (stageH - _quitConfirmationDialog.GetHeight()) / 2
+                );
+            }
         }
     }
 }

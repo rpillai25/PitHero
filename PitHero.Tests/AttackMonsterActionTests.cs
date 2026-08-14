@@ -43,6 +43,34 @@ namespace PitHero.Tests
             Assert.AreEqual(3, action.Cost, "Action should have correct cost");
         }
 
+        /// <summary>An in-flight battle must block plan interrupts (stop, job change, replenish):
+        /// the battle coroutine is uncancellable, and a mid-battle replan flips the hero's
+        /// PitIntent and sends mercenaries out of the pit while the fight continues.</summary>
+        [TestMethod]
+        [TestCategory("GOAP")]
+        public void AttackMonsterAction_ShouldNotOverride_TrueWhileBattleCoroutineRuns()
+        {
+            var action = new AttackMonsterAction();
+
+            Assert.IsFalse(action.ShouldNotOverride(), "No battle in flight: action should be interruptible");
+
+            var field = typeof(AttackMonsterAction).GetField("_battleCoroutine",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.IsNotNull(field, "AttackMonsterAction should track its battle coroutine in _battleCoroutine");
+            field.SetValue(action, new StubCoroutine());
+
+            Assert.IsTrue(action.ShouldNotOverride(), "Battle coroutine in flight: action must not be overridden");
+
+            field.SetValue(action, null);
+            Assert.IsFalse(action.ShouldNotOverride(), "Battle finished: action should be interruptible again");
+        }
+
+        private sealed class StubCoroutine : Nez.ICoroutine
+        {
+            public void Stop() { }
+            public Nez.ICoroutine SetUseUnscaledDeltaTime(bool useUnscaledDeltaTime) => this;
+        }
+
         // ── BattleEngine.SelectPrimaryTarget helper tests (Fix 3) ─────────────────────
 
         [TestMethod]
