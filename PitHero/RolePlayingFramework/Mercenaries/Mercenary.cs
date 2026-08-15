@@ -36,6 +36,9 @@ namespace RolePlayingFramework.Mercenaries
         public int HeavyArmorDefenseBonus { get; set; }
         public bool TrapSense { get; set; }
 
+        // Crit shuffle bags — persist across battles; never reset (issue #382)
+        public CritBagSet CritBags { get; } = new CritBagSet();
+
         // Extra equip permissions granted by learned passives (e.g. knight.light_armor allows robes)
         private readonly HashSet<ItemKind> _extraEquipPermissions = new HashSet<ItemKind>();
 

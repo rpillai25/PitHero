@@ -39,6 +39,9 @@ namespace RolePlayingFramework.Heroes
         public int HeavyArmorDefenseBonus { get; set; }
         public bool TrapSense { get; set; }
 
+        // Crit shuffle bags — persist across battles; never reset (issue #382)
+        public CritBagSet CritBags { get; } = new CritBagSet();
+
         // Synergy-based stat modifiers (internal for synergy effect access)
         internal StatBlock _synergyStatBonus = new StatBlock(0, 0, 0, 0);
         internal int _synergyHPBonus = 0;

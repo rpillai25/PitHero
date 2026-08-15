@@ -1118,6 +1118,55 @@ namespace PitHero.Services
             }
         }
 
+        // Patron dish shuffle bag (#382): every dish weighted inversely to its price, so
+        // cheap dishes are ordered more often but even the priciest cycles through
+        // predictably. Lazily built — prices are static per session (DishConfig cache).
+        private RolePlayingFramework.Utils.ShuffleBag<DishType> _dishBag;
+
+        /// <summary>
+        /// Picks the dish a walk-in patron orders from the currently orderable set.
+        /// Bounded draw-and-skip over the persistent full-menu bag: unorderable draws are
+        /// skipped (their marbles restore on the next bag cycle when stock returns), so
+        /// pricey-dish pity persists across stock fluctuations. Falls back to a uniform
+        /// pick if a full cycle yields nothing orderable.
+        /// </summary>
+        public DishType PickPatronDish(List<DishType> orderable)
+        {
+            if (_dishBag == null)
+                BuildDishBag();
+
+            int limit = _dishBag.Count;
+            for (int i = 0; i < limit; i++)
+            {
+                var dish = _dishBag.Next();
+                for (int j = 0; j < orderable.Count; j++)
+                {
+                    if (orderable[j] == dish)
+                        return dish;
+                }
+            }
+            return orderable[Nez.Random.Range(0, orderable.Count)];
+        }
+
+        /// <summary>Builds the inverse-price dish bag: marbles(d) = max(1, round(maxPrice / price(d))).</summary>
+        private void BuildDishBag()
+        {
+            int maxPrice = 0;
+            for (int d = 0; d < DishTypeInfo.Count; d++)
+            {
+                int price = DishConfig.GetPrice((DishType)d);
+                if (price > maxPrice) maxPrice = price;
+            }
+
+            _dishBag = new RolePlayingFramework.Utils.ShuffleBag<DishType>(DishTypeInfo.Count * 4);
+            for (int d = 0; d < DishTypeInfo.Count; d++)
+            {
+                var dish = (DishType)d;
+                int marbles = Math.Max(1, (int)Math.Round((float)maxPrice / DishConfig.GetPrice(dish)));
+                _dishBag.Add(dish, marbles);
+            }
+        }
+
         /// <summary>Registers the party order source.</summary>
         public void SetPartyOrderSource(IPartyOrderSource source) => _partyOrderSource = source;
 

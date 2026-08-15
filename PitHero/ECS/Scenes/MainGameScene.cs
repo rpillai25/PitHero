@@ -166,6 +166,10 @@ namespace PitHero.ECS.Scenes
             // resolve it via Core.Services.GetService<CrystalCollectionService>() during Initialize.
             Core.Services.AddService(new Services.CrystalCollectionService());
 
+            // Register the loot shuffle bags (#382) before any pit generation so chest rolls
+            // route through session-persistent bags. Transient by design — never saved.
+            Core.Services.AddService(new Services.LootShuffleService());
+
             // Register building service so farm building placement and counts are queryable.
             Core.Services.AddService(new Services.BuildingService());
 

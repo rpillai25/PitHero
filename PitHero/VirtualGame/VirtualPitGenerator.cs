@@ -19,6 +19,19 @@ namespace PitHero.VirtualGame
         private readonly VirtualTiledMapService _tiledMapService;
         private readonly VirtualPitWidthManager _pitWidthManager;
 
+        // Loot shuffle bags (#382). The generator is recreated per level by
+        // VirtualGameSimulation, so the sim injects one shared set per run — that carries
+        // rarity/accessory pity across floors like the live session bags. Draws are fed
+        // from the per-level Random(depth), keeping generation deterministic.
+        private Services.LootBagSet _lootBags = new Services.LootBagSet();
+
+        /// <summary>The loot shuffle bags used for chest rolls; inject to share across levels.</summary>
+        public Services.LootBagSet LootBags
+        {
+            get => _lootBags;
+            set => _lootBags = value ?? _lootBags;
+        }
+
         /// <summary>
         /// Party job context used to bias chest gear toward equipable kinds, mirroring
         /// the live PitGenerator.BuildLootJobContext weighting.  Leave default (empty)
@@ -139,9 +152,9 @@ namespace PitHero.VirtualGame
                     if (CaveBiomeConfig.IsCaveLevel(displayedLevel))
                     {
                         float roll = (float)random.NextDouble();
-                        int treasureLevel = CaveBiomeConfig.DetermineCaveTreasureLevel(displayedLevel, roll);
+                        int treasureLevel = _lootBags.DrawCaveTreasureLevel(displayedLevel, roll);
                         var lootCtx = LootContext;
-                        item = TreasureComponent.GenerateCaveItemForTreasureLevelDeterministic(treasureLevel, in lootCtx, random);
+                        item = TreasureComponent.GenerateCaveItemForTreasureLevelDeterministic(treasureLevel, in lootCtx, random, _lootBags);
                     }
                     else
                     {

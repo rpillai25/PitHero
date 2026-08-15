@@ -390,7 +390,9 @@ namespace PitHero.ECS.Components
             _coordinator.GetOrderableDishes(orderable);
             if (orderable.Count == 0)
                 return;
-            var dish = orderable[Nez.Random.Range(0, orderable.Count)];
+            // Inverse-price shuffle bag (#382): cheap dishes more often, pricey ones on a
+            // predictable cadence instead of pure uniform random.
+            var dish = _coordinator.PickPatronDish(orderable);
             var t = _coordinator.CreateTicket(dish, false, -1, patron, comp.SeatTile);
             if (t != null)
             {

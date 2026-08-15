@@ -28,19 +28,26 @@ namespace RolePlayingFramework.Combat
         }
 
         /// <summary>
-        /// Returns true when the caster's first-attack crit chance applies and the roll wins.
-        /// This is the testable seam for Quickdraw: production code passes <c>Nez.Random.NextFloat()</c>;
-        /// tests supply a deterministic value.
+        /// Rolls the caster's critical hit for one attack action via the per-combatant crit
+        /// shuffle bags (issue #382): the base bag advances on every attack; the quickdraw bag
+        /// only applies on the caster's first offensive action when Quickdraw is learned.
+        /// This is the testable seam: production code passes two <c>Nez.Random.NextFloat()</c>
+        /// values (always both consumed, keeping the battle RNG stream a fixed two floats per
+        /// ally attack); tests supply deterministic values.
         /// </summary>
         /// <param name="caster">The attacking combatant.</param>
         /// <param name="isFirstAction">
         /// Whether this is the caster's first offensive action this battle
         /// (from <c>IBattleContext.IsFirstOffensiveAction</c>).
         /// </param>
-        /// <param name="roll">A value in [0, 1) supplied by the caller.</param>
-        public static bool RollFirstAttackCrit(ICombatant caster, bool isFirstAction, float roll)
+        /// <param name="baseRoll">A value in [0, 1) for the base-crit bag draw.</param>
+        /// <param name="quickdrawRoll">A value in [0, 1) for the quickdraw bag draw.</param>
+        public static bool RollCrit(ICombatant caster, bool isFirstAction, float baseRoll, float quickdrawRoll)
         {
-            return isFirstAction && caster.FirstAttackCritChance > 0f && roll < caster.FirstAttackCritChance;
+            var crit = caster.CritBags.RollBase(baseRoll);
+            if (isFirstAction && caster.FirstAttackCritChance > 0f)
+                crit |= caster.CritBags.RollQuickdraw(quickdrawRoll, caster.FirstAttackCritChance);
+            return crit;
         }
     }
 }

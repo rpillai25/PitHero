@@ -571,10 +571,12 @@ namespace PitHero.Combat
             Debug.Log($"[BattleEngine] Hero attacking {targetEnemy.Name}");
             var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
 
-            // Phase 4: Quickdraw — crit roll BEFORE dealing damage
-            bool isCrit = BattleReactionHelper.RollFirstAttackCrit(hero,
+            // Crit bags (#382): two floats always consumed per ally attack (RNG contract)
+            float heroCritRoll = Random.NextFloat();
+            float heroQdRoll = Random.NextFloat();
+            bool isCrit = BattleReactionHelper.RollCrit(hero,
                 battleContext.IsFirstOffensiveAction(hero),
-                Random.NextFloat());
+                heroCritRoll, heroQdRoll);
             battleContext.MarkActed(hero);
 
             if (queuedAction.WeaponItem == null)
@@ -783,10 +785,12 @@ namespace PitHero.Combat
             var attackResolver = new EnhancedAttackResolver();
             var mercAttackResult = attackResolver.Resolve(mercBattleStats, targetBattleStats, DamageKind.Physical);
 
-            // Phase 4: Quickdraw — crit roll BEFORE dealing damage
-            bool isCrit = BattleReactionHelper.RollFirstAttackCrit(mercenary,
+            // Crit bags (#382): two floats always consumed per ally attack (RNG contract)
+            float mercCritRoll = Random.NextFloat();
+            float mercQdRoll = Random.NextFloat();
+            bool isCrit = BattleReactionHelper.RollCrit(mercenary,
                 battleContext.IsFirstOffensiveAction(mercenary),
-                Random.NextFloat());
+                mercCritRoll, mercQdRoll);
             battleContext.MarkActed(mercenary);
 
             _sink.PlaySound(BattleSound.Punch, mercenary);
@@ -839,7 +843,7 @@ namespace PitHero.Combat
         /// <summary>
         /// Shared coroutine for both hero and mercenary attack skills.
         /// Snapshots HP before Execute, diffs damage, handles crits, deaths, rewards.
-        /// Preserves the exact Nez.Random call sequence (crit roll BEFORE Execute,
+        /// Preserves the exact Nez.Random call sequence (two crit-bag rolls BEFORE Execute,
         /// MarkActed AFTER, second crit pass on crit exactly as original).
         /// </summary>
         private IEnumerator ExecuteCombatantAttackSkill(ISkill skill, ICombatant caster,
@@ -865,10 +869,12 @@ namespace PitHero.Combat
             for (int i = 1; i < _tempLivingEnemies.Count; i++)
                 _surroundingTargets.Add(_tempLivingEnemies[i]);
 
-            // Phase 4: Quickdraw crit roll BEFORE Execute
-            bool isCrit = BattleReactionHelper.RollFirstAttackCrit(caster,
+            // Crit bags (#382): two floats always consumed per ally attack, BEFORE Execute (RNG contract)
+            float skillCritRoll = Random.NextFloat();
+            float skillQdRoll = Random.NextFloat();
+            bool isCrit = BattleReactionHelper.RollCrit(caster,
                 battleContext.IsFirstOffensiveAction(caster),
-                Random.NextFloat());
+                skillCritRoll, skillQdRoll);
 
             var attackResolver = new EnhancedAttackResolver();
             skill.Execute(caster, primaryTarget, _surroundingTargets, attackResolver, battleContext);

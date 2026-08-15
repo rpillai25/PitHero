@@ -170,6 +170,28 @@ namespace RolePlayingFramework.Balance
         /// </summary>
         public const int LootWeightAllJobs = 2;
 
+        /// <summary>
+        /// Share of cave equipment drops reserved for accessories, enforced by a shuffle bag
+        /// (1 accessory marble per 10) so accessories reliably appear instead of starving in
+        /// the large weighted pools (issue #382).
+        /// </summary>
+        public const float AccessoryLootShare = 0.10f;
+
+        #endregion
+
+        #region Crit Constants
+
+        /// <summary>
+        /// Base critical-hit chance for every hero and mercenary attack (physical or attack
+        /// skill). Enforced by a per-combatant shuffle bag: exactly
+        /// BaseCritChance × CritBagSize crits per CritBagSize attacks (issue #382).
+        /// Monsters never crit.
+        /// </summary>
+        public const float BaseCritChance = 0.05f;
+
+        /// <summary>Marble count of each crit shuffle bag (the pity cycle length).</summary>
+        public const int CritBagSize = 20;
+
         #endregion
 
         #region Rarity Multipliers

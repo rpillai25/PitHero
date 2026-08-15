@@ -20,6 +20,10 @@ namespace PitHero.VirtualGame
     public class VirtualGameSimulation
     {
         private readonly VirtualWorldState _world;
+
+        // Loot shuffle bags (#382) — one shared set per simulation run, injected into each
+        // per-level VirtualPitGenerator and VirtualBattleRunner so pity spans floors.
+        private readonly Services.LootBagSet _lootBags = new Services.LootBagSet();
         private readonly VirtualHero _hero;
         private readonly VirtualPitLevelQueue _pitQueue;
         private string _currentAction;
@@ -445,6 +449,9 @@ namespace PitHero.VirtualGame
             var pitWidthManager = new VirtualPitWidthManager(tiledMapService);
             var generator       = new VirtualPitGenerator(_world, tiledMapService, pitWidthManager);
             generator.LootContext = BuildLootJobContext();
+            // Share one loot bag set across every level of this run (#382) so rarity/
+            // accessory pity carries across floors like the live session bags.
+            generator.LootBags = _lootBags;
             generator.RegenerateForLevel(pitLevel);
 
             // Build the battle runner with the real hero + mercs.
@@ -454,6 +461,9 @@ namespace PitHero.VirtualGame
             _battleRunner  = new VirtualBattleRunner(_world, partyView);
             _battleRunner.SetHeroAlly(_hero.LinkedHero);
             _battleRunner.SetMercenaries(_mercenaries);
+            // Boss epic chest parity (#382): shared bags + current tier for gear scaling.
+            _battleRunner.LootBags = _lootBags;
+            _battleRunner.CurrentPitTier = _simPitWidthManager.CurrentPitTier;
 
             // Place hero at pit start and reset the per-level GOAP flags — without this,
             // a persistent multi-level run (RunLevelRange) would carry ActivatedWizardOrb

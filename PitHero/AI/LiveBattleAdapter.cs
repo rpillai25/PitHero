@@ -698,6 +698,12 @@ namespace PitHero.AI
                     }
                 }
                 Debug.Log($"[LiveBattleAdapter] Boss {enemy.Name} defeated - BossDefeated=true");
+
+                // Biome main boss drops an epic chest at its tile (#382). This runs mid-battle
+                // inside the engine coroutine, so it must consume ZERO Nez.Random — the epic
+                // draw uses LootShuffleService's private System.Random.
+                if (enemy.EnemyId == RolePlayingFramework.Enemies.EnemyId.MoltenTitan)
+                    SpawnBossEpicChest(enemy);
             }
 
             // Console event for monster death (after recruit, matching original line order)
@@ -707,6 +713,49 @@ namespace PitHero.AI
                     enemy.IsBoss ? EventPriority.High : EventPriority.Normal,
                     UITextKey.ConsoleMonsterDied,
                     (evtSvc.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
+        }
+
+        /// <summary>
+        /// Spawns the epic treasure chest for a biome main-boss kill (#382). The boss entity
+        /// is still alive here (fade/destroy happens later in ShowMonsterDeath), so its tile
+        /// anchors the chest. GOAP flags are reset so the post-battle replan targets the new
+        /// chest. Must consume zero Nez.Random — this runs mid-battle (RNG contract).
+        /// </summary>
+        private void SpawnBossEpicChest(IEnemy enemy)
+        {
+            var scene = Core.Scene;
+            if (scene == null)
+                return;
+
+            var lootService = Core.Services.GetService<PitHero.Services.LootShuffleService>();
+            if (lootService == null)
+                return;
+
+            var bossEntity = GetEntityForEnemy(enemy);
+            var anchor = bossEntity != null
+                ? bossEntity.Transform.Position
+                : _heroComponent.Entity.Transform.Position;
+            var tile = new Point((int)(anchor.X / GameConfig.TileSize), (int)(anchor.Y / GameConfig.TileSize));
+
+            var item = lootService.DrawEpicItem();
+
+            // Tier-2+ runs upgrade the epic drop exactly like chest gear (TreasureComponent parity).
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int pitTier = pitWidthManager?.CurrentPitTier ?? 1;
+            if (pitTier >= 2 && item is RolePlayingFramework.Equipment.Gear gear)
+            {
+                int depthDelta = (pitTier - 1) * Config.BiomeProgressionConfig.MaxBiomeLevel;
+                item = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(gear, pitTier, depthDelta);
+            }
+
+            TreasureSpawner.SpawnTreasureChestAtTile(scene, tile, item);
+
+            // Un-latch ExploredPit and refresh chest adjacency so the post-battle replan
+            // (Idle_Enter/Idle_Tick) sees the new CLOSED chest and goes to open it.
+            _heroComponent.ExploredPit = false;
+            _heroComponent.AdjacentToChest = _heroComponent.CheckAdjacentToChest();
+
+            Debug.Log($"[LiveBattleAdapter] Boss epic chest spawned at ({tile.X},{tile.Y}) containing {item.Name}");
         }
 
         /// <inheritdoc/>
