@@ -69,5 +69,16 @@ namespace PitHero
         public const string WorkerDoMyBest                = "WorkerDoMyBest";
         public const string WorkerGoingToWork             = "WorkerGoingToWork";
         public const string WorkerHappyToHelp             = "WorkerHappyToHelp";
+
+        // Issue #385 — innkeeper
+        public const string InnkeeperGoodRest             = "InnkeeperGoodRest";
+        public const string InnkeeperFarewellGoodLuck     = "InnkeeperFarewellGoodLuck";
+        public const string InnkeeperFarewellPleasantAdventures = "InnkeeperFarewellPleasantAdventures";
+        public const string InnkeeperFarewellComeBackSoon = "InnkeeperFarewellComeBackSoon";
+
+        // Issue #385 — Second Chance merchant
+        public const string SecondChanceInterestedWares   = "SecondChanceInterestedWares";
+        public const string SecondChanceBuyBackSomething  = "SecondChanceBuyBackSomething";
+        public const string SecondChanceMissSomething     = "SecondChanceMissSomething";
     }
 }

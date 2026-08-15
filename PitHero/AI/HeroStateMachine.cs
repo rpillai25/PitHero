@@ -487,6 +487,7 @@ namespace PitHero.AI
 
                 // Check for adjacent monsters after reaching a new tile
                 var currentTile = tileMover.GetCurrentTileCoordinates();
+                CheckInnFarewell(currentTile);
                 bool wasAdjacent = _hero.AdjacentToMonster;
                 _hero.AdjacentToMonster = _hero.CheckAdjacentToMonster();
 
@@ -1097,6 +1098,30 @@ namespace PitHero.AI
         private void EmitPitAdventureBubble()
         {
             SpeechBubbleDialogue.SayPitAdventure(Entity);
+        }
+
+        /// <summary>
+        /// One-shot innkeeper farewell when the hero crosses the inn-farewell tile on a
+        /// pit-bound trip that originated at the inn (issue #385). The first post-inn trip
+        /// that is NOT a pit trip (e.g. the auto-dine tavern detour) disarms the latch, so
+        /// a later pit trip from the tavern that also passes the tile stays silent.
+        /// </summary>
+        private void CheckInnFarewell(Point currentTile)
+        {
+            if (!_hero.JustLeftInn)
+                return;
+
+            if (_hero.PitIntent != HeroPitIntent.EnteringPit)
+            {
+                _hero.JustLeftInn = false; // trip no longer originates from the inn
+                return;
+            }
+
+            if (currentTile.X == GameConfig.InnFarewellTileX && currentTile.Y == GameConfig.InnFarewellTileY)
+            {
+                _hero.JustLeftInn = false;
+                SpeechBubbleDialogue.SayInnkeeperFarewell(Entity.Scene?.FindEntity("innkeeper"));
+            }
         }
 
         #endregion

@@ -1819,6 +1819,8 @@ namespace PitHero.ECS.Scenes
                 headAnimator, eyesAnimator, hairAnimator, hand1Animator));
             innkeeperMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
+            innkeeperEntity.AddComponent(new SpeechBubbleComponent());
+
             Debug.Log($"[MainGameScene] Innkeeper spawned at tile ({tileX}, {tileY}) facing left");
         }
 

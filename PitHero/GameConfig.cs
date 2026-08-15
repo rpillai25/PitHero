@@ -109,6 +109,8 @@ namespace PitHero
         public const int InnMercBed2TileY = 7;
         public const int InnExitTileX = 71; // Hero walks here after waking, between payment tile and bed
         public const int InnExitTileY = 3;
+        public const int InnFarewellTileX = 63; // Innkeeper waves goodbye when the hero crosses (63,6) heading to the pit
+        public const int InnFarewellTileY = 6;
         // Render-only Y offset applied to a sleeping actor's composite sprite so they nestle
         // into the bed instead of standing on top of it
         public const float SleepInBedSpriteOffsetY = 8f;
@@ -475,6 +477,11 @@ namespace PitHero
         // Sprite is 256x256; Y=50 places it within the 360px stage height (50 to 306)
         public const float SecondChanceMerchantSpriteX = 935f;
         public const float SecondChanceMerchantSpriteY = 50f;
+
+        // Merchant greeting bubble tail-tip anchor, relative to the sprite's top-left (issue #385).
+        // X centers on the 256px art; Y sits at the top of the merchant's head within the frame.
+        public const float SecondChanceMerchantBubbleAnchorX = 128f;
+        public const float SecondChanceMerchantBubbleAnchorY = 40f;
 
         // Inventory interaction
         /// <summary>Minimum pixel movement to initiate a drag operation.</summary>

@@ -6,8 +6,8 @@ cycle the draw counts exactly match the bag's composition, so streaks and drough
 bounded while individual draws still feel random. Average rates are unchanged from the
 pure-random constants the bags replaced — only the variance is tamed.
 
-Four systems are bag-driven: **battle crits**, **treasure-chest loot**, the **biome-boss epic
-chest**, and **tavern patron dish orders**.
+Five systems are bag-driven: **battle crits**, **treasure-chest loot**, the **biome-boss epic
+chest**, **tavern patron dish orders**, and **speech-bubble dialogue variants** (issue #385).
 
 ## The primitive: `ShuffleBag<T>`
 
@@ -160,6 +160,21 @@ still cycles through on a bounded cadence. Selection is **bounded draw-and-skip*
 first drawn dish present in the orderable list wins; skipped unorderable marbles restore next
 cycle so pricey-dish pity persists across stock fluctuations; a fully unorderable cycle falls
 back to a uniform pick.
+
+## Speech-bubble dialogue variants
+
+Files: `PitHero/SpeechBubbleDialogue.cs`; details in `SpeechBubbleSystem.md`.
+
+Every multi-variant dialogue event's `OptionBag` pairs its `Option[]` with a static
+`ShuffleBag<int>` of option indices — a single pool shared by all speakers of the event
+(the issue #385 requirement: two cooks can't repeat a line within a cycle). Draws use the
+class's **private `System.Random`** via `Next(rng)` — never `Nez.Random`, because
+`SayBossDefeated` fires mid-battle (rule 1 of the epic-chest section applies). Gates
+(merc/tip) use **bounded draw-and-skip** like the dish bag, capped at `Count * 2` draws
+with an eligibility pre-count that returns early without touching the bag. The headless
+guard (`Core.Instance == null`) sits before any draw, so bags never advance in unit tests.
+Selection core `SelectKey` is public and pure — tested in
+`PitHero.Tests/SpeechBubbleShuffleBagTests.cs`.
 
 ## Persistence: none, by design
 
