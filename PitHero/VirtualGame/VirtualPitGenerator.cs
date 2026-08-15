@@ -19,10 +19,18 @@ namespace PitHero.VirtualGame
         private readonly VirtualTiledMapService _tiledMapService;
         private readonly VirtualPitWidthManager _pitWidthManager;
 
-        // Loot shuffle bags (#382): one set per generator instance (= per sim run), so
-        // rarity/accessory/seedless pity carries across floors like the live session bags.
-        // Draws are fed from the per-level Random(depth), keeping generation deterministic.
-        private readonly Services.LootBagSet _lootBags = new Services.LootBagSet();
+        // Loot shuffle bags (#382). The generator is recreated per level by
+        // VirtualGameSimulation, so the sim injects one shared set per run — that carries
+        // rarity/accessory pity across floors like the live session bags. Draws are fed
+        // from the per-level Random(depth), keeping generation deterministic.
+        private Services.LootBagSet _lootBags = new Services.LootBagSet();
+
+        /// <summary>The loot shuffle bags used for chest rolls; inject to share across levels.</summary>
+        public Services.LootBagSet LootBags
+        {
+            get => _lootBags;
+            set => _lootBags = value ?? _lootBags;
+        }
 
         /// <summary>
         /// Party job context used to bias chest gear toward equipable kinds, mirroring

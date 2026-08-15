@@ -366,6 +366,15 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
+        /// Tries to get a living-or-dead monster's tile. Used to capture a boss's position
+        /// before the battle sink removes it on death (#382 epic chest anchor).
+        /// </summary>
+        public bool TryGetMonsterPosition(IEnemy enemy, out Point position)
+        {
+            return _monsterPositions.TryGetValue(enemy, out position);
+        }
+
+        /// <summary>
         /// Removes a defeated monster from both the instance dictionaries and the
         /// <c>_entities["Monsters"]</c> position list so the world state stays consistent.
         /// </summary>

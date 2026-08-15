@@ -40,14 +40,7 @@ namespace PitHero.Services
         /// </summary>
         public IItem DrawEpicItem()
         {
-            var index = Bags.DrawEpicIndex((float)_epicRng.NextDouble());
-            switch (index)
-            {
-                case 0: return GearItems.PitLordsSword();
-                case 1: return GearItems.PitLordsArmor();
-                case 2: return GearItems.PitLordsAegis();
-                default: return GearItems.PitLordsCrown();
-            }
+            return Bags.DrawEpicItem((float)_epicRng.NextDouble());
         }
     }
 }

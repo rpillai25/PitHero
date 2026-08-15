@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using PitHero.AI;
 using PitHero.Combat;
 using RolePlayingFramework.Combat;
@@ -47,6 +48,22 @@ namespace PitHero.VirtualGame
 
         /// <summary>Read-only list of metrics from every battle run through this runner.</summary>
         public IReadOnlyList<VirtualBattleMetrics> AllBattleMetrics => _allBattleMetrics;
+
+        // ── Boss epic chest (#382) ────────────────────────────────────────────────
+
+        // Epic draw RNG — independent of the Nez.Random combat stream (mirrors the live
+        // LootShuffleService, whose mid-battle epic draw must not touch the global stream).
+        private readonly System.Random _epicRng = new System.Random(382);
+
+        /// <summary>
+        /// Loot bags used for the biome main-boss epic drop. Inject the simulation's shared
+        /// set so the PitLord items cycle without repeats across the whole run; when null,
+        /// boss kills spawn no epic chest (standalone engine tests keep legacy behavior).
+        /// </summary>
+        public Services.LootBagSet LootBags { get; set; }
+
+        /// <summary>Pit tier for epic-drop gear scaling (mirrors live chest tier scaling).</summary>
+        public int CurrentPitTier { get; set; } = 1;
 
         // ── Construction ──────────────────────────────────────────────────────────
 
@@ -159,11 +176,23 @@ namespace PitHero.VirtualGame
             _world.GetLivingMonstersAdjacentTo(_world.HeroPosition, _adjacentBuffer);
             if (_adjacentBuffer.Count == 0) return null;
 
-            // Determine if this battle contains a boss
+            // Determine if this battle contains a boss; capture the biome main boss and its
+            // tile BEFORE the battle — the sink removes dead monsters from the world state.
             bool isBoss = false;
+            IEnemy mainBoss = null;
+            Point mainBossTile = default;
             for (int i = 0; i < _adjacentBuffer.Count; i++)
             {
-                if (_adjacentBuffer[i].IsBoss) { isBoss = true; break; }
+                var candidate = _adjacentBuffer[i];
+                if (candidate.IsBoss)
+                {
+                    isBoss = true;
+                    if (candidate.EnemyId == EnemyId.MoltenTitan && _world.TryGetMonsterPosition(candidate, out var bossPos))
+                    {
+                        mainBoss = candidate;
+                        mainBossTile = bossPos;
+                    }
+                }
             }
 
             // Reset burst flags so each battle starts clean
@@ -181,6 +210,19 @@ namespace PitHero.VirtualGame
             var engine = new BattleEngine(_partyView, _sink);
             HeadlessCoroutineRunner.RunToCompletion(
                 engine.Run(_heroAlly, _mercAllyInterfaces, monsters, _heroActionQueue));
+
+            // Biome main-boss epic chest (#382) — mirrors LiveBattleAdapter.SpawnBossEpicChest.
+            // Draws with a runner-owned System.Random, never the Nez.Random combat stream.
+            if (mainBoss != null && mainBoss.CurrentHP <= 0 && LootBags != null)
+            {
+                var epicItem = LootBags.DrawEpicItem((float)_epicRng.NextDouble());
+                if (CurrentPitTier >= 2 && epicItem is Gear epicGear)
+                {
+                    int depthDelta = (CurrentPitTier - 1) * Config.BiomeProgressionConfig.MaxBiomeLevel;
+                    epicItem = Gear.CreateTierScaledCopy(epicGear, CurrentPitTier, depthDelta);
+                }
+                _world.AddTreasure(mainBossTile, epicItem);
+            }
 
             var metrics = _sink.CurrentMetrics;
             if (metrics != null) _allBattleMetrics.Add(metrics);

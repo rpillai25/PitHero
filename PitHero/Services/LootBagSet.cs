@@ -132,5 +132,20 @@ namespace PitHero.Services
 
         /// <summary>Epic pool selector (0–3, PitLord set) — all four cycle before any repeats.</summary>
         public int DrawEpicIndex(float roll01) => _epicIndex.NextFromRoll(roll01);
+
+        /// <summary>
+        /// Draws the next epic item for a biome main-boss chest — all four PitLord items
+        /// cycle before any repeat.
+        /// </summary>
+        public RolePlayingFramework.Equipment.IItem DrawEpicItem(float roll01)
+        {
+            switch (DrawEpicIndex(roll01))
+            {
+                case 0: return RolePlayingFramework.Equipment.GearItems.PitLordsSword();
+                case 1: return RolePlayingFramework.Equipment.GearItems.PitLordsArmor();
+                case 2: return RolePlayingFramework.Equipment.GearItems.PitLordsAegis();
+                default: return RolePlayingFramework.Equipment.GearItems.PitLordsCrown();
+            }
+        }
     }
 }
