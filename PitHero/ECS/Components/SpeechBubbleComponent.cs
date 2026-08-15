@@ -3,7 +3,6 @@ using Microsoft.Xna.Framework.Graphics;
 using Nez;
 using Nez.BitmapFonts;
 using Nez.Textures;
-using Nez.UI;
 using PitHero.Services;
 using System.Collections;
 using System.Text;
@@ -42,11 +41,17 @@ namespace PitHero.ECS.Components
         private static readonly Color BubbleColor = Color.White;
         private static readonly Color TextColor = new Color(50, 30, 20);
 
-        // Drawables and font (null until OnAddedToEntity succeeds)
-        private NinePatchDrawable _bubbleDrawable;
+        // Drawables and fonts (null until OnAddedToEntity succeeds)
+        private NinePatchSprite _bubbleSprite;
         private Sprite _tailSprite;
         private BitmapFont _font;
+        private BitmapFont _font2x;
         private PauseService _pauseService;
+
+        // Nine-patch destination layout at design size (128×48), generated once. Render scales each
+        // patch by _activeScale so the 4 px borders double along with the bubble in half-window mode
+        // (NinePatchDrawable.Draw can't do this — it always draws borders at their source size).
+        private readonly Rectangle[] _bubbleDesignRects = new Rectangle[9];
 
         // State
         private bool _active;
@@ -54,8 +59,11 @@ namespace PitHero.ECS.Components
         private readonly StringBuilder _visibleText = new StringBuilder(256);
         private ICoroutine _revealRoutine;
 
-        // Pre-allocated tail destination rectangle (mutated in Render, no per-frame alloc)
-        private Rectangle _tailDestRect;
+        // Per-bubble presentation, chosen at Say() time: 2x bubble + pre-scaled Express2x font in
+        // half-size window mode so text reads at the same physical size as the normal window.
+        // A window-mode toggle mid-bubble keeps the bubble's Say-time scale; the next Say re-picks.
+        private int _activeScale = 1;
+        private BitmapFont _activeFont;
 
         /// <summary>
         /// Optional body renderer whose sprite height anchors the bubble. When set, the tail
@@ -66,12 +74,12 @@ namespace PitHero.ECS.Components
 
         /// <inheritdoc/>
         /// Screen pixels. Bounds is not used for culling — see the IsVisibleFromCamera override.
-        public override float Width => GameConfig.SpeechBubbleWidth;
+        public override float Width => GameConfig.SpeechBubbleWidth * _activeScale;
 
         /// <inheritdoc/>
         /// Full visual height in screen pixels: bubble body + tail sprite height - tail overlap with bubble border.
         public override float Height =>
-            GameConfig.SpeechBubbleHeight + TailSpriteH - GameConfig.SpeechBubbleTailOverlap;
+            (GameConfig.SpeechBubbleHeight + TailSpriteH - GameConfig.SpeechBubbleTailOverlap) * _activeScale;
 
         public override void OnAddedToEntity()
         {
@@ -100,8 +108,10 @@ namespace PitHero.ECS.Components
                     return;
                 }
 
-                _bubbleDrawable = new NinePatchDrawable(
-                    new NinePatchSprite(bubbleSprite, 4, 4, 4, 4));
+                _bubbleSprite = new NinePatchSprite(bubbleSprite.Texture2D, bubbleSprite.SourceRect, 4, 4, 4, 4);
+                _bubbleSprite.GenerateNinePatchRects(
+                    new Rectangle(0, 0, GameConfig.SpeechBubbleWidth, GameConfig.SpeechBubbleHeight),
+                    _bubbleDesignRects, 4, 4, 4, 4);
 
                 _font = Core.Content.LoadBitmapFont(GameConfig.FontPathSpeechBubble);
                 if (_font == null)
@@ -109,6 +119,12 @@ namespace PitHero.ECS.Components
                     Debug.Warn("[SpeechBubble] Failed to load speech bubble font");
                     return;
                 }
+
+                _font2x = Core.Content.LoadBitmapFont(GameConfig.FontPathSpeechBubble2x);
+                if (_font2x == null)
+                    Debug.Warn("[SpeechBubble] Failed to load 2x speech bubble font — half-window bubbles stay 1x");
+
+                _activeFont = _font;
 
                 _pauseService = Core.Services.GetService<PauseService>();
                 SetRenderLayer(GameConfig.RenderLayerSpeechBubble);
@@ -126,14 +142,21 @@ namespace PitHero.ECS.Components
         /// <param name="localizedText">Already-localized text to display.</param>
         public void Say(string localizedText)
         {
-            if (_bubbleDrawable == null || _font == null || string.IsNullOrEmpty(localizedText))
+            if (_bubbleSprite == null || _font == null || string.IsNullOrEmpty(localizedText))
                 return;
 
             _revealRoutine?.Stop();
             _revealRoutine = null;
 
+            // Half-size window: double the bubble and use the pre-scaled 2x font so the text
+            // displays at the same physical size as the normal window. Wrap width doubles with
+            // the font, so line breaks land in the same places.
+            bool halfWindow = WindowManager.IsHalfHeightMode() && _font2x != null;
+            _activeScale = halfWindow ? 2 : 1;
+            _activeFont = halfWindow ? _font2x : _font;
+
             _visibleText.Clear();
-            _wrappedText = _font.WrapText(localizedText, TextWrapWidth);
+            _wrappedText = _activeFont.WrapText(localizedText, TextWrapWidth * _activeScale);
             _active = true;
 
             _revealRoutine = Core.StartCoroutine(RevealRoutine());
@@ -193,7 +216,7 @@ namespace PitHero.ECS.Components
 
         public override void Render(Batcher batcher, Camera camera)
         {
-            if (!_active || _bubbleDrawable == null || _font == null)
+            if (!_active || _bubbleSprite == null || _activeFont == null)
                 return;
 
             // camera is the screen-space renderer's static camera — positioning instead derives
@@ -202,39 +225,47 @@ namespace PitHero.ECS.Components
             var anchor = Entity.Scene.Camera.WorldToScreenPoint(
                 new Vector2(Entity.Position.X, Entity.Position.Y + GetTailTipOffsetY()));
             var p = anchor;
+            float s = _activeScale;
 
-            // Position math (screen pixels):
+            // Position math (screen pixels, all extents ×_activeScale — 2x in half-size window):
             //   tail bottom Y = anchor (tail tip, 4 world px clearance above sprite top)
             //   tail top Y    = tail bottom - tail height  (tail sprite is 8 px tall)
             //   bubble bottom = tail top + tail overlap with bubble border (2 px)
             //   bubble top    = bubble bottom - bubble height  (48 px)
             float tailBottomY   = p.Y;
-            float tailTopY      = tailBottomY - TailSpriteH;
-            float bubbleBottomY = tailTopY + GameConfig.SpeechBubbleTailOverlap;
-            float bubbleTopY    = bubbleBottomY - GameConfig.SpeechBubbleHeight;
-            float bubbleX       = p.X - GameConfig.SpeechBubbleWidth / 2f;
-            float tailX         = p.X - TailSpriteW / 2f;
+            float tailTopY      = tailBottomY - TailSpriteH * s;
+            float bubbleBottomY = tailTopY + GameConfig.SpeechBubbleTailOverlap * s;
+            float bubbleTopY    = bubbleBottomY - GameConfig.SpeechBubbleHeight * s;
+            float bubbleX       = p.X - GameConfig.SpeechBubbleWidth * s / 2f;
+            float tailX         = p.X - TailSpriteW * s / 2f;
 
-            // Nine-patch bubble
-            _bubbleDrawable.Draw(batcher,
-                bubbleX, bubbleTopY,
-                GameConfig.SpeechBubbleWidth, GameConfig.SpeechBubbleHeight,
-                BubbleColor);
+            // Nine-patch bubble, patch-by-patch so the 4 px borders scale with the bubble
+            for (var i = 0; i < 9; i++)
+            {
+                var dest = _bubbleDesignRects[i];
+                var src = _bubbleSprite.NinePatchRects[i];
+                if (dest.Width == 0 || dest.Height == 0 || src.Width == 0 || src.Height == 0)
+                    continue;
+
+                batcher.Draw(_bubbleSprite.Texture2D,
+                    new Vector2(bubbleX + dest.X * s, bubbleTopY + dest.Y * s),
+                    src, BubbleColor, 0f, Vector2.Zero,
+                    new Vector2(dest.Width * s / src.Width, dest.Height * s / src.Height),
+                    SpriteEffects.None, 0f);
+            }
 
             // Tail — top 2 rows overlap bubble's bottom border, merging the outlines
-            _tailDestRect.X      = (int)tailX;
-            _tailDestRect.Y      = (int)tailTopY;
-            _tailDestRect.Width  = TailSpriteW;
-            _tailDestRect.Height = TailSpriteH;
-            batcher.Draw(_tailSprite, _tailDestRect, _tailSprite.SourceRect, BubbleColor);
+            batcher.Draw(_tailSprite.Texture2D, new Vector2(tailX, tailTopY),
+                _tailSprite.SourceRect, BubbleColor, 0f, Vector2.Zero, s,
+                SpriteEffects.None, 0f);
 
             // Typewriter text
             if (_visibleText.Length > 0)
             {
                 var textOrigin = new Vector2(
-                    bubbleX + GameConfig.SpeechBubblePadding,
-                    bubbleTopY + GameConfig.SpeechBubblePadding);
-                _font.DrawInto(batcher, _visibleText, textOrigin, TextColor,
+                    bubbleX + GameConfig.SpeechBubblePadding * s,
+                    bubbleTopY + GameConfig.SpeechBubblePadding * s);
+                _activeFont.DrawInto(batcher, _visibleText, textOrigin, TextColor,
                     0f, Vector2.Zero, Vector2.One, SpriteEffects.None, 0f);
             }
         }

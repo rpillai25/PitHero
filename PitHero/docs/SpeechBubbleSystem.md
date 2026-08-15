@@ -6,9 +6,10 @@ Short dialogue lines rendered in a nine-patch bubble above a speaker's head (iss
 Bubbles are **screen-space** visuals (constant 128×48 screen px at any camera zoom, on
 `GameConfig.RenderLayerSpeechBubble` via the scene's `ScreenSpaceRenderer`): each frame the
 tail-tip world anchor is converted with the world camera's `WorldToScreenPoint`, so the bubble
-tracks its speaker but never scales with zoom. Text reveals typewriter-style via a pause-aware
-coroutine, lingers ~2s, then hides. Speakers: the hero, mercenaries/tavern patrons, kitchen
-workers, and farm workers.
+tracks its speaker but never scales with zoom. In half-size window mode everything doubles
+(256×96 bubble, pre-scaled `Express2x` font) so bubbles read at the same physical size as the
+normal window. Text reveals typewriter-style via a pause-aware coroutine, lingers ~2s, then
+hides. Speakers: the hero, mercenaries/tavern patrons, kitchen workers, and farm workers.
 
 Three pieces:
 
@@ -27,6 +28,13 @@ Three pieces:
   `FontPathSpeechBubble` (Express — Skullboy and SkullboySmall were rejected in playtesting;
   never use `GetHudFontForCurrentMode()` here, the half-window Skullboy2x variant overflows the
   120×40 text area).
+- **Half-size window mode:** `Say()` checks `WindowManager.IsHalfHeightMode()` and picks the
+  bubble's scale (1 or 2) and font (`Express` / `FontPathSpeechBubble2x` = pre-scaled
+  `Express2x`, lineHeight 18) for that bubble's lifetime; wrap width doubles with the font so
+  line breaks match. A mode toggle mid-bubble keeps the Say-time scale until the next line.
+  The component draws the `NinePatchSprite` patches individually with a per-patch scale
+  (design layout generated once at 128×48) because `NinePatchDrawable.Draw` always renders
+  borders at their 4 px source size — at 2x the corners/outline must double too.
 - **Culling:** `IsVisibleFromCamera` ignores the screen-space camera it is handed and instead
   checks the speaker's world position against the **scene camera's** bounds (expanded by one
   tile). A speaker fully outside the camera view hides its bubble; it reappears when the

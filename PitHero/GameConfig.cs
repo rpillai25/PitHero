@@ -434,6 +434,9 @@ namespace PitHero
         public const float SpeechBubbleCharsPerSecond = 20f;
         public const float SpeechBubbleLingerSeconds = 2f;
         public const string FontPathSpeechBubble = FontMainUI; // Express, lineHeight 9
+        // Pre-scaled 2x Express (lineHeight 18) — speech bubbles use it in half-size window mode so
+        // text reads at the same physical size as the normal window.
+        public const string FontPathSpeechBubble2x = "Content/Fonts/Express2x.fnt";
 
         // Font paths
         public const string FontMainUI = "Content/Fonts/Express.fnt";
