@@ -99,6 +99,12 @@ namespace RolePlayingFramework.Combat
         /// <summary>First-attack critical-hit chance bonus from Quickdraw (Phase 4 plumbing).</summary>
         float FirstAttackCritChance { get; set; }
 
+        /// <summary>
+        /// Per-combatant crit shuffle bags (issue #382). Persist across battles — never
+        /// reset by ClearBattleState or passive re-application.
+        /// </summary>
+        CritBagSet CritBags { get; }
+
         /// <summary>Defense bonus applied only when wearing heavy mail armor (Phase 5 plumbing).</summary>
         int HeavyArmorDefenseBonus { get; set; }
 

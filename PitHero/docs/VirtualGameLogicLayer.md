@@ -120,7 +120,12 @@ layers:
 **⚠ Behavior-preservation contract:** the engine is a verbatim retype of the original live
 loop. The **sequence of `Nez.Random` calls is a compatibility contract** — adding, removing,
 or reordering any RNG call (turn values, target picks, crit/deflect rolls, resolver
-evasion/variance) changes live gameplay outcomes. Preserved quirks that must not be
+evasion/variance) changes live gameplay outcomes. Since issue #382 every ally attack action
+(physical or attack skill) consumes exactly **two** `NextFloat` calls — a base-crit-bag roll
+followed by a quickdraw-bag roll — both always consumed even when the attacker cannot crit,
+mirroring how `RollDodge` always rolls at 0 dodge chance. The crit *decision* comes from
+per-combatant `CritBagSet` shuffle bags on `Hero`/`Mercenary` (persist across battles; fed by
+those two floats, never drawing RNG themselves). Preserved quirks that must not be
 "fixed" casually: a hero who dies mid-round still takes their queued turn that round
 (hero turn-skip is pit-presence only); mercenary heals use `UseMP` while the hero uses
 `SpendMP`; merc kills award rewards with `heroKill=false` (no `InnExhausted` reset);

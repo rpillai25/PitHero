@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
@@ -13,8 +14,8 @@ namespace PitHero.Tests
     /// <summary>
     /// End-to-end tests for the Phase 4 stub-skill mechanics:
     /// Eagle Eye (sight bonus), Shadowstep (evasion), Vanish (Untargetable buff),
-    /// Sneak Attack (first-strike AGI conditioning), and Quickdraw
-    /// (BattleReactionHelper.RollFirstAttackCrit boundaries).
+    /// Sneak Attack (first-strike AGI conditioning), and the crit shuffle bags
+    /// (BattleReactionHelper.RollCrit boundaries, issue #382).
     /// </summary>
     [TestClass]
     public class StubSkillTests
@@ -329,73 +330,111 @@ namespace PitHero.Tests
                 $"Out-of-battle (null context): SneakAttack should deal base(10) + AGI/2({expectedAgi / 2}) = {expected}");
         }
 
-        // ── Quickdraw — RollFirstAttackCrit boundaries ──────────────────────────────
+        // ── Crit bags (#382) — RollCrit boundaries ──────────────────────────────────
 
         [TestMethod]
         [TestCategory("StubSkills")]
-        public void Quickdraw_RollFirstAttackCrit_FirstActionAndRollBelowChance_ReturnsCrit()
+        public void RollCrit_FirstActionQuickdraw_LowQuickdrawRoll_Crits()
         {
             var caster = MakeHero();
             caster.FirstAttackCritChance = 0.5f;
 
-            bool result = BattleReactionHelper.RollFirstAttackCrit(caster, isFirstAction: true, roll: 0.3f);
+            // baseRoll 0.9 lands in the fresh base bag's non-crit region (1 crit marble at
+            // index 0 of 20); qdRoll 0.3 lands in the quickdraw bag's crit half (10 of 20).
+            bool result = BattleReactionHelper.RollCrit(caster, isFirstAction: true,
+                baseRoll: 0.9f, quickdrawRoll: 0.3f);
 
-            Assert.IsTrue(result,
-                "First action + roll (0.3) < chance (0.5) should return true (crit)");
+            Assert.IsTrue(result, "First action with Quickdraw and a crit-region quickdraw roll should crit");
         }
 
         [TestMethod]
         [TestCategory("StubSkills")]
-        public void Quickdraw_RollFirstAttackCrit_NotFirstAction_NeverCrits()
+        public void RollCrit_NotFirstAction_QuickdrawIgnored()
         {
             var caster = MakeHero();
             caster.FirstAttackCritChance = 0.5f;
 
-            // Even with roll = 0 (guaranteed win) and high crit chance, non-first action never crits
-            bool result = BattleReactionHelper.RollFirstAttackCrit(caster, isFirstAction: false, roll: 0.0f);
+            // qdRoll 0 would be a guaranteed quickdraw crit, but non-first actions never use it;
+            // baseRoll 0.9 misses the single base crit marble.
+            bool result = BattleReactionHelper.RollCrit(caster, isFirstAction: false,
+                baseRoll: 0.9f, quickdrawRoll: 0.0f);
 
-            Assert.IsFalse(result,
-                "Non-first action should never trigger a crit regardless of roll or chance");
+            Assert.IsFalse(result, "Non-first action must ignore the quickdraw bag entirely");
         }
 
         [TestMethod]
         [TestCategory("StubSkills")]
-        public void Quickdraw_RollFirstAttackCrit_RollAtChance_NoCrit()
+        public void RollCrit_NoQuickdraw_BaseBagStillCrits()
         {
             var caster = MakeHero();
-            caster.FirstAttackCritChance = 0.5f;
-
-            bool result = BattleReactionHelper.RollFirstAttackCrit(caster, isFirstAction: true, roll: 0.5f);
-
-            Assert.IsFalse(result,
-                "Roll equal to chance (not strictly less-than) should not crit");
-        }
-
-        [TestMethod]
-        [TestCategory("StubSkills")]
-        public void Quickdraw_RollFirstAttackCrit_RollAboveChance_NoCrit()
-        {
-            var caster = MakeHero();
-            caster.FirstAttackCritChance = 0.5f;
-
-            bool result = BattleReactionHelper.RollFirstAttackCrit(caster, isFirstAction: true, roll: 0.8f);
-
-            Assert.IsFalse(result,
-                "Roll (0.8) above chance (0.5) should not crit");
-        }
-
-        [TestMethod]
-        [TestCategory("StubSkills")]
-        public void Quickdraw_RollFirstAttackCrit_ZeroCritChance_NeverCrits()
-        {
-            var caster = MakeHero();
-            // Default FirstAttackCritChance = 0 (no Quickdraw passive)
             Assert.AreEqual(0f, caster.FirstAttackCritChance);
 
-            bool result = BattleReactionHelper.RollFirstAttackCrit(caster, isFirstAction: true, roll: 0.0f);
+            // The new general crit: baseRoll 0 hits the fresh base bag's single crit marble.
+            bool result = BattleReactionHelper.RollCrit(caster, isFirstAction: true,
+                baseRoll: 0.0f, quickdrawRoll: 0.9f);
 
-            Assert.IsFalse(result,
-                "Zero FirstAttackCritChance should never produce a crit even with roll = 0");
+            Assert.IsTrue(result, "Base crit bag applies to every combatant, Quickdraw or not");
+        }
+
+        [TestMethod]
+        [TestCategory("StubSkills")]
+        public void RollCrit_BaseBag_ExactlyOneCritPerCycle()
+        {
+            var caster = MakeHero();
+            var rng = new System.Random(99);
+
+            for (int cycle = 0; cycle < 3; cycle++)
+            {
+                int crits = 0;
+                for (int i = 0; i < BalanceConfig.CritBagSize; i++)
+                {
+                    if (BattleReactionHelper.RollCrit(caster, isFirstAction: false,
+                            baseRoll: (float)rng.NextDouble(), quickdrawRoll: 0f))
+                        crits++;
+                }
+                Assert.AreEqual(1, crits,
+                    $"cycle {cycle}: base bag must yield exactly 1 crit per {BalanceConfig.CritBagSize} attacks");
+            }
+        }
+
+        [TestMethod]
+        [TestCategory("StubSkills")]
+        public void RollCrit_BagState_SurvivesClearBattleState()
+        {
+            var caster = MakeHero();
+
+            // Consume the base bag's single crit marble (roll 0 on a fresh bag).
+            Assert.IsTrue(BattleReactionHelper.RollCrit(caster, false, 0.0f, 0f));
+
+            // ClearBattleState runs at battle start AND end — pity progress must survive.
+            caster.ClearBattleState();
+
+            // Remaining 19 draws of the cycle must all be non-crit regardless of roll.
+            for (int i = 0; i < BalanceConfig.CritBagSize - 1; i++)
+                Assert.IsFalse(BattleReactionHelper.RollCrit(caster, false, 0.0f, 0f),
+                    $"draw {i}: crit marble already spent this cycle; bag must persist across battles");
+        }
+
+        [TestMethod]
+        [TestCategory("StubSkills")]
+        public void RollCrit_QuickdrawBag_RebuildsWhenChanceChanges()
+        {
+            var caster = MakeHero();
+            caster.FirstAttackCritChance = 1.0f;
+
+            // 100% quickdraw bag: every marble crits.
+            Assert.IsTrue(BattleReactionHelper.RollCrit(caster, true, 0.9f, 0.9f));
+
+            // Simulate CombatantPassiveApplier.ResetAndApply landing on a different chance:
+            // the quickdraw bag must rebuild for the new composition (0 => untouched/no crit).
+            caster.FirstAttackCritChance = 0f;
+            Assert.IsFalse(BattleReactionHelper.RollCrit(caster, true, 0.9f, 0.0f),
+                "With no quickdraw chance the quickdraw bag must not fire");
+
+            caster.FirstAttackCritChance = 0.5f;
+            // Rebuilt 10/20 bag: roll 0.0 lands on a crit marble.
+            Assert.IsTrue(BattleReactionHelper.RollCrit(caster, true, 0.9f, 0.0f),
+                "Quickdraw bag must rebuild at the newly observed chance");
         }
 
         [TestMethod]
