@@ -211,27 +211,35 @@ namespace PitHero.ECS.Components
         /// </summary>
         public static IItem GenerateCaveItemForTreasureLevel(int treasureLevel, LootJobContext ctx = default)
         {
+            // Session shuffle bags (#382); null falls back to the legacy pure-random path.
+            var bags = LootShuffleService.LiveBags;
+
             if (treasureLevel == 1)
             {
-                bool isConsumable = Nez.Random.NextFloat() < BalanceConfig.CaveConsumableDropRate;
-                return isConsumable ? GenerateNormalPotion() : GenerateCaveCommonEquipment(ctx);
+                float gateRoll = Nez.Random.NextFloat();
+                bool isConsumable = bags != null
+                    ? bags.DrawConsumableGate(gateRoll)
+                    : gateRoll < BalanceConfig.CaveConsumableDropRate;
+                return isConsumable ? GenerateNormalPotion(bags) : GenerateCaveCommonEquipment(ctx, bags);
             }
 
             return treasureLevel switch
             {
-                2 => GenerateCaveUncommonEquipment(ctx),
-                3 => GenerateCaveRareEquipment(ctx),
+                2 => GenerateCaveUncommonEquipment(ctx, bags),
+                3 => GenerateCaveRareEquipment(ctx, bags),
                 4 => GenerateCaveEpicEquipment(ctx),
                 _ => GenerateCaveEpicEquipment(ctx),
             };
         }
 
         /// <summary>
-        /// Generate a random Normal (Common) potion
+        /// Generate a random Normal (Common) potion. With bags, HP/MP/Mix rotate strictly.
         /// </summary>
-        private static IItem GenerateNormalPotion()
+        private static IItem GenerateNormalPotion(LootBagSet bags = null)
         {
-            var random = Nez.Random.NextInt(3);
+            var random = bags != null
+                ? bags.DrawPotionType(Nez.Random.NextFloat())
+                : Nez.Random.NextInt(3);
             return random switch
             {
                 0 => PotionItems.HPPotion(),
@@ -416,7 +424,7 @@ namespace PitHero.ECS.Components
             ItemKind.Accessory,      // 38: RingOfPower
         };
 
-        /// <summary>Generate cave rare equipment from all Rare-rarity cave gear items (12 items).</summary>
+        /// <summary>Generate cave rare equipment from all Rare-rarity cave gear items (13 items).</summary>
         private static readonly ItemKind[] _rarePoolKinds = new ItemKind[]
         {
             ItemKind.WeaponSword,    // 0:  AbyssFang
@@ -431,6 +439,7 @@ namespace PitHero.ECS.Components
             ItemKind.HatHelm,        // 9:  AbyssHelm
             ItemKind.HatHeadband,    // 10: DiamondCirclet
             ItemKind.HatHelm,        // 11: MagmaHelm
+            ItemKind.Accessory,      // 12: NecklaceOfHealth (#382 — was registered but in no pool)
         };
 
         /// <summary>Generate cave epic equipment from all Epic-rarity cave gear items (4 items).</summary>
@@ -446,13 +455,13 @@ namespace PitHero.ECS.Components
         /// Selects a weighted pool index biased toward gear usable by the active party.
         /// Falls back to flat random when no party context is available.
         /// </summary>
-        private static int SelectWeightedPoolIndex(ItemKind[] poolKinds, LootJobContext ctx)
+        private static int SelectWeightedPoolIndex(ItemKind[] poolKinds, LootJobContext ctx, bool excludeAccessories = false)
         {
-            if (ctx.IsEmpty)
+            if (ctx.IsEmpty && !excludeAccessories)
                 return Nez.Random.NextInt(poolKinds.Length);
 
             var weights = new int[poolKinds.Length];
-            int totalWeight = ComputePoolWeights(poolKinds, in ctx, weights);
+            int totalWeight = ComputePoolWeights(poolKinds, in ctx, weights, excludeAccessories);
             return WalkWeightedIndex(weights, Nez.Random.NextInt(totalWeight));
         }
 
@@ -461,33 +470,52 @@ namespace PitHero.ECS.Components
         /// layer: identical job-bias weights, but the roll comes from a caller-supplied
         /// <see cref="System.Random"/> instead of the global <c>Nez.Random</c>.
         /// </summary>
-        internal static int SelectWeightedPoolIndexDeterministic(ItemKind[] poolKinds, in LootJobContext ctx, System.Random rng)
+        internal static int SelectWeightedPoolIndexDeterministic(ItemKind[] poolKinds, in LootJobContext ctx, System.Random rng, bool excludeAccessories = false)
         {
-            if (ctx.IsEmpty)
+            if (ctx.IsEmpty && !excludeAccessories)
                 return rng.Next(poolKinds.Length);
 
             var weights = new int[poolKinds.Length];
-            int totalWeight = ComputePoolWeights(poolKinds, in ctx, weights);
+            int totalWeight = ComputePoolWeights(poolKinds, in ctx, weights, excludeAccessories);
             return WalkWeightedIndex(weights, rng.Next(totalWeight));
         }
 
-        /// <summary>Fills <paramref name="weights"/> with the party-job bias per pool entry; returns the total.</summary>
-        private static int ComputePoolWeights(ItemKind[] poolKinds, in LootJobContext ctx, int[] weights)
+        /// <summary>
+        /// Fills <paramref name="weights"/> with the party-job bias per pool entry; returns the total.
+        /// With <paramref name="excludeAccessories"/> (bag-driven path, #382) accessory entries get
+        /// weight 0 — the accessory-share shuffle bag decides accessories separately, so they must
+        /// not also compete in the weighted walk. With an empty job context each remaining entry
+        /// weighs 1 (flat pick minus accessories).
+        /// </summary>
+        private static int ComputePoolWeights(ItemKind[] poolKinds, in LootJobContext ctx, int[] weights, bool excludeAccessories = false)
         {
             int totalWeight = 0;
             for (int i = 0; i < poolKinds.Length; i++)
             {
-                JobType allowed = Gear.GetDefaultAllowedJobs(poolKinds[i]);
-                int weight;
+                if (excludeAccessories && poolKinds[i] == ItemKind.Accessory)
+                {
+                    weights[i] = 0;
+                    continue;
+                }
 
-                if (allowed == JobType.All)
-                    weight = BalanceConfig.LootWeightAllJobs;
-                else if ((allowed & ctx.HeroJob) != 0)
-                    weight = BalanceConfig.LootWeightHeroJob;
-                else if ((allowed & ctx.MercJobs) != 0)
-                    weight = BalanceConfig.LootWeightMercJob;
+                int weight;
+                if (ctx.IsEmpty)
+                {
+                    weight = 1;
+                }
                 else
-                    weight = BalanceConfig.LootWeightNoPartyJob;
+                {
+                    JobType allowed = Gear.GetDefaultAllowedJobs(poolKinds[i]);
+
+                    if (allowed == JobType.All)
+                        weight = BalanceConfig.LootWeightAllJobs;
+                    else if ((allowed & ctx.HeroJob) != 0)
+                        weight = BalanceConfig.LootWeightHeroJob;
+                    else if ((allowed & ctx.MercJobs) != 0)
+                        weight = BalanceConfig.LootWeightMercJob;
+                    else
+                        weight = BalanceConfig.LootWeightNoPartyJob;
+                }
 
                 weights[i] = weight;
                 totalWeight += weight;
@@ -511,8 +539,16 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Generate cave common equipment from all Normal-rarity cave gear items (78 items).
         /// </summary>
-        private static IItem GenerateCaveCommonEquipment(LootJobContext ctx = default)
+        private static IItem GenerateCaveCommonEquipment(LootJobContext ctx = default, LootBagSet bags = null)
         {
+            if (bags != null)
+            {
+                // Accessory share (#382): the bag guarantees 1 accessory per 10 equipment rolls
+                // instead of ProtectRing being 1 of 78 weighted entries.
+                if (bags.DrawAccessoryShare(1, Nez.Random.NextFloat()))
+                    return GetCaveCommonItemAtIndex(55); // ProtectRing — the pool's only accessory
+                return GetCaveCommonItemAtIndex(SelectWeightedPoolIndex(_commonPoolKinds, ctx, excludeAccessories: true));
+            }
             int index = SelectWeightedPoolIndex(_commonPoolKinds, ctx);
             return GetCaveCommonItemAtIndex(index);
         }
@@ -620,8 +656,17 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (39 items).
         /// </summary>
-        private static IItem GenerateCaveUncommonEquipment(LootJobContext ctx = default)
+        private static IItem GenerateCaveUncommonEquipment(LootJobContext ctx = default, LootBagSet bags = null)
         {
+            if (bags != null)
+            {
+                if (bags.DrawAccessoryShare(2, Nez.Random.NextFloat()))
+                {
+                    // MagicChain (37) / RingOfPower (38) rotate via their own 2-marble bag.
+                    return GetCaveUncommonItemAtIndex(37 + bags.DrawUncommonAccessoryIndex(Nez.Random.NextFloat()));
+                }
+                return GetCaveUncommonItemAtIndex(SelectWeightedPoolIndex(_uncommonPoolKinds, ctx, excludeAccessories: true));
+            }
             int index = SelectWeightedPoolIndex(_uncommonPoolKinds, ctx);
             return GetCaveUncommonItemAtIndex(index);
         }
@@ -683,14 +728,20 @@ namespace PitHero.ECS.Components
             }
         }
 
-        /// <summary>Generate cave rare equipment from all Rare-rarity cave gear items (12 items).</summary>
-        private static IItem GenerateCaveRareEquipment(LootJobContext ctx = default)
+        /// <summary>Generate cave rare equipment from all Rare-rarity cave gear items (13 items).</summary>
+        private static IItem GenerateCaveRareEquipment(LootJobContext ctx = default, LootBagSet bags = null)
         {
+            if (bags != null)
+            {
+                if (bags.DrawAccessoryShare(3, Nez.Random.NextFloat()))
+                    return GetCaveRareItemAtIndex(12); // NecklaceOfHealth — the pool's only accessory
+                return GetCaveRareItemAtIndex(SelectWeightedPoolIndex(_rarePoolKinds, ctx, excludeAccessories: true));
+            }
             int index = SelectWeightedPoolIndex(_rarePoolKinds, ctx);
             return GetCaveRareItemAtIndex(index);
         }
 
-        /// <summary>Returns the cave rare (Rare-rarity) item at the given pool index (0–11).</summary>
+        /// <summary>Returns the cave rare (Rare-rarity) item at the given pool index (0–12).</summary>
         private static IItem GetCaveRareItemAtIndex(int index)
         {
             switch (index)
@@ -706,7 +757,8 @@ namespace PitHero.ECS.Components
                 case 8:  return GearItems.MagmaWall();
                 case 9:  return GearItems.AbyssHelm();
                 case 10: return GearItems.DiamondCirclet();
-                default: return GearItems.MagmaHelm();
+                case 11: return GearItems.MagmaHelm();
+                default: return GearItems.NecklaceOfHealth();
             }
         }
 
@@ -741,20 +793,31 @@ namespace PitHero.ECS.Components
         /// Mirrors <see cref="GenerateCaveItemForTreasureLevel"/> but without a job context
         /// (virtual layer uses flat pool selection).
         /// </summary>
-        internal static IItem GenerateCaveItemForTreasureLevelDeterministic(int treasureLevel, in LootJobContext ctx, System.Random rng)
+        internal static IItem GenerateCaveItemForTreasureLevelDeterministic(int treasureLevel, in LootJobContext ctx, System.Random rng, LootBagSet bags = null)
         {
             if (treasureLevel == 1)
             {
-                bool isConsumable = rng.NextDouble() < BalanceConfig.CaveConsumableDropRate;
+                bool isConsumable = bags != null
+                    ? bags.DrawConsumableGate((float)rng.NextDouble())
+                    : rng.NextDouble() < BalanceConfig.CaveConsumableDropRate;
                 if (isConsumable)
-                    return GenerateNormalPotionDeterministic(rng);
-                return GetCaveCommonItemAtIndex(SelectWeightedPoolIndexDeterministic(_commonPoolKinds, in ctx, rng));
+                    return GenerateNormalPotionDeterministic(rng, bags);
+                if (bags != null && bags.DrawAccessoryShare(1, (float)rng.NextDouble()))
+                    return GetCaveCommonItemAtIndex(55); // ProtectRing
+                return GetCaveCommonItemAtIndex(SelectWeightedPoolIndexDeterministic(_commonPoolKinds, in ctx, rng, excludeAccessories: bags != null));
             }
             switch (treasureLevel)
             {
-                case 2:  return GetCaveUncommonItemAtIndex(SelectWeightedPoolIndexDeterministic(_uncommonPoolKinds, in ctx, rng));
-                case 3:  return GetCaveRareItemAtIndex(SelectWeightedPoolIndexDeterministic(_rarePoolKinds, in ctx, rng));
-                default: return GetCaveEpicItemAtIndex(SelectWeightedPoolIndexDeterministic(_epicPoolKinds, in ctx, rng));
+                case 2:
+                    if (bags != null && bags.DrawAccessoryShare(2, (float)rng.NextDouble()))
+                        return GetCaveUncommonItemAtIndex(37 + bags.DrawUncommonAccessoryIndex((float)rng.NextDouble()));
+                    return GetCaveUncommonItemAtIndex(SelectWeightedPoolIndexDeterministic(_uncommonPoolKinds, in ctx, rng, excludeAccessories: bags != null));
+                case 3:
+                    if (bags != null && bags.DrawAccessoryShare(3, (float)rng.NextDouble()))
+                        return GetCaveRareItemAtIndex(12); // NecklaceOfHealth
+                    return GetCaveRareItemAtIndex(SelectWeightedPoolIndexDeterministic(_rarePoolKinds, in ctx, rng, excludeAccessories: bags != null));
+                default:
+                    return GetCaveEpicItemAtIndex(SelectWeightedPoolIndexDeterministic(_epicPoolKinds, in ctx, rng));
             }
         }
 
@@ -778,10 +841,11 @@ namespace PitHero.ECS.Components
             }
         }
 
-        /// <summary>Deterministic normal potion selection using caller-supplied RNG.</summary>
-        private static IItem GenerateNormalPotionDeterministic(System.Random rng)
+        /// <summary>Deterministic normal potion selection using caller-supplied RNG (bag rotation when bags exist).</summary>
+        private static IItem GenerateNormalPotionDeterministic(System.Random rng, LootBagSet bags = null)
         {
-            switch (rng.Next(3))
+            int potionPick = bags != null ? bags.DrawPotionType((float)rng.NextDouble()) : rng.Next(3);
+            switch (potionPick)
             {
                 case 0:  return PotionItems.HPPotion();
                 case 1:  return PotionItems.MPPotion();
@@ -820,6 +884,11 @@ namespace PitHero.ECS.Components
 
             if (CaveBiomeConfig.IsCaveLevel(pitLevel))
             {
+                // Shuffle-bag rarity (#382): same band rates, enforced exactly per bag cycle.
+                // Falls back to the pure-random table when no session bags exist (headless tests).
+                var bags = LootShuffleService.LiveBags;
+                if (bags != null)
+                    return bags.DrawCaveTreasureLevel(pitLevel, random);
                 return CaveBiomeConfig.DetermineCaveTreasureLevel(pitLevel, random);
             }
 
@@ -872,13 +941,25 @@ namespace PitHero.ECS.Components
 
             // Seed drop: any uncommon (level-2) roll has a chance to yield seeds instead of normal loot.
             // Seeds are not tier-scaled (they are consumables, not gear).
-            if (Level == 2 && Nez.Random.NextFloat() < BalanceConfig.SeedChestDropRate)
+            // With session bags (#382) the gate fires exactly 1-in-10 eligible rolls and the
+            // seed type rotates through every crop before repeating. RNG call count unchanged.
+            if (Level == 2)
             {
-                ContainedSeedType  = (CropType)Nez.Random.NextInt(CropTypeInfo.Count);
-                ContainedSeedCount = Nez.Random.NextInt(3) + 1; // 1..3
-                ContainedItem = null;
-                Level = 1; // seeds are consumables — always a brown chest (#337)
-                return;
+                var seedBags = LootShuffleService.LiveBags;
+                float seedGateRoll = Nez.Random.NextFloat();
+                bool isSeedChest = seedBags != null
+                    ? seedBags.DrawSeedGate(seedGateRoll)
+                    : seedGateRoll < BalanceConfig.SeedChestDropRate;
+                if (isSeedChest)
+                {
+                    ContainedSeedType = seedBags != null
+                        ? seedBags.DrawSeedType(Nez.Random.NextFloat())
+                        : (CropType)Nez.Random.NextInt(CropTypeInfo.Count);
+                    ContainedSeedCount = Nez.Random.NextInt(3) + 1; // 1..3
+                    ContainedItem = null;
+                    Level = 1; // seeds are consumables — always a brown chest (#337)
+                    return;
+                }
             }
 
             // Stencil drop: chests of level 2+ have an 8% chance to yield an undiscovered stencil.

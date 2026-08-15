@@ -19,6 +19,11 @@ namespace PitHero.VirtualGame
         private readonly VirtualTiledMapService _tiledMapService;
         private readonly VirtualPitWidthManager _pitWidthManager;
 
+        // Loot shuffle bags (#382): one set per generator instance (= per sim run), so
+        // rarity/accessory/seedless pity carries across floors like the live session bags.
+        // Draws are fed from the per-level Random(depth), keeping generation deterministic.
+        private readonly Services.LootBagSet _lootBags = new Services.LootBagSet();
+
         /// <summary>
         /// Party job context used to bias chest gear toward equipable kinds, mirroring
         /// the live PitGenerator.BuildLootJobContext weighting.  Leave default (empty)
@@ -139,9 +144,9 @@ namespace PitHero.VirtualGame
                     if (CaveBiomeConfig.IsCaveLevel(displayedLevel))
                     {
                         float roll = (float)random.NextDouble();
-                        int treasureLevel = CaveBiomeConfig.DetermineCaveTreasureLevel(displayedLevel, roll);
+                        int treasureLevel = _lootBags.DrawCaveTreasureLevel(displayedLevel, roll);
                         var lootCtx = LootContext;
-                        item = TreasureComponent.GenerateCaveItemForTreasureLevelDeterministic(treasureLevel, in lootCtx, random);
+                        item = TreasureComponent.GenerateCaveItemForTreasureLevelDeterministic(treasureLevel, in lootCtx, random, _lootBags);
                     }
                     else
                     {
