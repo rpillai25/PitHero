@@ -426,8 +426,7 @@ namespace PitHero
         public const float TreeBandFlipChance = 0.5f;   // probability a tree is mirrored horizontally
 
         // Speech bubbles
-        public const int SpeechBubbleWidth = 128;          // world px
-        public const int SpeechBubbleHeight = 48;          // world px
+        public const int SpeechBubbleWidth = 128;          // screen px (design units)
         public const int SpeechBubblePadding = 4;          // inner text padding, all sides
         public const int SpeechBubbleTailOverlap = 2;      // tail top overlaps bottom N rows of bubble
         public const int SpeechBubbleTailTipOffsetY = -36; // tail bottom Y rel. to entity origin (head top -32, +4 clearance)
@@ -437,6 +436,10 @@ namespace PitHero
         // Pre-scaled 2x Express (lineHeight 18) — speech bubbles use it in half-size window mode so
         // text reads at the same physical size as the normal window.
         public const string FontPathSpeechBubble2x = "Content/Fonts/Express2x.fnt";
+        // Bubble height is derived per mode: padding*2 + visible lines * font line height. Text that
+        // wraps to more lines scrolls up a line at a time as the typewriter reveal fills each line.
+        public const int SpeechBubbleVisibleLinesNormal = 3;
+        public const int SpeechBubbleVisibleLinesHalfWindow = 2;
 
         // Font paths
         public const string FontMainUI = "Content/Fonts/Express.fnt";

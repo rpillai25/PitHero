@@ -12,9 +12,9 @@ namespace PitHero.ECS.Components
     /// <summary>
     /// Renders a nine-patch speech bubble with a tail above the entity's head.
     /// Drawn in screen space (<see cref="GameConfig.RenderLayerSpeechBubble"/>) so the
-    /// bubble holds its 128×48 screen-pixel size at any camera zoom; the tail tip is
-    /// re-anchored to the entity's head each frame via the world camera's
-    /// WorldToScreenPoint. Text is revealed via a typewriter effect; the bubble
+    /// bubble holds a constant screen-pixel size at any camera zoom (128 wide, height
+    /// sized to the mode's visible-line count); the tail tip is re-anchored to the
+    /// entity's head each frame via the world camera's WorldToScreenPoint. Text is revealed via a typewriter effect; the bubble
     /// auto-hides after the reveal completes plus a brief linger period. Pause-aware —
     /// the reveal and linger freeze while <see cref="PauseService.IsPaused"/> is true.
     /// </summary>
@@ -48,10 +48,15 @@ namespace PitHero.ECS.Components
         private BitmapFont _font2x;
         private PauseService _pauseService;
 
-        // Nine-patch destination layout at design size (128×48), generated once. Render scales each
-        // patch by _activeScale so the 4 px borders double along with the bubble in half-window mode
+        // Nine-patch destination layouts in design units, generated once. Render scales each patch
+        // by _activeScale so the 4 px borders double along with the bubble in half-window mode
         // (NinePatchDrawable.Draw can't do this — it always draws borders at their source size).
+        // Each mode's bubble height derives from its visible-line count (normal 3, half-window 2);
+        // text that wraps to more lines scrolls (see ScrollVisibleTextIfNeeded).
         private readonly Rectangle[] _bubbleDesignRects = new Rectangle[9];
+        private readonly Rectangle[] _bubbleDesignRectsHalf = new Rectangle[9];
+        private int _normalDesignHeight;
+        private int _halfDesignHeight;
 
         // State
         private bool _active;
@@ -64,6 +69,9 @@ namespace PitHero.ECS.Components
         // A window-mode toggle mid-bubble keeps the bubble's Say-time scale; the next Say re-picks.
         private int _activeScale = 1;
         private BitmapFont _activeFont;
+        private Rectangle[] _activeDesignRects;
+        private int _activeDesignHeight;
+        private int _visibleLineCapacity = int.MaxValue;
 
         /// <summary>
         /// Optional body renderer whose sprite height anchors the bubble. When set, the tail
@@ -79,7 +87,7 @@ namespace PitHero.ECS.Components
         /// <inheritdoc/>
         /// Full visual height in screen pixels: bubble body + tail sprite height - tail overlap with bubble border.
         public override float Height =>
-            (GameConfig.SpeechBubbleHeight + TailSpriteH - GameConfig.SpeechBubbleTailOverlap) * _activeScale;
+            (_activeDesignHeight + TailSpriteH - GameConfig.SpeechBubbleTailOverlap) * _activeScale;
 
         public override void OnAddedToEntity()
         {
@@ -109,9 +117,6 @@ namespace PitHero.ECS.Components
                 }
 
                 _bubbleSprite = new NinePatchSprite(bubbleSprite.Texture2D, bubbleSprite.SourceRect, 4, 4, 4, 4);
-                _bubbleSprite.GenerateNinePatchRects(
-                    new Rectangle(0, 0, GameConfig.SpeechBubbleWidth, GameConfig.SpeechBubbleHeight),
-                    _bubbleDesignRects, 4, 4, 4, 4);
 
                 _font = Core.Content.LoadBitmapFont(GameConfig.FontPathSpeechBubble);
                 if (_font == null)
@@ -124,7 +129,22 @@ namespace PitHero.ECS.Components
                 if (_font2x == null)
                     Debug.Warn("[SpeechBubble] Failed to load 2x speech bubble font — half-window bubbles stay 1x");
 
+                // Per-mode bubble heights derive from the visible-line counts (design units, so the
+                // 1x font's LineHeight — Express2x is exactly 2x and rides on _activeScale).
+                _normalDesignHeight = GameConfig.SpeechBubblePadding * 2
+                    + GameConfig.SpeechBubbleVisibleLinesNormal * _font.LineHeight;
+                _halfDesignHeight = GameConfig.SpeechBubblePadding * 2
+                    + GameConfig.SpeechBubbleVisibleLinesHalfWindow * _font.LineHeight;
+                _bubbleSprite.GenerateNinePatchRects(
+                    new Rectangle(0, 0, GameConfig.SpeechBubbleWidth, _normalDesignHeight),
+                    _bubbleDesignRects, 4, 4, 4, 4);
+                _bubbleSprite.GenerateNinePatchRects(
+                    new Rectangle(0, 0, GameConfig.SpeechBubbleWidth, _halfDesignHeight),
+                    _bubbleDesignRectsHalf, 4, 4, 4, 4);
+
                 _activeFont = _font;
+                _activeDesignRects = _bubbleDesignRects;
+                _activeDesignHeight = _normalDesignHeight;
 
                 _pauseService = Core.Services.GetService<PauseService>();
                 SetRenderLayer(GameConfig.RenderLayerSpeechBubble);
@@ -150,10 +170,16 @@ namespace PitHero.ECS.Components
 
             // Half-size window: double the bubble and use the pre-scaled 2x font so the text
             // displays at the same physical size as the normal window. Wrap width doubles with
-            // the font, so line breaks land in the same places.
+            // the font, so line breaks land in the same places. The half bubble is also shorter
+            // (2 text lines max); text beyond a bubble's capacity scrolls up a line at a time.
             bool halfWindow = WindowManager.IsHalfHeightMode() && _font2x != null;
             _activeScale = halfWindow ? 2 : 1;
             _activeFont = halfWindow ? _font2x : _font;
+            _activeDesignRects = halfWindow ? _bubbleDesignRectsHalf : _bubbleDesignRects;
+            _activeDesignHeight = halfWindow ? _halfDesignHeight : _normalDesignHeight;
+            _visibleLineCapacity = halfWindow
+                ? GameConfig.SpeechBubbleVisibleLinesHalfWindow
+                : GameConfig.SpeechBubbleVisibleLinesNormal;
 
             _visibleText.Clear();
             _wrappedText = _activeFont.WrapText(localizedText, TextWrapWidth * _activeScale);
@@ -231,18 +257,19 @@ namespace PitHero.ECS.Components
             //   tail bottom Y = anchor (tail tip, 4 world px clearance above sprite top)
             //   tail top Y    = tail bottom - tail height  (tail sprite is 8 px tall)
             //   bubble bottom = tail top + tail overlap with bubble border (2 px)
-            //   bubble top    = bubble bottom - bubble height  (48 px)
+            //   bubble top    = bubble bottom - bubble height  (per-mode: 3-line layout in
+            //                   normal mode, 2-line in half-window)
             float tailBottomY   = p.Y;
             float tailTopY      = tailBottomY - TailSpriteH * s;
             float bubbleBottomY = tailTopY + GameConfig.SpeechBubbleTailOverlap * s;
-            float bubbleTopY    = bubbleBottomY - GameConfig.SpeechBubbleHeight * s;
+            float bubbleTopY    = bubbleBottomY - _activeDesignHeight * s;
             float bubbleX       = p.X - GameConfig.SpeechBubbleWidth * s / 2f;
             float tailX         = p.X - TailSpriteW * s / 2f;
 
             // Nine-patch bubble, patch-by-patch so the 4 px borders scale with the bubble
             for (var i = 0; i < 9; i++)
             {
-                var dest = _bubbleDesignRects[i];
+                var dest = _activeDesignRects[i];
                 var src = _bubbleSprite.NinePatchRects[i];
                 if (dest.Width == 0 || dest.Height == 0 || src.Width == 0 || src.Height == 0)
                     continue;
@@ -292,8 +319,12 @@ namespace PitHero.ECS.Components
                 while (accumulated >= delay && revealed < length)
                 {
                     accumulated -= delay;
-                    _visibleText.Append(_wrappedText[revealed]);
+                    var c = _wrappedText[revealed];
+                    _visibleText.Append(c);
                     revealed++;
+
+                    if (c == '\n')
+                        ScrollVisibleTextIfNeeded();
                 }
             }
 
@@ -310,6 +341,36 @@ namespace PitHero.ECS.Components
 
             _active = false;
             _revealRoutine = null;
+        }
+
+        /// <summary>
+        /// Scrolls the visible text block up one line at a time when the typewriter reveal
+        /// crosses onto a line beyond the bubble's capacity: once a line finishes revealing
+        /// (its newline is appended), the oldest visible line is dropped so the next line
+        /// types into the freed bottom row. Only called when a '\n' was just appended.
+        /// </summary>
+        private void ScrollVisibleTextIfNeeded()
+        {
+            while (true)
+            {
+                int newlineCount = 0;
+                int firstNewlineIndex = -1;
+                for (int i = 0; i < _visibleText.Length; i++)
+                {
+                    if (_visibleText[i] == '\n')
+                    {
+                        if (firstNewlineIndex < 0)
+                            firstNewlineIndex = i;
+                        newlineCount++;
+                    }
+                }
+
+                // N newlines = the (N+1)th line is about to type; scroll while that exceeds capacity
+                if (newlineCount < _visibleLineCapacity)
+                    return;
+
+                _visibleText.Remove(0, firstNewlineIndex + 1);
+            }
         }
     }
 }
