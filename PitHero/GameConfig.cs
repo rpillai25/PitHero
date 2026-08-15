@@ -276,7 +276,7 @@ namespace PitHero
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 0.5f; // can't zoom out past default for normal maps
         public const float CameraMaximumZoom = 3f; // can zoom in really close
-        public const float CameraHalfSizeWindowZoom = 1.25f; // default zoom applied automatically when switching to Half Size window (2 zoom-slider levels in from 1x)
+        public const float CameraHalfSizeWindowZoom = 1.00f; // default zoom applied automatically when switching to Half Size window (2 zoom-slider levels in from 1x)
         public const float CameraMinimumZoomLargeMap = 0.25f; // can zoom out to 0.5x for large maps (clean divisor)
         public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
         public const float CameraPanSpeed = 1f; // pan speed multiplier
@@ -400,6 +400,9 @@ namespace PitHero
         public const int RenderLayerGraphicalHUD = 997; // Graphical HUD layer (screen space, not affected by scene scaling)
         public const int RenderLayerUI = 998; // UI layer (always on top)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
+        // Speech bubbles (screen space so they hold constant size at any camera zoom). Back-most of the
+        // screen-space group: UI windows and the pause dim draw over them.
+        public const int RenderLayerSpeechBubble = 1000;
 
         // Y-sort: LayerDepth = Mathf.Clamp01(1f - entity.Y * YSortDepthScale)
         // Higher world-Y (closer to camera) → smaller depth → drawn in front.
@@ -423,14 +426,20 @@ namespace PitHero
         public const float TreeBandFlipChance = 0.5f;   // probability a tree is mirrored horizontally
 
         // Speech bubbles
-        public const int SpeechBubbleWidth = 128;          // world px
-        public const int SpeechBubbleHeight = 48;          // world px
+        public const int SpeechBubbleWidth = 128;          // screen px (design units)
         public const int SpeechBubblePadding = 4;          // inner text padding, all sides
         public const int SpeechBubbleTailOverlap = 2;      // tail top overlaps bottom N rows of bubble
         public const int SpeechBubbleTailTipOffsetY = -36; // tail bottom Y rel. to entity origin (head top -32, +4 clearance)
         public const float SpeechBubbleCharsPerSecond = 20f;
         public const float SpeechBubbleLingerSeconds = 2f;
         public const string FontPathSpeechBubble = FontMainUI; // Express, lineHeight 9
+        // Pre-scaled 2x Express (lineHeight 18) — speech bubbles use it in half-size window mode so
+        // text reads at the same physical size as the normal window.
+        public const string FontPathSpeechBubble2x = "Content/Fonts/Express2x.fnt";
+        // Bubble height is derived per mode: padding*2 + visible lines * font line height. Text that
+        // wraps to more lines scrolls up a line at a time as the typewriter reveal fills each line.
+        public const int SpeechBubbleVisibleLinesNormal = 3;
+        public const int SpeechBubbleVisibleLinesHalfWindow = 2;
 
         // Font paths
         public const string FontMainUI = "Content/Fonts/Express.fnt";

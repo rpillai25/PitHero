@@ -3,9 +3,15 @@
 ## Overview
 
 Short dialogue lines rendered in a nine-patch bubble above a speaker's head (issue #377).
-Bubbles are **world-pixel** visuals (128×48, they scale with camera zoom like sprites), reveal
-text typewriter-style via a pause-aware coroutine, linger ~2s, then hide. Speakers: the hero,
-mercenaries/tavern patrons, kitchen workers, and farm workers.
+Bubbles are **screen-space** visuals (constant screen-px size at any camera zoom — 128 wide,
+height sized to the mode's visible-line count — on `GameConfig.RenderLayerSpeechBubble` via
+the scene's `ScreenSpaceRenderer`): each frame the tail-tip world anchor is converted with the
+world camera's `WorldToScreenPoint`, so the bubble tracks its speaker but never scales with
+zoom. In half-size window mode everything doubles (pre-scaled `Express2x` font, 256 px wide
+bubble) so bubbles read at the same physical size as the normal window. Text reveals
+typewriter-style via a pause-aware coroutine — lines beyond the bubble's capacity (normal 3,
+half-window 2) scroll the block up one line at a time — then lingers ~2s and hides. Speakers:
+the hero, mercenaries/tavern patrons, kitchen workers, and farm workers.
 
 Three pieces:
 
@@ -19,9 +25,31 @@ Three pieces:
 
 - Nine-patch `NinePatchSpeechBubble` (4/4/4/4 splits supplied **in code** — the atlas format has
   no split metadata) + `SpeechBubbleTail` whose top 2 rows overlap the bubble's bottom border.
-  Renders on `GameConfig.RenderLayerTop`; text is `FontPathSpeechBubble` (Express — Skullboy and
-  SkullboySmall were rejected in playtesting; never use `GetHudFontForCurrentMode()` here, the
-  half-window Skullboy2x variant overflows the 120×40 text area).
+  Renders on `GameConfig.RenderLayerSpeechBubble` (1000, screen space — back-most of the
+  `ScreenSpaceRenderer` group, so UI windows and the pause dim draw over bubbles); text is
+  `FontPathSpeechBubble` (Express — Skullboy and SkullboySmall were rejected in playtesting;
+  never use `GetHudFontForCurrentMode()` here, the half-window Skullboy2x variant overflows the
+  120 px-wide text area).
+- **Half-size window mode:** `Say()` checks `WindowManager.IsHalfHeightMode()` and picks the
+  bubble's scale (1 or 2) and font (`Express` / `FontPathSpeechBubble2x` = pre-scaled
+  `Express2x`, lineHeight 18) for that bubble's lifetime; wrap width doubles with the font so
+  line breaks match. A mode toggle mid-bubble keeps the Say-time scale until the next line.
+  The component draws the `NinePatchSprite` patches individually with a per-patch scale
+  (design layouts generated once) because `NinePatchDrawable.Draw` always renders borders at
+  their 4 px source size — at 2x the corners/outline must double too. The half-window bubble
+  is also shorter than normal's: both heights derive from their visible-line counts
+  (`padding*2 + lines * lineHeight` design px: normal 3 lines = 35, half-window 2 lines = 26),
+  each with its own pre-generated nine-patch layout.
+- **Line scrolling (both modes):** when wrapped text exceeds the bubble's line capacity
+  (`GameConfig.SpeechBubbleVisibleLinesNormal` = 3, `SpeechBubbleVisibleLinesHalfWindow` = 2),
+  the visible text block scrolls up one line each time a line finishes its typewriter reveal —
+  the oldest line drops and the next line types into the freed bottom row
+  (`ScrollVisibleTextIfNeeded`, triggered only on `'\n'` appends). After the reveal, the
+  bubble lingers showing the last N lines.
+- **Culling:** `IsVisibleFromCamera` ignores the screen-space camera it is handed and instead
+  checks the speaker's world position against the **scene camera's** bounds (expanded by one
+  tile). A speaker fully outside the camera view hides its bubble; it reappears when the
+  speaker scrolls back in.
 - `Say()` **interrupts** any in-flight bubble (stops the coroutine, restarts). There is no queue.
 - Word-wrap via `BitmapFont.WrapText` (never splits a word that fits a line); reveal and linger
   are pause-aware (`PauseService` spin). `OnRemovedFromEntity` stops the coroutine — a bubble is

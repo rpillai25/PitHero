@@ -53,7 +53,9 @@ crowns `TreeBandCanopyPeekPx` over the map's bottom tile row instead of burying 
 sized to contain whole trees so no canopy is ever cut.
 
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
-`RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999).
+`RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999),
+`RenderLayerSpeechBubble` (1000 — speech bubbles hold constant screen size at any zoom;
+back-most of the screen-space group, so UI windows and the pause dim draw over them).
 
 ---
 
