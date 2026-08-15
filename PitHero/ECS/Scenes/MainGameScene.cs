@@ -1824,7 +1824,7 @@ namespace PitHero.ECS.Scenes
 
         private void SetupUIOverlay()
         {
-            var screenSpaceRenderer = new ScreenSpaceRenderer(100, [GameConfig.TransparentPauseOverlay, GameConfig.RenderLayerUI, GameConfig.RenderLayerGraphicalHUD, GameConfig.RenderLayerActionQueue]);
+            var screenSpaceRenderer = new ScreenSpaceRenderer(100, [GameConfig.RenderLayerSpeechBubble, GameConfig.TransparentPauseOverlay, GameConfig.RenderLayerUI, GameConfig.RenderLayerGraphicalHUD, GameConfig.RenderLayerActionQueue]);
             AddRenderer(screenSpaceRenderer);
 
             // Create pause overlay entity

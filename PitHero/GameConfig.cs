@@ -400,6 +400,9 @@ namespace PitHero
         public const int RenderLayerGraphicalHUD = 997; // Graphical HUD layer (screen space, not affected by scene scaling)
         public const int RenderLayerUI = 998; // UI layer (always on top)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
+        // Speech bubbles (screen space so they hold constant size at any camera zoom). Back-most of the
+        // screen-space group: UI windows and the pause dim draw over them.
+        public const int RenderLayerSpeechBubble = 1000;
 
         // Y-sort: LayerDepth = Mathf.Clamp01(1f - entity.Y * YSortDepthScale)
         // Higher world-Y (closer to camera) → smaller depth → drawn in front.

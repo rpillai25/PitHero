@@ -3,9 +3,12 @@
 ## Overview
 
 Short dialogue lines rendered in a nine-patch bubble above a speaker's head (issue #377).
-Bubbles are **world-pixel** visuals (128×48, they scale with camera zoom like sprites), reveal
-text typewriter-style via a pause-aware coroutine, linger ~2s, then hide. Speakers: the hero,
-mercenaries/tavern patrons, kitchen workers, and farm workers.
+Bubbles are **screen-space** visuals (constant 128×48 screen px at any camera zoom, on
+`GameConfig.RenderLayerSpeechBubble` via the scene's `ScreenSpaceRenderer`): each frame the
+tail-tip world anchor is converted with the world camera's `WorldToScreenPoint`, so the bubble
+tracks its speaker but never scales with zoom. Text reveals typewriter-style via a pause-aware
+coroutine, lingers ~2s, then hides. Speakers: the hero, mercenaries/tavern patrons, kitchen
+workers, and farm workers.
 
 Three pieces:
 
@@ -19,9 +22,15 @@ Three pieces:
 
 - Nine-patch `NinePatchSpeechBubble` (4/4/4/4 splits supplied **in code** — the atlas format has
   no split metadata) + `SpeechBubbleTail` whose top 2 rows overlap the bubble's bottom border.
-  Renders on `GameConfig.RenderLayerTop`; text is `FontPathSpeechBubble` (Express — Skullboy and
-  SkullboySmall were rejected in playtesting; never use `GetHudFontForCurrentMode()` here, the
-  half-window Skullboy2x variant overflows the 120×40 text area).
+  Renders on `GameConfig.RenderLayerSpeechBubble` (1000, screen space — back-most of the
+  `ScreenSpaceRenderer` group, so UI windows and the pause dim draw over bubbles); text is
+  `FontPathSpeechBubble` (Express — Skullboy and SkullboySmall were rejected in playtesting;
+  never use `GetHudFontForCurrentMode()` here, the half-window Skullboy2x variant overflows the
+  120×40 text area).
+- **Culling:** `IsVisibleFromCamera` ignores the screen-space camera it is handed and instead
+  checks the speaker's world position against the **scene camera's** bounds (expanded by one
+  tile). A speaker fully outside the camera view hides its bubble; it reappears when the
+  speaker scrolls back in.
 - `Say()` **interrupts** any in-flight bubble (stops the coroutine, restarts). There is no queue.
 - Word-wrap via `BitmapFont.WrapText` (never splits a word that fits a line); reveal and linger
   are pause-aware (`PauseService` spin). `OnRemovedFromEntity` stops the coroutine — a bubble is

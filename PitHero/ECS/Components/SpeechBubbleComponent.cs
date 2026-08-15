@@ -12,9 +12,12 @@ namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Renders a nine-patch speech bubble with a tail above the entity's head.
-    /// Text is revealed via a typewriter effect; the bubble auto-hides after the
-    /// reveal completes plus a brief linger period. Pause-aware — the reveal and
-    /// linger freeze while <see cref="PauseService.IsPaused"/> is true.
+    /// Drawn in screen space (<see cref="GameConfig.RenderLayerSpeechBubble"/>) so the
+    /// bubble holds its 128×48 screen-pixel size at any camera zoom; the tail tip is
+    /// re-anchored to the entity's head each frame via the world camera's
+    /// WorldToScreenPoint. Text is revealed via a typewriter effect; the bubble
+    /// auto-hides after the reveal completes plus a brief linger period. Pause-aware —
+    /// the reveal and linger freeze while <see cref="PauseService.IsPaused"/> is true.
     /// </summary>
     /// <remarks>
     /// Attach to the hero entity (or any paperdoll entity whose sprite occupies
@@ -62,10 +65,11 @@ namespace PitHero.ECS.Components
         public Nez.Sprites.SpriteRenderer AnchorRenderer;
 
         /// <inheritdoc/>
+        /// Screen pixels. Bounds is not used for culling — see the IsVisibleFromCamera override.
         public override float Width => GameConfig.SpeechBubbleWidth;
 
         /// <inheritdoc/>
-        /// Full visual height: bubble body + tail sprite height - tail overlap with bubble border.
+        /// Full visual height in screen pixels: bubble body + tail sprite height - tail overlap with bubble border.
         public override float Height =>
             GameConfig.SpeechBubbleHeight + TailSpriteH - GameConfig.SpeechBubbleTailOverlap;
 
@@ -107,7 +111,7 @@ namespace PitHero.ECS.Components
                 }
 
                 _pauseService = Core.Services.GetService<PauseService>();
-                SetRenderLayer(GameConfig.RenderLayerTop);
+                SetRenderLayer(GameConfig.RenderLayerSpeechBubble);
             }
             catch (System.Exception ex)
             {
@@ -165,24 +169,26 @@ namespace PitHero.ECS.Components
                 : GameConfig.SpeechBubbleTailTipOffsetY;
         }
 
+        /// <summary>
+        /// Called by the ScreenSpaceRenderer with its own static camera — ignored. The bubble
+        /// is anchored to a world entity, so visibility is decided by the world camera: the
+        /// bubble shows only while its speaker is within the scene camera's view (expanded by
+        /// one tile so it doesn't pop off while the sprite is still partially on-screen).
+        /// </summary>
         public override bool IsVisibleFromCamera(Camera camera)
         {
             if (!_active)
                 return false;
 
-            var p = Entity.Position;
-            float tailTipOffsetY = GetTailTipOffsetY();
-            // Bubble top = tailTip - tail height + tail overlap - bubble height; bottom = tailTip
-            float visualTop = p.Y + tailTipOffsetY
-                              - TailSpriteH + GameConfig.SpeechBubbleTailOverlap
-                              - GameConfig.SpeechBubbleHeight;
-            float visualBottom = p.Y + tailTipOffsetY;
-            float visualLeft   = p.X - GameConfig.SpeechBubbleWidth / 2f;
-            float visualRight  = visualLeft + GameConfig.SpeechBubbleWidth;
+            var sceneCamera = Entity.Scene?.Camera;
+            if (sceneCamera == null)
+                return false;
 
-            var cam = camera.Bounds;
-            return visualRight >= cam.X && visualLeft <= cam.Right
-                && visualBottom >= cam.Y && visualTop <= cam.Bottom;
+            var p = Entity.Position;
+            var cam = sceneCamera.Bounds;
+            const float margin = GameConfig.TileSize;
+            return p.X >= cam.X - margin && p.X <= cam.Right + margin
+                && p.Y >= cam.Y - margin && p.Y <= cam.Bottom + margin;
         }
 
         public override void Render(Batcher batcher, Camera camera)
@@ -190,14 +196,19 @@ namespace PitHero.ECS.Components
             if (!_active || _bubbleDrawable == null || _font == null)
                 return;
 
-            var p = Entity.Position;
+            // camera is the screen-space renderer's static camera — positioning instead derives
+            // from the world camera so the bubble tracks its speaker while staying a constant
+            // screen-pixel size at any zoom.
+            var anchor = Entity.Scene.Camera.WorldToScreenPoint(
+                new Vector2(Entity.Position.X, Entity.Position.Y + GetTailTipOffsetY()));
+            var p = anchor;
 
-            // Position math (world pixels):
-            //   tail bottom Y = p.Y + tailTipOffsetY  (4 px clearance above sprite top)
+            // Position math (screen pixels):
+            //   tail bottom Y = anchor (tail tip, 4 world px clearance above sprite top)
             //   tail top Y    = tail bottom - tail height  (tail sprite is 8 px tall)
             //   bubble bottom = tail top + tail overlap with bubble border (2 px)
             //   bubble top    = bubble bottom - bubble height  (48 px)
-            float tailBottomY   = p.Y + GetTailTipOffsetY();
+            float tailBottomY   = p.Y;
             float tailTopY      = tailBottomY - TailSpriteH;
             float bubbleBottomY = tailTopY + GameConfig.SpeechBubbleTailOverlap;
             float bubbleTopY    = bubbleBottomY - GameConfig.SpeechBubbleHeight;
