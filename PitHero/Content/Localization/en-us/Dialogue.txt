@@ -51,3 +51,10 @@ WorkerGoodWork,That was some good work
 WorkerDoMyBest,I'll do my best!
 WorkerGoingToWork,Going to work!
 WorkerHappyToHelp,Happy to help!
+InnkeeperGoodRest,Have a good rest
+InnkeeperFarewellGoodLuck,Good luck!
+InnkeeperFarewellPleasantAdventures,Pleasant adventures!
+InnkeeperFarewellComeBackSoon,Come back soon!
+SecondChanceInterestedWares,Interested in my wares?
+SecondChanceBuyBackSomething,Perhaps you want to buy back something?
+SecondChanceMissSomething,Miss something you once had?

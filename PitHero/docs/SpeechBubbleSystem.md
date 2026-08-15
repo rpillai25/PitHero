@@ -80,10 +80,18 @@ line lives in `WalkToStatueForCrystalAction`, not `RespawnHero()`).
 
 ## SpeechBubbleDialogue — option sets, gates, formatting
 
-Multi-variant events are `Option[]` tables picked **uniformly at random**:
+Multi-variant events are `OptionBag` tables — an `Option[]` plus a **shared
+`ShuffleBag<int>` of option indices** (issue #385). Selection (`SelectKey`, public and
+pure for tests) draws indices from the bag with **bounded draw-and-skip**: gate-ineligible
+marbles are consumed and skipped (they return next cycle), bounded at `Count * 2` draws;
+an eligibility pre-count returns early — without advancing the bag — when nothing can
+match. Because the tables are static, one bag per event is automatically the shared
+per-job pool: two cooks draw from the same `CookServedOptions` bag, so no line repeats
+within a cycle no matter which worker speaks.
 
-- `new Option(null)` is the **silent variant** — that roll shows no bubble at all.
-- `Option.Gate` restricts eligibility (ineligible options are excluded before the roll):
+- `new Option(null)` is the **silent variant** — drawing it shows no bubble; it's a real
+  marble, consumed like any other, so silence also cycles fairly.
+- `Option.Gate` restricts eligibility (ineligible draws are skipped):
   `Gate.Merc` = at least one hired mercenary; `Gate.Tip` / `Gate.NoTip` = filtered by the
   `tipPaid` argument (only `SayPatronPaid` supplies it). Design-notation mapping: `""` → silent,
   `[G]` → `Gate.Merc`, `[T]`/`[!T]` → `Gate.Tip`/`Gate.NoTip`.
@@ -92,7 +100,8 @@ Multi-variant events are `Option[]` tables picked **uniformly at random**:
   `formatArg` → `string.Format` at emit time. `TextService` itself has no placeholder support.
 - Every public `Say*` funnels through `SaySingle`, which guards `Core.Instance == null` and
   `entity == null` — this is what keeps triggers headless-safe (patron order/payment paths run
-  without `Core` in `KitchenServiceLoopTests`).
+  without `Core` in `KitchenServiceLoopTests`). `SayFromOptions` repeats the guard **before**
+  any bag draw, so headless calls never advance a bag (keeps those tests deterministic).
 
 ### ⚠ RNG rule (do not break)
 
@@ -134,6 +143,36 @@ virtual/live run parity. See the comment block at the top of `SpeechBubbleDialog
 a worker is unwanted — never emit from coordinator `Update()`. The FSM `_Enter` callbacks and
 one-shot tick transitions fire exactly once and are the correct hook points.
 
+### Innkeeper (issue #385)
+
+The innkeeper (entity name `"innkeeper"`, tile 69,3) gets its `SpeechBubbleComponent` in
+`MainGameScene.SpawnInnkeeper`.
+
+| Trigger | Emit site | Notes |
+|---|---|---|
+| Party pays for an inn nap | `SleepInBedAction.SleepCoroutine` paid branch | "Have a good rest" — **paid stays only**; the free night-sleep branch stays silent |
+| Hero crosses (63,6) heading to the pit after an inn stay | `HeroStateMachine.CheckInnFarewell` (GoTo move-complete edge) | 3-variant farewell bag. Armed by `HeroComponent.JustLeftInn` (set at sleep completion, transient/not saved); the first post-inn trip whose `PitIntent != EnteringPit` (e.g. the auto-dine tavern detour) disarms it, so tavern-origin pit trips that also pass (63,6) stay silent. Tile constant: `GameConfig.InnFarewellTileX/Y` |
+
+### Second Chance merchant (issue #385)
+
+The shop owner is a UI `Image`, not a world entity, so it uses its own view:
+`PitHero/UI/MerchantSpeechBubble.cs` — a stage-space `Nez.UI.Element` reusing the same
+`NinePatchSpeechBubble`/`SpeechBubbleTail` sprites and Express font. Differences from
+`SpeechBubbleComponent`:
+
+- **Persists after reveal**: no linger/auto-hide — the full text stays until the shop closes
+  (`RemoveMerchantBubble()` runs in both `ToggleShopWindow`'s close branch and
+  `ForceCloseWindow`).
+- **Sized to the full wrapped text** (no scroll-and-drop), so every line stays visible.
+- **Ticked with `Time.UnscaledDeltaTime`** from `SecondChanceShopUI.Update()` — the shop sets
+  `PauseService.IsPaused` while open (a pure flag; `Time.DeltaTime` still ticks) and
+  fast-forward scales `Time.TimeScale`; unscaled time keeps the reveal speed constant.
+- Greeting text comes from `SpeechBubbleDialogue.GetSecondChanceGreeting()` (3-variant bag,
+  re-drawn on every shop open; returns the localized string since there's no entity).
+- Tail anchor = merchant sprite position + `GameConfig.SecondChanceMerchantBubbleAnchorX/Y`
+  (plus the shop's stage-centering `xOffset`). The bubble is in `GetWindowBoundsElements()`
+  so clicking it doesn't dismiss the shop, and it's `Touchable.Disabled`.
+
 ## Localization
 
 Dialogue is its **own** table: `TextType.Dialogue`, `DialogueTextKey` consts,
@@ -146,9 +185,10 @@ injected via `formatArg`.
 ## Recipe: adding a new dialogue event
 
 1. Add key consts to `DialogueTextKey.cs` + lines to `Dialogue.txt` (use `{0}` if parameterized).
-2. In `SpeechBubbleDialogue`: add an `Option[]` table (include `new Option(null)` if a silent
-   roll is wanted, gates as needed) and a public `SayXxx(Entity, …)` that calls
-   `SayFromOptions` (or `SaySingle` for a fixed line).
+2. In `SpeechBubbleDialogue`: add an `OptionBag` table (`new OptionBag(new Option[] { … })`;
+   include `new Option(null)` if a silent draw is wanted, gates as needed) and a public
+   `SayXxx(Entity, …)` that calls `SayFromOptions` (or `SaySingle` for a fixed line). The bag
+   is static, so it's automatically the shared pool across all speakers of the event.
 3. Call `SpeechBubbleDialogue.SayXxx(entity)` from the trigger. Pick a spot that fires **once**
    per logical event (FSM `_Enter`, a latched plan-formation block, a state transition) — never
    a per-frame branch. Check whether the code path also runs headless (tests / virtual layer);

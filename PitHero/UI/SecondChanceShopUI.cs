@@ -35,6 +35,9 @@ namespace PitHero.UI
         // Merchant sprite shown between the two panels
         private Image _merchantSprite;
 
+        // Greeting bubble above the merchant's head; persists until the shop closes (issue #385)
+        private MerchantSpeechBubble _merchantBubble;
+
         private bool _windowVisible = false;
         private ImageButtonStyle _shopNormalStyle;
         private ImageButtonStyle _shopHalfStyle;
@@ -112,6 +115,8 @@ namespace PitHero.UI
             _merchantSprite = new Image(new SpriteDrawable(merchantSprite));
             // Display at natural sprite dimensions so the full character is visible
             _merchantSprite.SetSize(merchantSprite.SourceRect.Width, merchantSprite.SourceRect.Height);
+
+            _merchantBubble = new MerchantSpeechBubble();
 
             CreateShopWindow(_skin);
             CreateHeroInventoryWindow(_skin);
@@ -468,6 +473,18 @@ namespace PitHero.UI
                 _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX + xOffset, GameConfig.SecondChanceMerchantSpriteY);
                 _merchantSprite.ToFront();
 
+                // Greeting bubble above the merchant's head; persists until the shop closes
+                var greeting = SpeechBubbleDialogue.GetSecondChanceGreeting();
+                if (greeting != null && _merchantBubble != null)
+                {
+                    _stage.AddElement(_merchantBubble);
+                    _merchantBubble.SetTailAnchor(
+                        GameConfig.SecondChanceMerchantSpriteX + xOffset + GameConfig.SecondChanceMerchantBubbleAnchorX,
+                        GameConfig.SecondChanceMerchantSpriteY + GameConfig.SecondChanceMerchantBubbleAnchorY);
+                    _merchantBubble.Show(greeting);
+                    _merchantBubble.ToFront();
+                }
+
                 // Hero panel (right) — show the one matching the active tab
                 _stage.AddElement(_heroInventoryWindow);
                 _stage.AddElement(_heroCrystalWindow);
@@ -507,6 +524,7 @@ namespace PitHero.UI
                 _shopWindow.SetVisible(false);
                 _shopWindow.Remove();
                 _merchantSprite.Remove();
+                RemoveMerchantBubble();
                 _heroInventoryWindow.SetVisible(false);
                 _heroInventoryWindow.Remove();
                 _heroCrystalWindow.SetVisible(false);
@@ -521,6 +539,13 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>Hides the merchant greeting bubble and detaches it from the stage.</summary>
+        private void RemoveMerchantBubble()
+        {
+            _merchantBubble?.Hide();
+            _merchantBubble?.Remove();
+        }
+
         /// <summary>Force-closes the shop window. Used by single window policy.</summary>
         public void ForceCloseWindow()
         {
@@ -531,6 +556,7 @@ namespace PitHero.UI
                 _shopWindow?.SetVisible(false);
                 _shopWindow?.Remove();
                 _merchantSprite?.Remove();
+                RemoveMerchantBubble();
                 _heroInventoryWindow?.SetVisible(false);
                 _heroInventoryWindow?.Remove();
                 _heroCrystalWindow?.SetVisible(false);
@@ -612,6 +638,10 @@ namespace PitHero.UI
 
             if (_windowVisible && _stage != null)
             {
+                // Unscaled time: the shop pauses gameplay while open, and fast-forward
+                // scales Time.DeltaTime — the greeting reveal should do neither
+                _merchantBubble?.Tick(Time.UnscaledDeltaTime);
+
                 var mousePos = _stage.GetMousePosition();
                 if (_activeTabIndex == 0)
                 {
@@ -658,10 +688,11 @@ namespace PitHero.UI
         private List<Nez.UI.Element> GetWindowBoundsElements()
         {
             if (_windowBoundsElements == null)
-                _windowBoundsElements = new List<Nez.UI.Element>(5);
+                _windowBoundsElements = new List<Nez.UI.Element>(6);
             _windowBoundsElements.Clear();
             _windowBoundsElements.Add(_shopWindow);
             _windowBoundsElements.Add(_merchantSprite);
+            _windowBoundsElements.Add(_merchantBubble);
             _windowBoundsElements.Add(_heroInventoryWindow);
             _windowBoundsElements.Add(_heroCrystalWindow);
             _windowBoundsElements.Add(_vaultCrystalCard);

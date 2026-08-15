@@ -329,6 +329,7 @@ namespace PitHero.AI
                     gameState.Funds -= innCost;
                     _hasPaidInnkeeper = true;
                     soundEffectManager.PlaySoundAt(SoundEffectType.PayGold, heroEntity.Transform.Position);
+                    SpeechBubbleDialogue.SayInnkeeperGoodRest(Game1.Scene?.FindEntity("innkeeper"));
                     Debug.Log($"[SleepInBedAction] Paid {innCost} gold to innkeeper. Remaining funds: {gameState.Funds}");
 
                     Services.Analytics.AnalyticsService.LogInnSleep(innCost, gameState.Funds);
@@ -745,6 +746,7 @@ namespace PitHero.AI
             _sleepCoroutine = null;
             _isSleeping = false;
             hero.IsSleeping = false;
+            hero.JustLeftInn = true; // arms the innkeeper farewell at the inn-farewell tile (issue #385)
 
             // Morning breakfast trip (issue #319): if "Eat at tavern" is enabled and any party
             // member can actually order, enter Stop mode and head to the tavern

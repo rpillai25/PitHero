@@ -48,6 +48,13 @@ namespace PitHero.ECS.Components
         public HeroPitIntent PitIntent { get; set; }
 
         /// <summary>
+        /// True from inn-sleep completion until the first post-inn trip resolves. Drives the
+        /// innkeeper farewell bubble at the inn-farewell tile crossing (issue #385).
+        /// Transient — not saved; a load mid-walk simply skips one farewell.
+        /// </summary>
+        public bool JustLeftInn { get; set; }
+
+        /// <summary>
         /// InsidePit adjusted by plan intent — the pit state the hero is heading toward.
         /// Mercenaries key their own jump-in/jump-out goals off this so all party members
         /// move to the pit edge concurrently instead of waiting for the hero to land.

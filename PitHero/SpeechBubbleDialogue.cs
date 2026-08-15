@@ -2,6 +2,7 @@ using Nez;
 using PitHero.Dining;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using RolePlayingFramework.Utils;
 
 namespace PitHero
 {
@@ -17,12 +18,14 @@ namespace PitHero
         // as a seeded determinism contract (see PitHero/Combat/BattleEngine.cs:64-68;
         // the virtual sim seeds it at VirtualGameSimulation.cs:75). Any Nez.Random call
         // mid-battle would break BattleEngineTests and virtual/live run parity.
+        // The number of _rng draws per bubble event is variable (bounded draw-and-skip),
+        // which is fine — _rng is private to dialogue and not contract-bound.
         private static readonly System.Random _rng = new System.Random();
 
         // ── Gate ─────────────────────────────────────────────────────────────────
 
         /// <summary>Eligibility gate that may restrict an option to a specific context.</summary>
-        private enum Gate
+        public enum Gate
         {
             /// <summary>Always eligible.</summary>
             None,
@@ -34,13 +37,13 @@ namespace PitHero
             NoTip,
         }
 
-        // ── Option set type ──────────────────────────────────────────────────────
+        // ── Option set types ─────────────────────────────────────────────────────
 
         /// <summary>
         /// One variant inside a multi-choice bubble event.
         /// A null <see cref="Key"/> represents the "show nothing" silent variant.
         /// </summary>
-        private readonly struct Option
+        public readonly struct Option
         {
             /// <summary>Dialogue key, or null for the silent variant.</summary>
             public readonly string Key;
@@ -55,70 +58,96 @@ namespace PitHero
             }
         }
 
+        /// <summary>
+        /// An option table paired with its shared shuffle bag of option indices (issue #385).
+        /// Tables are static, so each bag is a single pool shared by every speaker of the
+        /// event — two cooks draw from the same bag and cannot repeat a line within a cycle.
+        /// </summary>
+        public sealed class OptionBag
+        {
+            public readonly Option[] Options;
+            public readonly ShuffleBag<int> Bag;
+
+            /// <summary>Precomputed so hasMerc stays a lazy one-shot resolve per call.</summary>
+            public readonly bool HasMercGate;
+
+            public OptionBag(Option[] options)
+            {
+                Options = options;
+                Bag = new ShuffleBag<int>(options.Length);
+                for (int i = 0; i < options.Length; i++)
+                {
+                    Bag.Add(i);
+                    if (options[i].Gate == Gate.Merc)
+                        HasMercGate = true;
+                }
+            }
+        }
+
         // ── Option tables ────────────────────────────────────────────────────────
 
         // SayBreakfast — three variants, no gate
-        private static readonly Option[] BreakfastOptions =
+        private static readonly OptionBag BreakfastOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.HeroBreakfast),
             new Option(DialogueTextKey.HeroBreakfastJustWokeUp),
             new Option(DialogueTextKey.HeroBreakfastWhatsFor),
-        };
+        });
 
         // SayPitAdventure — five variants, no gate
-        private static readonly Option[] PitAdventureOptions =
+        private static readonly OptionBag PitAdventureOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.HeroPitAdventure),
             new Option(DialogueTextKey.HeroPitAdventureLetsGo),
             new Option(DialogueTextKey.HeroPitAdventureGoodRun),
             new Option(DialogueTextKey.HeroPitAdventureLoot),
             new Option(DialogueTextKey.HeroPitAdventureExcited),
-        };
+        });
 
         // Event 2 — Pit entry: three non-silent + merc-gated + silent
-        private static readonly Option[] PitEntryOptions =
+        private static readonly OptionBag PitEntryOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.HeroPitEntryGreatRun),
             new Option(DialogueTextKey.HeroPitEntryWeGotThis, Gate.Merc),
             new Option(DialogueTextKey.HeroPitEntryWhatsAtEnd),
             new Option(null), // silent variant
-        };
+        });
 
         // Event 4 — Pit rest: three variants, no gate
-        private static readonly Option[] PitRestOptions =
+        private static readonly OptionBag PitRestOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.HeroRestSleepOff),
             new Option(DialogueTextKey.HeroRestHealAtInn),
             new Option(DialogueTextKey.HeroRestWouldBeGood),
-        };
+        });
 
         // Event 6 — Boss defeated: merc-gated + always + silent
-        private static readonly Option[] BossDefeatedOptions =
+        private static readonly OptionBag BossDefeatedOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.HeroBossTeamwork, Gate.Merc),
             new Option(DialogueTextKey.HeroBossWorthyFoe),
             new Option(null), // silent variant
-        };
+        });
 
         // Respawn — five variants, no gate
-        private static readonly Option[] RespawnOptions =
+        private static readonly OptionBag RespawnOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.HeroRespawnToughBattle),
             new Option(DialogueTextKey.HeroRespawnNextRunBetter),
             new Option(DialogueTextKey.HeroRespawnStronger),
             new Option(DialogueTextKey.HeroRespawnOuch),
             new Option(DialogueTextKey.HeroRespawnNotAsPlanned),
-        };
+        });
 
         // Patron order — two variants with {0} dish name
-        private static readonly Option[] PatronOrderOptions =
+        private static readonly OptionBag PatronOrderOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.PatronOrderIllHave),
             new Option(DialogueTextKey.PatronOrderOnePlease),
-        };
+        });
 
         // Patron paid — non-tip + tip-gated + no-tip-gated + silent
-        private static readonly Option[] PatronPaidOptions =
+        private static readonly OptionBag PatronPaidOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.PatronPaidDelicious),
             new Option(DialogueTextKey.PatronPaidPrettyGood),
@@ -126,62 +155,78 @@ namespace PitHero
             new Option(DialogueTextKey.PatronPaidTellFriends),
             new Option(DialogueTextKey.PatronPaidHadBetter, Gate.NoTip),
             new Option(null), // silent
-        };
+        });
 
         // Server farewell — three variants + silent
-        private static readonly Option[] ServerFarewellOptions =
+        private static readonly OptionBag ServerFarewellOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.ServerFarewellComeBack),
             new Option(DialogueTextKey.ServerFarewellComeAgain),
             new Option(DialogueTextKey.ServerFarewellGladToHaveYou),
             new Option(null), // silent
-        };
+        });
 
         // Cook places dish — four variants with {0} dish name
-        private static readonly Option[] CookServedOptions =
+        private static readonly OptionBag CookServedOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.CookOrderUp),
             new Option(DialogueTextKey.CookHandsPlease),
             new Option(DialogueTextKey.CookNeedHands),
             new Option(DialogueTextKey.CookDishReady),
-        };
+        });
 
         // Runner fetch — four variants + silent
-        private static readonly Option[] RunnerFetchOptions =
+        private static readonly OptionBag RunnerFetchOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.RunnerBusy),
             new Option(DialogueTextKey.RunnerOffIGo),
             new Option(DialogueTextKey.RunnerQuick),
             new Option(DialogueTextKey.RunnerGoGetIt),
             new Option(null), // silent
-        };
+        });
 
         // Farmer reaches storage — three variants + silent
-        private static readonly Option[] FarmerStoreOptions =
+        private static readonly OptionBag FarmerStoreOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.FarmerStorePuttingAway),
             new Option(DialogueTextKey.FarmerStoreAnotherHarvest),
             new Option(DialogueTextKey.FarmerStoreInYouGo),
             new Option(null), // silent
-        };
+        });
 
         // Worker shift end — three variants + silent
-        private static readonly Option[] WorkerShiftEndOptions =
+        private static readonly OptionBag WorkerShiftEndOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.WorkerShiftDone),
             new Option(DialogueTextKey.WorkerTimeForRest),
             new Option(DialogueTextKey.WorkerGoodWork),
             new Option(null), // silent
-        };
+        });
 
         // Worker shift start — three variants + silent
-        private static readonly Option[] WorkerShiftStartOptions =
+        private static readonly OptionBag WorkerShiftStartOptions = new OptionBag(new Option[]
         {
             new Option(DialogueTextKey.WorkerDoMyBest),
             new Option(DialogueTextKey.WorkerGoingToWork),
             new Option(DialogueTextKey.WorkerHappyToHelp),
             new Option(null), // silent
-        };
+        });
+
+        // Innkeeper farewell — three variants, no silent (issue #385)
+        private static readonly OptionBag InnkeeperFarewellOptions = new OptionBag(new Option[]
+        {
+            new Option(DialogueTextKey.InnkeeperFarewellGoodLuck),
+            new Option(DialogueTextKey.InnkeeperFarewellPleasantAdventures),
+            new Option(DialogueTextKey.InnkeeperFarewellComeBackSoon),
+        });
+
+        // Second Chance merchant greeting — three variants, no silent (issue #385)
+        private static readonly OptionBag SecondChanceGreetingOptions = new OptionBag(new Option[]
+        {
+            new Option(DialogueTextKey.SecondChanceInterestedWares),
+            new Option(DialogueTextKey.SecondChanceBuyBackSomething),
+            new Option(DialogueTextKey.SecondChanceMissSomething),
+        });
 
         // ── Public API ───────────────────────────────────────────────────────────
 
@@ -326,7 +371,93 @@ namespace PitHero
             SayFromOptions(entity, WorkerShiftStartOptions);
         }
 
+        /// <summary>Shows the "Have a good rest" bubble on the innkeeper after the party pays.</summary>
+        public static void SayInnkeeperGoodRest(Entity innkeeper)
+        {
+            SaySingle(innkeeper, DialogueTextKey.InnkeeperGoodRest);
+        }
+
+        /// <summary>
+        /// Shows a randomly-picked innkeeper farewell bubble when the hero crosses the
+        /// inn-farewell tile on a pit-bound trip that originated at the inn.
+        /// </summary>
+        public static void SayInnkeeperFarewell(Entity innkeeper)
+        {
+            SayFromOptions(innkeeper, InnkeeperFarewellOptions);
+        }
+
+        /// <summary>
+        /// Returns the localized Second Chance merchant greeting for the shop UI bubble,
+        /// drawn from the shared greeting bag. Returns null when unavailable (headless).
+        /// The merchant is a UI sprite, not an entity, so the caller displays the text itself.
+        /// </summary>
+        public static string GetSecondChanceGreeting()
+        {
+            if (Core.Instance == null)
+                return null;
+            var textService = Core.Services?.GetService<TextService>();
+            if (textService == null)
+                return null;
+            string key = SelectKey(SecondChanceGreetingOptions, hasMerc: false, tipPaid: null, _rng);
+            if (key == null)
+                return null;
+            return textService.DisplayText(TextType.Dialogue, key);
+        }
+
+        // ── Selection core ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Pure selection core: draws option indices from the set's shared shuffle bag,
+        /// skipping gate-ineligible marbles (bounded draw-and-skip, precedent
+        /// KitchenTaskCoordinator.PickPatronDish). Ineligible marbles are consumed and
+        /// return next cycle — statistically harmless. Returns the chosen key, or null
+        /// for the silent variant / no eligible option. When nothing is eligible the bag
+        /// is left untouched. AOT-safe: no LINQ; no per-call heap allocation.
+        /// </summary>
+        public static string SelectKey(OptionBag set, bool hasMerc, bool? tipPaid, System.Random rng)
+        {
+            if (set == null || set.Options.Length == 0)
+                return null;
+
+            // Count eligible options first — never draw when nothing can match
+            int eligibleCount = 0;
+            for (int i = 0; i < set.Options.Length; i++)
+            {
+                if (IsEligible(set.Options[i].Gate, hasMerc, tipPaid))
+                    eligibleCount++;
+            }
+
+            if (eligibleCount == 0)
+                return null;
+
+            // Bounded draw-and-skip: at most Remaining draws finish the current cycle,
+            // then one full refilled cycle sees every marble, and eligibleCount > 0
+            // guarantees a hit within Count * 2 draws.
+            int limit = set.Bag.Count * 2;
+            for (int n = 0; n < limit; n++)
+            {
+                int idx = set.Bag.Next(rng);
+                var opt = set.Options[idx];
+                if (IsEligible(opt.Gate, hasMerc, tipPaid))
+                    return opt.Key; // null Key = silent variant (a real, consumed outcome)
+            }
+
+            return null; // unreachable when eligibleCount > 0; defensive
+        }
+
         // ── Private helpers ──────────────────────────────────────────────────────
+
+        /// <summary>Evaluates a gate against the current context.</summary>
+        private static bool IsEligible(Gate gate, bool hasMerc, bool? tipPaid)
+        {
+            switch (gate)
+            {
+                case Gate.Merc:  return hasMerc;
+                case Gate.Tip:   return tipPaid == true;
+                case Gate.NoTip: return tipPaid == false;
+                default:         return true;
+            }
+        }
 
         /// <summary>
         /// Emits a single fixed dialogue key on <paramref name="entity"/>'s bubble.
@@ -346,75 +477,25 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Picks a uniformly-random eligible option from <paramref name="options"/> and displays it.
+        /// Draws an eligible option from the set's shared shuffle bag and displays it.
         /// Gate.Merc options are excluded when no mercenaries are hired; hasMerc is resolved at most
-        /// once per call (one-shot-call property preserved). Gate.Tip/NoTip filter by
-        /// <paramref name="tipPaid"/>. A null key is the silent variant — shows nothing.
-        /// If <paramref name="formatArg"/> is non-null the localized text is formatted with it.
-        /// AOT-safe: no LINQ; no per-call heap allocation.
+        /// once per call and only when the table has a merc gate (one-shot-call property preserved).
+        /// Gate.Tip/NoTip filter by <paramref name="tipPaid"/>. A null key is the silent
+        /// variant — shows nothing. If <paramref name="formatArg"/> is non-null the localized
+        /// text is formatted with it. Headless calls bail before any draw so bags never
+        /// advance in tests.
         /// </summary>
-        private static void SayFromOptions(Entity entity, Option[] options,
+        private static void SayFromOptions(Entity entity, OptionBag set,
             bool? tipPaid = null, string formatArg = null)
         {
-            if (Core.Instance == null || entity == null || options == null || options.Length == 0)
+            if (Core.Instance == null || entity == null || set == null || set.Options.Length == 0)
                 return;
 
-            // Lazily resolve hasMerc — only when at least one option has Gate.Merc
-            bool hasMercKnown = false;
-            bool hasMerc      = false;
+            bool hasMerc = set.HasMercGate && HasHiredMercenary();
 
-            // Count eligible options (no LINQ)
-            int eligibleCount = 0;
-            for (int i = 0; i < options.Length; i++)
-            {
-                switch (options[i].Gate)
-                {
-                    case Gate.None:
-                        eligibleCount++;
-                        break;
-                    case Gate.Merc:
-                        if (!hasMercKnown) { hasMerc = HasHiredMercenary(); hasMercKnown = true; }
-                        if (hasMerc) eligibleCount++;
-                        break;
-                    case Gate.Tip:
-                        if (tipPaid == true) eligibleCount++;
-                        break;
-                    case Gate.NoTip:
-                        if (tipPaid == false) eligibleCount++;
-                        break;
-                }
-            }
+            string key = SelectKey(set, hasMerc, tipPaid, _rng);
 
-            if (eligibleCount == 0)
-                return;
-
-            // Pick uniformly at random among eligible options
-            int pick   = _rng.Next(eligibleCount);
-            int walked = 0;
-            string key = null;
-            for (int i = 0; i < options.Length; i++)
-            {
-                bool eligible = false;
-                switch (options[i].Gate)
-                {
-                    case Gate.None:  eligible = true;             break;
-                    case Gate.Merc:  eligible = hasMerc;          break;
-                    case Gate.Tip:   eligible = tipPaid == true;  break;
-                    case Gate.NoTip: eligible = tipPaid == false; break;
-                }
-
-                if (eligible)
-                {
-                    if (walked == pick)
-                    {
-                        key = options[i].Key;
-                        break;
-                    }
-                    walked++;
-                }
-            }
-
-            // Null key = silent variant — show nothing
+            // Null key = silent variant (or nothing eligible) — show nothing
             if (key == null)
                 return;
 
