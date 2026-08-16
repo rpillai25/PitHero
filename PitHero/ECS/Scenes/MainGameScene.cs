@@ -66,6 +66,8 @@ namespace PitHero.ECS.Scenes
         private bool _wasInRemoveCropsMode;
         private HarvestedCropsModeOverlay _harvestedCropsModeOverlay;
         private RefrigeratorDialog _refrigeratorDialog; // Fridge inventory window (issue #386)
+        private bool _wasFridgeDialogVisible;
+        private bool _fridgeRestoreHalfZoom;
         private bool _wasInHarvestedCropsMode;
         private BuildingContextMenu _buildingContextMenu; // Popup shown when a placed building is clicked
         private AddMonsterDialog _addMonsterDialog; // Dialog for manually adding monsters to a house (issue #283)
@@ -2770,6 +2772,48 @@ namespace PitHero.ECS.Scenes
             HandleFridgeHover();
             HandleFridgeClicks();
             _refrigeratorDialog?.Update();
+            UpdateFridgeDialogGate();
+        }
+
+        /// <summary>
+        /// Mirrors the crop-storage viewer's treatment for the Refrigerator window: while it is
+        /// open the game pauses (pause overlay shows) and a half-size window temporarily
+        /// restores to normal so the inventory is fully visible. Watching the visibility edge
+        /// here covers every close path — Close button and outside-click dismissal alike.
+        /// </summary>
+        private void UpdateFridgeDialogGate()
+        {
+            bool fridgeDialogVisible = _refrigeratorDialog?.IsVisible() ?? false;
+            if (fridgeDialogVisible == _wasFridgeDialogVisible)
+                return;
+
+            var pauseService = Core.Services.GetService<Services.PauseService>();
+            if (fridgeDialogVisible)
+            {
+                bool wasHalfSize = WindowManager.IsHalfHeightMode();
+                _fridgeRestoreHalfZoom = wasHalfSize;
+                UI.UIWindowManager.OnUIWindowOpening();
+                if (wasHalfSize)
+                    _cameraController?.ResetZoomToDefault();
+                pauseService?.Pause();
+            }
+            else
+            {
+                UI.UIWindowManager.OnUIWindowClosing();
+                // Restore the half-window default zoom that was reset when the dialog opened
+                // (skip if the persistent size changed to Normal while it was open).
+                if (_fridgeRestoreHalfZoom
+                    && UI.UIWindowManager.PersistentWindowSize == UI.UIWindowManager.WindowSizeMode.Half)
+                    _cameraController?.ApplyHalfWindowZoom();
+                _fridgeRestoreHalfZoom = false;
+                pauseService?.Unpause();
+            }
+            // Keep the top bar shown (and its auto-hide idle timer reset) while the dialog is
+            // open, exactly like SettingsUI's own windows — otherwise the bar can slide away at
+            // Normal-window scale and come back parked half off-screen after the half restore.
+            if (_settingsUI != null)
+                _settingsUI.ExternalUIWindowOpen = fridgeDialogVisible;
+            _wasFridgeDialogVisible = fridgeDialogVisible;
         }
 
         /// <summary>
