@@ -1727,7 +1727,8 @@ namespace PitHero.Services
         /// walk back is cosmetic, so a crash never loses crops). Pass a negative id to draw from
         /// every storage at once — the fallback when no route could be planned.
         /// </summary>
-        public void RunnerCollectAtStorage(KitchenTicket t, int buildingId = -1)
+        public void RunnerCollectAtStorage(KitchenTicket t, int buildingId = -1,
+            string monster = null, string monsterType = null)
         {
             if (t == null) return;
             EnsureServices();
@@ -1746,16 +1747,24 @@ namespace PitHero.Services
                 if (want <= 0)
                     continue;
 
+                int taken;
                 if (buildingId >= 0)
                 {
-                    FridgeAdd(crop, _cropStorage.WithdrawUpTo(buildingId, crop, want));
-                    continue;
+                    taken = _cropStorage.WithdrawUpTo(buildingId, crop, want);
+                }
+                else
+                {
+                    int available = _cropStorage.CountTotal(crop);
+                    int take = want < available ? want : available;
+                    taken = take > 0 && _cropStorage.TryWithdrawAcrossBuildings(crop, take) ? take : 0;
                 }
 
-                int available = _cropStorage.CountTotal(crop);
-                int take = want < available ? want : available;
-                if (take > 0 && _cropStorage.TryWithdrawAcrossBuildings(crop, take))
-                    FridgeAdd(crop, take);
+                if (taken > 0)
+                {
+                    FridgeAdd(crop, taken);
+                    Analytics.AnalyticsService.LogCropFridgeStocked(crop.ToString(), taken,
+                        buildingId, "ticket_topup", monster, monsterType);
+                }
             }
         }
 
@@ -1977,7 +1986,8 @@ namespace PitHero.Services
         /// returns the total units moved. Below-target crops re-queue immediately so low carry
         /// levels turn straight around for the next armful.
         /// </summary>
-        public int PreStockCollect(in PreStockJob job, int[] takenPerCrop = null)
+        public int PreStockCollect(in PreStockJob job, int[] takenPerCrop = null,
+            string monster = null, string monsterType = null)
         {
             EnsureServices();
             for (int i = 0; i < job.CropCount; i++)
@@ -1995,7 +2005,11 @@ namespace PitHero.Services
 
                 int taken = want > 0 ? _cropStorage.WithdrawUpTo(job.BuildingId, crop, want) : 0;
                 if (taken > 0)
+                {
                     _fridgeInv.Deposit(crop, taken);
+                    Analytics.AnalyticsService.LogCropFridgeStocked(crop.ToString(), taken,
+                        job.BuildingId, "prestock", monster, monsterType);
+                }
                 if (takenPerCrop != null && i < takenPerCrop.Length)
                     takenPerCrop[i] = taken;
                 total += taken;

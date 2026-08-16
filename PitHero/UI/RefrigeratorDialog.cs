@@ -332,6 +332,7 @@ namespace PitHero.UI
                 if (remaining > 0)
                     fridge.Deposit(liveSlot.Type, remaining);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.StoreCrop);
+                AnalyticsService.LogCropFridgeReturned(liveSlot.Type.ToString(), moved);
             }
 
             _descWindow.SetVisible(false);

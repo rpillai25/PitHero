@@ -800,6 +800,46 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>
+        /// Logs a runner moving crops from a Crop Storage building into the kitchen fridge.
+        /// source is "prestock" (dedicated pre-stock trip) or "ticket_topup" (opportunistic
+        /// top-up during an order's fetch trip); buildingId is -1 when the top-up drew across
+        /// every storage (no planned route).
+        /// </summary>
+        [Conditional("DEBUG")]
+        public static void LogCropFridgeStocked(string crop, int qty, int buildingId, string source,
+            string monster, string monsterType)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_fridge_stocked"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("qty", qty);
+            _json.Field("buildingId", buildingId);
+            _json.Field("source", source);
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a fridge stack sent back to crop storage via the Refrigerator window's Send to Crop Storage button.</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropFridgeReturned(string crop, int qty)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_fridge_returned"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("qty", qty);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs a finished tavern meal (patron or party); the matching gold_gained is emitted separately for patrons.</summary>
         [Conditional("DEBUG")]
         public static void LogDishServed(string dish, int price, int tip, bool isParty, bool deluxe)

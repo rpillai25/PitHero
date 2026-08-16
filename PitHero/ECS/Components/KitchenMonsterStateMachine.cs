@@ -1058,7 +1058,8 @@ namespace PitHero.ECS.Components
             // standing at; the walk back is cosmetic
             int buildingId = _fetchStopIndex < _fetchRoute.Count
                 ? _fetchRoute[_fetchStopIndex].BuildingId : -1;
-            _coordinator.RunnerCollectAtStorage(_fetchTicket, buildingId);
+            _coordinator.RunnerCollectAtStorage(_fetchTicket, buildingId,
+                _monster?.Name, _monster?.MonsterTypeName);
             if (_fetchTicket != null)
             {
                 ShowCarryCrops(_fetchTicket);
@@ -1130,7 +1131,8 @@ namespace PitHero.ECS.Components
                 return;
 
             // The crops move storage → fridge here; the walk back is cosmetic
-            int total = _coordinator.PreStockCollect(_preStockJob, _preStockTaken);
+            int total = _coordinator.PreStockCollect(_preStockJob, _preStockTaken,
+                _monster?.Name, _monster?.MonsterTypeName);
             var job = _preStockJob;
             _hasPreStockJob = false;
 
