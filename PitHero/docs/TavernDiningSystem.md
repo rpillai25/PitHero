@@ -104,11 +104,11 @@ refunds.
 - Any storage shortfall → ticket starts `AwaitingIngredients` and is enqueued as a **fetch job**,
   and the buildings drawn from are recorded in `SourceBuildingIds` so the runner can retrace the
   route. The runner's trip is **cosmetic for this ticket** — the crops are already committed. At
-  each storage door, `RunnerCollectAtStorage` additionally tops the fridge up toward the
+  each storage door, `RunnerCollectAtStorage` additionally withdraws top-up crops toward the
   pre-stock target (`PreStockStackSize` 1–4 stacks × `KitchenFridgeStackSize = 10` units per
-  recipe crop, clamped by fridge capacity) with a withdraw+add against that one building;
-  at the fridge, `CompleteFetch` flips `IngredientsFetched`. If storage vanishes mid-run the
-  ticket still proceeds.
+  recipe crop, carry-capped) into the runner's hands (`_carriedTopUp` accumulator);
+  at the fridge, `DeliverCarriedTopUp` deposits the cargo and `CompleteFetch` flips
+  `IngredientsFetched`. If storage vanishes mid-run the ticket still proceeds.
 
 ## Fridge pre-stock (issue #386)
 
@@ -117,15 +117,18 @@ flat 10 units) that runners proactively keep stocked: for each crop that appears
 recipe and has stock in some CropStorage, the coordinator queues a **pre-stock job** whenever
 fridge units fall below `PreStockStackSize × 10` (throttled in `Update`, and immediately at the
 end of `CreateTicket` / `CreateTicketPreReserved` / `CancelTicket`, plus after every
-`PreStockCollect` so under-target crops turn the runner straight around). An idle runner (after
+`PreStockDeliver` so under-target crops turn the runner straight around). An idle runner (after
 bus and ticket-fetch jobs) claims a trip (`TryClaimPreStockJob` — nearest storage holding the
 front-of-queue crop, batching up to 3 queued crops that same storage holds, one per hand slot),
-sprints out, and `PreStockCollect` moves the crops storage→fridge at the door (walk back
-cosmetic), **re-clamping each crop against the live target** so a trip that raced another
-top-up never overshoots. A busy mask prevents duplicate trips per crop; `PreStockQueueDepth`
-feeds runner backpressure. Clicking the fridge in the kitchen opens the Refrigerator window
-(`RefrigeratorDialog`): the stack grid, the persisted Pre-Stock Stack Size slider, and
-per-stack Send to Crop Storage / Sell actions.
+sprints out, and the trip is **two-phase real cargo**: `PreStockCollect` withdraws from storage
+into the runner's hands at the door (**re-clamping each crop against the live target** so a
+trip that raced another top-up never overshoots), and `PreStockDeliver` deposits at the fridge
+— **fridge stock only rises at the unload**. The job's crops stay busy while carried so the
+deficit recompute never dispatches a second runner for cargo in transit; a runner that
+despawns mid-carry delivers its cargo in place (`AbandonPreStockTrip` — crops are never lost).
+`PreStockQueueDepth` feeds runner backpressure. Clicking the fridge in the kitchen opens the
+Refrigerator window (`RefrigeratorDialog`): the stack grid, the persisted Pre-Stock Stack Size
+slider, and per-stack Send to Crop Storage / Sell actions.
 
 **Runner carry level** (`GameStateService.RunnerCarryLevel`, persisted save v29 section 46):
 runners carry crops by hand, so every hand-carried amount — pre-stock trips AND the
@@ -137,6 +140,10 @@ per crop type (level 1 → 1, level 2 → 5, level 3 → 10; up to
 Carry visuals show only crops actually withdrawn from storage: pre-stock trips show what
 `PreStockCollect` took, ticket trips show recipe entries with `StorageTakenQty > 0` (a crop
 fully covered by the fridge never appears in hand).
+
+**Known save window**: cargo in a runner's hands (withdrawn from storage, not yet unloaded) is
+not persisted — a save taken during the few-second walk back loses at most one trip's carry
+(≤3 units at level 1). Same accepted-loss class as live patron-ticket reservations.
 - Milk/cheese (`UsesMilk`/`UsesCheese`) are display-only — never in recipes, prices, or checks.
 
 **Cancellation refund rules** (`CancelTicket`): while `CropsRefundable` (pre-cooking) both
@@ -331,9 +338,13 @@ state. All of that is transient and reconciled live after load.
 
 - A worker despawning for any reason must never strand work:
   `KitchenMonsterStateMachine.OnRemovedFromEntity` re-posts held orders, re-plates carried
-  dishes (force-reserving a slot if needed), releases cook tickets and fetch jobs.
-- Reservations are physical-at-creation, so crashes/despawns never lose crops; runner and
-  server walks are presentation only.
+  dishes (force-reserving a slot if needed), releases cook tickets and fetch jobs, and delivers
+  any crop cargo in hand (pre-stock via `AbandonPreStockTrip`, top-up via
+  `DeliverCarriedTopUp`) straight into the fridge.
+- Ticket reservations are physical-at-creation, so crashes/despawns never lose reserved crops;
+  the ticket-fetch walk is presentation only FOR THE RESERVED SHORTFALL. Pre-stock and top-up
+  cargo is real (fridge rises at the unload), so every exit path from a carrying state must
+  deliver the cargo — never drop it.
 - `PostTicket`, `ReleaseFetchJob`, `ReleaseBusJob`, `ForceReserveServingSlot` are idempotent /
   self-healing — a canceled or stale ticket is skipped everywhere.
 - A bus job that leaves the queue must end with its plate entity destroyed. A claimed job whose

@@ -86,10 +86,43 @@ namespace PitHero.Tests
             Assert.AreEqual(GameConfig.GetRunnerCarryUnits(1), job.Units[0],
                 "at carry level 1 a runner hauls a single unit of the crop per trip");
 
-            int taken = _coordinator.PreStockCollect(job);
-            Assert.AreEqual(1, taken);
+            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
+            Assert.AreEqual(1, _coordinator.PreStockCollect(job, taken));
+            Assert.AreEqual(0, _coordinator.FridgeCount(crop),
+                "picking up at the storage door must NOT stock the fridge");
+            Assert.AreEqual(24, _storage.CountTotal(crop), "collect withdraws from storage into hands");
+
+            _coordinator.PreStockDeliver(job, taken);
+            Assert.AreEqual(1, _coordinator.FridgeCount(crop),
+                "fridge stock rises only when the runner unloads");
+        }
+
+        [TestMethod]
+        public void FridgeStock_IncreasesOnlyAtDelivery_AndBusyHoldsThroughCarry()
+        {
+            var crop = FirstRecipeCrop;
+            Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, crop, 25));
+
+            _coordinator.RecomputePreStockDeficits();
+            Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job));
+
+            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
+            Assert.IsTrue(_coordinator.PreStockCollect(job, taken) > 0);
+            Assert.AreEqual(0, _coordinator.FridgeCount(crop), "cargo is in the runner's hands, not the fridge");
+
+            // While the cargo is in transit, the deficit recompute must NOT dispatch a second
+            // runner for the same crop
+            _coordinator.RecomputePreStockDeficits();
+            Assert.IsFalse(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out _),
+                "a crop being carried must stay busy until it is unloaded");
+
+            _coordinator.PreStockDeliver(job, taken);
             Assert.AreEqual(1, _coordinator.FridgeCount(crop));
-            Assert.AreEqual(24, _storage.CountTotal(crop), "collect must draw only from storage");
+
+            // After delivery the crop is claimable again (still below the 10-unit target)
+            _coordinator.RecomputePreStockDeficits();
+            Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var next));
+            Assert.AreEqual(crop, next.Crops[0]);
         }
 
         [TestMethod]
@@ -102,18 +135,22 @@ namespace PitHero.Tests
             var crop = FirstRecipeCrop;
             Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, crop, 40));
 
+            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
+
             _gameState.RunnerCarryLevel = 2;
             _coordinator.RecomputePreStockDeficits();
             Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job));
             Assert.AreEqual(5, job.Units[0], "carry level 2 hauls 5 units per crop");
-            Assert.AreEqual(5, _coordinator.PreStockCollect(job));
+            Assert.AreEqual(5, _coordinator.PreStockCollect(job, taken));
+            _coordinator.PreStockDeliver(job, taken);
 
             _gameState.RunnerCarryLevel = 3;
             _coordinator.RecomputePreStockDeficits();
             Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out job));
             Assert.AreEqual(5, job.Units[0],
                 "carry level 3 hauls up to 10 but only the 5 units still missing from the target");
-            Assert.AreEqual(5, _coordinator.PreStockCollect(job));
+            Assert.AreEqual(5, _coordinator.PreStockCollect(job, taken));
+            _coordinator.PreStockDeliver(job, taken);
             Assert.AreEqual(GameConfig.KitchenFridgeStackSize, _coordinator.FridgeCount(crop));
         }
 
@@ -240,12 +277,13 @@ namespace PitHero.Tests
             for (int i = 0; i < def.Recipe.Length; i++)
                 Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, def.Recipe[i].Crop, 40));
 
-            // Pre-stock every recipe crop to its 1-stack target
+            // Pre-stock every recipe crop to its 1-stack target (collect + unload each trip)
+            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
             _coordinator.RecomputePreStockDeficits();
             while (_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job))
             {
-                Assert.IsTrue(_coordinator.PreStockCollect(job) > 0);
-                _coordinator.RecomputePreStockDeficits();
+                Assert.IsTrue(_coordinator.PreStockCollect(job, taken) > 0);
+                _coordinator.PreStockDeliver(job, taken);
             }
             for (int i = 0; i < def.Recipe.Length; i++)
                 Assert.AreEqual(GameConfig.KitchenFridgeStackSize, _coordinator.FridgeCount(def.Recipe[i].Crop));

@@ -96,12 +96,14 @@ namespace PitHero.Tests
             patron.Update();
         }
 
-        /// <summary>Runs the runner leg for a ticket (claim → collect at storage → deposit at fridge).</summary>
+        /// <summary>Runs the runner leg for a ticket (claim → collect at storage → unload at fridge).</summary>
         private void RunRunnerLeg(KitchenTicket expected)
         {
             var job = _coordinator.TryClaimFetchJob();
             Assert.AreSame(expected, job, "runner did not claim the queued fetch job");
-            _coordinator.RunnerCollectAtStorage(job);
+            var carried = new int[Farming.CropTypeInfo.Count];
+            _coordinator.RunnerCollectAtStorage(job, carried);
+            _coordinator.DeliverCarriedTopUp(carried);
             _coordinator.CompleteFetch(job);
         }
 
@@ -920,7 +922,7 @@ namespace PitHero.Tests
             int nearBefore = _storage.CountIn(StorageBuildingId, crop);
             int farBefore = _storage.CountIn(FarStorageBuildingId, crop);
 
-            _coordinator.RunnerCollectAtStorage(ticket, FarStorageBuildingId);
+            _coordinator.RunnerCollectAtStorage(ticket, new int[Farming.CropTypeInfo.Count], FarStorageBuildingId);
 
             Assert.AreEqual(nearBefore, _storage.CountIn(StorageBuildingId, crop),
                 "collecting at the far storage must not teleport crops out of the near one");
