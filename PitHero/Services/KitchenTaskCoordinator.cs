@@ -927,11 +927,12 @@ namespace PitHero.Services
             EnsureServices();
             var def = DishConfig.GetDefinition(dish);
 
-            // All-or-nothing availability check (fridge + storage; dairy is free and not in Recipe)
+            // All-or-nothing availability check (fridge + AVAILABLE storage — units held for
+            // transfer by a carrying runner don't count; dairy is free and not in Recipe)
             for (int i = 0; i < def.Recipe.Length; i++)
             {
                 int available = FridgeCount(def.Recipe[i].Crop)
-                    + (_cropStorage?.CountTotal(def.Recipe[i].Crop) ?? 0);
+                    + (_cropStorage?.AvailableTotal(def.Recipe[i].Crop) ?? 0);
                 if (available < def.Recipe[i].Qty)
                     return null;
             }
@@ -1132,7 +1133,7 @@ namespace PitHero.Services
             for (int i = 0; i < def.Recipe.Length; i++)
             {
                 int available = FridgeCount(def.Recipe[i].Crop)
-                    + (_cropStorage?.CountTotal(def.Recipe[i].Crop) ?? 0);
+                    + (_cropStorage?.AvailableTotal(def.Recipe[i].Crop) ?? 0);
                 if (available < def.Recipe[i].Qty)
                     return false;
             }
@@ -1690,7 +1691,7 @@ namespace PitHero.Services
                 {
                     foreach (var kvp in _routeNeed)
                     {
-                        if (kvp.Value > 0 && _cropStorage.CountIn(building.UniqueId, kvp.Key) > 0)
+                        if (kvp.Value > 0 && _cropStorage.AvailableIn(building.UniqueId, kvp.Key) > 0)
                         {
                             worthStopping = true;
                             break;
@@ -1711,7 +1712,7 @@ namespace PitHero.Services
                 for (int i = 0; i < _routeScratchCrops.Count; i++)
                 {
                     var crop = _routeScratchCrops[i];
-                    int have = _cropStorage.CountIn(building.UniqueId, crop);
+                    int have = _cropStorage.AvailableIn(building.UniqueId, crop);
                     int left = _routeNeed[crop] - have;
                     _routeNeed[crop] = left > 0 ? left : 0;
                 }
@@ -1721,53 +1722,61 @@ namespace PitHero.Services
         private readonly List<CropType> _routeScratchCrops = new List<CropType>(16);
 
         /// <summary>
-        /// Runner is at a storage door: opportunistically withdraws top-up crops for the
-        /// ticket's recipe into <paramref name="carriedTopUp"/> (indexed by CropType), drawing
-        /// only on the building it is standing in front of. The fridge does NOT change here —
-        /// the cargo lands via <see cref="DeliverCarriedTopUp"/> when the runner unloads at the
-        /// fridge. Pass a negative id to draw from every storage at once — the fallback when no
-        /// route could be planned. Amounts already in hand from earlier stops count against both
-        /// the target and the carry cap, so a multi-stop tour never over-collects.
+        /// Runner is at a storage door: opportunistically HOLDS top-up crops for the ticket's
+        /// recipe (reservation ledger + <paramref name="carry"/> entries), drawing only on the
+        /// building it is standing in front of. The units stay physically in storage until the
+        /// runner unloads via <see cref="DeliverCarriedTopUp"/>. Pass a negative id to hold
+        /// across every storage — the fallback when no route could be planned. Amounts already
+        /// in hand from earlier stops count against both the target and the carry cap, so a
+        /// multi-stop tour never over-collects.
         /// </summary>
-        public void RunnerCollectAtStorage(KitchenTicket t, int[] carriedTopUp, int buildingId = -1)
+        public void RunnerCollectAtStorage(KitchenTicket t, List<CarriedCrop> carry, int buildingId = -1)
         {
-            if (t == null || carriedTopUp == null) return;
+            if (t == null || carry == null) return;
             EnsureServices();
             if (_cropStorage == null) return;
 
             var def = DishConfig.GetDefinition(t.Dish);
-            int carry = RunnerCarryUnits;
+            int carryUnits = RunnerCarryUnits;
             for (int i = 0; i < def.Recipe.Length; i++)
             {
                 var crop = def.Recipe[i].Crop;
-                int idx = (int)crop;
-                if (idx >= carriedTopUp.Length)
-                    continue;
 
                 // Opportunistic top-up rides in the runner's hands, so it is capped by the
                 // carry level (the ticket's own reserved shortfall moved at order time and is
                 // not subject to the cap)
-                int already = carriedTopUp[idx];
+                int already = 0;
+                for (int c = 0; c < carry.Count; c++)
+                    if (carry[c].Crop == crop)
+                        already += carry[c].Units;
+
                 int want = FridgeTopUpWant(crop) - already;
-                int room = carry - already;
+                int room = carryUnits - already;
                 if (want > room) want = room;
                 if (want <= 0)
                     continue;
 
-                int taken;
                 if (buildingId >= 0)
                 {
-                    taken = _cropStorage.WithdrawUpTo(buildingId, crop, want);
+                    int granted = _cropStorage.Reserve(buildingId, crop, want);
+                    if (granted > 0)
+                        carry.Add(new CarriedCrop { Crop = crop, Units = granted, BuildingId = buildingId });
                 }
                 else
                 {
-                    int available = _cropStorage.CountTotal(crop);
-                    int take = want < available ? want : available;
-                    taken = take > 0 && _cropStorage.TryWithdrawAcrossBuildings(crop, take) ? take : 0;
+                    // No planned route — hold from whichever storages still have the crop
+                    var all = _buildingService?.GetAll();
+                    for (int b = 0; all != null && b < all.Count && want > 0; b++)
+                    {
+                        if (all[b].Type != BuildingType.CropStorage)
+                            continue;
+                        int granted = _cropStorage.Reserve(all[b].UniqueId, crop, want);
+                        if (granted <= 0)
+                            continue;
+                        carry.Add(new CarriedCrop { Crop = crop, Units = granted, BuildingId = all[b].UniqueId });
+                        want -= granted;
+                    }
                 }
-
-                if (taken > 0)
-                    carriedTopUp[idx] += taken;
             }
         }
 
@@ -1798,6 +1807,19 @@ namespace PitHero.Services
             public int CropCount;
             public int BuildingId;
             public Point DoorTile;
+        }
+
+        /// <summary>
+        /// One armful entry in a runner's carry queue: units of a crop held for transfer out of
+        /// a specific storage. The units remain physically in that storage (reserved via
+        /// <see cref="CropStorageInventoryService.Reserve"/>) until the runner unloads at the
+        /// fridge — so a save or crash mid-walk never loses crops.
+        /// </summary>
+        public struct CarriedCrop
+        {
+            public CropType Crop;
+            public int Units;
+            public int BuildingId;
         }
 
         /// <summary>
@@ -1864,7 +1886,7 @@ namespace PitHero.Services
                 // counts as a deficit and gets topped back up
                 if (FridgeTopUpWant(crop) <= 0)
                     continue;
-                if (_cropStorage.CountTotal(crop) <= 0)
+                if (_cropStorage.AvailableTotal(crop) <= 0)
                     continue;
 
                 _preStockQueue.Add(crop);
@@ -1908,7 +1930,7 @@ namespace PitHero.Services
                 {
                     if (all[i].Type != BuildingType.CropStorage)
                         continue;
-                    if (_cropStorage.CountIn(all[i].UniqueId, anchor) <= 0)
+                    if (_cropStorage.AvailableIn(all[i].UniqueId, anchor) <= 0)
                         continue;
                     var door = Util.BuildingConfig.GetDoorTile(all[i].Type,
                         new Point(all[i].TileX, all[i].TileY));
@@ -1931,7 +1953,7 @@ namespace PitHero.Services
                 var crops = new CropType[GameConfig.KitchenRunnerCarryCropTypes];
                 var units = new int[GameConfig.KitchenRunnerCarryCropTypes];
                 crops[0] = anchor;
-                units[0] = ClampTripUnits(carryUnits, anchorWant, _cropStorage.CountIn(bestId, anchor));
+                units[0] = ClampTripUnits(carryUnits, anchorWant, _cropStorage.AvailableIn(bestId, anchor));
                 int count = 1;
 
                 // Fill the remaining hand slots with other queued crops this same storage holds;
@@ -1940,7 +1962,7 @@ namespace PitHero.Services
                 {
                     var crop = _preStockQueue[i];
                     int want = FridgeTopUpWant(crop);
-                    int inStorage = _cropStorage.CountIn(bestId, crop);
+                    int inStorage = _cropStorage.AvailableIn(bestId, crop);
                     if (want > 0 && inStorage > 0)
                     {
                         _preStockQueue.RemoveAt(i); // stays busy until delivery/release
@@ -1981,20 +2003,20 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Runner is at the storage door for a pre-stock trip: withdraws the crops from storage
-        /// into the runner's hands — the fridge does NOT change here; stock only rises when the
-        /// runner unloads at the fridge via <see cref="PreStockDeliver"/>. Each crop is
-        /// re-clamped against the LIVE target — another runner's trip or a ticket top-up may
-        /// have filled it during the walk out, and overshooting the target would drain storage
-        /// for nothing. Fills <paramref name="takenPerCrop"/> (parallel to the job's crops) and
-        /// returns the total units picked up. The job's crops STAY busy while carried so the
-        /// deficit recompute cannot dispatch a second runner for cargo already in transit;
-        /// a zero-total pickup releases them immediately (the trip aborts with empty hands).
+        /// Runner is at the storage door for a pre-stock trip: HOLDS the crops for transfer via
+        /// the storage's reservation ledger and records them in <paramref name="carry"/> — the
+        /// units stay physically in storage (a save mid-walk loses nothing) but vanish from
+        /// every count, withdraw, and display path; the fridge only rises when the runner
+        /// unloads via <see cref="PreStockDeliver"/>. Each crop is re-clamped against the LIVE
+        /// target — another runner's trip or a ticket top-up may have filled it during the walk
+        /// out. The job's crops STAY busy while carried so the deficit recompute cannot dispatch
+        /// a second runner for cargo already in transit; a zero-total pickup releases them
+        /// immediately (the trip aborts with empty hands). Returns the total units held.
         /// </summary>
-        public int PreStockCollect(in PreStockJob job, int[] takenPerCrop = null)
+        public int PreStockCollect(in PreStockJob job, List<CarriedCrop> carry)
         {
             EnsureServices();
-            if (_cropStorage == null || _fridgeInv == null)
+            if (_cropStorage == null || _fridgeInv == null || carry == null)
             {
                 for (int i = 0; i < job.CropCount; i++)
                     _preStockBusy[(int)job.Crops[i]] = false;
@@ -2009,10 +2031,10 @@ namespace PitHero.Services
                 int liveWant = FridgeTopUpWant(crop);
                 if (liveWant < want) want = liveWant;
 
-                int taken = want > 0 ? _cropStorage.WithdrawUpTo(job.BuildingId, crop, want) : 0;
-                if (takenPerCrop != null && i < takenPerCrop.Length)
-                    takenPerCrop[i] = taken;
-                total += taken;
+                int granted = want > 0 ? _cropStorage.Reserve(job.BuildingId, crop, want) : 0;
+                if (granted > 0)
+                    carry.Add(new CarriedCrop { Crop = crop, Units = granted, BuildingId = job.BuildingId });
+                total += granted;
             }
 
             if (total <= 0)
@@ -2024,61 +2046,73 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Runner arrived at the fridge with pre-stock cargo (or despawned carrying it — cargo
-        /// teleports in rather than being lost): deposits the collected crops, which is the ONLY
-        /// point fridge stock increases for a pre-stock trip. Overflow that no longer fits the
-        /// fridge falls back to crop storage so crops are never destroyed. Clears the busy mask
+        /// Runner arrived at the fridge with pre-stock cargo: consumes the holds — the ONLY
+        /// point crops physically leave storage and fridge stock rises. Clears the busy mask
         /// and re-queues any crops still below target, so low carry levels turn straight around
         /// for the next armful.
         /// </summary>
-        public void PreStockDeliver(in PreStockJob job, int[] takenPerCrop,
+        public void PreStockDeliver(in PreStockJob job, List<CarriedCrop> carry,
             string monster = null, string monsterType = null)
         {
-            EnsureServices();
             for (int i = 0; i < job.CropCount; i++)
-            {
                 _preStockBusy[(int)job.Crops[i]] = false;
-
-                int taken = takenPerCrop != null && i < takenPerCrop.Length ? takenPerCrop[i] : 0;
-                if (taken <= 0)
-                    continue;
-                var crop = job.Crops[i];
-                int stored = _fridgeInv?.Deposit(crop, taken) ?? 0;
-                if (stored < taken)
-                    _cropStorage?.DepositAcrossBuildings(crop, taken - stored);
-                if (stored > 0)
-                    Analytics.AnalyticsService.LogCropFridgeStocked(crop.ToString(), stored,
-                        job.BuildingId, "prestock", monster, monsterType);
-            }
-
+            DeliverCarried(carry, "prestock", monster, monsterType);
             RecomputePreStockDeficits();
         }
 
         /// <summary>
-        /// Runner arrived at the fridge after a ticket fetch (or despawned mid-carry): deposits
-        /// the opportunistic top-up crops accumulated across the trip's storage stops and zeroes
-        /// the accumulator. Overflow that no longer fits the fridge falls back to crop storage.
+        /// Runner arrived at the fridge after a ticket fetch: consumes the top-up holds
+        /// accumulated across the trip's storage stops. See <see cref="DeliverCarried"/>.
         /// </summary>
-        public void DeliverCarriedTopUp(int[] carriedTopUp, string monster = null, string monsterType = null)
+        public void DeliverCarriedTopUp(List<CarriedCrop> carry, string monster = null, string monsterType = null)
+            => DeliverCarried(carry, "ticket_topup", monster, monsterType);
+
+        /// <summary>
+        /// Unload core: for each carried entry, consumes its hold (crops physically leave the
+        /// source storage NOW) and deposits into the fridge. A hold that shrank while carried
+        /// (player sold or moved those crops) shorts gracefully; fridge overflow falls back to
+        /// storage so crops are never destroyed. Clears the carry queue.
+        /// </summary>
+        private void DeliverCarried(List<CarriedCrop> carry, string source,
+            string monster, string monsterType)
         {
-            if (carriedTopUp == null)
+            if (carry == null || carry.Count == 0)
                 return;
             EnsureServices();
-
-            for (int c = 0; c < carriedTopUp.Length; c++)
+            if (_cropStorage == null || _fridgeInv == null)
             {
-                int qty = carriedTopUp[c];
-                if (qty <= 0)
-                    continue;
-                carriedTopUp[c] = 0;
-                var crop = (CropType)c;
-                int stored = _fridgeInv?.Deposit(crop, qty) ?? 0;
-                if (stored < qty)
-                    _cropStorage?.DepositAcrossBuildings(crop, qty - stored);
-                if (stored > 0)
-                    Analytics.AnalyticsService.LogCropFridgeStocked(crop.ToString(), stored,
-                        -1, "ticket_topup", monster, monsterType);
+                ReleaseCarried(carry);
+                return;
             }
+
+            for (int i = 0; i < carry.Count; i++)
+            {
+                var entry = carry[i];
+                int took = _cropStorage.WithdrawReserved(entry.BuildingId, entry.Crop, entry.Units);
+                if (took <= 0)
+                    continue;
+                int stored = _fridgeInv.Deposit(entry.Crop, took);
+                if (stored < took)
+                    _cropStorage.DepositAcrossBuildings(entry.Crop, took - stored);
+                if (stored > 0)
+                    Analytics.AnalyticsService.LogCropFridgeStocked(entry.Crop.ToString(), stored,
+                        entry.BuildingId, source, monster, monsterType);
+            }
+            carry.Clear();
+        }
+
+        /// <summary>
+        /// Abandons carried cargo (despawn, go-home, canceled tour): frees the holds — the
+        /// crops never physically moved, so they simply become available in storage again.
+        /// </summary>
+        public void ReleaseCarried(List<CarriedCrop> carry)
+        {
+            if (carry == null)
+                return;
+            EnsureServices();
+            for (int i = 0; i < carry.Count; i++)
+                _cropStorage?.ReleaseReserved(carry[i].BuildingId, carry[i].Crop, carry[i].Units);
+            carry.Clear();
         }
 
         // ── Static tile helpers ──────────────────────────────────────────────────

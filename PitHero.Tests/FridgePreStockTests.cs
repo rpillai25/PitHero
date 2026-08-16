@@ -54,6 +54,9 @@ namespace PitHero.Tests
 
         private static CropType FirstRecipeCrop => DishConfig.GetDefinition(Dish).Recipe[0].Crop;
 
+        private static System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop> NewCarry()
+            => new System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop>();
+
         /// <summary>A crop no dish recipe uses, or null when every crop is a recipe ingredient.</summary>
         private static CropType? FindNonRecipeCrop()
         {
@@ -86,15 +89,20 @@ namespace PitHero.Tests
             Assert.AreEqual(GameConfig.GetRunnerCarryUnits(1), job.Units[0],
                 "at carry level 1 a runner hauls a single unit of the crop per trip");
 
-            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
-            Assert.AreEqual(1, _coordinator.PreStockCollect(job, taken));
+            var carry = NewCarry();
+            Assert.AreEqual(1, _coordinator.PreStockCollect(job, carry));
             Assert.AreEqual(0, _coordinator.FridgeCount(crop),
                 "picking up at the storage door must NOT stock the fridge");
-            Assert.AreEqual(24, _storage.CountTotal(crop), "collect withdraws from storage into hands");
+            Assert.AreEqual(25, _storage.CountTotal(crop),
+                "held units stay physically in storage — a save mid-walk loses nothing");
+            Assert.AreEqual(24, _storage.AvailableTotal(crop),
+                "held units are invisible to every other consumer");
 
-            _coordinator.PreStockDeliver(job, taken);
+            _coordinator.PreStockDeliver(job, carry);
             Assert.AreEqual(1, _coordinator.FridgeCount(crop),
                 "fridge stock rises only when the runner unloads");
+            Assert.AreEqual(24, _storage.CountTotal(crop),
+                "the unload is when units physically leave storage");
         }
 
         [TestMethod]
@@ -106,8 +114,8 @@ namespace PitHero.Tests
             _coordinator.RecomputePreStockDeficits();
             Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job));
 
-            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
-            Assert.IsTrue(_coordinator.PreStockCollect(job, taken) > 0);
+            var carry = NewCarry();
+            Assert.IsTrue(_coordinator.PreStockCollect(job, carry) > 0);
             Assert.AreEqual(0, _coordinator.FridgeCount(crop), "cargo is in the runner's hands, not the fridge");
 
             // While the cargo is in transit, the deficit recompute must NOT dispatch a second
@@ -116,7 +124,7 @@ namespace PitHero.Tests
             Assert.IsFalse(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out _),
                 "a crop being carried must stay busy until it is unloaded");
 
-            _coordinator.PreStockDeliver(job, taken);
+            _coordinator.PreStockDeliver(job, carry);
             Assert.AreEqual(1, _coordinator.FridgeCount(crop));
 
             // After delivery the crop is claimable again (still below the 10-unit target)
@@ -135,22 +143,22 @@ namespace PitHero.Tests
             var crop = FirstRecipeCrop;
             Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, crop, 40));
 
-            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
+            var carry = NewCarry();
 
             _gameState.RunnerCarryLevel = 2;
             _coordinator.RecomputePreStockDeficits();
             Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job));
             Assert.AreEqual(5, job.Units[0], "carry level 2 hauls 5 units per crop");
-            Assert.AreEqual(5, _coordinator.PreStockCollect(job, taken));
-            _coordinator.PreStockDeliver(job, taken);
+            Assert.AreEqual(5, _coordinator.PreStockCollect(job, carry));
+            _coordinator.PreStockDeliver(job, carry);
 
             _gameState.RunnerCarryLevel = 3;
             _coordinator.RecomputePreStockDeficits();
             Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out job));
             Assert.AreEqual(5, job.Units[0],
                 "carry level 3 hauls up to 10 but only the 5 units still missing from the target");
-            Assert.AreEqual(5, _coordinator.PreStockCollect(job, taken));
-            _coordinator.PreStockDeliver(job, taken);
+            Assert.AreEqual(5, _coordinator.PreStockCollect(job, carry));
+            _coordinator.PreStockDeliver(job, carry);
             Assert.AreEqual(GameConfig.KitchenFridgeStackSize, _coordinator.FridgeCount(crop));
         }
 
@@ -203,9 +211,9 @@ namespace PitHero.Tests
             // While the runner walks, another actor tops this crop up to the target
             _fridge.Deposit(crop, GameConfig.KitchenFridgeStackSize);
 
-            Assert.AreEqual(0, _coordinator.PreStockCollect(job),
+            Assert.AreEqual(0, _coordinator.PreStockCollect(job, NewCarry()),
                 "collect must re-clamp against the live target, not the units planned at claim");
-            Assert.AreEqual(25, _storage.CountTotal(crop), "no extra crops may leave storage");
+            Assert.AreEqual(25, _storage.AvailableTotal(crop), "no crops may be held or taken");
             Assert.AreEqual(GameConfig.KitchenFridgeStackSize, _coordinator.FridgeCount(crop));
         }
 
@@ -278,12 +286,12 @@ namespace PitHero.Tests
                 Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, def.Recipe[i].Crop, 40));
 
             // Pre-stock every recipe crop to its 1-stack target (collect + unload each trip)
-            var taken = new int[GameConfig.KitchenRunnerCarryCropTypes];
+            var carry = NewCarry();
             _coordinator.RecomputePreStockDeficits();
             while (_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job))
             {
-                Assert.IsTrue(_coordinator.PreStockCollect(job, taken) > 0);
-                _coordinator.PreStockDeliver(job, taken);
+                Assert.IsTrue(_coordinator.PreStockCollect(job, carry) > 0);
+                _coordinator.PreStockDeliver(job, carry);
             }
             for (int i = 0; i < def.Recipe.Length; i++)
                 Assert.AreEqual(GameConfig.KitchenFridgeStackSize, _coordinator.FridgeCount(def.Recipe[i].Crop));
@@ -330,6 +338,209 @@ namespace PitHero.Tests
             _coordinator.RecomputePreStockDeficits();
             Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job));
             Assert.AreEqual(crop, job.Crops[0]);
+        }
+
+        [TestMethod]
+        public void HeldUnits_AreInvisibleToOrderReservation()
+        {
+            // Storage holds exactly one recipe's worth; a runner picks it all up
+            var def = DishConfig.GetDefinition(Dish);
+            _gameState.RunnerCarryLevel = 3;
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, def.Recipe[i].Crop, def.Recipe[i].Qty));
+
+            var carry = NewCarry();
+            _coordinator.RecomputePreStockDeficits();
+            while (_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job))
+                _coordinator.PreStockCollect(job, carry);
+
+            // Everything is in a runner's hands — an order must be refused, not double-book
+            // the same units
+            Assert.IsNull(_coordinator.CreateTicket(Dish, false, -1, null, PatronSeat),
+                "held-for-transfer units must not satisfy an order's reservation");
+
+            // Once unloaded into the fridge, the same order succeeds from fridge stock
+            _coordinator.DeliverCarriedTopUp(carry); // deliver path is identical for this purpose
+            Assert.IsNotNull(_coordinator.CreateTicket(Dish, false, -1, null, PatronSeat));
+        }
+
+        [TestMethod]
+        public void AbandonedCarry_ReleasesHoldsWithNothingLost()
+        {
+            var crop = FirstRecipeCrop;
+            Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, crop, 25));
+
+            var carry = NewCarry();
+            _coordinator.RecomputePreStockDeficits();
+            Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job));
+            Assert.IsTrue(_coordinator.PreStockCollect(job, carry) > 0);
+            Assert.AreEqual(24, _storage.AvailableTotal(crop));
+
+            // Runner despawns mid-walk: the holds release — the crops never moved, so the
+            // full amount is available again and nothing entered the fridge
+            _coordinator.ReleaseCarried(carry);
+            _coordinator.ReleasePreStockJob(job);
+            Assert.AreEqual(25, _storage.CountTotal(crop));
+            Assert.AreEqual(25, _storage.AvailableTotal(crop));
+            Assert.AreEqual(0, _coordinator.FridgeCount(crop));
+
+            // And the trip is claimable again
+            _coordinator.RecomputePreStockDeficits();
+            Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var next));
+            Assert.AreEqual(crop, next.Crops[0]);
+        }
+
+        [TestMethod]
+        public void HeldUnits_ShortGracefullyWhenPlayerSellsThemFirst()
+        {
+            var crop = FirstRecipeCrop;
+            _gameState.RunnerCarryLevel = 3;
+            Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, crop, 10));
+
+            var carry = NewCarry();
+            _coordinator.RecomputePreStockDeficits();
+            Assert.IsTrue(_coordinator.TryClaimPreStockJob(KitchenTaskCoordinator.FridgeTile, out var job));
+            Assert.AreEqual(10, _coordinator.PreStockCollect(job, carry));
+
+            // The player force-sells the whole building while the runner walks (ClearBuilding
+            // clamps the holds to the new physical reality)
+            _storage.ClearBuilding(StorageBuildingId);
+
+            // The unload shorts to zero — no crops conjured from nowhere, no crash
+            _coordinator.PreStockDeliver(job, carry);
+            Assert.AreEqual(0, _coordinator.FridgeCount(crop));
+            Assert.AreEqual(0, _storage.CountTotal(crop));
+        }
+    }
+
+    /// <summary>
+    /// Unit tests for the held-for-transfer reservation ledger on
+    /// <see cref="CropStorageInventoryService"/> (issue #386): holds hide units from every
+    /// withdraw/count/display path while leaving them physically in place.
+    /// </summary>
+    [TestClass]
+    public class CropStorageReservationTests
+    {
+        private const int BuildingA = 2;
+        private const int BuildingB = 3;
+        private static readonly CropType Crop = CropType.Wheat;
+
+        private BuildingService _buildings;
+        private CropStorageInventoryService _storage;
+
+        [TestInitialize]
+        public void Setup()
+        {
+            _buildings = new BuildingService();
+            _buildings.AddBuilding(new PlacedBuilding
+            {
+                Type = BuildingType.CropStorage,
+                TileX = GameConfig.NewGameCropStorageAnchorTileX,
+                TileY = GameConfig.NewGameCropStorageAnchorTileY,
+                UniqueId = BuildingA
+            });
+            _buildings.AddBuilding(new PlacedBuilding
+            {
+                Type = BuildingType.CropStorage,
+                TileX = GameConfig.NewGameCropStorageAnchorTileX + 4,
+                TileY = GameConfig.NewGameCropStorageAnchorTileY,
+                UniqueId = BuildingB
+            });
+            _storage = new CropStorageInventoryService(_buildings);
+        }
+
+        [TestMethod]
+        public void Reserve_HidesUnitsFromWithdrawAndCounts()
+        {
+            Assert.IsTrue(_storage.TryDeposit(BuildingA, Crop, 10));
+            Assert.AreEqual(3, _storage.Reserve(BuildingA, Crop, 3));
+
+            Assert.AreEqual(10, _storage.CountIn(BuildingA, Crop), "physical count is untouched");
+            Assert.AreEqual(7, _storage.AvailableIn(BuildingA, Crop));
+            Assert.AreEqual(7, _storage.AvailableTotal(Crop));
+
+            Assert.AreEqual(7, _storage.WithdrawUpTo(BuildingA, Crop, 99),
+                "withdraw must never touch held units");
+            Assert.AreEqual(3, _storage.CountIn(BuildingA, Crop), "only the held units remain");
+
+            Assert.IsFalse(_storage.TryWithdrawAcrossBuildings(Crop, 1),
+                "all-or-nothing withdraw must not see held units");
+        }
+
+        [TestMethod]
+        public void Reserve_GrantsOnlyWhatIsAvailable()
+        {
+            Assert.IsTrue(_storage.TryDeposit(BuildingA, Crop, 5));
+            Assert.AreEqual(5, _storage.Reserve(BuildingA, Crop, 8), "grant caps at availability");
+            Assert.AreEqual(0, _storage.Reserve(BuildingA, Crop, 1), "nothing left to hold");
+        }
+
+        [TestMethod]
+        public void ReleaseReserved_RestoresAvailability()
+        {
+            Assert.IsTrue(_storage.TryDeposit(BuildingA, Crop, 10));
+            _storage.Reserve(BuildingA, Crop, 4);
+            _storage.ReleaseReserved(BuildingA, Crop, 4);
+            Assert.AreEqual(10, _storage.AvailableIn(BuildingA, Crop));
+        }
+
+        [TestMethod]
+        public void WithdrawReserved_MovesPhysicalUnitsAndNeverEatsAnotherHold()
+        {
+            Assert.IsTrue(_storage.TryDeposit(BuildingA, Crop, 10));
+            _storage.Reserve(BuildingA, Crop, 3);  // runner 1
+            _storage.Reserve(BuildingA, Crop, 4);  // runner 2 (same ledger, separate share)
+
+            Assert.AreEqual(3, _storage.WithdrawReserved(BuildingA, Crop, 3));
+            Assert.AreEqual(7, _storage.CountIn(BuildingA, Crop));
+            Assert.AreEqual(3, _storage.AvailableIn(BuildingA, Crop),
+                "runner 2's 4-unit hold must survive runner 1's unload");
+        }
+
+        [TestMethod]
+        public void ClearSlot_ClampsHoldsSoUnloadShortsGracefully()
+        {
+            Assert.IsTrue(_storage.TryDeposit(BuildingA, Crop, 5));
+            _storage.Reserve(BuildingA, Crop, 5);
+
+            _storage.ClearSlot(BuildingA, 0); // player sells the stack out from under the hold
+
+            Assert.AreEqual(0, _storage.WithdrawReserved(BuildingA, Crop, 5),
+                "a hold whose units vanished must short, not conjure crops");
+        }
+
+        [TestMethod]
+        public void CopyDisplaySlots_HidesHeldUnits()
+        {
+            Assert.IsTrue(_storage.TryDeposit(BuildingA, Crop, 10));
+            _storage.Reserve(BuildingA, Crop, 4);
+
+            var display = new HarvestSlot[CropStorageInventoryService.SlotsPerBuilding];
+            _storage.CopyDisplaySlots(BuildingA, display);
+
+            int shown = 0;
+            for (int s = 0; s < display.Length; s++)
+                if (!display[s].IsEmpty && display[s].Type == Crop)
+                    shown += display[s].Count;
+            Assert.AreEqual(6, shown, "the viewer must only show available units");
+            Assert.IsTrue(_storage.HasAvailableCrops(BuildingA));
+
+            _storage.Reserve(BuildingA, Crop, 6);
+            Assert.IsFalse(_storage.HasAvailableCrops(BuildingA),
+                "a fully held building displays as empty");
+        }
+
+        [TestMethod]
+        public void TakeFromSlot_LeavesHeldUnitsInPlace()
+        {
+            Assert.IsTrue(_storage.TryDeposit(BuildingA, Crop, 10));
+            _storage.Reserve(BuildingA, Crop, 4);
+
+            Assert.AreEqual(6, _storage.TakeFromSlot(BuildingA, 0, 99),
+                "selling a stack must only sell its available units");
+            Assert.AreEqual(4, _storage.CountIn(BuildingA, Crop),
+                "the held units survive the sale for the runner's unload");
+            Assert.AreEqual(4, _storage.WithdrawReserved(BuildingA, Crop, 4));
         }
     }
 }

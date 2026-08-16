@@ -101,7 +101,7 @@ namespace PitHero.Tests
         {
             var job = _coordinator.TryClaimFetchJob();
             Assert.AreSame(expected, job, "runner did not claim the queued fetch job");
-            var carried = new int[Farming.CropTypeInfo.Count];
+            var carried = new System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop>();
             _coordinator.RunnerCollectAtStorage(job, carried);
             _coordinator.DeliverCarriedTopUp(carried);
             _coordinator.CompleteFetch(job);
@@ -919,15 +919,25 @@ namespace PitHero.Tests
 
             StockRecipe();
             var ticket = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
-            int nearBefore = _storage.CountIn(StorageBuildingId, crop);
-            int farBefore = _storage.CountIn(FarStorageBuildingId, crop);
+            int nearBefore = _storage.AvailableIn(StorageBuildingId, crop);
+            int farBefore = _storage.AvailableIn(FarStorageBuildingId, crop);
 
-            _coordinator.RunnerCollectAtStorage(ticket, new int[Farming.CropTypeInfo.Count], FarStorageBuildingId);
+            var carried = new System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop>();
+            _coordinator.RunnerCollectAtStorage(ticket, carried, FarStorageBuildingId);
 
+            // Collect holds units (availability drops) without moving them; the physical move
+            // happens at the fridge unload
+            Assert.AreEqual(nearBefore, _storage.AvailableIn(StorageBuildingId, crop),
+                "collecting at the far storage must not hold crops in the near one");
+            Assert.IsTrue(_storage.AvailableIn(FarStorageBuildingId, crop) < farBefore,
+                "the far storage should be supplying the fridge top-up");
+
+            int farPhysicalBefore = _storage.CountIn(FarStorageBuildingId, crop);
+            _coordinator.DeliverCarriedTopUp(carried);
             Assert.AreEqual(nearBefore, _storage.CountIn(StorageBuildingId, crop),
-                "collecting at the far storage must not teleport crops out of the near one");
-            Assert.IsTrue(_storage.CountIn(FarStorageBuildingId, crop) < farBefore,
-                "the far storage should have supplied the fridge top-up");
+                "the unload must draw only on the far storage");
+            Assert.IsTrue(_storage.CountIn(FarStorageBuildingId, crop) < farPhysicalBefore,
+                "the unload physically removes the held units from the far storage");
         }
 
         [TestMethod]

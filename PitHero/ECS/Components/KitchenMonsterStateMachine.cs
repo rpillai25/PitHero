@@ -87,10 +87,11 @@ namespace PitHero.ECS.Components
         private int _fetchStopIndex; // which stop of _fetchRoute the runner is headed to
         private KitchenTaskCoordinator.PreStockJob _preStockJob;
         private bool _hasPreStockJob;
-        private bool _preStockCollected; // cargo in hand — deliver at the fridge, never just release
-        private readonly int[] _preStockTaken = new int[GameConfig.KitchenRunnerCarryCropTypes];
-        // Opportunistic ticket-trip top-up cargo, indexed by CropType; unloads at the fridge
-        private readonly int[] _carriedTopUp = new int[Farming.CropTypeInfo.Count];
+        // Carry queue for pre-stock cargo AND ticket-trip top-up: units held for transfer in
+        // their source storages (reservation ledger) until the runner unloads at the fridge.
+        // Abandoning a trip just releases the holds — nothing was ever removed from storage.
+        private readonly System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop> _carryQueue =
+            new System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop>(6);
 
         public bool ShouldPause => true;
 
@@ -159,9 +160,9 @@ namespace PitHero.ECS.Components
             _coordinator.ReleaseFetchJob(_fetchTicket);
             _fetchTicket = null;
             EndFetchTrip();
+            // Releases every hold in the carry queue (pre-stock and top-up alike): the crops
+            // never physically left storage, so a despawn loses nothing
             AbandonPreStockTrip();
-            // Ticket top-up cargo in hand teleports into the fridge — never lost with the runner
-            _coordinator.DeliverCarriedTopUp(_carriedTopUp, _monster?.Name, _monster?.MonsterTypeName);
 
             // A plate we were walking to is still on its table — put the job back. Plates already
             // in hand had their entities destroyed at pickup, so they're simply gone (same as a
@@ -1039,8 +1040,8 @@ namespace PitHero.ECS.Components
             {
                 _fetchTicket = null;
                 EndFetchTrip();
-                // Top-up collected at an earlier stop of the aborted tour still lands in the fridge
-                _coordinator.DeliverCarriedTopUp(_carriedTopUp, _monster?.Name, _monster?.MonsterTypeName);
+                // Holds from earlier stops of the aborted tour release — crops never left storage
+                _coordinator.ReleaseCarried(_carryQueue);
                 HideCarryDish();
                 CurrentState = KitchenMonsterState.RunnerIdle;
                 return;
@@ -1050,7 +1051,7 @@ namespace PitHero.ECS.Components
                 _coordinator.ReleaseFetchJob(_fetchTicket);
                 _fetchTicket = null;
                 EndFetchTrip();
-                _coordinator.DeliverCarriedTopUp(_carriedTopUp, _monster?.Name, _monster?.MonsterTypeName);
+                _coordinator.ReleaseCarried(_carryQueue);
                 HideCarryDish();
                 CurrentState = KitchenMonsterState.ReturnHome;
                 return;
@@ -1068,7 +1069,7 @@ namespace PitHero.ECS.Components
             // standing at; the walk back is cosmetic
             int buildingId = _fetchStopIndex < _fetchRoute.Count
                 ? _fetchRoute[_fetchStopIndex].BuildingId : -1;
-            _coordinator.RunnerCollectAtStorage(_fetchTicket, _carriedTopUp, buildingId);
+            _coordinator.RunnerCollectAtStorage(_fetchTicket, _carryQueue, buildingId);
             if (_fetchTicket != null)
             {
                 ShowCarryCrops(_fetchTicket);
@@ -1094,17 +1095,20 @@ namespace PitHero.ECS.Components
         {
             if (_mover.IsMoving)
                 return;
-            // The held crops unload into the fridge — this is the moment fridge stock rises
+            // The held crops unload into the fridge — the ONLY moment they physically leave
+            // storage and fridge stock rises
             HideCarryDish();
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.StoreCrop, Entity.Transform.Position);
             if (_hasPreStockJob)
             {
-                _coordinator.PreStockDeliver(_preStockJob, _preStockTaken,
+                _coordinator.PreStockDeliver(_preStockJob, _carryQueue,
                     _monster?.Name, _monster?.MonsterTypeName);
                 _hasPreStockJob = false;
-                _preStockCollected = false;
             }
-            _coordinator.DeliverCarriedTopUp(_carriedTopUp, _monster?.Name, _monster?.MonsterTypeName);
+            else
+            {
+                _coordinator.DeliverCarriedTopUp(_carryQueue, _monster?.Name, _monster?.MonsterTypeName);
+            }
             _coordinator.CompleteFetch(_fetchTicket);
             _fetchTicket = null;
             EndFetchTrip();
@@ -1147,9 +1151,9 @@ namespace PitHero.ECS.Components
             if (elapsedTimeInState < 1f)
                 return;
 
-            // Crops leave storage into the runner's hands here; the fridge only fills when
-            // the cargo unloads at RunnerWalkToFridge (or teleports in on despawn)
-            int total = _coordinator.PreStockCollect(_preStockJob, _preStockTaken);
+            // Crops are HELD for transfer here (they stay physically in storage); the fridge
+            // only fills when the cargo unloads at RunnerWalkToFridge
+            int total = _coordinator.PreStockCollect(_preStockJob, _carryQueue);
 
             if (total <= 0)
             {
@@ -1160,26 +1164,30 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            _preStockCollected = true;
-            ShowPreStockCarry(_preStockJob, _preStockTaken);
+            ShowCarriedCrops();
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.RetrieveCrop, Entity.Transform.Position);
             CurrentState = KitchenMonsterState.RunnerWalkToFridge;
         }
 
         /// <summary>
-        /// Pre-stock haul visual: one hand slot per crop type actually collected this trip —
+        /// Carry-queue haul visual: one hand slot per distinct crop type held this trip —
         /// first centered, second offset left, third offset right.
         /// </summary>
-        private void ShowPreStockCarry(in KitchenTaskCoordinator.PreStockJob job, int[] taken)
+        private void ShowCarriedCrops()
         {
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
             Nez.Textures.Sprite s0 = null, s1 = null, s2 = null;
             int shown = 0;
-            for (int i = 0; i < job.CropCount; i++)
+            for (int i = 0; i < _carryQueue.Count && shown < GameConfig.KitchenRunnerCarryCropTypes; i++)
             {
-                if (i >= taken.Length || taken[i] <= 0)
+                // Skip crop types already shown (a multi-stop tour can hold one crop from two storages)
+                bool dup = false;
+                for (int j = 0; j < i; j++)
+                    if (_carryQueue[j].Crop == _carryQueue[i].Crop)
+                        dup = true;
+                if (dup)
                     continue;
-                var sprite = atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(job.Crops[i]));
+                var sprite = atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(_carryQueue[i].Crop));
                 if (shown == 0) s0 = sprite;
                 else if (shown == 1) s1 = sprite;
                 else s2 = sprite;
@@ -1189,21 +1197,16 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Ends an unfinished pre-stock trip: cargo already in hand is delivered into the
-        /// fridge in place (crops must never vanish with the runner), while a not-yet-collected
-        /// job is simply given back so the deficit recompute can re-queue it.
+        /// Ends an unfinished pre-stock trip: any holds simply release (the crops never left
+        /// storage, so nothing can be lost), and the job goes back for re-queueing.
         /// </summary>
         private void AbandonPreStockTrip()
         {
+            _coordinator.ReleaseCarried(_carryQueue);
             if (!_hasPreStockJob)
                 return;
-            if (_preStockCollected)
-                _coordinator.PreStockDeliver(_preStockJob, _preStockTaken,
-                    _monster?.Name, _monster?.MonsterTypeName);
-            else
-                _coordinator.ReleasePreStockJob(_preStockJob);
+            _coordinator.ReleasePreStockJob(_preStockJob);
             _hasPreStockJob = false;
-            _preStockCollected = false;
         }
 
         // ── Runner bussing ──────────────────────────────────────────────────────
