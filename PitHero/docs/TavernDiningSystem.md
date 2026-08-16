@@ -32,9 +32,13 @@ lines).
 | Seats/tables/plates | `Config/TavernSeatConfig.cs` |
 | Dish world sprites | `Services/DishEntityService.cs` |
 | Job hats | `Services/KitchenHatService.cs` |
+| Fridge inventory (issue #386) | `Services/FridgeInventoryService.cs` (32 slots, flat 10-unit stacks) |
+| Refrigerator window | `UI/RefrigeratorDialog.cs`; open/close pause + window-size gate in `MainGameScene.UpdateFridgeDialogGate` (sets `SettingsUI.ExternalUIWindowOpen`) |
+| Storage holds (held-for-transfer) | reservation ledger inside `Services/CropStorageInventoryService.cs` |
+| Runner carry level | `GameStateService.RunnerCarryLevel` + `GameConfig.GetRunnerCarryUnits` |
 | Constants | `GameConfig.cs` ("Kitchen / Tavern Dining" block) |
-| Save | `Services/SaveData.cs` + `SaveLoadService.cs` (v18 section 33) |
-| Tests | `PitHero.Tests/KitchenServiceLoopTests.cs` (logic), `KitchenFlowPathTests.cs` (map routes), `DishPricingTests.cs` |
+| Save | `Services/SaveData.cs` + `SaveLoadService.cs` (v18 section 33; fridge §45 v28, carry level §46 v29) |
+| Tests | `PitHero.Tests/KitchenServiceLoopTests.cs` (logic), `KitchenFlowPathTests.cs` (map routes), `DishPricingTests.cs`, `FridgePreStockTests.cs` + `CropStorageReservationTests` (pre-stock + holds), `FridgeInventoryServiceTests.cs` |
 
 ## Tile geography
 
@@ -152,6 +156,26 @@ fully covered by the fridge never appears in hand).
 **Save-anytime lossless**: held cargo is a transient reservation over units that never left
 their storage slots, so the save gather always sees the full physical inventory. On load the
 ledger starts empty and runners simply re-fetch.
+
+**Staff exits (runner-only routing)**: runners path with
+`KitchenTaskCoordinator.RunnerPathfinder` (selected per role via the FSM's `ActivePathfinder`),
+a second `FarmPathfinder` where the collision tiles at (91,10) and (101,10)
+(`GameConfig.KitchenRunnerStaffExit*`) are opened with `RemoveStaticWall` (survives
+`RebuildWalls`) AND the tavern dining floor (x91–99, y2–8) is `AddWeightedTile` at 5× step
+cost. The weighting is what makes crop runs *favor* the side corridor — the staff route is
+physically longer, so plain shortest-path ignored it. Jobs whose destination is inside the
+tavern (plate bussing) still enter, since all in-tavern routes carry the same weight. Both
+tiles stay solid on the shared `Pathfinder` used by every other worker and patron. Guarded by
+`KitchenFlowPathTests.RunnerCropRun_FavorsTheStaffExitOverTheMainEntryway`.
+
+**Refrigerator window**: clicking the fridge (white hover outline, statue-style tile hit test
+in `MainGameScene`) opens `UI/RefrigeratorDialog.cs` — the stack grid, the persisted Pre-Stock
+Stack Size slider, and per-stack Send to Crop Storage / Sell actions. While it is open the
+game pauses and a half-size window temporarily restores to normal
+(`MainGameScene.UpdateFridgeDialogGate`, a visibility edge-watcher covering both the Close
+button and outside-click dismissal). Any scene-owned dialog like this must also set
+`SettingsUI.ExternalUIWindowOpen` while visible, or the top bar can auto-hide at the wrong
+button scale and return parked half off-screen after the half-window restore.
 - Milk/cheese (`UsesMilk`/`UsesCheese`) are display-only — never in recipes, prices, or checks.
 
 **Cancellation refund rules** (`CancelTicket`): while `CropsRefundable` (pre-cooking) both

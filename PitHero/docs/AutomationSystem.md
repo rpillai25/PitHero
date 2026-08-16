@@ -29,6 +29,7 @@ do not try to keep the tab short**.
 | Auto-Hire Mercenaries + two "MercenaryN Job" cyclers | `AutoHireMercenaryService` | Call-driven | 41 (v24) |
 | Placed stencils (inventory grid snapshot) | `GameStateService.PlacedStencils` | — (save/load only) | 44 (v27) |
 | Refrigerator contents + Pre-Stock Stack Size (window opened by clicking the kitchen fridge, not from this tab) | `FridgeInventoryService` | — (runners tick via `KitchenTaskCoordinator`) | 45 (v28) |
+| Runner carry level (no UI yet — raised by future one-of-a-kind items; 1/5/10 units per crop per trip) | `GameStateService.RunnerCarryLevel` | — (read by runner trips) | 46 (v29) |
 
 Dialogs opened from the tab:
 
