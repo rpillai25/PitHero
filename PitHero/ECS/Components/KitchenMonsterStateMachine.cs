@@ -85,6 +85,13 @@ namespace PitHero.ECS.Components
         private readonly System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop> _fetchRoute =
             new System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop>(GameConfig.RunnerMaxStorageStops);
         private int _fetchStopIndex; // which stop of _fetchRoute the runner is headed to
+        private KitchenTaskCoordinator.PreStockJob _preStockJob;
+        private bool _hasPreStockJob;
+        // Carry queue for pre-stock cargo AND ticket-trip top-up: units held for transfer in
+        // their source storages (reservation ledger) until the runner unloads at the fridge.
+        // Abandoning a trip just releases the holds — nothing was ever removed from storage.
+        private readonly System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop> _carryQueue =
+            new System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop>(6);
 
         public bool ShouldPause => true;
 
@@ -153,6 +160,9 @@ namespace PitHero.ECS.Components
             _coordinator.ReleaseFetchJob(_fetchTicket);
             _fetchTicket = null;
             EndFetchTrip();
+            // Releases every hold in the carry queue (pre-stock and top-up alike): the crops
+            // never physically left storage, so a despawn loses nothing
+            AbandonPreStockTrip();
 
             // A plate we were walking to is still on its table — put the job back. Plates already
             // in hand had their entities destroyed at pickup, so they're simply gone (same as a
@@ -209,7 +219,7 @@ namespace PitHero.ECS.Components
         private void EmergeFromHouse_Enter()
         {
             _facing?.SetFacing(Direction.Down);
-            if (_coordinator.Pathfinder.IsPassable(ExitTile))
+            if (ActivePathfinder.IsPassable(ExitTile))
                 _mover.SetSingleTarget(TileCenter(ExitTile));
         }
 
@@ -962,6 +972,15 @@ namespace PitHero.ECS.Components
                 return;
             }
 
+            // Lowest priority: top the fridge up toward its pre-stock target (issue #386)
+            if (_coordinator.TryClaimPreStockJob(WorldToTile(Entity.Transform.Position), out _preStockJob))
+            {
+                _hasPreStockJob = true;
+                _mover.Stop();
+                CurrentState = KitchenMonsterState.RunnerPreStockWalkToStorage;
+                return;
+            }
+
             if (_mover.IsMoving)
                 return;
             _runnerWanderPause += Time.DeltaTime;
@@ -1021,6 +1040,9 @@ namespace PitHero.ECS.Components
             {
                 _fetchTicket = null;
                 EndFetchTrip();
+                // Holds from earlier stops of the aborted tour release — crops never left storage
+                _coordinator.ReleaseCarried(_carryQueue);
+                HideCarryDish();
                 CurrentState = KitchenMonsterState.RunnerIdle;
                 return;
             }
@@ -1029,6 +1051,8 @@ namespace PitHero.ECS.Components
                 _coordinator.ReleaseFetchJob(_fetchTicket);
                 _fetchTicket = null;
                 EndFetchTrip();
+                _coordinator.ReleaseCarried(_carryQueue);
+                HideCarryDish();
                 CurrentState = KitchenMonsterState.ReturnHome;
                 return;
             }
@@ -1045,10 +1069,10 @@ namespace PitHero.ECS.Components
             // standing at; the walk back is cosmetic
             int buildingId = _fetchStopIndex < _fetchRoute.Count
                 ? _fetchRoute[_fetchStopIndex].BuildingId : -1;
-            _coordinator.RunnerCollectAtStorage(_fetchTicket, buildingId);
+            _coordinator.RunnerCollectAtStorage(_fetchTicket, _carryQueue, buildingId);
             if (_fetchTicket != null)
             {
-                ShowCarryCrops(_fetchTicket.Dish);
+                ShowCarryCrops(_fetchTicket);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.RetrieveCrop, Entity.Transform.Position);
             }
 
@@ -1071,9 +1095,20 @@ namespace PitHero.ECS.Components
         {
             if (_mover.IsMoving)
                 return;
-            // The held crops vanish into the fridge
+            // The held crops unload into the fridge — the ONLY moment they physically leave
+            // storage and fridge stock rises
             HideCarryDish();
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.StoreCrop, Entity.Transform.Position);
+            if (_hasPreStockJob)
+            {
+                _coordinator.PreStockDeliver(_preStockJob, _carryQueue,
+                    _monster?.Name, _monster?.MonsterTypeName);
+                _hasPreStockJob = false;
+            }
+            else
+            {
+                _coordinator.DeliverCarriedTopUp(_carryQueue, _monster?.Name, _monster?.MonsterTypeName);
+            }
             _coordinator.CompleteFetch(_fetchTicket);
             _fetchTicket = null;
             EndFetchTrip();
@@ -1085,6 +1120,93 @@ namespace PitHero.ECS.Components
         {
             _fetchRoute.Clear();
             _fetchStopIndex = 0;
+        }
+
+        // ── Runner pre-stock (issue #386) ───────────────────────────────────────
+
+        private void RunnerPreStockWalkToStorage_Enter()
+        {
+            SetSprinting(true);
+            if (TrySetPathTo(_preStockJob.DoorTile))
+                return;
+            // Unreachable door — give the job back and let the deficit recompute retry later
+            AbandonPreStockTrip();
+            CurrentState = KitchenMonsterState.RunnerIdle;
+        }
+
+        private void RunnerPreStockWalkToStorage_Tick()
+        {
+            if (_goHome)
+            {
+                AbandonPreStockTrip();
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+            if (!_mover.IsMoving)
+                CurrentState = KitchenMonsterState.RunnerPreStockCollect;
+        }
+
+        private void RunnerPreStockCollect_Tick()
+        {
+            if (elapsedTimeInState < 1f)
+                return;
+
+            // Crops are HELD for transfer here (they stay physically in storage); the fridge
+            // only fills when the cargo unloads at RunnerWalkToFridge
+            int total = _coordinator.PreStockCollect(_preStockJob, _carryQueue);
+
+            if (total <= 0)
+            {
+                // Stock, fridge capacity, or the deficit itself vanished while walking —
+                // nothing in hand (the coordinator already released the job's crops)
+                _hasPreStockJob = false;
+                CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
+                return;
+            }
+
+            ShowCarriedCrops();
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.RetrieveCrop, Entity.Transform.Position);
+            CurrentState = KitchenMonsterState.RunnerWalkToFridge;
+        }
+
+        /// <summary>
+        /// Carry-queue haul visual: one hand slot per distinct crop type held this trip —
+        /// first centered, second offset left, third offset right.
+        /// </summary>
+        private void ShowCarriedCrops()
+        {
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            Nez.Textures.Sprite s0 = null, s1 = null, s2 = null;
+            int shown = 0;
+            for (int i = 0; i < _carryQueue.Count && shown < GameConfig.KitchenRunnerCarryCropTypes; i++)
+            {
+                // Skip crop types already shown (a multi-stop tour can hold one crop from two storages)
+                bool dup = false;
+                for (int j = 0; j < i; j++)
+                    if (_carryQueue[j].Crop == _carryQueue[i].Crop)
+                        dup = true;
+                if (dup)
+                    continue;
+                var sprite = atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(_carryQueue[i].Crop));
+                if (shown == 0) s0 = sprite;
+                else if (shown == 1) s1 = sprite;
+                else s2 = sprite;
+                shown++;
+            }
+            ShowCarrySpread(s0, s1, s2);
+        }
+
+        /// <summary>
+        /// Ends an unfinished pre-stock trip: any holds simply release (the crops never left
+        /// storage, so nothing can be lost), and the job goes back for re-queueing.
+        /// </summary>
+        private void AbandonPreStockTrip()
+        {
+            _coordinator.ReleaseCarried(_carryQueue);
+            if (!_hasPreStockJob)
+                return;
+            _coordinator.ReleasePreStockJob(_preStockJob);
+            _hasPreStockJob = false;
         }
 
         // ── Runner bussing ──────────────────────────────────────────────────────
@@ -1222,25 +1344,37 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Runner haul visual: shows the recipe's crops in hand — first crop centered, second
-        /// offset left, third offset right (same look as a field worker carrying a harvest).
+        /// Runner haul visual for a ticket fetch: shows only the recipe crops that were actually
+        /// withdrawn from storage for this order — crops the fridge covered were never picked up,
+        /// so they must not appear in hand. First crop centered, second offset left, third offset
+        /// right (same look as a field worker carrying a harvest).
         /// </summary>
-        private void ShowCarryCrops(DishType dish)
+        private void ShowCarryCrops(KitchenTicket ticket)
         {
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-            var recipe = DishConfig.GetDefinition(dish).Recipe;
-            ShowCarryCropAt(CarryRenderer, atlas, recipe, 0, 0f);
-            ShowCarryCropAt(CarryLeftRenderer, atlas, recipe, 1, -CarrySideOffsetX);
-            ShowCarryCropAt(CarryRightRenderer, atlas, recipe, 2, CarrySideOffsetX);
+            var recipe = DishConfig.GetDefinition(ticket.Dish).Recipe;
+            Nez.Textures.Sprite s0 = null, s1 = null, s2 = null;
+            int shown = 0;
+            for (int i = 0; i < recipe.Length && shown < GameConfig.KitchenRunnerCarryCropTypes; i++)
+            {
+                if (ticket.StorageTakenQty == null || i >= ticket.StorageTakenQty.Length
+                    || ticket.StorageTakenQty[i] <= 0)
+                    continue;
+                var sprite = atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(recipe[i].Crop));
+                if (shown == 0) s0 = sprite;
+                else if (shown == 1) s1 = sprite;
+                else s2 = sprite;
+                shown++;
+            }
+            ShowCarrySpread(s0, s1, s2);
         }
 
-        private void ShowCarryCropAt(Nez.Sprites.SpriteRenderer renderer, Nez.Sprites.SpriteAtlas atlas,
-            RecipeEntry[] recipe, int recipeIndex, float offsetX)
+        /// <summary>Places up to three carried sprites: first centered, second left, third right.</summary>
+        private void ShowCarrySpread(Nez.Textures.Sprite s0, Nez.Textures.Sprite s1, Nez.Textures.Sprite s2)
         {
-            var sprite = recipeIndex < recipe.Length
-                ? atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(recipe[recipeIndex].Crop))
-                : null;
-            ShowCarrySpriteAt(renderer, sprite, offsetX);
+            ShowCarrySpriteAt(CarryRenderer, s0, 0f);
+            ShowCarrySpriteAt(CarryLeftRenderer, s1, -CarrySideOffsetX);
+            ShowCarrySpriteAt(CarryRightRenderer, s2, CarrySideOffsetX);
         }
 
         /// <summary>
@@ -1283,17 +1417,26 @@ namespace PitHero.ECS.Components
         /// Paths to the goal, or — when the goal itself is impassable (e.g. a table tile) —
         /// to its nearest passable 4-neighbor.
         /// </summary>
+        /// <summary>
+        /// The map view this worker paths with: runners use the coordinator's runner grid (the
+        /// tavern staff exits at (91,10)/(101,10) are open to them), everyone else the shared
+        /// grid where those tiles are solid walls.
+        /// </summary>
+        private Farming.FarmPathfinder ActivePathfinder
+            => _role == KitchenRole.Runner ? _coordinator.RunnerPathfinder : _coordinator.Pathfinder;
+
         private bool TrySetPathToTileOrNeighbor(Point goal)
         {
             if (TrySetPathTo(goal))
                 return true;
-            return _coordinator.Pathfinder.TryFindPassableNeighbor(goal, _mover.CurrentTile, out var neighbor)
+            return ActivePathfinder.TryFindPassableNeighbor(goal, _mover.CurrentTile, out var neighbor)
                 && TrySetPathTo(neighbor);
         }
 
         private bool TrySetPathTo(Point goal)
         {
-            if (!_coordinator.Pathfinder.IsPassable(goal))
+            var pathfinder = ActivePathfinder;
+            if (!pathfinder.IsPassable(goal))
                 return false;
             var start = _mover.CurrentTile;
             if (start == goal)
@@ -1301,9 +1444,9 @@ namespace PitHero.ECS.Components
                 _mover.Stop();
                 return true;
             }
-            var path = _coordinator.Pathfinder.Search(start, goal);
+            var path = pathfinder.Search(start, goal);
             if (path == null) return false;
-            _mover.SetPath(_coordinator.Pathfinder.SmoothPath(start, path));
+            _mover.SetPath(pathfinder.SmoothPath(start, path));
             return true;
         }
 

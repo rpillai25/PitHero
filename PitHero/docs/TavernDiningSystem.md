@@ -32,9 +32,13 @@ lines).
 | Seats/tables/plates | `Config/TavernSeatConfig.cs` |
 | Dish world sprites | `Services/DishEntityService.cs` |
 | Job hats | `Services/KitchenHatService.cs` |
+| Fridge inventory (issue #386) | `Services/FridgeInventoryService.cs` (32 slots, flat 10-unit stacks) |
+| Refrigerator window | `UI/RefrigeratorDialog.cs`; open/close pause + window-size gate in `MainGameScene.UpdateFridgeDialogGate` (sets `SettingsUI.ExternalUIWindowOpen`) |
+| Storage holds (held-for-transfer) | reservation ledger inside `Services/CropStorageInventoryService.cs` |
+| Runner carry level | `GameStateService.RunnerCarryLevel` + `GameConfig.GetRunnerCarryUnits` |
 | Constants | `GameConfig.cs` ("Kitchen / Tavern Dining" block) |
-| Save | `Services/SaveData.cs` + `SaveLoadService.cs` (v18 section 33) |
-| Tests | `PitHero.Tests/KitchenServiceLoopTests.cs` (logic), `KitchenFlowPathTests.cs` (map routes), `DishPricingTests.cs` |
+| Save | `Services/SaveData.cs` + `SaveLoadService.cs` (v18 section 33; fridge §45 v28, carry level §46 v29) |
+| Tests | `PitHero.Tests/KitchenServiceLoopTests.cs` (logic), `KitchenFlowPathTests.cs` (map routes), `DishPricingTests.cs`, `FridgePreStockTests.cs` + `CropStorageReservationTests` (pre-stock + holds), `FridgeInventoryServiceTests.cs` |
 
 ## Tile geography
 
@@ -104,10 +108,74 @@ refunds.
 - Any storage shortfall → ticket starts `AwaitingIngredients` and is enqueued as a **fetch job**,
   and the buildings drawn from are recorded in `SourceBuildingIds` so the runner can retrace the
   route. The runner's trip is **cosmetic for this ticket** — the crops are already committed. At
-  each storage door, `RunnerCollectAtStorage` additionally tops the fridge up to par
-  (`KitchenFridgeParPerCrop = 4` per recipe crop) with a withdraw+add against that one building;
-  at the fridge, `CompleteFetch` flips `IngredientsFetched`. If storage vanishes mid-run the
-  ticket still proceeds.
+  each storage door, `RunnerCollectAtStorage` additionally HOLDS top-up crops toward the
+  pre-stock target (`PreStockStackSize` 1–4 stacks × `KitchenFridgeStackSize = 10` units per
+  recipe crop, carry-capped) via the storage reservation ledger + the runner's carry queue;
+  at the fridge, `DeliverCarriedTopUp` consumes the holds (units physically leave storage NOW)
+  and `CompleteFetch` flips `IngredientsFetched`. If storage vanishes mid-run the ticket still
+  proceeds.
+
+## Fridge pre-stock (issue #386)
+
+The fridge is a slot-based inventory (`FridgeInventoryService`, one 8×4 page, every stack a
+flat 10 units) that runners proactively keep stocked: for each crop that appears in ≥1 dish
+recipe and has stock in some CropStorage, the coordinator queues a **pre-stock job** whenever
+fridge units fall below `PreStockStackSize × 10` (throttled in `Update`, and immediately at the
+end of `CreateTicket` / `CreateTicketPreReserved` / `CancelTicket`, plus after every
+`PreStockDeliver` so under-target crops turn the runner straight around). An idle runner (after
+bus and ticket-fetch jobs) claims a trip (`TryClaimPreStockJob` — nearest storage holding the
+front-of-queue crop, batching up to 3 queued crops that same storage holds, one per hand slot),
+sprints out, and the trip is **two-phase held cargo**: `PreStockCollect` RESERVES the crops at
+the door via `CropStorageInventoryService.Reserve` (**re-clamping each crop against the live
+target** so a trip that raced another top-up never overshoots) — the units stay physically in
+their storage slots, so a save or quit at ANY moment loses nothing — and `PreStockDeliver`
+consumes the holds at the fridge (`WithdrawReserved` + fridge deposit): **units physically
+leave storage and fridge stock rises only at the unload**. Held units are invisible everywhere:
+`AvailableIn`/`AvailableTotal` exclude them, `WithdrawUpTo`/`TryWithdrawAcrossBuildings` can't
+touch them (order reservations included), auto-sell skips crops with holds, and the crop
+storage viewer shows/sells only available units (`CopyDisplaySlots`/`TakeFromSlot`). The job's
+crops also stay busy-masked while carried so the deficit recompute never dispatches a second
+runner for cargo in transit. Abandoning a trip (despawn, go-home, canceled tour) just releases
+the holds (`ReleaseCarried`) — nothing ever moved, so nothing can be lost. If physical units
+vanish under a hold anyway (player force-sells, building sold/moved) the ledger clamps and the
+unload shorts gracefully. `PreStockQueueDepth` feeds runner backpressure. Clicking the fridge
+in the kitchen opens the Refrigerator window (`RefrigeratorDialog`): the stack grid, the
+persisted Pre-Stock Stack Size slider, and per-stack Send to Crop Storage / Sell actions.
+
+**Runner carry level** (`GameStateService.RunnerCarryLevel`, persisted save v29 section 46):
+runners carry crops by hand, so every hand-carried amount — pre-stock trips AND the
+opportunistic ticket-trip top-up — is capped at `GameConfig.GetRunnerCarryUnits(level)` units
+per crop type (level 1 → 1, level 2 → 5, level 3 → 10; up to
+`KitchenRunnerCarryCropTypes = 3` crop types per trip). The level is global, starts at 1
+(constant storage runs early on), and will be raised by one-of-a-kind items the hero finds
+(future feature). The ticket's own reserved shortfall moved at order time and is exempt.
+Carry visuals show only crops actually held from storage: pre-stock trips show the carry
+queue's distinct crops, ticket trips show recipe entries with `StorageTakenQty > 0` (a crop
+fully covered by the fridge never appears in hand).
+
+**Save-anytime lossless**: held cargo is a transient reservation over units that never left
+their storage slots, so the save gather always sees the full physical inventory. On load the
+ledger starts empty and runners simply re-fetch.
+
+**Staff exits (runner-only routing)**: runners path with
+`KitchenTaskCoordinator.RunnerPathfinder` (selected per role via the FSM's `ActivePathfinder`),
+a second `FarmPathfinder` where the collision tiles at (91,10) and (101,10)
+(`GameConfig.KitchenRunnerStaffExit*`) are opened with `RemoveStaticWall` (survives
+`RebuildWalls`) AND the tavern dining floor (x91–99, y2–8) is `AddWeightedTile` at 5× step
+cost. The weighting is what makes crop runs *favor* the side corridor — the staff route is
+physically longer, so plain shortest-path ignored it. Jobs whose destination is inside the
+tavern (plate bussing) still enter, since all in-tavern routes carry the same weight. Both
+tiles stay solid on the shared `Pathfinder` used by every other worker and patron. Guarded by
+`KitchenFlowPathTests.RunnerCropRun_FavorsTheStaffExitOverTheMainEntryway`.
+
+**Refrigerator window**: clicking the fridge (white hover outline, statue-style tile hit test
+in `MainGameScene`) opens `UI/RefrigeratorDialog.cs` — the stack grid, the persisted Pre-Stock
+Stack Size slider, and per-stack Send to Crop Storage / Sell actions. While it is open the
+game pauses and a half-size window temporarily restores to normal
+(`MainGameScene.UpdateFridgeDialogGate`, a visibility edge-watcher covering both the Close
+button and outside-click dismissal). Any scene-owned dialog like this must also set
+`SettingsUI.ExternalUIWindowOpen` while visible, or the top bar can auto-hide at the wrong
+button scale and return parked half off-screen after the half-window restore.
 - Milk/cheese (`UsesMilk`/`UsesCheese`) are display-only — never in recipes, prices, or checks.
 
 **Cancellation refund rules** (`CancelTicket`): while `CropsRefundable` (pre-cooking) both
@@ -291,16 +359,25 @@ re-grant), and an open order forces Stop mode back on so the party returns to th
 crops were deducted pre-save and `HasPaid` prevents double payment
 (`CreateTicketPreReserved` recreates the ticket as `ReadyToCook` with full-recipe refund data).
 
-**Not persisted**: live tickets, workers/shift state, fridge contents, serving-slot/plate
-entities, patron state. All of that is transient and reconciled live after load.
+Fridge contents and the Pre-Stock Stack Size slider persist separately (save v28, section 45:
+`FridgeSlots` + `FridgePreStockStackSize`, restored into `FridgeInventoryService` on load), as
+does the runner carry level (v29, section 46: `RunnerCarryLevel` → `GameStateService`).
+
+**Not persisted**: live tickets, workers/shift state, serving-slot/plate entities, patron
+state. All of that is transient and reconciled live after load.
 
 ## Fault-tolerance invariants (keep these true)
 
 - A worker despawning for any reason must never strand work:
   `KitchenMonsterStateMachine.OnRemovedFromEntity` re-posts held orders, re-plates carried
-  dishes (force-reserving a slot if needed), releases cook tickets and fetch jobs.
-- Reservations are physical-at-creation, so crashes/despawns never lose crops; runner and
-  server walks are presentation only.
+  dishes (force-reserving a slot if needed), releases cook tickets and fetch jobs, and releases
+  any carry-queue holds (`AbandonPreStockTrip` → `ReleaseCarried` — the crops never left
+  storage, so releasing the hold is lossless).
+- Ticket reservations are physical-at-creation, so crashes/despawns never lose reserved crops;
+  the ticket-fetch walk is presentation only FOR THE RESERVED SHORTFALL. Pre-stock and top-up
+  cargo is held-in-place (reservation ledger), so every exit path from a carrying state must
+  either consume the holds at the fridge (`PreStockDeliver`/`DeliverCarriedTopUp`) or release
+  them (`ReleaseCarried`) — a leaked hold permanently hides crops from every consumer.
 - `PostTicket`, `ReleaseFetchJob`, `ReleaseBusJob`, `ForceReserveServingSlot` are idempotent /
   self-healing — a canceled or stale ticket is skipped everywhere.
 - A bus job that leaves the queue must end with its plate entity destroyed. A claimed job whose

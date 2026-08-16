@@ -26,6 +26,13 @@ namespace PitHero.Services
         private readonly Dictionary<int, HarvestSlot[]> _byBuilding = new Dictionary<int, HarvestSlot[]>();
         private readonly BuildingService _buildingService;
 
+        // Held-for-transfer ledger (issue #386): units a carrying kitchen runner has picked up
+        // but not yet unloaded at the fridge. The units stay physically in their slots — so a
+        // save or quit at any moment loses nothing — while every withdraw, count, and display
+        // path treats them as absent. Keyed building → per-crop reserved units. Transient:
+        // never saved; runners re-fetch after a load.
+        private readonly Dictionary<int, int[]> _reservedByBuilding = new Dictionary<int, int[]>();
+
         public CropStorageInventoryService(BuildingService buildingService)
         {
             _buildingService = buildingService;
@@ -129,6 +136,7 @@ namespace PitHero.Services
             var slots = GetOrCreate(buildingId);
             if (slotIndex >= 0 && slotIndex < slots.Length)
                 slots[slotIndex] = default;
+            ClampReservations(buildingId);
         }
 
         /// <summary>Empties every slot in the building (used when all crops are sold).</summary>
@@ -137,6 +145,7 @@ namespace PitHero.Services
             var slots = GetOrCreate(buildingId);
             for (int i = 0; i < slots.Length; i++)
                 slots[i] = default;
+            ClampReservations(buildingId);
         }
 
         /// <summary>
@@ -179,6 +188,9 @@ namespace PitHero.Services
                     sourceSlots[s].Count = remaining;
             }
 
+            // Moved-out units may have been held for transfer — clamp so the holder shorts
+            // gracefully instead of consuming crops that now live elsewhere.
+            ClampReservations(sourceId);
             return totalMoved;
         }
 
@@ -195,7 +207,7 @@ namespace PitHero.Services
                 dest.Add(kvp.Key);
         }
 
-        /// <summary>Replaces a building's inventory from saved data.</summary>
+        /// <summary>Replaces a building's inventory from saved data. Any held-for-transfer state is discarded.</summary>
         public void RestoreInventory(int buildingId, HarvestSlot[] slots)
         {
             var dst = GetOrCreate(buildingId);
@@ -204,10 +216,15 @@ namespace PitHero.Services
                 dst[i] = slots[i];
             for (int i = copy; i < SlotsPerBuilding; i++)
                 dst[i] = default;
+            _reservedByBuilding.Remove(buildingId);
         }
 
-        /// <summary>Clears all inventories (called when loading a save or quitting to title).</summary>
-        public void Clear() => _byBuilding.Clear();
+        /// <summary>Clears all inventories and holds (called when loading a save or quitting to title).</summary>
+        public void Clear()
+        {
+            _byBuilding.Clear();
+            _reservedByBuilding.Clear();
+        }
 
         private void PruneRemovedBuildings()
         {
@@ -227,7 +244,10 @@ namespace PitHero.Services
                     _removeScratch.Add(kvp.Key);
 
             for (int i = 0; i < _removeScratch.Count; i++)
+            {
                 _byBuilding.Remove(_removeScratch[i]);
+                _reservedByBuilding.Remove(_removeScratch[i]);
+            }
         }
 
         private readonly HashSet<int> _liveIds = new HashSet<int>();
@@ -272,10 +292,18 @@ namespace PitHero.Services
 
         /// <summary>
         /// Best-effort withdrawal of up to <paramref name="max"/> units of <paramref name="crop"/>
-        /// from one specific building. Returns how many were actually taken (0 if it holds none).
-        /// Used by the kitchen runner, which collects at the storage it is standing in front of.
+        /// from one specific building, never touching units held for transfer by a carrying
+        /// runner. Returns how many were actually taken (0 if none are available).
         /// </summary>
         public int WithdrawUpTo(int buildingId, Farming.CropType crop, int max)
+        {
+            int available = AvailableIn(buildingId, crop);
+            if (max > available) max = available;
+            return RemovePhysicalUpTo(buildingId, crop, max);
+        }
+
+        /// <summary>Removes up to max physical units of the crop from the building's slots, in slot order.</summary>
+        private int RemovePhysicalUpTo(int buildingId, Farming.CropType crop, int max)
         {
             if (max <= 0)
                 return 0;
@@ -297,7 +325,8 @@ namespace PitHero.Services
 
         /// <summary>
         /// All-or-nothing withdrawal of <paramref name="amount"/> units of <paramref name="crop"/>
-        /// across all Crop Storage buildings. Returns false without mutating if storage is insufficient.
+        /// across all Crop Storage buildings, drawing only on AVAILABLE units (held-for-transfer
+        /// units are invisible here). Returns false without mutating if availability is insufficient.
         /// When <paramref name="sourceBuildingIds"/> is given, each building actually drawn from is
         /// appended to it (no duplicates) so callers can retrace where the crops came from.
         /// </summary>
@@ -306,7 +335,7 @@ namespace PitHero.Services
         {
             if (amount <= 0)
                 return true;
-            if (CountTotal(crop) < amount)
+            if (AvailableTotal(crop) < amount)
                 return false;
 
             if (_buildingService == null)
@@ -361,6 +390,187 @@ namespace PitHero.Services
                     break;
                 }
             }
+        }
+
+        // ── Held-for-transfer reservations (issue #386) ──────────────────────────
+
+        private int[] GetOrCreateReserved(int buildingId)
+        {
+            if (!_reservedByBuilding.TryGetValue(buildingId, out var reserved))
+            {
+                reserved = new int[Farming.CropTypeInfo.Count];
+                _reservedByBuilding[buildingId] = reserved;
+            }
+            return reserved;
+        }
+
+        /// <summary>Units of the crop in this building currently held for transfer by carrying runners.</summary>
+        public int ReservedIn(int buildingId, Farming.CropType crop)
+            => _reservedByBuilding.TryGetValue(buildingId, out var reserved) ? reserved[(int)crop] : 0;
+
+        /// <summary>Units of the crop in this building actually available (physical minus held-for-transfer).</summary>
+        public int AvailableIn(int buildingId, Farming.CropType crop)
+        {
+            int available = CountIn(buildingId, crop) - ReservedIn(buildingId, crop);
+            return available > 0 ? available : 0;
+        }
+
+        /// <summary>Units of the crop available across all Crop Storage buildings (physical minus held-for-transfer).</summary>
+        public int AvailableTotal(Farming.CropType crop)
+        {
+            if (_buildingService == null)
+                return 0;
+
+            int total = 0;
+            var all = _buildingService.GetAll();
+            for (int b = 0; b < all.Count; b++)
+            {
+                if (all[b].Type == BuildingType.CropStorage)
+                    total += AvailableIn(all[b].UniqueId, crop);
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// Holds up to <paramref name="qty"/> available units of the crop for transfer: the units
+        /// stay physically in their slots but disappear from every count, withdraw, and display
+        /// path until <see cref="WithdrawReserved"/> consumes or <see cref="ReleaseReserved"/>
+        /// frees them. Returns the units actually granted.
+        /// </summary>
+        public int Reserve(int buildingId, Farming.CropType crop, int qty)
+        {
+            if (qty <= 0)
+                return 0;
+            int available = AvailableIn(buildingId, crop);
+            int granted = qty < available ? qty : available;
+            if (granted > 0)
+                GetOrCreateReserved(buildingId)[(int)crop] += granted;
+            return granted;
+        }
+
+        /// <summary>Frees held-for-transfer units back to availability (trip abandoned — nothing ever moved).</summary>
+        public void ReleaseReserved(int buildingId, Farming.CropType crop, int qty)
+        {
+            if (qty <= 0 || !_reservedByBuilding.TryGetValue(buildingId, out var reserved))
+                return;
+            int next = reserved[(int)crop] - qty;
+            reserved[(int)crop] = next > 0 ? next : 0;
+        }
+
+        /// <summary>
+        /// Consumes held-for-transfer units at unload time: physically removes up to
+        /// <paramref name="qty"/> of this caller's hold from the building. Shorts gracefully when
+        /// the physical units shrank since the hold was taken (building sold, crops moved) —
+        /// never touches another runner's hold. Returns the units removed.
+        /// </summary>
+        public int WithdrawReserved(int buildingId, Farming.CropType crop, int qty)
+        {
+            if (qty <= 0 || !_reservedByBuilding.TryGetValue(buildingId, out var reserved))
+                return 0;
+
+            int myShare = reserved[(int)crop] < qty ? reserved[(int)crop] : qty;
+            reserved[(int)crop] -= myShare;
+
+            // Available now includes the share just released but still excludes other holds
+            int cap = AvailableIn(buildingId, crop);
+            int take = myShare < cap ? myShare : cap;
+            return RemovePhysicalUpTo(buildingId, crop, take);
+        }
+
+        /// <summary>
+        /// Re-clamps every hold in the building to what is physically present. Called after any
+        /// mutation that removes units outside the reservation system (sell, move-all, restore)
+        /// so a hold can never exceed reality; the holder's unload then shorts gracefully.
+        /// </summary>
+        private void ClampReservations(int buildingId)
+        {
+            if (!_reservedByBuilding.TryGetValue(buildingId, out var reserved))
+                return;
+            for (int c = 0; c < reserved.Length; c++)
+            {
+                if (reserved[c] <= 0)
+                    continue;
+                int physical = CountIn(buildingId, (Farming.CropType)c);
+                if (reserved[c] > physical)
+                    reserved[c] = physical;
+            }
+        }
+
+        // ── Display view (held units hidden) ─────────────────────────────────────
+
+        /// <summary>
+        /// Copies the building's slots into <paramref name="buffer"/> with held-for-transfer
+        /// units subtracted (in slot order, mirroring the order withdrawals drain), so the UI
+        /// shows only what is actually available.
+        /// </summary>
+        public void CopyDisplaySlots(int buildingId, HarvestSlot[] buffer)
+        {
+            var slots = GetOrCreate(buildingId);
+            int copy = slots.Length < buffer.Length ? slots.Length : buffer.Length;
+            for (int i = 0; i < copy; i++)
+                buffer[i] = slots[i];
+            for (int i = copy; i < buffer.Length; i++)
+                buffer[i] = default;
+
+            if (!_reservedByBuilding.TryGetValue(buildingId, out var reserved))
+                return;
+            for (int c = 0; c < reserved.Length; c++)
+            {
+                int hide = reserved[c];
+                if (hide <= 0)
+                    continue;
+                var crop = (Farming.CropType)c;
+                for (int s = 0; s < copy && hide > 0; s++)
+                {
+                    if (buffer[s].IsEmpty || buffer[s].Type != crop)
+                        continue;
+                    int sub = buffer[s].Count < hide ? buffer[s].Count : hide;
+                    buffer[s].Count -= sub;
+                    if (buffer[s].Count <= 0)
+                        buffer[s] = default;
+                    hide -= sub;
+                }
+            }
+        }
+
+        /// <summary>True if the building has at least one available (non-held) crop unit to show or sell.</summary>
+        public bool HasAvailableCrops(int buildingId)
+        {
+            var slots = GetOrCreate(buildingId);
+            for (int s = 0; s < slots.Length; s++)
+            {
+                if (slots[s].IsEmpty)
+                    continue;
+                if (AvailableIn(buildingId, slots[s].Type) > 0)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Sell support: removes up to <paramref name="maxUnits"/> units from one specific slot,
+        /// never selling units held for transfer. Returns the units removed.
+        /// </summary>
+        public int TakeFromSlot(int buildingId, int slotIndex, int maxUnits)
+        {
+            var slots = GetOrCreate(buildingId);
+            if (slotIndex < 0 || slotIndex >= slots.Length || slots[slotIndex].IsEmpty || maxUnits <= 0)
+                return 0;
+
+            var crop = slots[slotIndex].Type;
+            int available = AvailableIn(buildingId, crop);
+            int inSlot = slots[slotIndex].Count;
+            int take = maxUnits;
+            if (take > available) take = available;
+            if (take > inSlot) take = inSlot;
+            if (take <= 0)
+                return 0;
+
+            slots[slotIndex].Count -= take;
+            if (slots[slotIndex].Count <= 0)
+                slots[slotIndex] = default;
+            ClampReservations(buildingId);
+            return take;
         }
     }
 }

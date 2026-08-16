@@ -65,6 +65,9 @@ namespace PitHero.ECS.Scenes
         private bool _wasInSeedMode;
         private bool _wasInRemoveCropsMode;
         private HarvestedCropsModeOverlay _harvestedCropsModeOverlay;
+        private RefrigeratorDialog _refrigeratorDialog; // Fridge inventory window (issue #386)
+        private bool _wasFridgeDialogVisible;
+        private bool _fridgeRestoreHalfZoom;
         private bool _wasInHarvestedCropsMode;
         private BuildingContextMenu _buildingContextMenu; // Popup shown when a placed building is clicked
         private AddMonsterDialog _addMonsterDialog; // Dialog for manually adding monsters to a house (issue #283)
@@ -217,6 +220,7 @@ namespace PitHero.ECS.Scenes
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
             Core.Services.RemoveService(typeof(Services.GameEventService));
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
+            Core.Services.RemoveService(typeof(Services.LootShuffleService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
@@ -233,6 +237,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.MealBuffService));
+            Core.Services.RemoveService(typeof(Services.FridgeInventoryService));
             Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.KitchenTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.PartyDiningService));
@@ -338,6 +343,10 @@ namespace PitHero.ECS.Scenes
 
             // Meal buff service holds each party member's day-long food buffs (issue #319)
             Core.Services.AddService(new Services.MealBuffService());
+
+            // Refrigerator inventory (issue #386) — registered before the kitchen coordinator,
+            // which resolves it in EnsureServices
+            Core.Services.AddService(new Services.FridgeInventoryService());
 
             // Kitchen task coordinator manages cook/server/runner workers and the ticket queue (issue #319)
             var kitchenCoordinator = new Services.KitchenTaskCoordinator(
@@ -518,6 +527,29 @@ namespace PitHero.ECS.Scenes
                         cropStorageService.RestoreInventory(inv.BuildingUniqueId, arr);
                     }
                 }
+            }
+
+            // Restore refrigerator contents + pre-stock setting (v28+, issue #386)
+            var fridgeInvService = Core.Services.GetService<Services.FridgeInventoryService>();
+            if (fridgeInvService != null)
+            {
+                var fridgeArr = new Services.HarvestSlot[Services.FridgeInventoryService.SlotCount];
+                if (pendingData.FridgeSlots != null)
+                {
+                    for (int i = 0; i < pendingData.FridgeSlots.Count; i++)
+                    {
+                        var sl = pendingData.FridgeSlots[i];
+                        if (sl.SlotIndex < 0 || sl.SlotIndex >= fridgeArr.Length)
+                            continue;
+                        fridgeArr[sl.SlotIndex] = new Services.HarvestSlot
+                        {
+                            Type  = (Farming.CropType)sl.CropTypeId,
+                            Count = sl.Count,
+                        };
+                    }
+                }
+                fridgeInvService.RestoreSlots(fridgeArr);
+                fridgeInvService.PreStockStackSize = pendingData.FridgePreStockStackSize;
             }
 
             // Restore dropped crops awaiting pickup (respawns ground entities)
@@ -1172,6 +1204,9 @@ namespace PitHero.ECS.Scenes
             // Harvested Crops viewer — read-only storage grid on the same stage.
             _harvestedCropsModeOverlay = new HarvestedCropsModeOverlay(this, _uiStage);
             _harvestedCropsModeOverlay.RequestExitHarvestedCropsMode += () => _settingsUI?.ExitHarvestedCropsModeViaFarm();
+
+            // Refrigerator window — opened by clicking the kitchen fridge (issue #386).
+            _refrigeratorDialog = new RefrigeratorDialog(_uiStage);
 
             // Building context menu — shown when a placed building is clicked (Move / Show ...).
             _buildingContextMenu = new BuildingContextMenu(UI.PitHeroSkin.CreateSkin());
@@ -2732,6 +2767,53 @@ namespace PitHero.ECS.Scenes
             // Handle hero-statue hover outline and click-to-open job change dialog
             HandleStatueHover();
             HandleStatueClicks();
+
+            // Handle kitchen-fridge hover outline and click-to-open refrigerator window
+            HandleFridgeHover();
+            HandleFridgeClicks();
+            _refrigeratorDialog?.Update();
+            UpdateFridgeDialogGate();
+        }
+
+        /// <summary>
+        /// Mirrors the crop-storage viewer's treatment for the Refrigerator window: while it is
+        /// open the game pauses (pause overlay shows) and a half-size window temporarily
+        /// restores to normal so the inventory is fully visible. Watching the visibility edge
+        /// here covers every close path — Close button and outside-click dismissal alike.
+        /// </summary>
+        private void UpdateFridgeDialogGate()
+        {
+            bool fridgeDialogVisible = _refrigeratorDialog?.IsVisible() ?? false;
+            if (fridgeDialogVisible == _wasFridgeDialogVisible)
+                return;
+
+            var pauseService = Core.Services.GetService<Services.PauseService>();
+            if (fridgeDialogVisible)
+            {
+                bool wasHalfSize = WindowManager.IsHalfHeightMode();
+                _fridgeRestoreHalfZoom = wasHalfSize;
+                UI.UIWindowManager.OnUIWindowOpening();
+                if (wasHalfSize)
+                    _cameraController?.ResetZoomToDefault();
+                pauseService?.Pause();
+            }
+            else
+            {
+                UI.UIWindowManager.OnUIWindowClosing();
+                // Restore the half-window default zoom that was reset when the dialog opened
+                // (skip if the persistent size changed to Normal while it was open).
+                if (_fridgeRestoreHalfZoom
+                    && UI.UIWindowManager.PersistentWindowSize == UI.UIWindowManager.WindowSizeMode.Half)
+                    _cameraController?.ApplyHalfWindowZoom();
+                _fridgeRestoreHalfZoom = false;
+                pauseService?.Unpause();
+            }
+            // Keep the top bar shown (and its auto-hide idle timer reset) while the dialog is
+            // open, exactly like SettingsUI's own windows — otherwise the bar can slide away at
+            // Normal-window scale and come back parked half off-screen after the half restore.
+            if (_settingsUI != null)
+                _settingsUI.ExternalUIWindowOpen = fridgeDialogVisible;
+            _wasFridgeDialogVisible = fridgeDialogVisible;
         }
 
         /// <summary>
@@ -3086,6 +3168,88 @@ namespace PitHero.ECS.Scenes
             _statueHoverOutlineEntity?.SetEnabled(false);
 
             UI.JobChangeFlow.ShowChangeJobDialog(_uiStage, UI.PitHeroSkin.CreateSkin());
+        }
+
+        private bool _fridgeHovered;
+        private Entity _fridgeHoverOutlineEntity;
+
+        /// <summary>
+        /// True when kitchen-fridge hover/click interactions should be suppressed — while the
+        /// cursor is outside the game window, while a confirmation is open, or when the pointer
+        /// is over UI.
+        /// </summary>
+        private bool FridgeInteractionsBlocked()
+        {
+            if (!Util.MouseUtils.IsMouseInsideWindow())
+                return true;
+            if (UI.ConfirmationDialog.AnyVisible)
+                return true;
+            if (_uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null)
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// True when the cursor is over the kitchen fridge. The fridge is a fixed map fixture (no
+        /// entity) whose art spans two tiles vertically at (87,1)-(87,2).
+        /// </summary>
+        private bool IsMouseOverFridge()
+        {
+            var mousePos = Camera.MouseToWorldPoint();
+            float left = GameConfig.KitchenFridgeTileX * GameConfig.TileSize;
+            float top = GameConfig.KitchenFridgeArtTopTileY * GameConfig.TileSize;
+            float height = (GameConfig.KitchenFridgeTileY - GameConfig.KitchenFridgeArtTopTileY + 1) * GameConfig.TileSize;
+            return mousePos.X >= left && mousePos.X < left + GameConfig.TileSize
+                && mousePos.Y >= top && mousePos.Y < top + height;
+        }
+
+        /// <summary>Draws a white outline around the kitchen fridge under the cursor to signal it is clickable.</summary>
+        private void HandleFridgeHover()
+        {
+            bool isHovered = !FridgeInteractionsBlocked() && IsMouseOverFridge();
+
+            // The fridge never moves, so only state changes need work
+            if (isHovered == _fridgeHovered)
+                return;
+
+            _fridgeHovered = isHovered;
+
+            if (!isHovered)
+            {
+                _fridgeHoverOutlineEntity?.SetEnabled(false);
+                return;
+            }
+
+            if (_fridgeHoverOutlineEntity == null)
+            {
+                _fridgeHoverOutlineEntity = CreateEntity("fridge-hover-outline");
+                var outline = _fridgeHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
+                outline.SetRenderLayer(GameConfig.RenderLayerTop);
+                outline.SetColor(Color.White);
+                outline.SetSize(GameConfig.TileSize,
+                    (GameConfig.KitchenFridgeTileY - GameConfig.KitchenFridgeArtTopTileY + 1) * GameConfig.TileSize);
+                _fridgeHoverOutlineEntity.SetPosition(
+                    GameConfig.KitchenFridgeTileX * GameConfig.TileSize,
+                    GameConfig.KitchenFridgeArtTopTileY * GameConfig.TileSize);
+            }
+            _fridgeHoverOutlineEntity.SetEnabled(true);
+        }
+
+        /// <summary>Opens the Refrigerator window when the kitchen fridge is clicked.</summary>
+        private void HandleFridgeClicks()
+        {
+            if (!Input.LeftMouseButtonPressed)
+                return;
+            if (FridgeInteractionsBlocked())
+                return;
+            if (!IsMouseOverFridge())
+                return;
+
+            // Clear the hover outline before the window opens.
+            _fridgeHovered = false;
+            _fridgeHoverOutlineEntity?.SetEnabled(false);
+
+            _refrigeratorDialog?.Show();
         }
 
         /// <summary>Opens the building context menu when a placed building is clicked.</summary>

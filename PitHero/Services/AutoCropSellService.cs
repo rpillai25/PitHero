@@ -90,6 +90,10 @@ namespace PitHero.Services
                     var crop = slots[s].Type;
                     if (!Designations[(int)crop]) continue;
                     if (slots[s].Count < CropConfig.GetMaxHarvestStack(crop)) continue;
+                    // A runner is mid-carry with units of this crop held for transfer out of
+                    // this building — skip it this pass (holds clear within seconds) rather
+                    // than sell crops the kitchen is actively moving to the fridge.
+                    if (_storage.ReservedIn(buildingId, crop) > 0) continue;
 
                     _fullSeenScratch[(int)crop]++;
                     if (_fullSeenScratch[(int)crop] <= _keepStacks) continue;

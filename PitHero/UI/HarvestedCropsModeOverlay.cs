@@ -60,6 +60,10 @@ namespace PitHero.UI
         // When >= 0, only this Crop Storage building's slots are shown (UniqueId).
         private int _filterBuildingId = -1;
 
+        // Reusable display view: physical slots minus units held for transfer by carrying
+        // runners (issue #386) — the viewer only ever shows and sells available crops.
+        private readonly HarvestSlot[] _displaySlots = new HarvestSlot[CropStorageInventoryService.SlotsPerBuilding];
+
         /// <summary>Fired when the player dismisses the viewer; caller should exit harvested-crops mode.</summary>
         public event System.Action RequestExitHarvestedCropsMode;
 
@@ -130,7 +134,7 @@ namespace PitHero.UI
                 _buttonRow.Add(_sellAllButton).Width(ButtonWidth).SetMinHeight(ButtonHeight).SetPadRight(8f);
 
             int shownId = CurrentPageBuildingId;
-            bool hasCrops = storage != null && shownId >= 0 && !storage.IsEmpty(shownId);
+            bool hasCrops = storage != null && shownId >= 0 && storage.HasAvailableCrops(shownId);
             bool otherStorageExists = (buildingService?.CropStorageCount ?? 0) > 1;
 
             if (hasCrops && otherStorageExists)
@@ -182,14 +186,14 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>True if any Crop Storage building currently holds at least one harvested crop.</summary>
+        /// <summary>True if any Crop Storage building has at least one available (non-held) harvested crop.</summary>
         private static bool AnyStorageHasCrops(CropStorageInventoryService storage, BuildingService buildingService)
         {
             if (storage == null || buildingService == null)
                 return false;
             var all = buildingService.GetAll();
             for (int b = 0; b < all.Count; b++)
-                if (all[b].Type == BuildingType.CropStorage && !storage.IsEmpty(all[b].UniqueId))
+                if (all[b].Type == BuildingType.CropStorage && storage.HasAvailableCrops(all[b].UniqueId))
                     return true;
             return false;
         }
@@ -221,11 +225,11 @@ namespace PitHero.UI
             if (buildingId < 0 || storage == null)
                 return;
 
-            var slots = storage.GetSlots(buildingId);
+            storage.CopyDisplaySlots(buildingId, _displaySlots);
             int gold = 0;
-            for (int s = 0; s < slots.Count; s++)
-                if (!slots[s].IsEmpty)
-                    gold += CropConfig.GetHarvestStackSellPrice(slots[s].Type, slots[s].Count);
+            for (int s = 0; s < _displaySlots.Length; s++)
+                if (!_displaySlots[s].IsEmpty)
+                    gold += CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, _displaySlots[s].Count);
 
             int totalGold = gold;
             string prompt = string.Format(GetText(UITextKey.DialogSellStorageCropsPrompt), totalGold);
@@ -236,21 +240,31 @@ namespace PitHero.UI
                     var gameState = Core.Services.GetService<GameStateService>();
                     gameState?.AddFunds(totalGold, "sell_crops");
                     Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-#if DEBUG
-                    // Per-stack detail lines for the analytics log; re-read live slots because
-                    // auto-sell may have emptied some while the dialog was open.
-                    var liveSlots = storage.GetSlots(buildingId);
-                    for (int s = 0; s < liveSlots.Count; s++)
-                        if (!liveSlots[s].IsEmpty)
-                            AnalyticsService.LogCropSold(liveSlots[s].Type.ToString(), liveSlots[s].Count,
-                                CropConfig.GetHarvestStackSellPrice(liveSlots[s].Type, liveSlots[s].Count), "manual");
-#endif
-                    storage.ClearBuilding(buildingId);
+                    SellAvailableInBuilding(storage, buildingId);
                     _descWindow?.SetVisible(false);
                     RefreshViewer();
                 });
             dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
+        }
+
+        /// <summary>
+        /// Sells every AVAILABLE crop unit in the building — units held for transfer by a
+        /// carrying runner stay in their slots. Re-reads live display counts (auto-sell may have
+        /// emptied slots while a confirm dialog was open) and logs one crop_sold line per stack.
+        /// </summary>
+        private void SellAvailableInBuilding(CropStorageInventoryService storage, int buildingId)
+        {
+            storage.CopyDisplaySlots(buildingId, _displaySlots);
+            for (int s = 0; s < _displaySlots.Length; s++)
+            {
+                if (_displaySlots[s].IsEmpty)
+                    continue;
+                int sold = storage.TakeFromSlot(buildingId, s, _displaySlots[s].Count);
+                if (sold > 0)
+                    AnalyticsService.LogCropSold(_displaySlots[s].Type.ToString(), sold,
+                        CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, sold), "manual");
+            }
         }
 
         /// <summary>Sells every harvested crop across all Crop Storage buildings (with confirmation).</summary>
@@ -267,10 +281,10 @@ namespace PitHero.UI
             {
                 if (all[b].Type != BuildingType.CropStorage)
                     continue;
-                var slots = storage.GetSlots(all[b].UniqueId);
-                for (int s = 0; s < slots.Count; s++)
-                    if (!slots[s].IsEmpty)
-                        gold += CropConfig.GetHarvestStackSellPrice(slots[s].Type, slots[s].Count);
+                storage.CopyDisplaySlots(all[b].UniqueId, _displaySlots);
+                for (int s = 0; s < _displaySlots.Length; s++)
+                    if (!_displaySlots[s].IsEmpty)
+                        gold += CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, _displaySlots[s].Count);
             }
 
             int totalGold = gold;
@@ -282,23 +296,9 @@ namespace PitHero.UI
                     var gameState = Core.Services.GetService<GameStateService>();
                     gameState?.AddFunds(totalGold, "sell_crops");
                     Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-#if DEBUG
-                    // Per-stack detail lines for the analytics log; re-read live slots because
-                    // auto-sell may have emptied some while the dialog was open.
-                    for (int b = 0; b < all.Count; b++)
-                    {
-                        if (all[b].Type != BuildingType.CropStorage)
-                            continue;
-                        var liveSlots = storage.GetSlots(all[b].UniqueId);
-                        for (int s = 0; s < liveSlots.Count; s++)
-                            if (!liveSlots[s].IsEmpty)
-                                AnalyticsService.LogCropSold(liveSlots[s].Type.ToString(), liveSlots[s].Count,
-                                    CropConfig.GetHarvestStackSellPrice(liveSlots[s].Type, liveSlots[s].Count), "manual");
-                    }
-#endif
                     for (int b = 0; b < all.Count; b++)
                         if (all[b].Type == BuildingType.CropStorage)
-                            storage.ClearBuilding(all[b].UniqueId);
+                            SellAvailableInBuilding(storage, all[b].UniqueId);
                     _descWindow?.SetVisible(false);
                     RefreshViewer();
                 });
@@ -378,9 +378,10 @@ namespace PitHero.UI
             if (buildingId < 0)
                 return;
 
-            var slots = storage.GetSlots(buildingId);
+            storage.CopyDisplaySlots(buildingId, _displaySlots);
+            var slots = _displaySlots;
             int col = 0;
-            for (int s = 0; s < slots.Count; s++)
+            for (int s = 0; s < slots.Length; s++)
             {
                 var slot = slots[s];
                 if (slot.IsEmpty)
@@ -503,15 +504,24 @@ namespace PitHero.UI
                 {
                     var storage = Core.Services.GetService<CropStorageInventoryService>();
                     var gameState = Core.Services.GetService<GameStateService>();
-                    // Re-read the slot: auto-sell may have emptied it while the dialog was open.
-                    var liveSlot = storage != null ? storage.GetSlots(buildingId)[slotIndex] : default;
+                    // Re-read the DISPLAY slot: auto-sell may have emptied it while the dialog
+                    // was open, and units held for transfer by a runner must not be sold.
+                    HarvestSlot liveSlot = default;
+                    if (storage != null)
+                    {
+                        storage.CopyDisplaySlots(buildingId, _displaySlots);
+                        liveSlot = _displaySlots[slotIndex];
+                    }
                     if (!liveSlot.IsEmpty && liveSlot.Type == _descCropType)
                     {
-                        int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, liveSlot.Count);
-                        gameState?.AddFunds(liveGold, "sell_crops");
-                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-                        AnalyticsService.LogCropSold(liveSlot.Type.ToString(), liveSlot.Count, liveGold, "manual");
-                        storage?.ClearSlot(buildingId, slotIndex);
+                        int sold = storage.TakeFromSlot(buildingId, slotIndex, liveSlot.Count);
+                        if (sold > 0)
+                        {
+                            int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, sold);
+                            gameState?.AddFunds(liveGold, "sell_crops");
+                            Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                            AnalyticsService.LogCropSold(liveSlot.Type.ToString(), sold, liveGold, "manual");
+                        }
                     }
                     _descWindow.SetVisible(false);
                     RefreshViewer();
@@ -520,87 +530,5 @@ namespace PitHero.UI
             dialog.Show(_stage);
         }
 
-        // ── Slot element ──────────────────────────────────────────────────────────
-
-        private class HarvestSlotButton : Element, IInputListener
-        {
-            // Inventory-slot background drawn at the same translucency as the inventory UI.
-            private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
-
-            private readonly SpriteDrawable _draw;
-            private readonly int _count;
-            private readonly string _tooltipText;
-            private SpriteDrawable _background;
-            private Sprite _selectBox;
-            private bool _hovered;
-
-            public event System.Action OnClicked;
-
-            public HarvestSlotButton(Sprite sprite, CropType crop, int count, string tooltipText)
-            {
-                _draw        = sprite != null ? new SpriteDrawable(sprite) : null;
-                _count       = count;
-                _tooltipText = tooltipText;
-                // Empty slots show the background only — no hover/click.
-                SetTouchable(sprite != null ? Touchable.Enabled : Touchable.Disabled);
-                SetSize(SlotSize, SlotSize);
-
-                if (Core.Content != null)
-                {
-                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                    var bgSprite   = itemsAtlas?.GetSprite("Inventory");
-                    if (bgSprite != null)
-                        _background = new SpriteDrawable(bgSprite);
-
-                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-                    _selectBox  = uiAtlas?.GetSprite("SelectBox");
-                }
-            }
-
-            public override void Draw(Batcher batcher, float parentAlpha)
-            {
-                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
-
-                _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
-
-                if (_hovered && _selectBox != null)
-                    new SpriteDrawable(_selectBox).Draw(
-                        batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
-
-                var font = Nez.Graphics.Instance?.BitmapFont;
-                if (font != null && _count > 1)
-                {
-                    string countStr = _count.ToString();
-                    float tw = font.MeasureString(countStr).X;
-                    StackCountText.Draw(batcher, font, countStr,
-                        new Vector2(GetX() + GetWidth() - tw - 2f, GetY() + GetHeight() - font.LineHeight - 1f),
-                        Color.White);
-                }
-            }
-
-            void IInputListener.OnMouseEnter()
-            {
-                _hovered = true;
-                if (!string.IsNullOrEmpty(_tooltipText))
-                {
-                    var stage = GetStage();
-                    var mp = stage != null ? stage.GetMousePosition() : new Vector2(GetX(), GetY());
-                    HoverTextManager.ShowHoverText(_tooltipText, mp.X + 12f, mp.Y - 4f);
-                }
-            }
-
-            void IInputListener.OnMouseExit()
-            {
-                _hovered = false;
-                HoverTextManager.HideHoverText();
-            }
-
-            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
-            bool IInputListener.OnLeftMousePressed(Vector2 mousePos) => true;
-            void IInputListener.OnLeftMouseUp(Vector2 mousePos) => OnClicked?.Invoke();
-            bool IInputListener.OnRightMousePressed(Vector2 mousePos) => false;
-            void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
-            bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
-        }
     }
 }

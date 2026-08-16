@@ -250,6 +250,96 @@ namespace PitHero.Tests
                 "crop storage door → fridge");
         }
 
+        private static readonly Point StaffExitA = new Point(
+            GameConfig.KitchenRunnerStaffExitAX, GameConfig.KitchenRunnerStaffExitAY);
+        private static readonly Point StaffExitB = new Point(
+            GameConfig.KitchenRunnerStaffExitBX, GameConfig.KitchenRunnerStaffExitBY);
+
+        /// <summary>Builds the runner-only pathfinder exactly like the live kitchen coordinator's.</summary>
+        private static FarmPathfinder CreateRunnerPathfinder(bool withNewGameBuildings)
+        {
+            var pathfinder = CreateMapPathfinder(withNewGameBuildings: false);
+            pathfinder.RemoveStaticWall(StaffExitA);
+            pathfinder.RemoveStaticWall(StaffExitB);
+            for (int x = GameConfig.TavernAreaMinTileX; x <= GameConfig.TavernAreaMaxTileX; x++)
+                for (int y = GameConfig.TavernTopZoneMinTileY; y <= GameConfig.TavernBottomZoneMaxTileY; y++)
+                    pathfinder.AddWeightedTile(new Point(x, y));
+            if (withNewGameBuildings)
+            {
+                var buildings = new BuildingService();
+                buildings.AddBuilding(new PlacedBuilding
+                {
+                    Type = BuildingType.MonsterHouse,
+                    TileX = HouseAnchor.X,
+                    TileY = HouseAnchor.Y,
+                    UniqueId = 1
+                });
+                buildings.AddBuilding(new PlacedBuilding
+                {
+                    Type = BuildingType.CropStorage,
+                    TileX = StorageAnchor.X,
+                    TileY = StorageAnchor.Y,
+                    UniqueId = 2
+                });
+                pathfinder.RebuildWalls(buildings);
+            }
+            return pathfinder;
+        }
+
+        [TestMethod]
+        public void StaffExits_OpenOnlyOnTheRunnerPathfinder()
+        {
+            var shared = CreateMapPathfinder(withNewGameBuildings: false);
+            var runner = CreateRunnerPathfinder(withNewGameBuildings: false);
+
+            // The map really has collision on both exits (regression guard for the TMX)
+            Assert.IsFalse(shared.IsPassable(StaffExitA), $"staff exit {StaffExitA} must stay solid for non-runners");
+            Assert.IsFalse(shared.IsPassable(StaffExitB), $"staff exit {StaffExitB} must stay solid for non-runners");
+
+            Assert.IsTrue(runner.IsPassable(StaffExitA), $"staff exit {StaffExitA} must be open for runners");
+            Assert.IsTrue(runner.IsPassable(StaffExitB), $"staff exit {StaffExitB} must be open for runners");
+        }
+
+        [TestMethod]
+        public void StaffExits_SurviveRebuildWalls()
+        {
+            var runner = CreateRunnerPathfinder(withNewGameBuildings: true);
+            Assert.IsTrue(runner.IsPassable(StaffExitA), "staff exit A closed after RebuildWalls");
+            Assert.IsTrue(runner.IsPassable(StaffExitB), "staff exit B closed after RebuildWalls");
+        }
+
+        [TestMethod]
+        public void RunnerCropRun_FavorsTheStaffExitOverTheMainEntryway()
+        {
+            var shared = CreateMapPathfinder(withNewGameBuildings: true);
+            var runner = CreateRunnerPathfinder(withNewGameBuildings: true);
+            var storageDoor = BuildingConfig.GetDoorTile(BuildingType.CropStorage, StorageAnchor);
+            var fridge = KitchenTaskCoordinator.FridgeTile;
+
+            var sharedPath = shared.Search(fridge, storageDoor);
+            var runnerPath = runner.Search(fridge, storageDoor);
+            Assert.IsNotNull(sharedPath, "no non-runner route fridge → storage door");
+            Assert.IsNotNull(runnerPath, "no runner route fridge → storage door");
+
+            // The runner's route uses a staff exit...
+            bool usesStaffExit = false;
+            for (int i = 0; i < runnerPath.Count; i++)
+                if (runnerPath[i] == StaffExitA || runnerPath[i] == StaffExitB)
+                    usesStaffExit = true;
+            Assert.IsTrue(usesStaffExit,
+                "runner crop run should route through a staff exit instead of the main entryway");
+
+            // ...and never crosses the tavern dining floor (the weighted band)
+            for (int i = 0; i < runnerPath.Count; i++)
+            {
+                var p = runnerPath[i];
+                Assert.IsFalse(
+                    p.X >= GameConfig.TavernAreaMinTileX && p.X <= GameConfig.TavernAreaMaxTileX
+                    && p.Y >= GameConfig.TavernTopZoneMinTileY && p.Y <= GameConfig.TavernBottomZoneMaxTileY,
+                    $"runner crop run crosses the dining floor at {p}");
+            }
+        }
+
         [TestMethod]
         public void RebuildWalls_PreservesStaticMapWalls()
         {

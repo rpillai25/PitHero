@@ -218,7 +218,31 @@ namespace PitHero
         public const float ServerBusPlateMaxWaitSeconds = 90f;  // fallback bussing only (no runner on shift): a plate waiting this long jumps ahead of deliveries/orders
         public const int RunnerCarryPlateLimit = 3;             // empty plates a runner carries to the sink in one trip
         public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
-        public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
+        public const int KitchenFridgeStackSize = 10;           // flat fridge stack size for every crop (issue #386)
+        public const int KitchenPreStockStackSizeMin = 1;       // Pre-Stock Stack Size slider range
+        public const int KitchenPreStockStackSizeMax = 4;
+        public const int KitchenRunnerCarryCropTypes = 3;       // distinct crop types a runner can hold (one per hand slot)
+        // Staff exits (issue #386): collision tiles only kitchen runners may pass through, so
+        // crop runs skip the tavern's main entryway. Solid for everyone else.
+        public const int KitchenRunnerStaffExitAX = 91;
+        public const int KitchenRunnerStaffExitAY = 10;
+        public const int KitchenRunnerStaffExitBX = 101;
+        public const int KitchenRunnerStaffExitBY = 10;
+        public const int KitchenRunnerCarryLevelMin = 1;        // global runner carry level range; raised by
+        public const int KitchenRunnerCarryLevelMax = 3;        // one-of-a-kind items (future feature)
+
+        /// <summary>Units of each crop type a runner can hold per trip at the given carry level (1→1, 2→5, 3→10).</summary>
+        public static int GetRunnerCarryUnits(int carryLevel)
+        {
+            switch (carryLevel)
+            {
+                case 3:  return 10;
+                case 2:  return 5;
+                default: return 1;
+            }
+        }
+        public const float KitchenPreStockCheckIntervalSeconds = 2f; // throttle for pre-stock deficit recompute
+        public const int KitchenFridgeArtTopTileY = 1;          // fridge art spans (87,1)-(87,2); hover outline top
         public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients
         public const float ServerWanderPauseSeconds = 2.5f;     // idle pause between server wander hops
         // A patron whose assigned seat still has an un-bussed plate waits here until it's cleared

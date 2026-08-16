@@ -192,6 +192,18 @@ namespace PitHero.UI
         private float _shortcutBarIdleTimer = 0f;
         private bool _shortcutBarAnimating = false;
         private bool _prevIsHalfHeightMode = false;
+        // Separate mode tracking for the TOP bar's snap-back (the shortcut bar's updater above
+        // consumes _prevIsHalfHeightMode; sharing it would let one updater steal the edge).
+        private bool _uiBarPrevHalfMode = false;
+        private bool _uiBarHalfModeKnown = false;
+
+        /// <summary>
+        /// Set by the scene while a UI window it owns directly (e.g. the Refrigerator dialog)
+        /// is open. Treated exactly like this class's own windows by the top-bar auto-hide:
+        /// the bar stays shown and its idle timer reset, so it can never slide away behind the
+        /// dialog and strand a stale slide offset across a window-size change.
+        /// </summary>
+        public bool ExternalUIWindowOpen { get; set; }
         private bool _halfHeightModeKnown = false; // true after first UpdateShortcutBarAutoHide call
 
         // Hide bar settings (all enabled by default)
@@ -2572,6 +2584,7 @@ namespace PitHero.UI
             }
 
             bool anyWindowOpen = _isVisible ||
+                                 ExternalUIWindowOpen ||
                                  (_heroUI != null && _heroUI.IsWindowVisible) ||
                                  (_monsterUI != null && _monsterUI.IsWindowVisible) ||
                                  (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible);
@@ -2633,6 +2646,23 @@ namespace PitHero.UI
 
         private void UpdateUIBarAutoHide()
         {
+            // Detect window-mode changes. On a switch, snap the bar back to visible — the
+            // button scale changes the bar's height, so a hide offset computed in the previous
+            // mode would park the bar partially off-screen (mirrors the shortcut bar's guard
+            // in UpdateShortcutBarAutoHide).
+            bool uiBarHalfMode = WindowManager.IsHalfHeightMode();
+            if (!_uiBarHalfModeKnown)
+            {
+                _uiBarPrevHalfMode = uiBarHalfMode;
+                _uiBarHalfModeKnown = true;
+            }
+            else if (uiBarHalfMode != _uiBarPrevHalfMode)
+            {
+                _uiBarPrevHalfMode = uiBarHalfMode;
+                _uiBarSlideY = 0f;
+                ShowUIBar(); // restores touchable state and forces a reposition next frame
+            }
+
             if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
             {
                 _uiBarIdleTimer = 0f;
@@ -2660,6 +2690,7 @@ namespace PitHero.UI
                                     stageMX <= _uiBarRight + proximityPad &&
                                     stageMY <= _uiBarBottom + proximityPad;
             bool anyWindowOpen = _isVisible ||
+                                 ExternalUIWindowOpen ||
                                  (_heroUI != null && _heroUI.IsWindowVisible) ||
                                  (_monsterUI != null && _monsterUI.IsWindowVisible) ||
                                  (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible);

@@ -26,6 +26,25 @@ namespace PitHero.Services
             Analytics.AnalyticsService.LogGoldGained(amount, source, Funds);
         }
 
+        private int _runnerCarryLevel = GameConfig.KitchenRunnerCarryLevelMin;
+
+        /// <summary>
+        /// Global kitchen-runner carry level (issue #386). Level 1 = 1 unit of up to 3 crop types
+        /// per trip, level 2 = 5 units each, level 3 = 10 units each. Raised by one-of-a-kind
+        /// items the hero finds (future feature). Persisted.
+        /// </summary>
+        public int RunnerCarryLevel
+        {
+            get => _runnerCarryLevel;
+            set
+            {
+                int v = value;
+                if (v < GameConfig.KitchenRunnerCarryLevelMin) v = GameConfig.KitchenRunnerCarryLevelMin;
+                if (v > GameConfig.KitchenRunnerCarryLevelMax) v = GameConfig.KitchenRunnerCarryLevelMax;
+                _runnerCarryLevel = v;
+            }
+        }
+
         /// <summary>Discovered stencils mapped by pattern ID to discovery source.</summary>
         public Dictionary<string, StencilDiscoverySource> DiscoveredStencils { get; } = new();
 

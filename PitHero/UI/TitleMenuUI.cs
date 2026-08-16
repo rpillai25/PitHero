@@ -145,7 +145,11 @@ namespace PitHero.UI
         private void StartGame(string mapPath)
         {
             var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState != null) gameState.Funds = 0;
+            if (gameState != null)
+            {
+                gameState.Funds = 0;
+                gameState.RunnerCarryLevel = GameConfig.KitchenRunnerCarryLevelMin;
+            }
             var heroCreationScene = new HeroCreationScene(mapPath);
             Core.Scene = heroCreationScene;
         }

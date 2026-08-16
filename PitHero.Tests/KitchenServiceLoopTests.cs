@@ -96,12 +96,14 @@ namespace PitHero.Tests
             patron.Update();
         }
 
-        /// <summary>Runs the runner leg for a ticket (claim → collect at storage → deposit at fridge).</summary>
+        /// <summary>Runs the runner leg for a ticket (claim → collect at storage → unload at fridge).</summary>
         private void RunRunnerLeg(KitchenTicket expected)
         {
             var job = _coordinator.TryClaimFetchJob();
             Assert.AreSame(expected, job, "runner did not claim the queued fetch job");
-            _coordinator.RunnerCollectAtStorage(job);
+            var carried = new System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop>();
+            _coordinator.RunnerCollectAtStorage(job, carried);
+            _coordinator.DeliverCarriedTopUp(carried);
             _coordinator.CompleteFetch(job);
         }
 
@@ -183,10 +185,13 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void FridgeParStocking_SecondOrderSkipsRunnerTrip()
+        public void FridgePreStock_SecondOrderSkipsRunnerTrip()
         {
             var def = DishConfig.GetDefinition(Dish);
-            // Stock plenty: the runner's par top-up should leave fridge stock for the next order
+            // Max carry level: the trip top-up is hand-carried, so only level 3 (10 units per
+            // crop) can fill a whole fridge stack in one run
+            _gameState.RunnerCarryLevel = 3;
+            // Stock plenty: the runner's pre-stock top-up should leave fridge stock for the next order
             StockRecipe(servings: 4);
 
             var t1 = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
@@ -194,28 +199,47 @@ namespace PitHero.Tests
             Assert.AreEqual(TicketState.AwaitingIngredients, t1.State, "fridge starts empty");
             RunRunnerLeg(t1);
 
-            // Par top-up filled the fridge from remaining storage
+            // Pre-stock top-up filled the fridge from remaining storage toward the target
+            // (default 1 stack of KitchenFridgeStackSize units per crop)
+            int target = GameConfig.KitchenFridgeStackSize;
             for (int i = 0; i < def.Recipe.Length; i++)
             {
-                int expected = System.Math.Min(GameConfig.KitchenFridgeParPerCrop, def.Recipe[i].Qty * 3);
+                int expected = System.Math.Min(target, def.Recipe[i].Qty * 3);
                 Assert.AreEqual(expected, _coordinator.FridgeCount(def.Recipe[i].Crop),
-                    $"fridge par top-up wrong for {def.Recipe[i].Crop}");
+                    $"fridge pre-stock top-up wrong for {def.Recipe[i].Crop}");
             }
 
-            // If the par covers the recipe, the second order needs no runner trip
-            bool parCoversRecipe = true;
+            // If the target covers the recipe, the second order needs no runner trip
+            bool targetCoversRecipe = true;
             for (int i = 0; i < def.Recipe.Length; i++)
-                if (def.Recipe[i].Qty > GameConfig.KitchenFridgeParPerCrop)
-                    parCoversRecipe = false;
+                if (def.Recipe[i].Qty > target)
+                    targetCoversRecipe = false;
 
             var t2 = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
             Assert.IsNotNull(t2);
-            if (parCoversRecipe)
+            if (targetCoversRecipe)
             {
                 Assert.IsTrue(t2.IngredientsFetched, "fridge stock should cover the second order");
                 Assert.AreEqual(TicketState.ReadyToCook, t2.State);
                 Assert.IsNull(_coordinator.TryClaimFetchJob(), "runner dispatched despite full fridge");
             }
+        }
+
+        [TestMethod]
+        public void FridgeTopUp_AtCarryLevelOne_MovesOneUnitPerCropPerTrip()
+        {
+            var def = DishConfig.GetDefinition(Dish);
+            StockRecipe(servings: 4);
+
+            var t1 = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
+            _coordinator.PostTicket(t1);
+            RunRunnerLeg(t1);
+
+            // Default carry level 1: the runner's hands hold one unit of each recipe crop, so a
+            // single trip barely dents the pre-stock target — constant storage runs are expected
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.AreEqual(1, _coordinator.FridgeCount(def.Recipe[i].Crop),
+                    $"carry level 1 must top up exactly one unit of {def.Recipe[i].Crop}");
         }
 
         [TestMethod]
@@ -895,15 +919,25 @@ namespace PitHero.Tests
 
             StockRecipe();
             var ticket = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
-            int nearBefore = _storage.CountIn(StorageBuildingId, crop);
-            int farBefore = _storage.CountIn(FarStorageBuildingId, crop);
+            int nearBefore = _storage.AvailableIn(StorageBuildingId, crop);
+            int farBefore = _storage.AvailableIn(FarStorageBuildingId, crop);
 
-            _coordinator.RunnerCollectAtStorage(ticket, FarStorageBuildingId);
+            var carried = new System.Collections.Generic.List<KitchenTaskCoordinator.CarriedCrop>();
+            _coordinator.RunnerCollectAtStorage(ticket, carried, FarStorageBuildingId);
 
+            // Collect holds units (availability drops) without moving them; the physical move
+            // happens at the fridge unload
+            Assert.AreEqual(nearBefore, _storage.AvailableIn(StorageBuildingId, crop),
+                "collecting at the far storage must not hold crops in the near one");
+            Assert.IsTrue(_storage.AvailableIn(FarStorageBuildingId, crop) < farBefore,
+                "the far storage should be supplying the fridge top-up");
+
+            int farPhysicalBefore = _storage.CountIn(FarStorageBuildingId, crop);
+            _coordinator.DeliverCarriedTopUp(carried);
             Assert.AreEqual(nearBefore, _storage.CountIn(StorageBuildingId, crop),
-                "collecting at the far storage must not teleport crops out of the near one");
-            Assert.IsTrue(_storage.CountIn(FarStorageBuildingId, crop) < farBefore,
-                "the far storage should have supplied the fridge top-up");
+                "the unload must draw only on the far storage");
+            Assert.IsTrue(_storage.CountIn(FarStorageBuildingId, crop) < farPhysicalBefore,
+                "the unload physically removes the held units from the far storage");
         }
 
         [TestMethod]

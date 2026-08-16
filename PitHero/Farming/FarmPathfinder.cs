@@ -54,6 +54,25 @@ namespace PitHero.Farming
         }
 
         /// <summary>
+        /// Permanently opens a static-collision tile for THIS pathfinder only (e.g. the tavern
+        /// staff exits kitchen runners slip through). The removal survives every RebuildWalls
+        /// call; other pathfinders sharing the same map still treat the tile as solid.
+        /// </summary>
+        public void RemoveStaticWall(Point tile)
+        {
+            _graph.Walls.Remove(tile);
+            _staticWalls.Remove(tile);
+        }
+
+        /// <summary>
+        /// Marks a tile as high-cost but passable for THIS pathfinder's searches (5× the normal
+        /// step cost). Used to make runners route around the tavern dining floor when a back
+        /// way exists, while still allowing entry when the destination is inside. Weights
+        /// survive RebuildWalls (which only touches walls).
+        /// </summary>
+        public void AddWeightedTile(Point tile) => _graph.WeightedNodes.Add(tile);
+
+        /// <summary>
         /// Rebuilds the wall set from static map collision plus the bottom two footprint rows of
         /// every placed building.
         /// </summary>
