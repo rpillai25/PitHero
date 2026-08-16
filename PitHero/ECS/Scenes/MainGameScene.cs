@@ -218,6 +218,7 @@ namespace PitHero.ECS.Scenes
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
             Core.Services.RemoveService(typeof(Services.GameEventService));
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
+            Core.Services.RemoveService(typeof(Services.LootShuffleService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
