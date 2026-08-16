@@ -218,7 +218,11 @@ namespace PitHero
         public const float ServerBusPlateMaxWaitSeconds = 90f;  // fallback bussing only (no runner on shift): a plate waiting this long jumps ahead of deliveries/orders
         public const int RunnerCarryPlateLimit = 3;             // empty plates a runner carries to the sink in one trip
         public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
-        public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
+        public const int KitchenFridgeStackSize = 10;           // flat fridge stack size for every crop (issue #386)
+        public const int KitchenPreStockStackSizeMin = 1;       // Pre-Stock Stack Size slider range
+        public const int KitchenPreStockStackSizeMax = 4;
+        public const float KitchenPreStockCheckIntervalSeconds = 2f; // throttle for pre-stock deficit recompute
+        public const int KitchenFridgeArtTopTileY = 1;          // fridge art spans (87,1)-(87,2); hover outline top
         public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients
         public const float ServerWanderPauseSeconds = 2.5f;     // idle pause between server wander hops
         // A patron whose assigned seat still has an un-bussed plate waits here until it's cleared

@@ -104,10 +104,25 @@ refunds.
 - Any storage shortfall → ticket starts `AwaitingIngredients` and is enqueued as a **fetch job**,
   and the buildings drawn from are recorded in `SourceBuildingIds` so the runner can retrace the
   route. The runner's trip is **cosmetic for this ticket** — the crops are already committed. At
-  each storage door, `RunnerCollectAtStorage` additionally tops the fridge up to par
-  (`KitchenFridgeParPerCrop = 4` per recipe crop) with a withdraw+add against that one building;
+  each storage door, `RunnerCollectAtStorage` additionally tops the fridge up toward the
+  pre-stock target (`PreStockStackSize` 1–4 stacks × `KitchenFridgeStackSize = 10` units per
+  recipe crop, clamped by fridge capacity) with a withdraw+add against that one building;
   at the fridge, `CompleteFetch` flips `IngredientsFetched`. If storage vanishes mid-run the
   ticket still proceeds.
+
+## Fridge pre-stock (issue #386)
+
+The fridge is a slot-based inventory (`FridgeInventoryService`, one 8×4 page, every stack a
+flat 10 units) that runners proactively keep stocked: for each crop that appears in ≥1 dish
+recipe and has stock in some CropStorage, the coordinator queues a **pre-stock job** whenever
+fridge units fall below `PreStockStackSize × 10` (throttled in `Update`, and immediately at the
+end of `CreateTicket` / `CreateTicketPreReserved` / `CancelTicket`). An idle runner (after bus
+and ticket-fetch jobs) claims the job (`TryClaimPreStockJob` — one crop, nearest storage holding
+it, up to one 10-unit stack), sprints out, and `PreStockCollect` moves the crops storage→fridge
+at the door (walk back cosmetic). A busy mask prevents duplicate trips per crop;
+`PreStockQueueDepth` feeds runner backpressure. Clicking the fridge in the kitchen opens the
+Refrigerator window (`RefrigeratorDialog`): the stack grid, the persisted Pre-Stock Stack Size
+slider, and per-stack Send to Crop Storage / Sell actions.
 - Milk/cheese (`UsesMilk`/`UsesCheese`) are display-only — never in recipes, prices, or checks.
 
 **Cancellation refund rules** (`CancelTicket`): while `CropsRefundable` (pre-cooking) both
@@ -291,8 +306,11 @@ re-grant), and an open order forces Stop mode back on so the party returns to th
 crops were deducted pre-save and `HasPaid` prevents double payment
 (`CreateTicketPreReserved` recreates the ticket as `ReadyToCook` with full-recipe refund data).
 
-**Not persisted**: live tickets, workers/shift state, fridge contents, serving-slot/plate
-entities, patron state. All of that is transient and reconciled live after load.
+Fridge contents and the Pre-Stock Stack Size slider persist separately (save v28, section 45:
+`FridgeSlots` + `FridgePreStockStackSize`, restored into `FridgeInventoryService` on load).
+
+**Not persisted**: live tickets, workers/shift state, serving-slot/plate entities, patron
+state. All of that is transient and reconciled live after load.
 
 ## Fault-tolerance invariants (keep these true)
 

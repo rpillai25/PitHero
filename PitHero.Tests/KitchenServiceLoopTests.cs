@@ -183,10 +183,10 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void FridgeParStocking_SecondOrderSkipsRunnerTrip()
+        public void FridgePreStock_SecondOrderSkipsRunnerTrip()
         {
             var def = DishConfig.GetDefinition(Dish);
-            // Stock plenty: the runner's par top-up should leave fridge stock for the next order
+            // Stock plenty: the runner's pre-stock top-up should leave fridge stock for the next order
             StockRecipe(servings: 4);
 
             var t1 = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
@@ -194,23 +194,25 @@ namespace PitHero.Tests
             Assert.AreEqual(TicketState.AwaitingIngredients, t1.State, "fridge starts empty");
             RunRunnerLeg(t1);
 
-            // Par top-up filled the fridge from remaining storage
+            // Pre-stock top-up filled the fridge from remaining storage toward the target
+            // (default 1 stack of KitchenFridgeStackSize units per crop)
+            int target = GameConfig.KitchenFridgeStackSize;
             for (int i = 0; i < def.Recipe.Length; i++)
             {
-                int expected = System.Math.Min(GameConfig.KitchenFridgeParPerCrop, def.Recipe[i].Qty * 3);
+                int expected = System.Math.Min(target, def.Recipe[i].Qty * 3);
                 Assert.AreEqual(expected, _coordinator.FridgeCount(def.Recipe[i].Crop),
-                    $"fridge par top-up wrong for {def.Recipe[i].Crop}");
+                    $"fridge pre-stock top-up wrong for {def.Recipe[i].Crop}");
             }
 
-            // If the par covers the recipe, the second order needs no runner trip
-            bool parCoversRecipe = true;
+            // If the target covers the recipe, the second order needs no runner trip
+            bool targetCoversRecipe = true;
             for (int i = 0; i < def.Recipe.Length; i++)
-                if (def.Recipe[i].Qty > GameConfig.KitchenFridgeParPerCrop)
-                    parCoversRecipe = false;
+                if (def.Recipe[i].Qty > target)
+                    targetCoversRecipe = false;
 
             var t2 = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
             Assert.IsNotNull(t2);
-            if (parCoversRecipe)
+            if (targetCoversRecipe)
             {
                 Assert.IsTrue(t2.IngredientsFetched, "fridge stock should cover the second order");
                 Assert.AreEqual(TicketState.ReadyToCook, t2.State);

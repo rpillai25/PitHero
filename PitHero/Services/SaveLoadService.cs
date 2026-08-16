@@ -753,6 +753,26 @@ namespace PitHero.Services
                 }
             }
 
+            // Refrigerator (v28+)
+            var fridgeService = Core.Services.GetService<FridgeInventoryService>();
+            if (fridgeService != null)
+            {
+                data.FridgeSlots = new List<SavedHarvestSlot>();
+                var fridgeSlots = fridgeService.GetSlots();
+                for (int i = 0; i < fridgeSlots.Count; i++)
+                {
+                    if (fridgeSlots[i].IsEmpty)
+                        continue;
+                    data.FridgeSlots.Add(new SavedHarvestSlot
+                    {
+                        SlotIndex  = i,
+                        CropTypeId = (int)fridgeSlots[i].Type,
+                        Count      = fridgeSlots[i].Count,
+                    });
+                }
+                data.FridgePreStockStackSize = fridgeService.PreStockStackSize;
+            }
+
             // Dropped crops awaiting pickup
             var droppedCropService = Core.Services.GetService<DroppedCropService>();
             if (droppedCropService != null)

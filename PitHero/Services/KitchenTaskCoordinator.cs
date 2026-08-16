@@ -97,8 +97,14 @@ namespace PitHero.Services
         private readonly List<KitchenTicket> _tickets = new List<KitchenTicket>(MaxOpenTickets);
         private int _nextTicketId;
 
-        // ── Fridge inventory (kitchen-local crop stock) ─────────────────────────
-        private readonly Dictionary<CropType, int> _fridge = new Dictionary<CropType, int>(16);
+        // ── Fridge inventory (kitchen-local crop stock, slot-based — issue #386) ──
+        private FridgeInventoryService _fridgeInv;
+
+        // ── Pre-stock jobs (runners keep N stacks of each available crop stocked) ──
+        private readonly List<CropType> _preStockQueue = new List<CropType>(16);
+        private readonly bool[] _preStockBusy = new bool[CropTypeInfo.Count]; // queued OR claimed
+        private static bool[] _recipeCropMask; // lazy: crops used by at least one dish recipe
+        private float _preStockCheckElapsed;
 
         // ── Runner fetch queue (tickets whose storage-taken share needs transport) ──
         private readonly List<KitchenTicket> _fetchQueue = new List<KitchenTicket>(8);
@@ -599,6 +605,13 @@ namespace PitHero.Services
             int postCount = _wantedAssignments.Count < MaxWorkerPosts
                 ? _wantedAssignments.Count : MaxWorkerPosts;
 
+            _preStockCheckElapsed += Time.DeltaTime;
+            if (_preStockCheckElapsed >= GameConfig.KitchenPreStockCheckIntervalSeconds)
+            {
+                _preStockCheckElapsed = 0f;
+                RecomputePreStockDeficits();
+            }
+
             _rolePressureSampleElapsed += Time.DeltaTime;
             if (_rolePressureSampleElapsed >= GameConfig.KitchenRolePressureSampleIntervalSeconds)
             {
@@ -606,7 +619,7 @@ namespace PitHero.Services
                 EnsureServices();
                 // AwaitingIngredients tickets already cover the queued fetch jobs, so the fetch
                 // queue isn't added again on top of them.
-                int rawRunner = AwaitingIngredientsTicketCount + BusJobCount;
+                int rawRunner = AwaitingIngredientsTicketCount + BusJobCount + PreStockQueueDepth;
                 int rawCook = ReadyToCookUnclaimedCount;
                 int rawServer = PlatedAwaitingPickupCount
                     + (_mercenaryManager != null ? _mercenaryManager.CountPatronsWaitingToOrder() : 0);
@@ -864,23 +877,36 @@ namespace PitHero.Services
 
         /// <summary>Units of the crop currently in the kitchen fridge.</summary>
         public int FridgeCount(CropType crop)
-            => _fridge.TryGetValue(crop, out int n) ? n : 0;
+        {
+            EnsureServices();
+            return _fridgeInv?.Count(crop) ?? 0;
+        }
 
+        /// <summary>
+        /// Adds crops to the fridge; any overflow that doesn't fit the bounded fridge (e.g. a
+        /// ticket-cancel refund into a full fridge) spills back to crop storage so crops are
+        /// never destroyed.
+        /// </summary>
         private void FridgeAdd(CropType crop, int amount)
         {
             if (amount <= 0) return;
-            _fridge.TryGetValue(crop, out int n);
-            _fridge[crop] = n + amount;
+            EnsureServices();
+            int stored = _fridgeInv?.Deposit(crop, amount) ?? 0;
+            int overflow = amount - stored;
+            if (overflow > 0)
+                _cropStorage?.DepositAcrossBuildings(crop, overflow);
         }
 
         private int FridgeTake(CropType crop, int amount)
         {
             if (amount <= 0) return 0;
-            _fridge.TryGetValue(crop, out int n);
-            int take = n < amount ? n : amount;
-            _fridge[crop] = n - take;
-            return take;
+            EnsureServices();
+            return _fridgeInv?.Withdraw(crop, amount) ?? 0;
         }
+
+        /// <summary>Fridge units targeted per available crop: slider stacks × flat stack size.</summary>
+        private int PreStockTargetUnits()
+            => (_fridgeInv?.PreStockStackSize ?? 1) * GameConfig.KitchenFridgeStackSize;
 
         // ── Ticket API ───────────────────────────────────────────────────────────
 
@@ -965,6 +991,9 @@ namespace PitHero.Services
             if (!ticket.IngredientsFetched)
                 _fetchQueue.Add(ticket);
 
+            // Fridge stock just dropped — queue pre-stock refills immediately (issue #386)
+            RecomputePreStockDeficits();
+
             return ticket;
         }
 
@@ -999,6 +1028,7 @@ namespace PitHero.Services
                 State = TicketState.ReadyToCook,
             };
             _tickets.Add(ticket);
+            RecomputePreStockDeficits();
             return ticket;
         }
 
@@ -1074,6 +1104,9 @@ namespace PitHero.Services
 
             t.State = TicketState.Canceled;
             _tickets.Remove(t);
+
+            // Refund may have changed fridge stock either way — refresh pre-stock deficits
+            RecomputePreStockDeficits();
         }
 
         /// <summary>Finds and cancels the ticket belonging to the given patron entity.</summary>
@@ -1587,7 +1620,8 @@ namespace PitHero.Services
         /// A building earns a stop when it either supplied this ticket's shortfall
         /// (<see cref="KitchenTicket.SourceBuildingIds"/> — the crops are already withdrawn, so
         /// this is the only record of where they came from) or still holds a crop the fridge needs
-        /// to reach par. Stops that no longer contribute once nearer ones are visited are dropped,
+        /// to reach its pre-stock target. Stops that no longer contribute once nearer ones are
+        /// visited are dropped,
         /// so a multi-crop recipe visits several storages but never one it has no reason to enter.
         ///
         /// Best-effort by design: stock can change between planning and arrival, and the ticket's
@@ -1610,7 +1644,7 @@ namespace PitHero.Services
                 var crop = def.Recipe[i].Crop;
                 if (_routeNeed.ContainsKey(crop))
                     continue;
-                int want = GameConfig.KitchenFridgeParPerCrop - FridgeCount(crop);
+                int want = FridgeTopUpWant(crop);
                 if (want > 0)
                     _routeNeed[crop] = want;
             }
@@ -1684,8 +1718,9 @@ namespace PitHero.Services
         private readonly List<CropType> _routeScratchCrops = new List<CropType>(16);
 
         /// <summary>
-        /// Runner is at a storage door: opportunistically tops the fridge up to par for each crop
-        /// in the ticket's recipe, drawing only on the building it is standing in front of (the
+        /// Runner is at a storage door: opportunistically tops the fridge up to the pre-stock
+        /// target for each crop in the ticket's recipe, drawing only on the building it is
+        /// standing in front of (the
         /// walk back is cosmetic, so a crash never loses crops). Pass a negative id to draw from
         /// every storage at once — the fallback when no route could be planned.
         /// </summary>
@@ -1699,7 +1734,7 @@ namespace PitHero.Services
             for (int i = 0; i < def.Recipe.Length; i++)
             {
                 var crop = def.Recipe[i].Crop;
-                int want = GameConfig.KitchenFridgeParPerCrop - FridgeCount(crop);
+                int want = FridgeTopUpWant(crop);
                 if (want <= 0)
                     continue;
 
@@ -1727,6 +1762,172 @@ namespace PitHero.Services
             t.IngredientsFetched = true;
             if (t.State == TicketState.AwaitingIngredients)
                 t.State = TicketState.ReadyToCook;
+        }
+
+        // ── Pre-stock jobs (issue #386) ──────────────────────────────────────────
+
+        /// <summary>One pre-stock trip: fetch up to one fridge stack of a crop from one storage.</summary>
+        public struct PreStockJob
+        {
+            public CropType Crop;
+            public int Units;
+            public int BuildingId;
+            public Point DoorTile;
+        }
+
+        /// <summary>Queued pre-stock trips — feeds runner backpressure alongside ticket fetches.</summary>
+        public int PreStockQueueDepth => _preStockQueue.Count;
+
+        /// <summary>
+        /// Remaining fridge top-up for the crop toward the pre-stock target, clamped to what the
+        /// bounded fridge can still hold.
+        /// </summary>
+        private int FridgeTopUpWant(CropType crop)
+        {
+            int want = PreStockTargetUnits() - FridgeCount(crop);
+            if (want <= 0)
+                return 0;
+            int capacity = _fridgeInv?.CapacityFor(crop) ?? 0;
+            return want < capacity ? want : capacity;
+        }
+
+        private static bool IsRecipeCrop(CropType crop)
+        {
+            if (_recipeCropMask == null)
+            {
+                var mask = new bool[CropTypeInfo.Count];
+                for (int d = 0; d < DishTypeInfo.Count; d++)
+                {
+                    var def = DishConfig.GetDefinition((DishType)d);
+                    for (int i = 0; i < def.Recipe.Length; i++)
+                        mask[(int)def.Recipe[i].Crop] = true;
+                }
+                _recipeCropMask = mask;
+            }
+            return _recipeCropMask[(int)crop];
+        }
+
+        /// <summary>
+        /// Scans every recipe crop and queues a pre-stock trip for each one whose fridge stock has
+        /// fallen below the target stack count and that is available in crop storage. Called on a
+        /// throttle from <see cref="Update"/> and directly whenever a ticket takes from the fridge,
+        /// so a depleted crop triggers a refetch immediately.
+        /// </summary>
+        public void RecomputePreStockDeficits()
+        {
+            EnsureServices();
+            if (_cropStorage == null || _fridgeInv == null)
+                return;
+
+            for (int c = 0; c < CropTypeInfo.Count; c++)
+            {
+                if (_preStockBusy[c])
+                    continue;
+                var crop = (CropType)c;
+                if (!IsRecipeCrop(crop))
+                    continue;
+
+                // Unit-based target (stacks × stack size), so a partially consumed stack still
+                // counts as a deficit and gets topped back up
+                if (FridgeTopUpWant(crop) <= 0)
+                    continue;
+                if (_cropStorage.CountTotal(crop) <= 0)
+                    continue;
+
+                _preStockQueue.Add(crop);
+                _preStockBusy[c] = true;
+            }
+        }
+
+        /// <summary>
+        /// Runner claims the next pre-stock trip (FIFO): one crop, one storage stop, up to one
+        /// fridge stack of units. Stale entries (stock or capacity changed since queueing) are
+        /// skipped. Returns false when nothing claimable is queued.
+        /// </summary>
+        public bool TryClaimPreStockJob(Point fromTile, out PreStockJob job)
+        {
+            job = default;
+            EnsureServices();
+            if (_cropStorage == null || _fridgeInv == null || _buildingService == null)
+                return false;
+
+            while (_preStockQueue.Count > 0)
+            {
+                var crop = _preStockQueue[0];
+                _preStockQueue.RemoveAt(0);
+
+                int want = FridgeTopUpWant(crop);
+                if (want <= 0)
+                {
+                    _preStockBusy[(int)crop] = false;
+                    continue; // stale — fridge topped up or full since queueing
+                }
+
+                // Nearest storage that still holds this crop
+                var all = _buildingService.GetAll();
+                long best = long.MaxValue;
+                int bestId = -1;
+                Point bestDoor = default;
+                for (int i = 0; i < all.Count; i++)
+                {
+                    if (all[i].Type != BuildingType.CropStorage)
+                        continue;
+                    if (_cropStorage.CountIn(all[i].UniqueId, crop) <= 0)
+                        continue;
+                    var door = Util.BuildingConfig.GetDoorTile(all[i].Type,
+                        new Point(all[i].TileX, all[i].TileY));
+                    long dx = door.X - fromTile.X;
+                    long dy = door.Y - fromTile.Y;
+                    long distSq = dx * dx + dy * dy;
+                    if (distSq < best)
+                    {
+                        best = distSq;
+                        bestId = all[i].UniqueId;
+                        bestDoor = door;
+                    }
+                }
+                if (bestId < 0)
+                {
+                    _preStockBusy[(int)crop] = false;
+                    continue; // stale — storage emptied since queueing
+                }
+
+                int units = GameConfig.KitchenFridgeStackSize;
+                if (want < units) units = want;
+                int inStorage = _cropStorage.CountIn(bestId, crop);
+                if (inStorage < units) units = inStorage;
+
+                job = new PreStockJob { Crop = crop, Units = units, BuildingId = bestId, DoorTile = bestDoor };
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Runner abandons a claimed pre-stock trip (shift end / no path) — the deficit recompute re-queues it.</summary>
+        public void ReleasePreStockJob(in PreStockJob job)
+            => _preStockBusy[(int)job.Crop] = false;
+
+        /// <summary>
+        /// Runner is at the storage door for a pre-stock trip: moves the crops storage → fridge
+        /// (the walk back is cosmetic, so a crash never loses crops). Returns the units moved.
+        /// </summary>
+        public int PreStockCollect(in PreStockJob job)
+        {
+            EnsureServices();
+            _preStockBusy[(int)job.Crop] = false;
+            if (_cropStorage == null || _fridgeInv == null)
+                return 0;
+
+            int want = job.Units;
+            int capacity = _fridgeInv.CapacityFor(job.Crop);
+            if (capacity < want) want = capacity;
+            if (want <= 0)
+                return 0;
+
+            int taken = _cropStorage.WithdrawUpTo(job.BuildingId, job.Crop, want);
+            if (taken > 0)
+                _fridgeInv.Deposit(job.Crop, taken);
+            return taken;
         }
 
         // ── Static tile helpers ──────────────────────────────────────────────────
@@ -1852,16 +2053,20 @@ namespace PitHero.Services
                 _gameState = Core.Services.GetService<GameStateService>();
             if (_mercenaryManager == null)
                 _mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (_fridgeInv == null)
+                _fridgeInv = Core.Services.GetService<FridgeInventoryService>();
         }
 
         /// <summary>
         /// Injects service instances directly for headless tests (no running game instance).
         /// The live path resolves these through Core.Services in EnsureServices.
         /// </summary>
-        public void SetHeadlessServices(CropStorageInventoryService cropStorage, GameStateService gameState)
+        public void SetHeadlessServices(CropStorageInventoryService cropStorage, GameStateService gameState,
+            FridgeInventoryService fridge = null)
         {
             _cropStorage = cropStorage;
             _gameState = gameState;
+            _fridgeInv = fridge ?? new FridgeInventoryService();
         }
 
         private void HandleBuildingsChanged()

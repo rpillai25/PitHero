@@ -28,6 +28,7 @@ do not try to keep the tab short**.
 | Auto-Learn Hero Skills + "Learn Mode" cycler | `AutoLearnSkillsService` | Ticked (1s throttle) | 42 (v25) |
 | Auto-Hire Mercenaries + two "MercenaryN Job" cyclers | `AutoHireMercenaryService` | Call-driven | 41 (v24) |
 | Placed stencils (inventory grid snapshot) | `GameStateService.PlacedStencils` | — (save/load only) | 44 (v27) |
+| Refrigerator contents + Pre-Stock Stack Size (window opened by clicking the kitchen fridge, not from this tab) | `FridgeInventoryService` | — (runners tick via `KitchenTaskCoordinator`) | 45 (v28) |
 
 Dialogs opened from the tab:
 

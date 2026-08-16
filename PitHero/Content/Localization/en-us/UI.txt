@@ -435,3 +435,9 @@ AutoLearnModeSmart,Smart
 AutoLearnModeActive,Active
 AutoLearnModePassive,Passive
 ConsoleAutoLearnedSkill,{0} learned {1}!
+
+# Refrigerator (issue #386)
+WindowRefrigerator,Refrigerator
+FridgePreStockStackSize,Pre-Stock Stack Size: {0}
+FridgePreStockStackSizeTooltip,Maintain this many stacks of each available crop for use in cooking
+ButtonSendToCropStorage,Send to Crop Storage

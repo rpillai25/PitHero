@@ -432,5 +432,11 @@ namespace PitHero
         public const string AutoLearnModePassive = "AutoLearnModePassive";
         public const string ConsoleAutoLearnedSkill = "ConsoleAutoLearnedSkill";
         public const string ConsoleStencilFound = "ConsoleStencilFound";
+
+        // Refrigerator (issue #386)
+        public const string WindowRefrigerator = "WindowRefrigerator";
+        public const string FridgePreStockStackSize = "FridgePreStockStackSize";
+        public const string FridgePreStockStackSizeTooltip = "FridgePreStockStackSizeTooltip";
+        public const string ButtonSendToCropStorage = "ButtonSendToCropStorage";
     }
 }

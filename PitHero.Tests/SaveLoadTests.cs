@@ -134,6 +134,56 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>Verifies the refrigerator section round-trips through save/load (issue #386, v28).</summary>
+        [TestMethod]
+        public void SaveData_Refrigerator_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_test_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.FridgeSlots = new List<SavedHarvestSlot>
+                {
+                    new SavedHarvestSlot { SlotIndex = 0, CropTypeId = 1, Count = 10 },
+                    new SavedHarvestSlot { SlotIndex = 5, CropTypeId = 3, Count = 4 },
+                };
+                original.FridgePreStockStackSize = 3;
+
+                dataStore.Save("fridge_save.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("fridge_save.bin", loaded);
+
+                Assert.AreEqual(2, loaded.FridgeSlots.Count);
+                Assert.AreEqual(0, loaded.FridgeSlots[0].SlotIndex);
+                Assert.AreEqual(1, loaded.FridgeSlots[0].CropTypeId);
+                Assert.AreEqual(10, loaded.FridgeSlots[0].Count);
+                Assert.AreEqual(5, loaded.FridgeSlots[1].SlotIndex);
+                Assert.AreEqual(3, loaded.FridgeSlots[1].CropTypeId);
+                Assert.AreEqual(4, loaded.FridgeSlots[1].Count);
+                Assert.AreEqual(3, loaded.FridgePreStockStackSize);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>A fresh SaveData defaults the refrigerator to empty with the slider at 1.</summary>
+        [TestMethod]
+        public void SaveData_Refrigerator_DefaultsEmpty()
+        {
+            var data = new SaveData();
+            Assert.IsNotNull(data.FridgeSlots);
+            Assert.AreEqual(0, data.FridgeSlots.Count);
+            Assert.AreEqual(1, data.FridgePreStockStackSize);
+        }
+
         /// <summary>Verifies the defeated-monster set round-trips through save/load (issue #283, v11).</summary>
         [TestMethod]
         public void SaveData_DefeatedMonsterTypes_RoundTrip()

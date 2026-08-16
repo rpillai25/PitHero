@@ -85,6 +85,8 @@ namespace PitHero.ECS.Components
         private readonly System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop> _fetchRoute =
             new System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop>(GameConfig.RunnerMaxStorageStops);
         private int _fetchStopIndex; // which stop of _fetchRoute the runner is headed to
+        private KitchenTaskCoordinator.PreStockJob _preStockJob;
+        private bool _hasPreStockJob;
 
         public bool ShouldPause => true;
 
@@ -153,6 +155,7 @@ namespace PitHero.ECS.Components
             _coordinator.ReleaseFetchJob(_fetchTicket);
             _fetchTicket = null;
             EndFetchTrip();
+            ReleasePreStockJob();
 
             // A plate we were walking to is still on its table — put the job back. Plates already
             // in hand had their entities destroyed at pickup, so they're simply gone (same as a
@@ -962,6 +965,15 @@ namespace PitHero.ECS.Components
                 return;
             }
 
+            // Lowest priority: top the fridge up toward its pre-stock target (issue #386)
+            if (_coordinator.TryClaimPreStockJob(WorldToTile(Entity.Transform.Position), out _preStockJob))
+            {
+                _hasPreStockJob = true;
+                _mover.Stop();
+                CurrentState = KitchenMonsterState.RunnerPreStockWalkToStorage;
+                return;
+            }
+
             if (_mover.IsMoving)
                 return;
             _runnerWanderPause += Time.DeltaTime;
@@ -1085,6 +1097,62 @@ namespace PitHero.ECS.Components
         {
             _fetchRoute.Clear();
             _fetchStopIndex = 0;
+        }
+
+        // ── Runner pre-stock (issue #386) ───────────────────────────────────────
+
+        private void RunnerPreStockWalkToStorage_Enter()
+        {
+            SetSprinting(true);
+            if (TrySetPathTo(_preStockJob.DoorTile))
+                return;
+            // Unreachable door — give the job back and let the deficit recompute retry later
+            ReleasePreStockJob();
+            CurrentState = KitchenMonsterState.RunnerIdle;
+        }
+
+        private void RunnerPreStockWalkToStorage_Tick()
+        {
+            if (_goHome)
+            {
+                ReleasePreStockJob();
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+            if (!_mover.IsMoving)
+                CurrentState = KitchenMonsterState.RunnerPreStockCollect;
+        }
+
+        private void RunnerPreStockCollect_Tick()
+        {
+            if (elapsedTimeInState < 1f)
+                return;
+
+            // The crops move storage → fridge here; the walk back is cosmetic
+            int taken = _coordinator.PreStockCollect(_preStockJob);
+            var crop = _preStockJob.Crop;
+            _hasPreStockJob = false;
+
+            if (taken <= 0)
+            {
+                // Stock or fridge capacity vanished while walking — nothing in hand
+                CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
+                return;
+            }
+
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            ShowCarrySprite(atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(crop)));
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.RetrieveCrop, Entity.Transform.Position);
+            CurrentState = KitchenMonsterState.RunnerWalkToFridge;
+        }
+
+        /// <summary>Gives an unfinished pre-stock job back so the deficit recompute can re-queue it.</summary>
+        private void ReleasePreStockJob()
+        {
+            if (!_hasPreStockJob)
+                return;
+            _coordinator.ReleasePreStockJob(_preStockJob);
+            _hasPreStockJob = false;
         }
 
         // ── Runner bussing ──────────────────────────────────────────────────────

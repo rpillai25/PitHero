@@ -263,16 +263,16 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 27;
+        public const int CurrentVersion = 28;
 
         /// <summary>
         /// Oldest save file version this build can still load. v17–v26 files are byte-exact
         /// prefixes of v27 (sections 33 dining, 34 automation, 35 auto-dine resume,
         /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
         /// 39 auto-purchase items, 40 auto-equip, 41 auto-hire mercenaries,
-        /// 42 auto-learn hero skills, 43 consumable sell options, and
-        /// 44 placed stencils were appended at the end), so they load with default
-        /// state for the missing sections.
+        /// 42 auto-learn hero skills, 43 consumable sell options,
+        /// 44 placed stencils, and 45 refrigerator were appended at the end), so they
+        /// load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -600,6 +600,13 @@ namespace PitHero.Services
         /// <summary>Stencils currently placed on the inventory grid.</summary>
         public List<SavedPlacedStencil> PlacedStencils;
 
+        // Refrigerator (v28, issue #386)
+        /// <summary>Occupied kitchen-fridge slots (10-unit stacks).</summary>
+        public List<SavedHarvestSlot> FridgeSlots;
+
+        /// <summary>Pre-Stock Stack Size slider value (1-4 fridge stacks kept per available crop).</summary>
+        public int FridgePreStockStackSize = 1;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -634,6 +641,7 @@ namespace PitHero.Services
             DefeatedMonsterTypes = new List<string>();
             PartyDining = CreateDefaultDiningRecords();
             PlacedStencils = new List<SavedPlacedStencil>();
+            FridgeSlots = new List<SavedHarvestSlot>();
         }
 
         /// <summary>Creates the default 3-slot dining record array (no orders, no meals).</summary>
@@ -1082,6 +1090,17 @@ namespace PitHero.Services
                 writer.Write(PlacedStencils[i].AnchorX);
                 writer.Write(PlacedStencils[i].AnchorY);
             }
+
+            // 45. Refrigerator (v28)
+            int fridgeSlotCount = FridgeSlots != null ? FridgeSlots.Count : 0;
+            writer.Write(fridgeSlotCount);
+            for (int i = 0; i < fridgeSlotCount; i++)
+            {
+                writer.Write(FridgeSlots[i].SlotIndex);
+                writer.Write(FridgeSlots[i].CropTypeId);
+                writer.Write(FridgeSlots[i].Count);
+            }
+            writer.Write(FridgePreStockStackSize);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1652,6 +1671,26 @@ namespace PitHero.Services
                     s.AnchorY = reader.ReadInt();
                     PlacedStencils.Add(s);
                 }
+            }
+
+            // 45. Refrigerator (v28+). Older files default to an empty fridge, slider at 1.
+            FridgeSlots = new List<SavedHarvestSlot>();
+            FridgePreStockStackSize = 1;
+            if (fileVersion >= 28)
+            {
+                int fridgeSlotCount = reader.ReadInt();
+                for (int i = 0; i < fridgeSlotCount; i++)
+                {
+                    SavedHarvestSlot s;
+                    s.SlotIndex = reader.ReadInt();
+                    s.CropTypeId = reader.ReadInt();
+                    s.Count = reader.ReadInt();
+                    FridgeSlots.Add(s);
+                }
+                int preStock = reader.ReadInt();
+                if (preStock < GameConfig.KitchenPreStockStackSizeMin) preStock = GameConfig.KitchenPreStockStackSizeMin;
+                if (preStock > GameConfig.KitchenPreStockStackSizeMax) preStock = GameConfig.KitchenPreStockStackSizeMax;
+                FridgePreStockStackSize = preStock;
             }
         }
 
