@@ -186,6 +186,9 @@ namespace PitHero.Tests
         public void FridgePreStock_SecondOrderSkipsRunnerTrip()
         {
             var def = DishConfig.GetDefinition(Dish);
+            // Max carry level: the trip top-up is hand-carried, so only level 3 (10 units per
+            // crop) can fill a whole fridge stack in one run
+            _gameState.RunnerCarryLevel = 3;
             // Stock plenty: the runner's pre-stock top-up should leave fridge stock for the next order
             StockRecipe(servings: 4);
 
@@ -218,6 +221,23 @@ namespace PitHero.Tests
                 Assert.AreEqual(TicketState.ReadyToCook, t2.State);
                 Assert.IsNull(_coordinator.TryClaimFetchJob(), "runner dispatched despite full fridge");
             }
+        }
+
+        [TestMethod]
+        public void FridgeTopUp_AtCarryLevelOne_MovesOneUnitPerCropPerTrip()
+        {
+            var def = DishConfig.GetDefinition(Dish);
+            StockRecipe(servings: 4);
+
+            var t1 = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
+            _coordinator.PostTicket(t1);
+            RunRunnerLeg(t1);
+
+            // Default carry level 1: the runner's hands hold one unit of each recipe crop, so a
+            // single trip barely dents the pre-stock target — constant storage runs are expected
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.AreEqual(1, _coordinator.FridgeCount(def.Recipe[i].Crop),
+                    $"carry level 1 must top up exactly one unit of {def.Recipe[i].Crop}");
         }
 
         [TestMethod]

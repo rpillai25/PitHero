@@ -87,6 +87,7 @@ namespace PitHero.ECS.Components
         private int _fetchStopIndex; // which stop of _fetchRoute the runner is headed to
         private KitchenTaskCoordinator.PreStockJob _preStockJob;
         private bool _hasPreStockJob;
+        private readonly int[] _preStockTaken = new int[GameConfig.KitchenRunnerCarryCropTypes];
 
         public bool ShouldPause => true;
 
@@ -1060,7 +1061,7 @@ namespace PitHero.ECS.Components
             _coordinator.RunnerCollectAtStorage(_fetchTicket, buildingId);
             if (_fetchTicket != null)
             {
-                ShowCarryCrops(_fetchTicket.Dish);
+                ShowCarryCrops(_fetchTicket);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.RetrieveCrop, Entity.Transform.Position);
             }
 
@@ -1129,21 +1130,42 @@ namespace PitHero.ECS.Components
                 return;
 
             // The crops move storage → fridge here; the walk back is cosmetic
-            int taken = _coordinator.PreStockCollect(_preStockJob);
-            var crop = _preStockJob.Crop;
+            int total = _coordinator.PreStockCollect(_preStockJob, _preStockTaken);
+            var job = _preStockJob;
             _hasPreStockJob = false;
 
-            if (taken <= 0)
+            if (total <= 0)
             {
-                // Stock or fridge capacity vanished while walking — nothing in hand
+                // Stock, fridge capacity, or the deficit itself vanished while walking — nothing in hand
                 CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
                 return;
             }
 
-            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-            ShowCarrySprite(atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(crop)));
+            ShowPreStockCarry(job, _preStockTaken);
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.RetrieveCrop, Entity.Transform.Position);
             CurrentState = KitchenMonsterState.RunnerWalkToFridge;
+        }
+
+        /// <summary>
+        /// Pre-stock haul visual: one hand slot per crop type actually collected this trip —
+        /// first centered, second offset left, third offset right.
+        /// </summary>
+        private void ShowPreStockCarry(in KitchenTaskCoordinator.PreStockJob job, int[] taken)
+        {
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            Nez.Textures.Sprite s0 = null, s1 = null, s2 = null;
+            int shown = 0;
+            for (int i = 0; i < job.CropCount; i++)
+            {
+                if (i >= taken.Length || taken[i] <= 0)
+                    continue;
+                var sprite = atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(job.Crops[i]));
+                if (shown == 0) s0 = sprite;
+                else if (shown == 1) s1 = sprite;
+                else s2 = sprite;
+                shown++;
+            }
+            ShowCarrySpread(s0, s1, s2);
         }
 
         /// <summary>Gives an unfinished pre-stock job back so the deficit recompute can re-queue it.</summary>
@@ -1290,25 +1312,37 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Runner haul visual: shows the recipe's crops in hand — first crop centered, second
-        /// offset left, third offset right (same look as a field worker carrying a harvest).
+        /// Runner haul visual for a ticket fetch: shows only the recipe crops that were actually
+        /// withdrawn from storage for this order — crops the fridge covered were never picked up,
+        /// so they must not appear in hand. First crop centered, second offset left, third offset
+        /// right (same look as a field worker carrying a harvest).
         /// </summary>
-        private void ShowCarryCrops(DishType dish)
+        private void ShowCarryCrops(KitchenTicket ticket)
         {
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-            var recipe = DishConfig.GetDefinition(dish).Recipe;
-            ShowCarryCropAt(CarryRenderer, atlas, recipe, 0, 0f);
-            ShowCarryCropAt(CarryLeftRenderer, atlas, recipe, 1, -CarrySideOffsetX);
-            ShowCarryCropAt(CarryRightRenderer, atlas, recipe, 2, CarrySideOffsetX);
+            var recipe = DishConfig.GetDefinition(ticket.Dish).Recipe;
+            Nez.Textures.Sprite s0 = null, s1 = null, s2 = null;
+            int shown = 0;
+            for (int i = 0; i < recipe.Length && shown < GameConfig.KitchenRunnerCarryCropTypes; i++)
+            {
+                if (ticket.StorageTakenQty == null || i >= ticket.StorageTakenQty.Length
+                    || ticket.StorageTakenQty[i] <= 0)
+                    continue;
+                var sprite = atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(recipe[i].Crop));
+                if (shown == 0) s0 = sprite;
+                else if (shown == 1) s1 = sprite;
+                else s2 = sprite;
+                shown++;
+            }
+            ShowCarrySpread(s0, s1, s2);
         }
 
-        private void ShowCarryCropAt(Nez.Sprites.SpriteRenderer renderer, Nez.Sprites.SpriteAtlas atlas,
-            RecipeEntry[] recipe, int recipeIndex, float offsetX)
+        /// <summary>Places up to three carried sprites: first centered, second left, third right.</summary>
+        private void ShowCarrySpread(Nez.Textures.Sprite s0, Nez.Textures.Sprite s1, Nez.Textures.Sprite s2)
         {
-            var sprite = recipeIndex < recipe.Length
-                ? atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(recipe[recipeIndex].Crop))
-                : null;
-            ShowCarrySpriteAt(renderer, sprite, offsetX);
+            ShowCarrySpriteAt(CarryRenderer, s0, 0f);
+            ShowCarrySpriteAt(CarryLeftRenderer, s1, -CarrySideOffsetX);
+            ShowCarrySpriteAt(CarryRightRenderer, s2, CarrySideOffsetX);
         }
 
         /// <summary>

@@ -263,7 +263,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 28;
+        public const int CurrentVersion = 29;
 
         /// <summary>
         /// Oldest save file version this build can still load. v17–v26 files are byte-exact
@@ -271,8 +271,8 @@ namespace PitHero.Services
         /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
         /// 39 auto-purchase items, 40 auto-equip, 41 auto-hire mercenaries,
         /// 42 auto-learn hero skills, 43 consumable sell options,
-        /// 44 placed stencils, and 45 refrigerator were appended at the end), so they
-        /// load with default state for the missing sections.
+        /// 44 placed stencils, 45 refrigerator, and 46 runner carry level were appended
+        /// at the end), so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -606,6 +606,10 @@ namespace PitHero.Services
 
         /// <summary>Pre-Stock Stack Size slider value (1-4 fridge stacks kept per available crop).</summary>
         public int FridgePreStockStackSize = 1;
+
+        // Runner carry level (v29, issue #386)
+        /// <summary>Global kitchen-runner carry level (1-3): units of each crop carried per trip (1/5/10).</summary>
+        public int RunnerCarryLevel = 1;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -1101,6 +1105,9 @@ namespace PitHero.Services
                 writer.Write(FridgeSlots[i].Count);
             }
             writer.Write(FridgePreStockStackSize);
+
+            // 46. Runner carry level (v29)
+            writer.Write(RunnerCarryLevel);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1691,6 +1698,16 @@ namespace PitHero.Services
                 if (preStock < GameConfig.KitchenPreStockStackSizeMin) preStock = GameConfig.KitchenPreStockStackSizeMin;
                 if (preStock > GameConfig.KitchenPreStockStackSizeMax) preStock = GameConfig.KitchenPreStockStackSizeMax;
                 FridgePreStockStackSize = preStock;
+            }
+
+            // 46. Runner carry level (v29+). Older files default to level 1 (1 unit per crop).
+            RunnerCarryLevel = 1;
+            if (fileVersion >= 29)
+            {
+                int carry = reader.ReadInt();
+                if (carry < GameConfig.KitchenRunnerCarryLevelMin) carry = GameConfig.KitchenRunnerCarryLevelMin;
+                if (carry > GameConfig.KitchenRunnerCarryLevelMax) carry = GameConfig.KitchenRunnerCarryLevelMax;
+                RunnerCarryLevel = carry;
             }
         }
 

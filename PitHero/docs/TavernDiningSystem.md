@@ -116,13 +116,27 @@ The fridge is a slot-based inventory (`FridgeInventoryService`, one 8×4 page, e
 flat 10 units) that runners proactively keep stocked: for each crop that appears in ≥1 dish
 recipe and has stock in some CropStorage, the coordinator queues a **pre-stock job** whenever
 fridge units fall below `PreStockStackSize × 10` (throttled in `Update`, and immediately at the
-end of `CreateTicket` / `CreateTicketPreReserved` / `CancelTicket`). An idle runner (after bus
-and ticket-fetch jobs) claims the job (`TryClaimPreStockJob` — one crop, nearest storage holding
-it, up to one 10-unit stack), sprints out, and `PreStockCollect` moves the crops storage→fridge
-at the door (walk back cosmetic). A busy mask prevents duplicate trips per crop;
-`PreStockQueueDepth` feeds runner backpressure. Clicking the fridge in the kitchen opens the
-Refrigerator window (`RefrigeratorDialog`): the stack grid, the persisted Pre-Stock Stack Size
-slider, and per-stack Send to Crop Storage / Sell actions.
+end of `CreateTicket` / `CreateTicketPreReserved` / `CancelTicket`, plus after every
+`PreStockCollect` so under-target crops turn the runner straight around). An idle runner (after
+bus and ticket-fetch jobs) claims a trip (`TryClaimPreStockJob` — nearest storage holding the
+front-of-queue crop, batching up to 3 queued crops that same storage holds, one per hand slot),
+sprints out, and `PreStockCollect` moves the crops storage→fridge at the door (walk back
+cosmetic), **re-clamping each crop against the live target** so a trip that raced another
+top-up never overshoots. A busy mask prevents duplicate trips per crop; `PreStockQueueDepth`
+feeds runner backpressure. Clicking the fridge in the kitchen opens the Refrigerator window
+(`RefrigeratorDialog`): the stack grid, the persisted Pre-Stock Stack Size slider, and
+per-stack Send to Crop Storage / Sell actions.
+
+**Runner carry level** (`GameStateService.RunnerCarryLevel`, persisted save v29 section 46):
+runners carry crops by hand, so every hand-carried amount — pre-stock trips AND the
+opportunistic ticket-trip top-up — is capped at `GameConfig.GetRunnerCarryUnits(level)` units
+per crop type (level 1 → 1, level 2 → 5, level 3 → 10; up to
+`KitchenRunnerCarryCropTypes = 3` crop types per trip). The level is global, starts at 1
+(constant storage runs early on), and will be raised by one-of-a-kind items the hero finds
+(future feature). The ticket's own reserved shortfall moved at order time and is exempt.
+Carry visuals show only crops actually withdrawn from storage: pre-stock trips show what
+`PreStockCollect` took, ticket trips show recipe entries with `StorageTakenQty > 0` (a crop
+fully covered by the fridge never appears in hand).
 - Milk/cheese (`UsesMilk`/`UsesCheese`) are display-only — never in recipes, prices, or checks.
 
 **Cancellation refund rules** (`CancelTicket`): while `CropsRefundable` (pre-cooking) both
@@ -307,7 +321,8 @@ crops were deducted pre-save and `HasPaid` prevents double payment
 (`CreateTicketPreReserved` recreates the ticket as `ReadyToCook` with full-recipe refund data).
 
 Fridge contents and the Pre-Stock Stack Size slider persist separately (save v28, section 45:
-`FridgeSlots` + `FridgePreStockStackSize`, restored into `FridgeInventoryService` on load).
+`FridgeSlots` + `FridgePreStockStackSize`, restored into `FridgeInventoryService` on load), as
+does the runner carry level (v29, section 46: `RunnerCarryLevel` → `GameStateService`).
 
 **Not persisted**: live tickets, workers/shift state, serving-slot/plate entities, patron
 state. All of that is transient and reconciled live after load.

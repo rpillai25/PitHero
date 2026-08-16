@@ -152,6 +152,7 @@ namespace PitHero.Tests
                     new SavedHarvestSlot { SlotIndex = 5, CropTypeId = 3, Count = 4 },
                 };
                 original.FridgePreStockStackSize = 3;
+                original.RunnerCarryLevel = 2;
 
                 dataStore.Save("fridge_save.bin", original);
 
@@ -166,6 +167,7 @@ namespace PitHero.Tests
                 Assert.AreEqual(3, loaded.FridgeSlots[1].CropTypeId);
                 Assert.AreEqual(4, loaded.FridgeSlots[1].Count);
                 Assert.AreEqual(3, loaded.FridgePreStockStackSize);
+                Assert.AreEqual(2, loaded.RunnerCarryLevel);
             }
             finally
             {
@@ -182,6 +184,7 @@ namespace PitHero.Tests
             Assert.IsNotNull(data.FridgeSlots);
             Assert.AreEqual(0, data.FridgeSlots.Count);
             Assert.AreEqual(1, data.FridgePreStockStackSize);
+            Assert.AreEqual(1, data.RunnerCarryLevel);
         }
 
         /// <summary>Verifies the defeated-monster set round-trips through save/load (issue #283, v11).</summary>

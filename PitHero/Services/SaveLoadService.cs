@@ -334,6 +334,7 @@ namespace PitHero.Services
             if (gameState != null)
             {
                 data.Funds = gameState.Funds;
+                data.RunnerCarryLevel = gameState.RunnerCarryLevel;
 
                 // Copy stencils (enum to int)
                 data.DiscoveredStencils = new Dictionary<string, int>(gameState.DiscoveredStencils.Count);
@@ -934,6 +935,7 @@ namespace PitHero.Services
             if (gameState != null)
             {
                 gameState.Funds = data.Funds;
+                gameState.RunnerCarryLevel = data.RunnerCarryLevel;
 
                 // Restore stencils (int back to enum)
                 gameState.DiscoveredStencils.Clear();
