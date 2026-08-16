@@ -92,6 +92,13 @@ namespace PitHero.Services
         /// <summary>Shared A* grid for all kitchen monsters.</summary>
         public FarmPathfinder Pathfinder { get; }
 
+        /// <summary>
+        /// Runner-only A* grid: identical to <see cref="Pathfinder"/> except the tavern staff
+        /// exits at (91,10) and (101,10) are open, so crop runs route out the side of the
+        /// tavern instead of through the main entryway. Solid for every other worker.
+        /// </summary>
+        public FarmPathfinder RunnerPathfinder { get; }
+
         // ── Tickets / board ─────────────────────────────────────────────────────
         private const int MaxOpenTickets = 16;
         private readonly List<KitchenTicket> _tickets = new List<KitchenTicket>(MaxOpenTickets);
@@ -518,9 +525,28 @@ namespace PitHero.Services
             _buildingService = buildingService;
             Pathfinder = new FarmPathfinder(mapWidthTiles, mapHeightTiles);
             Pathfinder.SeedStaticWalls(collisionLayer);
+
+            // Runners get their own map view with the tavern staff exits open, so crop runs
+            // slip out the side instead of parading through the main entryway. The exits stay
+            // solid on the shared pathfinder every other worker and patron uses.
+            RunnerPathfinder = new FarmPathfinder(mapWidthTiles, mapHeightTiles);
+            RunnerPathfinder.SeedStaticWalls(collisionLayer);
+            RunnerPathfinder.RemoveStaticWall(new Point(
+                GameConfig.KitchenRunnerStaffExitAX, GameConfig.KitchenRunnerStaffExitAY));
+            RunnerPathfinder.RemoveStaticWall(new Point(
+                GameConfig.KitchenRunnerStaffExitBX, GameConfig.KitchenRunnerStaffExitBY));
+
+            // The dining floor is high-cost for runners (passable — bussing still enters, and
+            // all in-tavern routes carry the same weight), so any trip that can use the staff
+            // corridor instead will, even though it is physically longer.
+            for (int x = GameConfig.TavernAreaMinTileX; x <= GameConfig.TavernAreaMaxTileX; x++)
+                for (int y = GameConfig.TavernTopZoneMinTileY; y <= GameConfig.TavernBottomZoneMaxTileY; y++)
+                    RunnerPathfinder.AddWeightedTile(new Point(x, y));
+
             if (buildingService != null)
             {
                 Pathfinder.RebuildWalls(buildingService);
+                RunnerPathfinder.RebuildWalls(buildingService);
                 buildingService.BuildingsChanged += HandleBuildingsChanged;
             }
         }
@@ -2257,6 +2283,7 @@ namespace PitHero.Services
         private void HandleBuildingsChanged()
         {
             Pathfinder.RebuildWalls(_buildingService);
+            RunnerPathfinder.RebuildWalls(_buildingService);
         }
 
         /// <summary>Exposes the DishEntityService for use by the FSM when spawning dishes.</summary>

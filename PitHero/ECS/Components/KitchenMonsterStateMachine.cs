@@ -219,7 +219,7 @@ namespace PitHero.ECS.Components
         private void EmergeFromHouse_Enter()
         {
             _facing?.SetFacing(Direction.Down);
-            if (_coordinator.Pathfinder.IsPassable(ExitTile))
+            if (ActivePathfinder.IsPassable(ExitTile))
                 _mover.SetSingleTarget(TileCenter(ExitTile));
         }
 
@@ -1417,17 +1417,26 @@ namespace PitHero.ECS.Components
         /// Paths to the goal, or — when the goal itself is impassable (e.g. a table tile) —
         /// to its nearest passable 4-neighbor.
         /// </summary>
+        /// <summary>
+        /// The map view this worker paths with: runners use the coordinator's runner grid (the
+        /// tavern staff exits at (91,10)/(101,10) are open to them), everyone else the shared
+        /// grid where those tiles are solid walls.
+        /// </summary>
+        private Farming.FarmPathfinder ActivePathfinder
+            => _role == KitchenRole.Runner ? _coordinator.RunnerPathfinder : _coordinator.Pathfinder;
+
         private bool TrySetPathToTileOrNeighbor(Point goal)
         {
             if (TrySetPathTo(goal))
                 return true;
-            return _coordinator.Pathfinder.TryFindPassableNeighbor(goal, _mover.CurrentTile, out var neighbor)
+            return ActivePathfinder.TryFindPassableNeighbor(goal, _mover.CurrentTile, out var neighbor)
                 && TrySetPathTo(neighbor);
         }
 
         private bool TrySetPathTo(Point goal)
         {
-            if (!_coordinator.Pathfinder.IsPassable(goal))
+            var pathfinder = ActivePathfinder;
+            if (!pathfinder.IsPassable(goal))
                 return false;
             var start = _mover.CurrentTile;
             if (start == goal)
@@ -1435,9 +1444,9 @@ namespace PitHero.ECS.Components
                 _mover.Stop();
                 return true;
             }
-            var path = _coordinator.Pathfinder.Search(start, goal);
+            var path = pathfinder.Search(start, goal);
             if (path == null) return false;
-            _mover.SetPath(_coordinator.Pathfinder.SmoothPath(start, path));
+            _mover.SetPath(pathfinder.SmoothPath(start, path));
             return true;
         }
 

@@ -222,6 +222,12 @@ namespace PitHero
         public const int KitchenPreStockStackSizeMin = 1;       // Pre-Stock Stack Size slider range
         public const int KitchenPreStockStackSizeMax = 4;
         public const int KitchenRunnerCarryCropTypes = 3;       // distinct crop types a runner can hold (one per hand slot)
+        // Staff exits (issue #386): collision tiles only kitchen runners may pass through, so
+        // crop runs skip the tavern's main entryway. Solid for everyone else.
+        public const int KitchenRunnerStaffExitAX = 91;
+        public const int KitchenRunnerStaffExitAY = 10;
+        public const int KitchenRunnerStaffExitBX = 101;
+        public const int KitchenRunnerStaffExitBY = 10;
         public const int KitchenRunnerCarryLevelMin = 1;        // global runner carry level range; raised by
         public const int KitchenRunnerCarryLevelMax = 3;        // one-of-a-kind items (future feature)
 
