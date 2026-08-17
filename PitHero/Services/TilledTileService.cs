@@ -19,6 +19,12 @@ namespace PitHero.Services
         /// <summary>Fired after a tile becomes Tilled so overlays can remove their grayscale sprite.</summary>
         public System.Action<Point> OnTileTilled;
 
+        /// <summary>
+        /// Fired after a tilled tile is restored to grass so bitmask overlays can be refreshed.
+        /// Distinct from OnTileTilled — FarmTaskCoordinator subscribes to that one for planting logic.
+        /// </summary>
+        public System.Action<Point> OnTileRestored;
+
         public TilledTileService(TmxMap map, TileStateService tileState)
         {
             _baseLayer = map.GetLayer<TmxLayer>("Base");
@@ -42,6 +48,20 @@ namespace PitHero.Services
             SetTilledGid(tile.X, tile.Y);
             RecalculateNeighbors(tile);
             OnTileTilled?.Invoke(tile);
+        }
+
+        /// <summary>
+        /// Clears Tilled and ReadyToTill flags, writes the grass Base-layer tile at the constant GID,
+        /// recomputes bitmask GIDs for still-tilled cardinal neighbors, and fires OnTileRestored.
+        /// </summary>
+        public void RestoreGrassTile(Point tile)
+        {
+            _tileState.ClearFlag(tile, TileStateFlag.Tilled);
+            _tileState.ClearFlag(tile, TileStateFlag.ReadyToTill);
+            if (_baseLayer != null)
+                _baseLayer.SetTile(tile.X, tile.Y, GameConfig.FarmGrassTileGid);
+            RecalculateNeighbors(tile);
+            OnTileRestored?.Invoke(tile);
         }
 
         /// <summary>Re-derives all real Base-layer tiles from Tilled flags after a save is loaded.</summary>

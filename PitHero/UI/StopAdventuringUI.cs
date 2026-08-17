@@ -77,19 +77,13 @@ namespace PitHero.UI
 
             // Stop Adventuring sprites
             var stopSprite = uiAtlas.GetSprite("UIStop");
-            var stopSprite2x = uiAtlas.GetSprite("UIStop2x");
             var stopHighlight = uiAtlas.GetSprite("UIStopHighlight");
-            var stopHighlight2x = uiAtlas.GetSprite("UIStopHighlight2x");
             var stopInverse = uiAtlas.GetSprite("UIStopInverse");
-            var stopInverse2x = uiAtlas.GetSprite("UIStopInverse2x");
 
             // Continue Adventuring sprites
             var continueSprite = uiAtlas.GetSprite("UIContinue");
-            var continueSprite2x = uiAtlas.GetSprite("UIContinue2x");
             var continueHighlight = uiAtlas.GetSprite("UIContinueHighlight");
-            var continueHighlight2x = uiAtlas.GetSprite("UIContinueHighlight2x");
             var continueInverse = uiAtlas.GetSprite("UIContinueInverse");
-            var continueInverse2x = uiAtlas.GetSprite("UIContinueInverse2x");
 
             _stopNormalStyle = new ImageButtonStyle
             {
@@ -98,12 +92,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(stopHighlight)
             };
 
-            _stopHalfStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(stopSprite2x),
-                ImageDown = new SpriteDrawable(stopInverse2x),
-                ImageOver = new SpriteDrawable(stopHighlight2x)
-            };
+            _stopHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIStop");
 
             _continueNormalStyle = new ImageButtonStyle
             {
@@ -112,12 +101,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(continueHighlight)
             };
 
-            _continueHalfStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(continueSprite2x),
-                ImageDown = new SpriteDrawable(continueInverse2x),
-                ImageOver = new SpriteDrawable(continueHighlight2x)
-            };
+            _continueHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIContinue");
 
             _button = new HoverableImageButton(_stopNormalStyle, GetText(TextType.UI, UITextKey.ButtonStopAdventuring));
             _button.ClickSoundCategory = ButtonClickCategory.TopBar;

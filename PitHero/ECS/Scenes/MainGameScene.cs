@@ -65,6 +65,8 @@ namespace PitHero.ECS.Scenes
         private bool _wasInSeedMode;
         private bool _wasInRemoveCropsMode;
         private HarvestedCropsModeOverlay _harvestedCropsModeOverlay;
+        private UI.RestoreGrassModeOverlay _restoreGrassModeOverlay;
+        private bool _wasInRestoreGrassMode;
         private RefrigeratorDialog _refrigeratorDialog; // Fridge inventory window (issue #386)
         private bool _wasFridgeDialogVisible;
         private bool _fridgeRestoreHalfZoom;
@@ -1181,7 +1183,9 @@ namespace PitHero.ECS.Scenes
             // monsters complete till actions; the overlay drops its grayscale sprite in response.
             var tileStateService = Core.Services.GetService<TileStateService>();
             var tilledTileService = new Services.TilledTileService(_tmxMap, tileStateService);
-            tilledTileService.OnTileTilled += tile => _tillModeOverlay?.OnTileTilled(tile);
+            tilledTileService.OnTileTilled  += tile => _tillModeOverlay?.OnTileTilled(tile);
+            // Restore-grass: a tile returning to grass must also refresh the ReadyToTill neighbor bitmasks.
+            tilledTileService.OnTileRestored += tile => _tillModeOverlay?.OnTileTilled(tile);
             Core.Services.AddService(tilledTileService);
 
             // Wet tile service writes watered-soil bitmask tiles to the Detail layer.
@@ -1205,8 +1209,17 @@ namespace PitHero.ECS.Scenes
             _harvestedCropsModeOverlay = new HarvestedCropsModeOverlay(this, _uiStage);
             _harvestedCropsModeOverlay.RequestExitHarvestedCropsMode += () => _settingsUI?.ExitHarvestedCropsModeViaFarm();
 
+            // Restore Grass mode overlay — cursor + drag to revert tilled tiles back to grass.
+            _restoreGrassModeOverlay = new UI.RestoreGrassModeOverlay(this);
+            _restoreGrassModeOverlay.SetStage(_uiStage);
+
             // Refrigerator window — opened by clicking the kitchen fridge (issue #386).
             _refrigeratorDialog = new RefrigeratorDialog(_uiStage);
+
+            // Wire the Farm sub-button "Refrigerator" to open the fridge dialog.
+            // UpdateFridgeDialogGate drives pause/zoom purely off IsVisible(), so no extra preconditions.
+            if (_settingsUI != null)
+                _settingsUI.RefrigeratorRequested = () => _refrigeratorDialog?.Show();
 
             // Building context menu — shown when a placed building is clicked (Move / Show ...).
             _buildingContextMenu = new BuildingContextMenu(UI.PitHeroSkin.CreateSkin());
@@ -2646,10 +2659,21 @@ namespace PitHero.ECS.Scenes
                 _wasInHarvestedCropsMode = inHarvestedCropsMode;
             }
 
+            bool inRestoreGrassMode = _settingsUI?.IsRestoreGrassModeActive ?? false;
+            if (inRestoreGrassMode != _wasInRestoreGrassMode)
+            {
+                if (inRestoreGrassMode) _restoreGrassModeOverlay?.OnEnterRestoreGrassMode();
+                else                    _restoreGrassModeOverlay?.OnExitRestoreGrassMode();
+                _wasInRestoreGrassMode = inRestoreGrassMode;
+            }
+            if (inRestoreGrassMode)
+                _restoreGrassModeOverlay?.Update();
+
             // Show tilled-tile overlays and translucent crop plans whenever the farm menu is open
             // (sub-buttons visible or any sub-mode active). Also manages pause gate, crop visibility,
             // auto-scroll suppression, and post-close rescan for planting.
-            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode || inRemoveCropsMode || inHarvestedCropsMode;
+            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || (_settingsUI?.IsConstructionSubMenuOpen ?? false)
+                || inTillMode || inBuildingMode || inSeedMode || inRemoveCropsMode || inHarvestedCropsMode || inRestoreGrassMode;
             if (inFarmMode != _wasInFarmMode)
             {
                 if (inFarmMode)
@@ -3021,8 +3045,10 @@ namespace PitHero.ECS.Scenes
             if (_buildingContextMenu?.IsVisible == true)
                 return true;
             if (_settingsUI != null &&
-                (_settingsUI.IsFarmSubMenuOpen || _settingsUI.IsTillModeActive || _settingsUI.IsBuildingModeActive ||
-                 _settingsUI.IsSeedModeActive || _settingsUI.IsRemoveCropsModeActive || _settingsUI.IsHarvestedCropsModeActive ||
+                (_settingsUI.IsFarmSubMenuOpen || _settingsUI.IsConstructionSubMenuOpen ||
+                 _settingsUI.IsTillModeActive || _settingsUI.IsBuildingModeActive ||
+                 _settingsUI.IsSeedModeActive || _settingsUI.IsRemoveCropsModeActive ||
+                 _settingsUI.IsHarvestedCropsModeActive || _settingsUI.IsRestoreGrassModeActive ||
                  _settingsUI.IsFreeMoveModeActive))
                 return true;
             if (_uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null)

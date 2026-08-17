@@ -38,6 +38,7 @@ namespace PitHero.UI
         private SecondChanceShopUI _secondChanceShopUI;
         private MonsterUI _monsterUI;
         private FarmUI _farmUI;
+        private ConstructionUI _constructionUI;
 
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
@@ -144,14 +145,11 @@ namespace PitHero.UI
         {
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var heroSprite = uiAtlas.GetSprite("UIHero");
-            var heroSprite2x = uiAtlas.GetSprite("UIHero2x");
             var heroHighlight = uiAtlas.GetSprite("UIHeroHighlight");
-            var heroHighlight2x = uiAtlas.GetSprite("UIHeroHighlight2x");
             var heroInverse = uiAtlas.GetSprite("UIHeroInverse");
-            var heroInverse2x = uiAtlas.GetSprite("UIHeroInverse2x");
 
             _heroNormalStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite), ImageDown = new SpriteDrawable(heroInverse), ImageOver = new SpriteDrawable(heroHighlight) };
-            _heroHalfStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite2x), ImageDown = new SpriteDrawable(heroInverse2x), ImageOver = new SpriteDrawable(heroHighlight2x) };
+            _heroHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIHero");
 
             _heroButton = new HoverableImageButton(_heroNormalStyle, "Party");
             _heroButton.ClickSoundCategory = ButtonClickCategory.TopBar;
@@ -165,7 +163,10 @@ namespace PitHero.UI
         /// <summary>Sets the reference to SecondChanceShopUI for single window policy enforcement.</summary>
         public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
         public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
+        /// <summary>Sets the FarmUI reference for cross-dismiss.</summary>
         public void SetFarmUI(FarmUI farmUI) { _farmUI = farmUI; }
+        /// <summary>Sets the ConstructionUI reference for cross-dismiss.</summary>
+        public void SetConstructionUI(ConstructionUI constructionUI) { _constructionUI = constructionUI; }
 
         private void HandleHeroButtonClick()
         {
@@ -174,6 +175,7 @@ namespace PitHero.UI
             _secondChanceShopUI?.ForceCloseWindow();
             _monsterUI?.ForceCloseWindow();
             _farmUI?.DismissSubButtons();
+            _constructionUI?.DismissSubButtons();
             ToggleHeroWindow();
         }
 

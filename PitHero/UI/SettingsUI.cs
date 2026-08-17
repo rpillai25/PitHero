@@ -167,6 +167,7 @@ namespace PitHero.UI
         public StopAdventuringUI StopAdventuringUI { get; private set; }
         private ReplenishUI _replenishUI;
         private FarmUI _farmUI;
+        private ConstructionUI _constructionUI;
 
         // Keyboard shortcut state
         private Microsoft.Xna.Framework.Input.KeyboardState _prevKeyboardState;
@@ -241,16 +242,19 @@ namespace PitHero.UI
         private bool _prevIsTillModeActive = false;
 
         /// <summary>Returns true when the player is currently in building placement mode.</summary>
-        public bool IsBuildingModeActive => _farmUI?.IsInBuildingMode ?? false;
+        public bool IsBuildingModeActive => _constructionUI?.IsInBuildingMode ?? false;
 
         /// <summary>Exits building mode — called by the overlay's Cancel button.</summary>
-        public void ExitBuildingModeViaFarm() => _farmUI?.ExitBuildingMode();
+        public void ExitBuildingModeViaFarm() => _constructionUI?.ExitBuildingMode();
 
         // Tracks building mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsBuildingModeActive = false;
 
         /// <summary>Returns true when the farm sub-buttons are visible (farm button expanded).</summary>
         public bool IsFarmSubMenuOpen => _farmUI?.AreSubButtonsVisible ?? false;
+
+        /// <summary>Returns true when the Construction sub-buttons are visible.</summary>
+        public bool IsConstructionSubMenuOpen => _constructionUI?.AreSubButtonsVisible ?? false;
 
         /// <summary>Returns true when the player is currently in seed planting mode.</summary>
         public bool IsSeedModeActive => _farmUI?.IsInSeedMode ?? false;
@@ -270,21 +274,39 @@ namespace PitHero.UI
         /// <summary>Exits the Harvested Crops viewer — called by the overlay's Close button or Escape.</summary>
         public void ExitHarvestedCropsModeViaFarm() => _farmUI?.ExitHarvestedCropsMode();
 
+        /// <summary>Returns true when restore-grass mode is currently active.</summary>
+        public bool IsRestoreGrassModeActive => _farmUI?.IsInRestoreGrassMode ?? false;
+
+        /// <summary>Exits restore-grass mode.</summary>
+        public void ExitRestoreGrassModeViaFarm() => _farmUI?.ExitRestoreGrassMode();
+
+        /// <summary>
+        /// Fired when the Refrigerator sub-button is clicked; wired to FarmUI.RefrigeratorRequested.
+        /// Set by MainGameScene to open the refrigerator dialog.
+        /// </summary>
+        public System.Action RefrigeratorRequested
+        {
+            get => _farmUI != null ? _farmUI.RefrigeratorRequested : null;
+            set { if (_farmUI != null) _farmUI.RefrigeratorRequested = value; }
+        }
+
         /// <summary>Opens the monster roster filtered to a single Monster House (by UniqueId).</summary>
         public void ShowMonstersForHouse(int houseId) => _monsterUI?.ShowForHouse(houseId);
 
         /// <summary>Opens the Harvested Crops viewer programmatically (used by Crop Storage context menu).</summary>
         public void EnterHarvestedCropsMode() => _farmUI?.EnterHarvestedCropsMode();
 
-        /// <summary>Dismisses sub-buttons and exits all farm sub-modes at once.</summary>
+        /// <summary>Dismisses sub-buttons and exits all farm/construction sub-modes at once.</summary>
         private void DismissAllFarmUI()
         {
             _farmUI?.DismissSubButtons();
             _farmUI?.ExitTillMode();
-            _farmUI?.ExitBuildingMode();
             _farmUI?.ExitSeedMode();
             _farmUI?.ExitRemoveCropsMode();
             _farmUI?.ExitHarvestedCropsMode();
+            _farmUI?.ExitRestoreGrassMode();
+            _constructionUI?.DismissSubButtons();
+            _constructionUI?.ExitBuildingMode();
         }
 
         // Tracks seed mode state from end of previous frame so we can detect the frame it turned on.
@@ -410,13 +432,24 @@ namespace PitHero.UI
             _farmUI = new FarmUI();
             _farmUI.InitializeUI(_stage);
 
+            _constructionUI = new ConstructionUI();
+            _constructionUI.InitializeUI(_stage);
+
             // Wire cross-UI references for single-window policy (all UIs must exist before wiring)
             _heroUI.SetFarmUI(_farmUI);
+            _heroUI.SetConstructionUI(_constructionUI);
             _monsterUI.SetFarmUI(_farmUI);
+            _monsterUI.SetConstructionUI(_constructionUI);
             _secondChanceShopUI.SetFarmUI(_farmUI);
+            _secondChanceShopUI.SetConstructionUI(_constructionUI);
             _farmUI.SetHeroUI(_heroUI);
             _farmUI.SetMonsterUI(_monsterUI);
             _farmUI.SetSecondChanceShopUI(_secondChanceShopUI);
+            _farmUI.SetConstructionUI(_constructionUI);
+            _constructionUI.SetHeroUI(_heroUI);
+            _constructionUI.SetMonsterUI(_monsterUI);
+            _constructionUI.SetSecondChanceShopUI(_secondChanceShopUI);
+            _constructionUI.SetFarmUI(_farmUI);
 
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
@@ -474,11 +507,8 @@ namespace PitHero.UI
             // Load the UI atlas and get the gear sprites
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var gearSprite = uiAtlas.GetSprite("UIGear");
-            var gearSprite2x = uiAtlas.GetSprite("UIGear2x");
             var gearHighlight = uiAtlas.GetSprite("UIGearHighlight");
-            var gearHighlight2x = uiAtlas.GetSprite("UIGearHighlight2x");
             var gearInverse = uiAtlas.GetSprite("UIGearInverse");
-            var gearInverse2x = uiAtlas.GetSprite("UIGearInverse2x");
 
             // Base styles for each sprite with proper ImageDown and ImageOver
             _gearNormalStyle = new ImageButtonStyle
@@ -488,12 +518,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(gearHighlight)
             };
 
-            _gearHalfStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(gearSprite2x),
-                ImageDown = new SpriteDrawable(gearInverse2x),
-                ImageOver = new SpriteDrawable(gearHighlight2x)
-            };
+            _gearHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIGear");
 
             _gearButton = new HoverableImageButton(_gearNormalStyle, "Settings");
             _gearButton.ClickSoundCategory = ButtonClickCategory.TopBar;
@@ -1820,9 +1845,10 @@ namespace PitHero.UI
             float replenishW = _replenishUI.GetWidth();
             float secondChanceW = _secondChanceShopUI.GetWidth();
             float farmW    = _farmUI.GetWidth();
+            float constructionW = _constructionUI?.GetWidth() ?? 0f;
 
-            // Calculate total width needed for all eight buttons with padding
-            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + farmW + (7 * GameConfig.UIButtonPadding);
+            // Calculate total width needed for all nine buttons with padding
+            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + farmW + constructionW + (8 * GameConfig.UIButtonPadding);
 
             // Center all buttons as a group, shifted left by one button slot
             float startX = (stageW - totalWidth) * 0.5f - (gearW + GameConfig.UIButtonPadding);
@@ -1860,9 +1886,16 @@ namespace PitHero.UI
             float farmX = secondChanceX + secondChanceW + GameConfig.UIButtonPadding;
             _farmUI.SetPosition(farmX, buttonY);
 
+            // Position Construction button to the right of Farm
+            float constructionX = farmX + farmW + GameConfig.UIButtonPadding;
+            _constructionUI?.SetPosition(constructionX, buttonY);
+
             // Position Farm sub-buttons starting below the Settings (gear) button
             float subButtonY = buttonY + _stopAdventuringUI.GetHeight() + 2f;
             _farmUI.SetSubButtonsPosition(gearX, subButtonY);
+
+            // Position Construction sub-buttons on the same row as Farm sub-buttons
+            _constructionUI?.SetSubButtonsPosition(gearX, subButtonY);
 
             // Cache bar bounds in normal (non-animated) stage coords for proximity detection.
             // Use the resting buttonY (2f) so the zone is stable even while animating.
@@ -1871,6 +1904,8 @@ namespace PitHero.UI
             float barH = gearH;
             if (_farmUI != null && _farmUI.AreSubButtonsVisible)
                 barH += _farmUI.GetSubButtonsHeight() + 2f;
+            if (_constructionUI != null && _constructionUI.AreSubButtonsVisible)
+                barH = System.Math.Max(barH, gearH + _constructionUI.GetSubButtonsHeight() + 2f);
             _uiBarBottom = 2f + barH;
 
             if (_isVisible)
@@ -2191,7 +2226,7 @@ namespace PitHero.UI
 
             // Exit building mode when Escape is pressed
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsBuildingModeActive)
-                _farmUI?.ExitBuildingMode();
+                _constructionUI?.ExitBuildingMode();
 
             // Exit seed mode when Escape is pressed
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsSeedModeActive)
@@ -2205,12 +2240,16 @@ namespace PitHero.UI
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsHarvestedCropsModeActive)
                 ExitHarvestedCropsModeViaFarm();
 
+            // Exit restore-grass mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsRestoreGrassModeActive)
+                ExitRestoreGrassModeViaFarm();
+
             // Mutual exclusion: any non-farm panel open → dismiss farm UI entirely.
             bool anyNonFarmPanelOpen = _isVisible
                 || (_heroUI?.IsWindowVisible    ?? false)
                 || (_monsterUI?.IsWindowVisible ?? false)
                 || (_secondChanceShopUI?.IsWindowVisible ?? false);
-            if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive))
+            if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsConstructionSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive || IsRestoreGrassModeActive))
                 DismissAllFarmUI();
 
             // Update gear button style dynamically when shrink mode changes
@@ -2225,6 +2264,7 @@ namespace PitHero.UI
             _stopAdventuringUI?.Update();
             _replenishUI?.Update();
             _farmUI?.Update();
+            _constructionUI?.Update();
 
             // Exit till mode when any UI element is clicked. Skip on the frame till mode was just
             // entered — that LeftMouseButtonReleased is the same click that activated it.
@@ -2262,6 +2302,8 @@ namespace PitHero.UI
             if (_replenishUI != null && _replenishUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_farmUI != null && _farmUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_farmUI != null && _farmUI.ConsumeSubButtonsToggleFlag()) needsReposition = true;
+            if (_constructionUI != null && _constructionUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_constructionUI != null && _constructionUI.ConsumeSubButtonsToggleFlag()) needsReposition = true;
 
             if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
                 needsReposition = true;
@@ -2611,6 +2653,7 @@ namespace PitHero.UI
             _uiBarHidden = true;
             _uiBarAnimating = true;
             _farmUI?.DismissSubButtons();
+            _constructionUI?.DismissSubButtons();
             SetTopBarButtonsTouchable(false);
         }
 
@@ -2630,6 +2673,7 @@ namespace PitHero.UI
             _monsterUI?.SetTouchable(t);
             _secondChanceShopUI?.SetTouchable(t);
             _farmUI?.SetTouchable(t);
+            _constructionUI?.SetTouchable(t);
         }
 
         /// <summary>
@@ -2663,7 +2707,7 @@ namespace PitHero.UI
                 ShowUIBar(); // restores touchable state and forces a reposition next frame
             }
 
-            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
+            if (IsFarmSubMenuOpen || IsConstructionSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive || IsRestoreGrassModeActive)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden) ShowUIBar();
@@ -2798,7 +2842,7 @@ namespace PitHero.UI
             float scCY = _stage.GetHeight() - 16f; // 32px sprite half-height => bottom edge flush
             _shortcutBarMarker?.SetCenter(scCX, scCY);
 
-            bool sbFarmActive = IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive;
+            bool sbFarmActive = IsFarmSubMenuOpen || IsConstructionSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive || IsRestoreGrassModeActive;
             if (sbFarmActive)
             {
                 // Hide the shortcut bar while any farm UI is visible.
@@ -2915,7 +2959,7 @@ namespace PitHero.UI
             float ecCY = _stage.GetHeight() - 16f; // 32px sprite half-height => bottom edge flush
             _consoleMarker?.SetCenter(ecCX, ecCY);
 
-            bool ecFarmActive = IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive;
+            bool ecFarmActive = IsFarmSubMenuOpen || IsConstructionSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive || IsRestoreGrassModeActive;
             if (ecFarmActive)
             {
                 // Hide the event console while any farm UI is visible.

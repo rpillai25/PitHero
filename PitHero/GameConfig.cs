@@ -164,6 +164,8 @@ namespace PitHero
         /// <summary>Angular speed (radians/sec) of the seed shop attention pulse.</summary>
         public const float SeedShopPulseSpeed = 4f;
         public const int TillZerothGid = 122;            // GIDs 122-137 are the 16 tilled-tile bitmask variants
+        /// <summary>Base-layer GID of untilled grass used when restoring a tilled tile back to grass.</summary>
+        public const int FarmGrassTileGid = 13;
         public const int WetZeroTileIndex = 154;         // GIDs 154-169 are the 16 wet-tile bitmask variants
         public const float WaterBaseDurationSeconds = 3f;  // watering time at FarmingProficiency 1
         public const float PlantBaseDurationSeconds = 2f;  // planting time at FarmingProficiency 1

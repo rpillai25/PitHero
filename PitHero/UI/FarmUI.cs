@@ -6,7 +6,9 @@ using PitHero.Services;
 namespace PitHero.UI
 {
     /// <summary>
-    /// UI for the Farm button and its sub-button row (Till, Seeds, Buildings, Options, Destroy Crops).
+    /// UI for the Farm top-bar button and its sub-button row.
+    /// Sub-buttons: Harvested Crops, Till, Irrigation (no-op), Seeds, Remove Crops, Restore Grass, Refrigerator.
+    /// Building mode has moved to ConstructionUI.
     /// </summary>
     public class FarmUI
     {
@@ -21,20 +23,27 @@ namespace PitHero.UI
         private ImageButtonStyle[] _subNormalStyles;
         private ImageButtonStyle[] _subHalfStyles;
 
-        // "UISeed" is reused as a placeholder sprite for the Harvested Crops button (index 0).
+        // Sub-button art and text keys — 7 entries.
         private static readonly string[] SubButtonBaseNames =
         {
-            "UISeed", "UITill", "UISeed", "UIBuildings", "UIFarmOptions", "UIDestroyCrop"
+            "UIHarvestedCrops", // 0 Harvested Crops
+            "UITill",           // 1 Till
+            "UIIrrigation",     // 2 Irrigation (future feature)
+            "UISeed",           // 3 Seeds
+            "UIDestroyCrop",    // 4 Remove Crops
+            "UIRestoreGrass",   // 5 Restore Grass
+            "UIRefrigerator",   // 6 Refrigerator
         };
 
         private static readonly string[] SubButtonTextKeys =
         {
             UITextKey.ButtonFarmHarvestedCrops,
             UITextKey.ButtonFarmTill,
+            UITextKey.ButtonFarmIrrigation,
             UITextKey.ButtonFarmSeeds,
-            UITextKey.ButtonFarmBuildings,
-            UITextKey.ButtonFarmOptions,
             UITextKey.ButtonFarmDestroyCrops,
+            UITextKey.ButtonFarmRestoreGrass,
+            UITextKey.ButtonFarmRefrigerator,
         };
 
         private bool _subButtonsVisible = false;
@@ -43,28 +52,41 @@ namespace PitHero.UI
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
         private SecondChanceShopUI _secondChanceShopUI;
+        private ConstructionUI _constructionUI;
 
+        /// <summary>Wires the HeroUI cross-reference for single-window policy.</summary>
         public void SetHeroUI(HeroUI heroUI) { _heroUI = heroUI; }
+        /// <summary>Wires the MonsterUI cross-reference for single-window policy.</summary>
         public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
+        /// <summary>Wires the SecondChanceShopUI cross-reference for single-window policy.</summary>
         public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
+        /// <summary>Wires the ConstructionUI cross-reference for mutual exclusion.</summary>
+        public void SetConstructionUI(ConstructionUI constructionUI) { _constructionUI = constructionUI; }
+
+        /// <summary>Fired when the Refrigerator sub-button is clicked; the scene opens the fridge dialog.</summary>
+        public System.Action RefrigeratorRequested;
 
         private enum ButtonMode { Normal, Half }
         private ButtonMode _currentMode = ButtonMode.Normal;
         private bool _styleChanged = false;
 
+        /// <summary>Gets whether the Farm sub-buttons are currently visible.</summary>
         public bool AreSubButtonsVisible => _subButtonsVisible;
 
         /// <summary>Gets whether till mode is currently active.</summary>
         public bool IsInTillMode { get; private set; }
 
-        /// <summary>Gets whether building placement mode is currently active.</summary>
-        public bool IsInBuildingMode { get; private set; }
-
         /// <summary>Gets whether seed planting mode is currently active.</summary>
         public bool IsInSeedMode { get; private set; }
 
+        /// <summary>Gets whether remove-crops mode is currently active.</summary>
+        public bool IsInRemoveCropsMode { get; private set; }
+
         /// <summary>Gets whether the Harvested Crops viewer is currently open.</summary>
         public bool IsInHarvestedCropsMode { get; private set; }
+
+        /// <summary>Gets whether restore-grass mode is currently active.</summary>
+        public bool IsInRestoreGrassMode { get; private set; }
 
         private TextService GetTextService()
         {
@@ -79,6 +101,7 @@ namespace PitHero.UI
             return service?.DisplayText(type, key) ?? key;
         }
 
+        /// <summary>Creates all Farm UI buttons and adds them to the stage.</summary>
         public void InitializeUI(Stage stage)
         {
             _stage = stage;
@@ -87,20 +110,17 @@ namespace PitHero.UI
             CreateSubButtons(skin);
 
             _stage.AddElement(_farmButton);
-            foreach (var btn in _subButtons)
-                _stage.AddElement(btn);
+            for (int i = 0; i < _subButtons.Length; i++)
+                _stage.AddElement(_subButtons[i]);
         }
 
         private void CreateFarmButton(Skin skin)
         {
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
 
-            var sprite      = uiAtlas.GetSprite("UIFarm");
-            var sprite2x    = uiAtlas.GetSprite("UIFarm2x");
-            var highlight   = uiAtlas.GetSprite("UIFarmHighlight");
-            var highlight2x = uiAtlas.GetSprite("UIFarmHighlight2x");
-            var inverse     = uiAtlas.GetSprite("UIFarmInverse");
-            var inverse2x   = uiAtlas.GetSprite("UIFarmInverse2x");
+            var sprite    = uiAtlas.GetSprite("UIFarm");
+            var highlight = uiAtlas.GetSprite("UIFarmHighlight");
+            var inverse   = uiAtlas.GetSprite("UIFarmInverse");
 
             _farmNormalStyle = new ImageButtonStyle
             {
@@ -109,12 +129,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight)
             };
 
-            _farmHalfStyle = new ImageButtonStyle
-            {
-                ImageUp   = new SpriteDrawable(sprite2x),
-                ImageDown = new SpriteDrawable(inverse2x),
-                ImageOver = new SpriteDrawable(highlight2x)
-            };
+            _farmHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIFarm");
 
             _farmButton = new HoverableImageButton(_farmNormalStyle, GetText(TextType.UI, UITextKey.ButtonFarm));
             _farmButton.ClickSoundCategory = ButtonClickCategory.TopBar;
@@ -134,12 +149,9 @@ namespace PitHero.UI
             for (int i = 0; i < count; i++)
             {
                 string baseName = SubButtonBaseNames[i];
-                var sprite      = uiAtlas.GetSprite(baseName);
-                var sprite2x    = uiAtlas.GetSprite(baseName + "2x");
-                var highlight   = uiAtlas.GetSprite(baseName + "Highlight");
-                var highlight2x = uiAtlas.GetSprite(baseName + "Highlight2x");
-                var inverse     = uiAtlas.GetSprite(baseName + "Inverse");
-                var inverse2x   = uiAtlas.GetSprite(baseName + "Inverse2x");
+                var sprite    = uiAtlas.GetSprite(baseName);
+                var highlight = uiAtlas.GetSprite(baseName + "Highlight");
+                var inverse   = uiAtlas.GetSprite(baseName + "Inverse");
 
                 _subNormalStyles[i] = new ImageButtonStyle
                 {
@@ -148,12 +160,7 @@ namespace PitHero.UI
                     ImageOver = new SpriteDrawable(highlight)
                 };
 
-                _subHalfStyles[i] = new ImageButtonStyle
-                {
-                    ImageUp   = new SpriteDrawable(sprite2x),
-                    ImageDown = new SpriteDrawable(inverse2x),
-                    ImageOver = new SpriteDrawable(highlight2x)
-                };
+                _subHalfStyles[i] = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, baseName);
 
                 _subButtons[i] = new HoverableImageButton(_subNormalStyles[i], GetText(TextType.UI, SubButtonTextKeys[i]));
                 _subButtons[i].ClickSoundCategory = ButtonClickCategory.TopBar;
@@ -172,14 +179,31 @@ namespace PitHero.UI
             // Wire Till button (index 1)
             _subButtons[1].OnClicked += (_) => ToggleTillMode();
 
-            // Wire Seeds button (index 2)
-            _subButtons[2].OnClicked += (_) => ToggleSeedMode();
+            // Wire Irrigation button (index 2) — future feature, no handler
+            // _subButtons[2] intentionally has no click handler
 
-            // Wire Buildings button (index 3)
-            _subButtons[3].OnClicked += (_) => ToggleBuildingMode();
+            // Wire Seeds button (index 3)
+            _subButtons[3].OnClicked += (_) => ToggleSeedMode();
 
-            // Wire Remove Crops button (index 5)
-            _subButtons[5].OnClicked += (_) => ToggleRemoveCropsMode();
+            // Wire Remove Crops button (index 4)
+            _subButtons[4].OnClicked += (_) => ToggleRemoveCropsMode();
+
+            // Wire Restore Grass button (index 5)
+            _subButtons[5].OnClicked += (_) => ToggleRestoreGrassMode();
+
+            // Wire Refrigerator button (index 6)
+            _subButtons[6].OnClicked += (_) =>
+            {
+                DismissHoverText();
+                DismissSubButtons();
+                RefrigeratorRequested?.Invoke();
+            };
+        }
+
+        private void DismissHoverText()
+        {
+            for (int i = 0; i < _subButtons.Length; i++)
+                _subButtons[i].DismissHoverText();
         }
 
         private void ToggleTillMode()
@@ -188,10 +212,11 @@ namespace PitHero.UI
             // so the button is idempotent when already in till mode.
             if (!IsInTillMode)
             {
-                ExitBuildingMode();        // mutual exclusion
-                ExitSeedMode();            // mutual exclusion
-                ExitRemoveCropsMode();     // mutual exclusion
-                ExitHarvestedCropsMode();  // mutual exclusion
+                _constructionUI?.ExitBuildingMode(); // mutual exclusion
+                ExitSeedMode();                      // mutual exclusion
+                ExitRemoveCropsMode();               // mutual exclusion
+                ExitHarvestedCropsMode();            // mutual exclusion
+                ExitRestoreGrassMode();              // mutual exclusion
                 IsInTillMode = true;
             }
         }
@@ -202,28 +227,6 @@ namespace PitHero.UI
             IsInTillMode = false;
         }
 
-        private void ToggleBuildingMode()
-        {
-            if (IsInBuildingMode)
-            {
-                IsInBuildingMode = false;
-            }
-            else
-            {
-                ExitTillMode();            // mutual exclusion
-                ExitSeedMode();            // mutual exclusion
-                ExitRemoveCropsMode();     // mutual exclusion
-                ExitHarvestedCropsMode();  // mutual exclusion
-                IsInBuildingMode = true;
-            }
-        }
-
-        /// <summary>Forces building placement mode off.</summary>
-        public void ExitBuildingMode()
-        {
-            IsInBuildingMode = false;
-        }
-
         private void ToggleSeedMode()
         {
             if (IsInSeedMode)
@@ -232,10 +235,11 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();            // mutual exclusion
-                ExitBuildingMode();        // mutual exclusion
-                ExitRemoveCropsMode();     // mutual exclusion
-                ExitHarvestedCropsMode();  // mutual exclusion
+                ExitTillMode();                      // mutual exclusion
+                _constructionUI?.ExitBuildingMode(); // mutual exclusion
+                ExitRemoveCropsMode();               // mutual exclusion
+                ExitHarvestedCropsMode();            // mutual exclusion
+                ExitRestoreGrassMode();              // mutual exclusion
                 IsInSeedMode = true;
             }
         }
@@ -246,8 +250,6 @@ namespace PitHero.UI
             IsInSeedMode = false;
         }
 
-        public bool IsInRemoveCropsMode { get; private set; }
-
         private void ToggleRemoveCropsMode()
         {
             if (IsInRemoveCropsMode)
@@ -256,10 +258,11 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();            // mutual exclusion
-                ExitBuildingMode();        // mutual exclusion
-                ExitSeedMode();            // mutual exclusion
-                ExitHarvestedCropsMode();  // mutual exclusion
+                ExitTillMode();                      // mutual exclusion
+                _constructionUI?.ExitBuildingMode(); // mutual exclusion
+                ExitSeedMode();                      // mutual exclusion
+                ExitHarvestedCropsMode();            // mutual exclusion
+                ExitRestoreGrassMode();              // mutual exclusion
                 IsInRemoveCropsMode = true;
             }
         }
@@ -270,6 +273,29 @@ namespace PitHero.UI
             IsInRemoveCropsMode = false;
         }
 
+        private void ToggleRestoreGrassMode()
+        {
+            if (IsInRestoreGrassMode)
+            {
+                IsInRestoreGrassMode = false;
+            }
+            else
+            {
+                ExitTillMode();                      // mutual exclusion
+                _constructionUI?.ExitBuildingMode(); // mutual exclusion
+                ExitSeedMode();                      // mutual exclusion
+                ExitRemoveCropsMode();               // mutual exclusion
+                ExitHarvestedCropsMode();            // mutual exclusion
+                IsInRestoreGrassMode = true;
+            }
+        }
+
+        /// <summary>Forces restore-grass mode off.</summary>
+        public void ExitRestoreGrassMode()
+        {
+            IsInRestoreGrassMode = false;
+        }
+
         private void ToggleHarvestedCropsMode()
         {
             if (IsInHarvestedCropsMode)
@@ -278,10 +304,11 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();         // mutual exclusion
-                ExitBuildingMode();     // mutual exclusion
-                ExitSeedMode();         // mutual exclusion
-                ExitRemoveCropsMode();  // mutual exclusion
+                ExitTillMode();                      // mutual exclusion
+                _constructionUI?.ExitBuildingMode(); // mutual exclusion
+                ExitSeedMode();                      // mutual exclusion
+                ExitRemoveCropsMode();               // mutual exclusion
+                ExitRestoreGrassMode();              // mutual exclusion
                 IsInHarvestedCropsMode = true;
             }
         }
@@ -300,10 +327,11 @@ namespace PitHero.UI
         {
             if (IsInHarvestedCropsMode)
                 return;
-            ExitTillMode();         // mutual exclusion
-            ExitBuildingMode();     // mutual exclusion
-            ExitSeedMode();         // mutual exclusion
-            ExitRemoveCropsMode();  // mutual exclusion
+            ExitTillMode();                      // mutual exclusion
+            _constructionUI?.ExitBuildingMode(); // mutual exclusion
+            ExitSeedMode();                      // mutual exclusion
+            ExitRemoveCropsMode();               // mutual exclusion
+            ExitRestoreGrassMode();              // mutual exclusion
             IsInHarvestedCropsMode = true;
         }
 
@@ -315,19 +343,21 @@ namespace PitHero.UI
                 _heroUI?.ForceCloseWindow();
                 _monsterUI?.ForceCloseWindow();
                 _secondChanceShopUI?.ForceCloseWindow();
+                _constructionUI?.DismissSubButtons(); // cross-dismiss Construction sub-bar
             }
-            foreach (var btn in _subButtons)
-                btn.SetVisible(_subButtonsVisible);
+            for (int i = 0; i < _subButtons.Length; i++)
+                _subButtons[i].SetVisible(_subButtonsVisible);
             _subButtonsToggled = true;
         }
 
+        /// <summary>Hides the Farm sub-button row without triggering mode exits.</summary>
         public void DismissSubButtons()
         {
             if (!_subButtonsVisible)
                 return;
             _subButtonsVisible = false;
-            foreach (var btn in _subButtons)
-                btn.SetVisible(false);
+            for (int i = 0; i < _subButtons.Length; i++)
+                _subButtons[i].SetVisible(false);
             _subButtonsToggled = true;
         }
 
@@ -341,17 +371,19 @@ namespace PitHero.UI
         {
             if (IsInsideButton(_farmButton, mousePos))
                 return true;
-            foreach (var btn in _subButtons)
-                if (IsInsideButton(btn, mousePos))
+            for (int i = 0; i < _subButtons.Length; i++)
+                if (IsInsideButton(_subButtons[i], mousePos))
                     return true;
             return false;
         }
 
+        /// <summary>Moves the Farm top-bar button to the specified position.</summary>
         public void SetPosition(float x, float y)
         {
             _farmButton?.SetPosition(x, y);
         }
 
+        /// <summary>Positions the sub-button row starting at startX, all at height y.</summary>
         public void SetSubButtonsPosition(float startX, float y)
         {
             if (_subButtons == null)
@@ -376,9 +408,12 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>Returns the width of the Farm top-bar button.</summary>
         public float GetWidth()  => _farmButton?.GetWidth()  ?? 0f;
+        /// <summary>Returns the height of the Farm top-bar button.</summary>
         public float GetHeight() => _farmButton?.GetHeight() ?? 0f;
 
+        /// <summary>Returns the height of the sub-button row (first button's height).</summary>
         public float GetSubButtonsHeight()
         {
             if (_subButtons == null || _subButtons.Length == 0)
@@ -386,6 +421,7 @@ namespace PitHero.UI
             return _subButtons[0].GetHeight();
         }
 
+        /// <summary>Switches button art between 1x and 2x based on the current window mode.</summary>
         public void UpdateButtonStyleIfNeeded()
         {
             ButtonMode desired = WindowManager.IsHalfHeightMode() ? ButtonMode.Half : ButtonMode.Normal;
@@ -415,6 +451,7 @@ namespace PitHero.UI
             _styleChanged = true;
         }
 
+        /// <summary>Returns true once after a button style swap; resets the flag.</summary>
         public bool ConsumeStyleChangedFlag()
         {
             if (_styleChanged)
@@ -425,6 +462,7 @@ namespace PitHero.UI
             return false;
         }
 
+        /// <summary>Returns true once after the sub-buttons visibility changed; resets the flag.</summary>
         public bool ConsumeSubButtonsToggleFlag()
         {
             if (_subButtonsToggled)
@@ -435,6 +473,7 @@ namespace PitHero.UI
             return false;
         }
 
+        /// <summary>Per-frame update: style swap and outside-click collapse when no sub-mode is active.</summary>
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
@@ -442,7 +481,8 @@ namespace PitHero.UI
             // Only dismiss sub-buttons from world clicks when no sub-mode is running.
             // While a sub-mode is active (placing crops, tilling, etc.) world clicks belong
             // to that mode and must not collapse the sub-button row.
-            bool anySubModeActive = IsInTillMode || IsInBuildingMode || IsInSeedMode || IsInRemoveCropsMode || IsInHarvestedCropsMode;
+            bool anySubModeActive = IsInTillMode || IsInSeedMode || IsInRemoveCropsMode
+                                  || IsInHarvestedCropsMode || IsInRestoreGrassMode;
             if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed
                 && Util.MouseUtils.IsMouseInsideWindow())
             {

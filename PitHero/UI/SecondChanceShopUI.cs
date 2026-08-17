@@ -48,6 +48,7 @@ namespace PitHero.UI
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
         private FarmUI _farmUI;
+        private ConstructionUI _constructionUI;
         private Skin _skin;
         private TextService _textService;
         private PauseService _pauseService;
@@ -86,11 +87,8 @@ namespace PitHero.UI
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
 
             var sprite      = uiAtlas.GetSprite("UISecondChance");
-            var sprite2x    = uiAtlas.GetSprite("UISecondChance2x");
             var highlight   = uiAtlas.GetSprite("UISecondChanceHighlight");
-            var highlight2x = uiAtlas.GetSprite("UISecondChanceHighlight2x");
             var inverse     = uiAtlas.GetSprite("UISecondChanceInverse");
-            var inverse2x   = uiAtlas.GetSprite("UISecondChanceInverse2x");
 
             _shopNormalStyle = new ImageButtonStyle
             {
@@ -98,12 +96,7 @@ namespace PitHero.UI
                 ImageDown = new SpriteDrawable(inverse),
                 ImageOver = new SpriteDrawable(highlight)
             };
-            _shopHalfStyle = new ImageButtonStyle
-            {
-                ImageUp   = new SpriteDrawable(sprite2x),
-                ImageDown = new SpriteDrawable(inverse2x),
-                ImageOver = new SpriteDrawable(highlight2x)
-            };
+            _shopHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UISecondChance");
 
             _shopButton = new HoverableImageButton(_shopNormalStyle, GetText(TextType.UI, UITextKey.WindowSecondChanceShop));
             _shopButton.ClickSoundCategory = ButtonClickCategory.TopBar;
@@ -448,6 +441,7 @@ namespace PitHero.UI
             _heroUI?.ForceCloseWindow();
             _monsterUI?.ForceCloseWindow();
             _farmUI?.DismissSubButtons();
+            _constructionUI?.DismissSubButtons();
             ToggleShopWindow();
         }
 
@@ -583,7 +577,10 @@ namespace PitHero.UI
 
         /// <summary>Sets the MonsterUI reference for single window policy.</summary>
         public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
+        /// <summary>Sets the FarmUI reference for cross-dismiss.</summary>
         public void SetFarmUI(FarmUI farmUI) { _farmUI = farmUI; }
+        /// <summary>Sets the ConstructionUI reference for cross-dismiss.</summary>
+        public void SetConstructionUI(ConstructionUI constructionUI) { _constructionUI = constructionUI; }
 
         /// <summary>Sets the position of the shop icon button.</summary>
         public void SetPosition(float x, float y) => _shopButton?.SetPosition(x, y);

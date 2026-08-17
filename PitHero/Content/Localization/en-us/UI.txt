@@ -30,9 +30,12 @@ ButtonFarm,Farm
 ButtonFarmTill,Till
 ButtonFarmSeeds,Seeds
 ButtonFarmBuildings,Buildings
-ButtonFarmOptions,Options
 ButtonFarmDestroyCrops,Remove Crops
 ButtonFarmHarvestedCrops,Harvested Crops
+ButtonConstruction,Construction
+ButtonFarmIrrigation,Irrigation
+ButtonFarmRestoreGrass,Restore Grass
+ButtonFarmRefrigerator,Refrigerator
 HarvestCropApple,Apple
 HarvestCropCorn,Corn
 HarvestCropEggplant,Eggplant

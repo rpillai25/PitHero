@@ -43,8 +43,11 @@ namespace PitHero
         public const string ButtonFarmTill = "ButtonFarmTill";
         public const string ButtonFarmSeeds = "ButtonFarmSeeds";
         public const string ButtonFarmBuildings = "ButtonFarmBuildings";
-        public const string ButtonFarmOptions = "ButtonFarmOptions";
         public const string ButtonFarmDestroyCrops = "ButtonFarmDestroyCrops";
+        public const string ButtonConstruction = "ButtonConstruction";
+        public const string ButtonFarmIrrigation = "ButtonFarmIrrigation";
+        public const string ButtonFarmRestoreGrass = "ButtonFarmRestoreGrass";
+        public const string ButtonFarmRefrigerator = "ButtonFarmRefrigerator";
         public const string ButtonFarmHarvestedCrops = "ButtonFarmHarvestedCrops";
         public const string HarvestCropApple = "HarvestCropApple";
         public const string HarvestCropCorn = "HarvestCropCorn";
