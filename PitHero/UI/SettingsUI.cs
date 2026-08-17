@@ -240,6 +240,7 @@ namespace PitHero.UI
 
         // Tracks till mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsTillModeActive = false;
+        private bool _prevIsRestoreGrassModeActive = false;
 
         /// <summary>Returns true when the player is currently in building placement mode.</summary>
         public bool IsBuildingModeActive => _constructionUI?.IsInBuildingMode ?? false;
@@ -2229,6 +2230,7 @@ namespace PitHero.UI
             // it is the same LeftMouseButtonReleased event we'd use to exit — suppress the exit check
             // on this frame only.
             bool tillModeJustEntered = IsTillModeActive && !_prevIsTillModeActive;
+            bool restoreGrassModeJustEntered = IsRestoreGrassModeActive && !_prevIsRestoreGrassModeActive;
 
             // Exit till mode when Escape is pressed
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsTillModeActive)
@@ -2284,6 +2286,16 @@ namespace PitHero.UI
                 _farmUI?.ExitTillMode();
             }
 
+            // Exit restore-grass mode on UI clicks the same way. The Restore Grass button's own
+            // OnClicked already toggled the mode off before this runs, so a second button click
+            // just leaves the mode off and the sub-bar up.
+            if (IsRestoreGrassModeActive && !restoreGrassModeJustEntered && Input.LeftMouseButtonReleased &&
+                _stage.Hit(_stage.GetMousePosition()) != null)
+            {
+                _farmUI?.ExitRestoreGrassMode();
+            }
+
+            _prevIsRestoreGrassModeActive = IsRestoreGrassModeActive;
             _prevIsTillModeActive     = IsTillModeActive;
             _prevIsBuildingModeActive = IsBuildingModeActive;
             _prevIsSeedModeActive     = IsSeedModeActive;

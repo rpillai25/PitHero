@@ -1213,7 +1213,6 @@ namespace PitHero.ECS.Scenes
             // Restore Grass mode overlay — cursor + drag to revert tilled tiles back to grass.
             _restoreGrassModeOverlay = new UI.RestoreGrassModeOverlay(this);
             _restoreGrassModeOverlay.SetStage(_uiStage);
-            _restoreGrassModeOverlay.RequestExitRestoreGrassMode += () => _settingsUI?.ExitRestoreGrassModeViaFarm();
 
             // Refrigerator window — opened by clicking the kitchen fridge (issue #386).
             _refrigeratorDialog = new RefrigeratorDialog(_uiStage);
