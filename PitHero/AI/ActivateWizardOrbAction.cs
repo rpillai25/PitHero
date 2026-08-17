@@ -28,6 +28,17 @@ namespace PitHero.AI
         /// <summary>Execute in live scene.</summary>
         public override bool Execute(HeroComponent hero)
         {
+            // Boss floors gate orb activation on the boss being dead; a stale plan can reach
+            // this action without ever fighting the boss (AttackMonsterAction no-ops when no
+            // monster is adjacent), so re-check at runtime before any side effects
+            if (!hero.BossDefeated || HasLivingBossInScene())
+            {
+                Debug.Warn("[ActivateWizardOrb] Boss still alive - refusing orb activation, replanning");
+                hero.BossDefeated = false;
+                hero.ExploredPit = false;
+                return true; // Pop the action; replan will route the hero to the boss
+            }
+
             Debug.Log("[ActivateWizardOrb] Starting wizard orb activation");
 
             // Find the wizard orb entity
@@ -99,6 +110,14 @@ namespace PitHero.AI
         /// <summary>Execute in virtual context.</summary>
         public override bool Execute(IGoapContext context)
         {
+            // Boss floors gate orb activation on the boss being dead - re-check at runtime
+            if (!context.HeroController.BossDefeated)
+            {
+                context.LogWarning("[ActivateWizardOrbAction] Boss still alive - refusing orb activation, replanning");
+                context.HeroController.ExploredPit = false;
+                return true; // Pop the action; replan will route the hero to the boss
+            }
+
             context.LogDebug("[ActivateWizardOrbAction] Starting execution with interface-based context");
 
             // Activate wizard orb in virtual world
@@ -164,6 +183,23 @@ namespace PitHero.AI
             context.LogDebug($"[ActivateWizardOrbAction] BossDefeated set to {context.HeroController.BossDefeated} for new pit level {newVirtualPitLevel}");
             context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit regenerated and hero repositioned");
             return true; // Action complete
+        }
+
+        /// <summary>Return true if any living boss monster exists in the current scene.</summary>
+        private bool HasLivingBossInScene()
+        {
+            var scene = Core.Scene;
+            if (scene == null)
+                return false;
+
+            var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            for (int i = 0; i < monsterEntities.Count; i++)
+            {
+                var enemyComponent = monsterEntities[i].GetComponent<EnemyComponent>();
+                if (enemyComponent?.Enemy != null && enemyComponent.Enemy.IsBoss && enemyComponent.Enemy.CurrentHP > 0)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>Find wizard orb entity.</summary>

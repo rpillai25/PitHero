@@ -1327,7 +1327,8 @@ namespace PitHero.AI
                     priorityTarget = FindUncoveredMonsterTarget();
                     break;
                 case HeroPitPriority.Advance:
-                    priorityTarget = FindUncoveredWizardOrbTarget();
+                    // On boss floors the orb stays red until the boss dies - hunt the boss first
+                    priorityTarget = _hero.BossDefeated ? FindUncoveredWizardOrbTarget() : FindUncoveredMonsterTarget();
                     break;
             }
 

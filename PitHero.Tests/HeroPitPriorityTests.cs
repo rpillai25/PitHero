@@ -99,8 +99,9 @@ namespace PitHero.Tests
         [TestMethod]
         public void HeroComponent_IsPrioritySatisfied_AdvancePriority_ShouldReturnTrueWhenWizardOrbFound()
         {
-            // Arrange
+            // Arrange - non-boss floor (no living boss gates the orb)
             _heroComponent.FoundWizardOrb = true;
+            _heroComponent.BossDefeated = true;
 
             // Act & Assert
             Assert.IsTrue(_heroComponent.IsPrioritySatisfied(HeroPitPriority.Advance), 

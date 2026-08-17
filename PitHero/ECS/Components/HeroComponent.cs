@@ -1327,7 +1327,7 @@ namespace PitHero.ECS.Components
                 case HeroPitPriority.Battle:
                     return AreAllReachableTilesUncoveredAndAllMonstersDefeated();
                 case HeroPitPriority.Advance:
-                    return FoundWizardOrb; // Satisfied when wizard orb is uncovered
+                    return FoundWizardOrb && BossDefeated; // Orb uncovered and no living boss blocks activation
                 default:
                     return false;
             }

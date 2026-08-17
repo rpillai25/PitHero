@@ -12,6 +12,10 @@ namespace PitHero.Tests
         public void TestInitialize()
         {
             _heroComponent = new HeroComponent();
+
+            // Non-boss floor baseline: no living boss gates the orb
+            // (in-game this is set during hero initialization and floor regeneration)
+            _heroComponent.BossDefeated = true;
         }
 
         [TestMethod]
@@ -72,6 +76,49 @@ namespace PitHero.Tests
             
             // Assert - When current priority is Advance and it's satisfied, ExploredPit should be true immediately
             Assert.IsTrue(_heroComponent.ExploredPit, "When current priority is Advance and wizard orb is found, ExploredPit should be true");
+        }
+
+        [TestMethod]
+        public void AdvancePriority_OrbFoundButBossAlive_ExploredPitStaysFalse()
+        {
+            // Arrange - boss floor: orb found but boss still alive
+            _heroComponent.Priority1 = HeroPitPriority.Advance;
+            _heroComponent.Priority2 = HeroPitPriority.Battle;
+            _heroComponent.Priority3 = HeroPitPriority.Treasure;
+
+            _heroComponent.ExploredPit = false;
+            _heroComponent.FoundWizardOrb = true;
+            _heroComponent.BossDefeated = false;
+
+            // Act
+            _heroComponent.UpdateExploredPitBasedOnPriorities();
+
+            // Assert - the red orb alone must not satisfy Advance
+            Assert.IsFalse(_heroComponent.ExploredPit, "ExploredPit should stay false while the boss is alive even if the wizard orb is found");
+            Assert.IsFalse(_heroComponent.IsPrioritySatisfied(HeroPitPriority.Advance), "Advance priority should not be satisfied while the boss is alive");
+        }
+
+        [TestMethod]
+        public void AdvancePriority_OrbFoundAndBossDefeated_ExploredPitBecomesTrue()
+        {
+            // Arrange - boss floor: orb found, boss initially alive
+            _heroComponent.Priority1 = HeroPitPriority.Advance;
+            _heroComponent.Priority2 = HeroPitPriority.Battle;
+            _heroComponent.Priority3 = HeroPitPriority.Treasure;
+
+            _heroComponent.ExploredPit = false;
+            _heroComponent.FoundWizardOrb = true;
+            _heroComponent.BossDefeated = false;
+            _heroComponent.UpdateExploredPitBasedOnPriorities();
+            Assert.IsFalse(_heroComponent.ExploredPit, "Sanity: ExploredPit should be false while boss is alive");
+
+            // Act - boss is defeated (orb turns white)
+            _heroComponent.BossDefeated = true;
+            _heroComponent.UpdateExploredPitBasedOnPriorities();
+
+            // Assert
+            Assert.IsTrue(_heroComponent.ExploredPit, "ExploredPit should become true once the boss is defeated and the orb is found");
+            Assert.IsTrue(_heroComponent.IsPrioritySatisfied(HeroPitPriority.Advance), "Advance priority should be satisfied once the boss is defeated");
         }
     }
 }

@@ -248,6 +248,17 @@ namespace PitHero
 
             // Generate new content
             GenerateForLevel(level);
+
+            // Sync BossDefeated for the new floor. Every floor-entry path (orb advancement,
+            // save load, death reset, debug jumps) funnels through here, so this is the single
+            // point that keeps the flag honest against a freshly spawned boss
+            var heroEntity = _scene.FindEntity("hero");
+            var heroComponentForBoss = heroEntity?.GetComponent<HeroComponent>();
+            if (heroComponentForBoss != null)
+            {
+                heroComponentForBoss.BossDefeated = !CaveBiomeConfig.IsBossFloor(level);
+                Debug.Log($"[PitGenerator] BossDefeated set to {heroComponentForBoss.BossDefeated} for level {level}");
+            }
         }
 
         /// <summary>

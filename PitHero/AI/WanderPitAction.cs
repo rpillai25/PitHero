@@ -111,10 +111,14 @@ namespace PitHero.AI
             hero.FoundWizardOrb = true;
             Debug.Log($"[Wander] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true {debugContext}");
 
-            if (currentPriority.HasValue && currentPriority.Value == HeroPitPriority.Advance)
+            if (currentPriority.HasValue && currentPriority.Value == HeroPitPriority.Advance && hero.BossDefeated)
             {
                 hero.ExploredPit = true;
                 Debug.Log("[Wander] Current priority is Advance. ExploredPit set to true");
+            }
+            else if (currentPriority.HasValue && currentPriority.Value == HeroPitPriority.Advance)
+            {
+                Debug.Log("[Wander] Current priority is Advance but boss is still alive. Orb stays red; continuing to hunt the boss");
             }
         }
 
