@@ -98,6 +98,7 @@ namespace PitHero
         public const string ButtonBuild = "ButtonBuild";
         public const string BuildingCostFormat = "BuildingCostFormat";
         public const string LabelTillingSoil = "LabelTillingSoil";
+        public const string LabelRestoringGrass = "LabelRestoringGrass";
         public const string LabelPlantingCrops = "LabelPlantingCrops";
         public const string WindowAppearance = "WindowAppearance";
         public const string WindowJobInfo = "WindowJobInfo";

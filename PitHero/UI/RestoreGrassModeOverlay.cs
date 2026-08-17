@@ -26,6 +26,9 @@ namespace PitHero.UI
         private static readonly Color CursorValidColor   = new Color(0, 200, 0, 128);
         private static readonly Color CursorInvalidColor = new Color(255, 0, 0, 128);
 
+        /// <summary>Fired when the player clicks UI while in restore-grass mode, requesting a mode exit.</summary>
+        public event System.Action RequestExitRestoreGrassMode;
+
         /// <summary>Initializes the overlay with the parent scene.</summary>
         public RestoreGrassModeOverlay(Scene scene)
         {
@@ -80,9 +83,18 @@ namespace PitHero.UI
                     _cursorRenderer.Color = valid ? CursorValidColor : CursorInvalidColor;
             }
 
-            // Suppress tile actions while mouse is over UI or outside the window.
-            if ((_stage != null && _stage.Hit(_stage.GetMousePosition()) != null)
-                || !MouseUtils.IsMouseInsideWindow())
+            // Suppress tile actions while mouse is over UI or outside the window. Clicking UI
+            // requests a mode exit (mirrors SeedPlantingModeOverlay). No just-entered guard is
+            // needed: the sub-button's OnClicked fires on mouse-up, so the first Update after
+            // entering never sees LeftMouseButtonPressed.
+            if (_stage != null && _stage.Hit(_stage.GetMousePosition()) != null)
+            {
+                if (Input.LeftMouseButtonPressed)
+                    RequestExitRestoreGrassMode?.Invoke();
+                _lastActionTile = NoTile;
+                return;
+            }
+            if (!MouseUtils.IsMouseInsideWindow())
             {
                 _lastActionTile = NoTile;
                 return;

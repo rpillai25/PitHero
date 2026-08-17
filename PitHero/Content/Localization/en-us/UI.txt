@@ -86,6 +86,7 @@ ButtonBuild,Build
 BuildingCostFormat,Cost {0} G
 LabelTillingSoil,Tilling Soil
 LabelPlantingCrops,Planting Crops
+LabelRestoringGrass,Restoring Grass
 WindowAppearance,Appearance
 WindowJobInfo,Job Info
 WindowMonsters,Monsters

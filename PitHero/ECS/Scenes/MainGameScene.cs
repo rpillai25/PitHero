@@ -55,6 +55,7 @@ namespace PitHero.ECS.Scenes
         private Rendering.ColorGradingController _colorGrading;
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
+        private Label _restoringGrassLabel;
         private bool _wasInTillMode;
         private BuildingModeOverlay _buildingModeOverlay;
         private bool _wasInBuildingMode;
@@ -1212,6 +1213,7 @@ namespace PitHero.ECS.Scenes
             // Restore Grass mode overlay — cursor + drag to revert tilled tiles back to grass.
             _restoreGrassModeOverlay = new UI.RestoreGrassModeOverlay(this);
             _restoreGrassModeOverlay.SetStage(_uiStage);
+            _restoreGrassModeOverlay.RequestExitRestoreGrassMode += () => _settingsUI?.ExitRestoreGrassModeViaFarm();
 
             // Refrigerator window — opened by clicking the kitchen fridge (issue #386).
             _refrigeratorDialog = new RefrigeratorDialog(_uiStage);
@@ -1940,6 +1942,12 @@ namespace PitHero.ECS.Scenes
             _plantingCropsLabel.SetStyle(_modeStyleNormal);
             _plantingCropsLabel.SetVisible(false);
 
+            // Restoring Grass label (same area, visible only in restore-grass mode)
+            string restoringText = Core.Services.GetService<TextService>()?.DisplayText(TextType.UI, UITextKey.LabelRestoringGrass) ?? "Restoring Grass";
+            _restoringGrassLabel = uiCanvas.Stage.AddElement(new Label(restoringText, _hudFontNormal));
+            _restoringGrassLabel.SetStyle(_modeStyleNormal);
+            _restoringGrassLabel.SetVisible(false);
+
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
             hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudBaseY);
@@ -2144,6 +2152,27 @@ namespace PitHero.ECS.Scenes
             // Center the label in the gap between the button bar and the clock
             float midX = (barRight + clockX) / 2f;
             _tillingLabel.SetPosition(midX - tillingWidth / 2f, ClockLabelBaseY);
+        }
+
+        /// <summary>Shows and animates the "Restoring Grass" label while restore-grass mode is active.</summary>
+        private void UpdateRestoringGrassLabel()
+        {
+            if (_restoringGrassLabel == null || _hudFontNormal == null) return;
+            bool inRestoreGrassMode = _settingsUI?.IsRestoreGrassModeActive ?? false;
+            _restoringGrassLabel.SetVisible(inRestoreGrassMode);
+            if (!inRestoreGrassMode) return;
+
+            float alpha = (float)Math.Sin(Time.TotalTime * Math.PI * 1.2f) * 0.5f + 0.5f;
+            _restoringGrassLabel.SetFontColor(new Color(0, 255, 255, (int)(alpha * 255)));
+
+            string labelText = _restoringGrassLabel.GetText();
+            float labelWidth = _hudFontNormal.MeasureString(labelText).X;
+            string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
+            float clockWidth = _hudFontNormal.MeasureString(timeText).X;
+            float clockX = _uiStage.GetWidth() - clockWidth - ClockLabelRightPadding;
+            float barRight = _settingsUI?.UIBarRight ?? 0f;
+            float midX = (barRight + clockX) / 2f;
+            _restoringGrassLabel.SetPosition(midX - labelWidth / 2f, ClockLabelBaseY);
         }
 
         /// <summary>Shows and animates the "Planting Crops" label while the player is in the placing sub-state.</summary>
@@ -2608,6 +2637,7 @@ namespace PitHero.ECS.Scenes
             _colorGrading?.UpdateTimeOfDay();
             UpdateClockLabel();
             UpdateTillingLabel();
+            UpdateRestoringGrassLabel();
             bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
             bool prevInTillMode = _wasInTillMode;
             if (inTillMode != _wasInTillMode)
