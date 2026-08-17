@@ -1905,8 +1905,8 @@ namespace PitHero.UI
             float subButtonY = buttonY + _stopAdventuringUI.GetHeight() + 2f;
             _farmUI.SetSubButtonsPosition(gearX, subButtonY);
 
-            // Position Construction sub-buttons on the same row as Farm sub-buttons
-            _constructionUI?.SetSubButtonsPosition(gearX, subButtonY);
+            // Position Construction sub-buttons directly under the Construction button
+            _constructionUI?.SetSubButtonsPosition(constructionX, subButtonY);
 
             // Cache bar bounds in normal (non-animated) stage coords for proximity detection.
             // Use the resting buttonY (2f) so the zone is stable even while animating.
