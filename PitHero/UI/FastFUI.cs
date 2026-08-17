@@ -73,11 +73,8 @@ namespace PitHero.UI
             // Load the UI atlas and get the FastF sprites
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var fastFSprite = uiAtlas.GetSprite("UIFastF");
-            var fastFSprite2x = uiAtlas.GetSprite("UIFastF2x");
             var fastFHighlight = uiAtlas.GetSprite("UIFastFHighlight");
-            var fastFHighlight2x = uiAtlas.GetSprite("UIFastFHighlight2x");
             var fastFInverse = uiAtlas.GetSprite("UIFastFInverse");
-            var fastFInverse2x = uiAtlas.GetSprite("UIFastFInverse2x");
 
             // Base styles for each sprite with proper ImageDown and ImageOver
             _fastFNormalStyle = new ImageButtonStyle
@@ -94,18 +91,17 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight)
             };
 
-            _fastFHalfStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(fastFSprite2x),
-                ImageDown = new SpriteDrawable(fastFInverse2x),
-                ImageOver = new SpriteDrawable(fastFHighlight2x)
-            };
+            _fastFHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIFastF");
 
+            // Pressed-half: Up/Down swapped relative to normal half style.
+            var fastF2x      = ButtonSprite2xFactory.GetOrCreate2x(uiAtlas, "UIFastF");
+            var fastFInv2x   = ButtonSprite2xFactory.GetOrCreate2x(uiAtlas, "UIFastFInverse");
+            var fastFHigh2x  = ButtonSprite2xFactory.GetOrCreate2x(uiAtlas, "UIFastFHighlight");
             _fastFHalfPressedStyle = new ImageButtonStyle
             {
-                ImageUp = new SpriteDrawable(fastFInverse2x),
-                ImageDown = new SpriteDrawable(fastFSprite2x),
-                ImageOver = new SpriteDrawable(fastFHighlight2x)
+                ImageUp   = new SpriteDrawable(fastFInv2x),
+                ImageDown = new SpriteDrawable(fastF2x),
+                ImageOver = new SpriteDrawable(fastFHigh2x)
             };
 
             _fastFButton = new HoverableImageButton(_fastFNormalStyle, GetText(TextType.UI, UITextKey.ButtonFastForward));

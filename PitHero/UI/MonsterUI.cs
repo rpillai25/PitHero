@@ -30,6 +30,7 @@ namespace PitHero.UI
         private SecondChanceShopUI _secondChanceShopUI;
         private HeroUI _heroUI;
         private FarmUI _farmUI;
+        private ConstructionUI _constructionUI;
 
         private enum MonsterMode { Normal, Half }
         private MonsterMode _currentMonsterMode = MonsterMode.Normal;
@@ -86,11 +87,8 @@ namespace PitHero.UI
         {
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var sprite       = uiAtlas.GetSprite("UIMonster");
-            var sprite2x     = uiAtlas.GetSprite("UIMonster2x");
             var highlight    = uiAtlas.GetSprite("UIMonsterHighlight");
-            var highlight2x  = uiAtlas.GetSprite("UIMonsterHighlight2x");
             var inverse      = uiAtlas.GetSprite("UIMonsterInverse");
-            var inverse2x    = uiAtlas.GetSprite("UIMonsterInverse2x");
 
             _monsterNormalStyle = new ImageButtonStyle
             {
@@ -98,12 +96,7 @@ namespace PitHero.UI
                 ImageDown = new SpriteDrawable(inverse),
                 ImageOver = new SpriteDrawable(highlight)
             };
-            _monsterHalfStyle = new ImageButtonStyle
-            {
-                ImageUp   = new SpriteDrawable(sprite2x),
-                ImageDown = new SpriteDrawable(inverse2x),
-                ImageOver = new SpriteDrawable(highlight2x)
-            };
+            _monsterHalfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIMonster");
 
             _monsterButton = new HoverableImageButton(_monsterNormalStyle, GetText(TextType.UI, UITextKey.WindowMonsters));
             _monsterButton.ClickSoundCategory = ButtonClickCategory.TopBar;
@@ -122,6 +115,8 @@ namespace PitHero.UI
 
         /// <summary>Sets the reference to FarmUI for single window policy enforcement.</summary>
         public void SetFarmUI(FarmUI farmUI) { _farmUI = farmUI; }
+        /// <summary>Sets the reference to ConstructionUI for cross-dismiss.</summary>
+        public void SetConstructionUI(ConstructionUI constructionUI) { _constructionUI = constructionUI; }
 
         /// <summary>
         /// Handles the monster button click - enforces single window policy and toggles the monster window
@@ -137,6 +132,7 @@ namespace PitHero.UI
             _secondChanceShopUI?.ForceCloseWindow();
             _heroUI?.ForceCloseWindow();
             _farmUI?.DismissSubButtons();
+            _constructionUI?.DismissSubButtons();
             ToggleMonsterWindow();
         }
 
@@ -153,6 +149,7 @@ namespace PitHero.UI
             _secondChanceShopUI?.ForceCloseWindow();
             _heroUI?.ForceCloseWindow();
             _farmUI?.DismissSubButtons();
+            _constructionUI?.DismissSubButtons();
 
             if (!_windowVisible)
                 ToggleMonsterWindow();

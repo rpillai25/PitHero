@@ -66,11 +66,8 @@ namespace PitHero.UI
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
 
             var sprite = uiAtlas.GetSprite("UIReplenish");
-            var sprite2x = uiAtlas.GetSprite("UIReplenish2x");
             var highlight = uiAtlas.GetSprite("UIReplenishHighlight");
-            var highlight2x = uiAtlas.GetSprite("UIReplenishHighlight2x");
             var inverse = uiAtlas.GetSprite("UIReplenishInverse");
-            var inverse2x = uiAtlas.GetSprite("UIReplenishInverse2x");
 
             _normalStyle = new ImageButtonStyle
             {
@@ -79,12 +76,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight)
             };
 
-            _halfStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(sprite2x),
-                ImageDown = new SpriteDrawable(inverse2x),
-                ImageOver = new SpriteDrawable(highlight2x)
-            };
+            _halfStyle = ButtonSprite2xFactory.CreateHalfStyle(uiAtlas, "UIReplenish");
 
             _button = new HoverableImageButton(_normalStyle, GetText(TextType.UI, UITextKey.ButtonReplenish));
             _button.ClickSoundCategory = ButtonClickCategory.TopBar;
