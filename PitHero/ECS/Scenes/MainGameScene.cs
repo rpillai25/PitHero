@@ -1221,7 +1221,10 @@ namespace PitHero.ECS.Scenes
             // Wire the Farm sub-button "Refrigerator" to open the fridge dialog.
             // UpdateFridgeDialogGate drives pause/zoom purely off IsVisible(), so no extra preconditions.
             if (_settingsUI != null)
+            {
                 _settingsUI.RefrigeratorRequested = () => _refrigeratorDialog?.Show();
+                _settingsUI.RefrigeratorDialogOpen = () => _refrigeratorDialog != null && _refrigeratorDialog.IsVisible();
+            }
 
             // Building context menu — shown when a placed building is clicked (Move / Show ...).
             _buildingContextMenu = new BuildingContextMenu(UI.PitHeroSkin.CreateSkin());

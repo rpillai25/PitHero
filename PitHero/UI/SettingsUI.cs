@@ -290,6 +290,16 @@ namespace PitHero.UI
             set { if (_farmUI != null) _farmUI.RefrigeratorRequested = value; }
         }
 
+        /// <summary>
+        /// Reports whether the refrigerator dialog is open; wired to FarmUI so the farm sub-bar
+        /// survives the outside click that dismisses the dialog. Set by MainGameScene.
+        /// </summary>
+        public System.Func<bool> RefrigeratorDialogOpen
+        {
+            get => _farmUI?.IsRefrigeratorDialogOpen;
+            set { if (_farmUI != null) _farmUI.IsRefrigeratorDialogOpen = value; }
+        }
+
         /// <summary>Opens the monster roster filtered to a single Monster House (by UniqueId).</summary>
         public void ShowMonstersForHouse(int houseId) => _monsterUI?.ShowForHouse(houseId);
 

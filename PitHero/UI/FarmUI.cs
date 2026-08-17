@@ -66,6 +66,13 @@ namespace PitHero.UI
         /// <summary>Fired when the Refrigerator sub-button is clicked; the scene opens the fridge dialog.</summary>
         public System.Action RefrigeratorRequested;
 
+        /// <summary>
+        /// Reports whether the refrigerator dialog is currently open. While it is, world clicks must
+        /// not collapse the sub-bar — the click that dismisses the dialog should return the player to
+        /// the farm sub-menu, not close both at once.
+        /// </summary>
+        public System.Func<bool> IsRefrigeratorDialogOpen;
+
         private enum ButtonMode { Normal, Half }
         private ButtonMode _currentMode = ButtonMode.Normal;
         private bool _styleChanged = false;
@@ -191,11 +198,11 @@ namespace PitHero.UI
             // Wire Restore Grass button (index 5)
             _subButtons[5].OnClicked += (_) => ToggleRestoreGrassMode();
 
-            // Wire Refrigerator button (index 6)
+            // Wire Refrigerator button (index 6). The sub-bar stays open behind the dialog so
+            // closing it returns to the farm sub-menu (same UX as the Harvested Crops viewer).
             _subButtons[6].OnClicked += (_) =>
             {
                 DismissHoverText();
-                DismissSubButtons();
                 RefrigeratorRequested?.Invoke();
             };
         }
@@ -482,7 +489,8 @@ namespace PitHero.UI
             // While a sub-mode is active (placing crops, tilling, etc.) world clicks belong
             // to that mode and must not collapse the sub-button row.
             bool anySubModeActive = IsInTillMode || IsInSeedMode || IsInRemoveCropsMode
-                                  || IsInHarvestedCropsMode || IsInRestoreGrassMode;
+                                  || IsInHarvestedCropsMode || IsInRestoreGrassMode
+                                  || (IsRefrigeratorDialogOpen?.Invoke() ?? false);
             if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed
                 && Util.MouseUtils.IsMouseInsideWindow())
             {
