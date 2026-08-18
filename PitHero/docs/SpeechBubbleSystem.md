@@ -121,7 +121,9 @@ virtual/live run parity. See the comment block at the top of `SpeechBubbleDialog
 | Auto-purchase before pit jump | `AutoItemPurchaseService.TryPurchasePass` | Only when items were actually bought |
 | Lands in the pit | `JumpIntoPitAction` after `InsidePit = true` | [G] variant + silent |
 | Exits pit for night sleep / rest | `EmitPitIntentBubbles` | Discriminated at plan formation: `IsNighttime` → bedtime, else `HPCritical‖MPCritical` → rest set; **player-Stop exits never bubble**; `_pitExitBubbleEmitted` latch |
-| Breakfast commit / skipped (no ingredients) | `PartyDiningService` | Skip line only on the `CanCoverRecipe` failure branch, not no-gold |
+| Breakfast commit / skipped (no ingredients) | `PartyDiningService.BeginAutoDine(Breakfast)` | Keys `HeroBreakfastTime` / `HeroBreakfastOptions`; skip line only on the `CanCoverRecipe` failure branch, not no-gold |
+| Lunch commit | `PartyDiningService.BeginAutoDine(Lunch)` | Keys `HeroLunchTime` / `HeroLunchOptions` (shuffle-bag, 2 options); same guard ladder as breakfast; triggers at 12 PM hour-edge |
+| Dinner commit | `PartyDiningService.BeginAutoDine(Dinner)` | Keys `HeroDinnerTime` / `HeroDinnerServing` (shuffle-bag, 2 options); triggers at 6 PM hour-edge |
 | Boss defeated | `LiveBattleAdapter.OnEnemyDefeated` | Live layer only; `VirtualBattleSink` untouched |
 | Respawn after defeat | `WalkToStatueForCrystalAction.WalkToStatue` start | See the deferral trap above |
 | Crystal ceremony prayer | `HeroPromotionService.ExecuteHeroCrystalCeremony` top | The pre-lightning dwell was extended to 4.0s (0.5 + 3.5) specifically to fit this line's reveal+linger — don't shorten one without the other |
@@ -136,7 +138,7 @@ virtual/live run parity. See the comment block at the top of `SpeechBubbleDialog
 | Cook | Plates a dish on serving | `KitchenMonsterStateMachine.CookWalkToServing_Tick` | Capture `_cookTicket.Dish` before it's nulled; the carry-to-sink branch never bubbles |
 | Runner | Claims a fetch job | `KitchenMonsterStateMachine.RunnerIdle_Tick` | Not `RunnerWalkToStorage_Enter` — that re-enters per storage stop |
 | Farmer | Arrives at crop storage carrying a harvest | `FarmingMonsterStateMachine.CarryHarvestToStorage_Tick` | Before `DepositAndFinish()` (which hides the body); can fire twice on a split delivery |
-| Any worker | Shift end, heading home | `ReturnHome_Enter` (both FSMs) | Gated on `MonsterScheduleConfig.IsAsleep` so mid-shift role-change send-homes stay silent |
+| Any worker | Shift end, heading home | `ReturnHome_Enter` (both FSMs) | Gated on `IsAsleep OR TavernScheduleConfig.IsKitchenClosed` — kitchen closure also reads as a real shift end, so nocturnal kitchen workers' 10 PM send-home bubbles correctly |
 | Any worker | Emerges for a new shift/job | `EmergeFromHouse_Tick` (both FSMs) | At the transition out of the emerge state (worker is outside the house sprite) |
 
 **Worker-FSM hook rule:** the job coordinators call `RequestReturnHome()` **every frame** while

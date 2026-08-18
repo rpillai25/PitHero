@@ -58,3 +58,8 @@ InnkeeperFarewellComeBackSoon,Come back soon!
 SecondChanceInterestedWares,Interested in my wares?
 SecondChanceBuyBackSomething,Perhaps you want to buy back something?
 SecondChanceMissSomething,Miss something you once had?
+
+HeroLunchTime,It's time for lunch
+HeroLunchOptions,Let's check out our lunch options
+HeroDinnerTime,Should be time for dinner
+HeroDinnerServing,They should be serving dinner now

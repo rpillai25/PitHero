@@ -8,6 +8,7 @@ using Nez.Tiled;
 using Nez.UI; // Added for Label
 using PitHero.AI;
 using PitHero.AI.Interfaces;
+using PitHero.Dining;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Rendering;
@@ -2780,18 +2781,37 @@ namespace PitHero.ECS.Scenes
             // Tick party dining (eat timers, auto-resume, reload restart)
             Core.Services.GetService<Services.PartyDiningService>()?.Update();
 
-            // Morning reset: clear wet tiles and re-populate watering queue at 6AM
+            // Hour-edge triggers: 6 AM (morning reset), 12 PM (lunch), 6 PM (dinner)
             var timeService = Core.Services.GetService<InGameTimeService>();
             if (timeService != null)
             {
                 int currentHour = timeService.Hour;
-                if (currentHour == 6 && _lastInGameHour != 6 && _lastInGameHour != -1)
+                if (_lastInGameHour != -1)
                 {
-                    Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
-                    Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
-                    // New day: yesterday's meal buffs expire and everyone may eat again (issue #319)
-                    Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
-                    Core.Services.GetService<Services.PartyDiningService>()?.ResetDaily();
+                    if (currentHour == 6 && _lastInGameHour != 6)
+                    {
+                        // Morning reset: clear wet tiles, re-populate watering queue
+                        Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
+                        Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
+                        // Belt-and-braces ClearAll (last dinner ~9:59 PM expires ~3:59 AM naturally)
+                        Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
+                        // Reset so breakfast trip can fire (breakfast itself is wake-driven from SleepInBedAction)
+                        Core.Services.GetService<Services.PartyDiningService>()?.ResetForNewMealPeriod();
+                    }
+                    else if (currentHour == 12 && _lastInGameHour != 12)
+                    {
+                        // Lunch (issue #392)
+                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
+                        partyDining?.ResetForNewMealPeriod();
+                        partyDining?.BeginAutoDine(MealPeriod.Lunch);
+                    }
+                    else if (currentHour == 18 && _lastInGameHour != 18)
+                    {
+                        // Dinner (issue #392)
+                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
+                        partyDining?.ResetForNewMealPeriod();
+                        partyDining?.BeginAutoDine(MealPeriod.Dinner);
+                    }
                 }
                 _lastInGameHour = currentHour;
             }

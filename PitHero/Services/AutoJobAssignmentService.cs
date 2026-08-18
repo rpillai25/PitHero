@@ -164,7 +164,7 @@ namespace PitHero.Services
                 int available = _snapshots.Count - reserved;
                 if (available < 0)
                     available = 0;
-                var demand = _evaluators[i].EvaluateDemand(_snapshots.Count, available);
+                var demand = _evaluators[i].EvaluateDemand(_snapshots.Count, available, nocturnal);
                 _demands.Add(demand);
                 reserved += demand.MinWorkers;
             }

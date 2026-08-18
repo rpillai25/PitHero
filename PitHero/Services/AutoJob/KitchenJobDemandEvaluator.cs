@@ -62,8 +62,21 @@ namespace PitHero.Services.AutoJob
         public void ResetPressure(float nowSeconds) => _tracker.Reset(nowSeconds);
 
         /// <inheritdoc/>
-        public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers)
+        public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers, bool nocturnal)
         {
+            // Kitchen only operates during the day shift (6 AM–10 PM).  On the nocturnal shift
+            // (10 PM–6 AM) workers go home once in-flight dishes are delivered; field no one new.
+            if (nocturnal)
+            {
+                return new JobDemandEntry
+                {
+                    Job = MonsterJob.Cooking,
+                    MinWorkers = 0,
+                    DesiredWorkers = 0,
+                    Sticky = true,
+                };
+            }
+
             bool anyDishOrderable = _coordinator == null || _coordinator.HasAnyOrderableDish();
             return ComputeDemand(LiveBacklog, _tracker.GrantedWorkers, rosterSize, availableWorkers,
                 anyDishOrderable, PatronWaitHigh);

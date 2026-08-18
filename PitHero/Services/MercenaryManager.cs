@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero;
+using PitHero.Config;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
@@ -79,7 +80,14 @@ namespace PitHero.Services
             // Use scaled time for spawn timer
             _timeSinceLastSpawn += Time.DeltaTime;
 
-            if (_timeSinceLastSpawn >= GetSpawnInterval())
+            // Arrival pacing: rush-hour windows use the base interval (1×); all other hours
+            // (including overnight) use a 2× slow-trickle rate.  The multiplier is applied at
+            // compare-time so a mid-wait hour flip adapts immediately without touching the timer.
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            int hour = timeService?.Hour ?? 12;
+            float spawnThreshold = GetSpawnInterval() * TavernScheduleConfig.GetArrivalIntervalMultiplier(hour);
+
+            if (_timeSinceLastSpawn >= spawnThreshold)
             {
                 // Only reset the timer on a successful spawn — while the tavern is full the
                 // timer holds at the threshold so a patron walks in as soon as a seat frees.

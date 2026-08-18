@@ -94,6 +94,20 @@ namespace PitHero
             new Option(DialogueTextKey.HeroBreakfastWhatsFor),
         });
 
+        // SayLunch — two variants, no gate (issue #392)
+        private static readonly OptionBag LunchOptions = new OptionBag(new Option[]
+        {
+            new Option(DialogueTextKey.HeroLunchTime),
+            new Option(DialogueTextKey.HeroLunchOptions),
+        });
+
+        // SayDinner — two variants, no gate (issue #392)
+        private static readonly OptionBag DinnerOptions = new OptionBag(new Option[]
+        {
+            new Option(DialogueTextKey.HeroDinnerTime),
+            new Option(DialogueTextKey.HeroDinnerServing),
+        });
+
         // SayPitAdventure — five variants, no gate
         private static readonly OptionBag PitAdventureOptions = new OptionBag(new Option[]
         {
@@ -234,6 +248,18 @@ namespace PitHero
         public static void SayBreakfast(Entity entity)
         {
             SayFromOptions(entity, BreakfastOptions);
+        }
+
+        /// <summary>Shows a randomly-picked lunch bubble (issue #392).</summary>
+        public static void SayLunch(Entity entity)
+        {
+            SayFromOptions(entity, LunchOptions);
+        }
+
+        /// <summary>Shows a randomly-picked dinner bubble (issue #392).</summary>
+        public static void SayDinner(Entity entity)
+        {
+            SayFromOptions(entity, DinnerOptions);
         }
 
         /// <summary>Shows a randomly-picked pit-adventure bubble (one-shot per trip).</summary>

@@ -607,6 +607,26 @@ namespace PitHero.Services
             _wantedAssignments.Clear();
             _wantedRoles.Clear();
 
+            // Kitchen closure: at 10 PM stop wanting any new workers once all current tickets
+            // have been delivered.  Workers finishing in-flight dishes stay until done; then
+            // the existing reconcile path sends everyone home via RequestReturnHome().
+            // This is evaluated independently of IsAsleep (nocturnal workers are awake 10 PM–6 AM
+            // but must never be wanted while the kitchen is closed).
+            bool closed = timeService != null && TavernScheduleConfig.IsKitchenClosed(timeService.Hour);
+            bool hasUndeliveredTickets = false;
+            if (closed)
+            {
+                for (int ti = 0; ti < _tickets.Count; ti++)
+                {
+                    var ts = _tickets[ti].State;
+                    if (ts != TicketState.Delivered && ts != TicketState.Canceled)
+                    {
+                        hasUndeliveredTickets = true;
+                        break;
+                    }
+                }
+            }
+
             var roster = _alliedMonsters.AlliedMonsters;
             for (int i = 0; i < roster.Count; i++)
             {
@@ -614,6 +634,8 @@ namespace PitHero.Services
                 if (m.Job != MonsterJob.Cooking)
                     continue;
                 if (MonsterScheduleConfig.IsAsleep(m.MonsterTypeName, timeService))
+                    continue;
+                if (closed && !hasUndeliveredTickets)
                     continue;
 
                 int insertPos = _wantedAssignments.Count;
@@ -948,6 +970,14 @@ namespace PitHero.Services
             Entity patronEntity, Point seatTile)
         {
             if (_tickets.Count >= MaxOpenTickets)
+                return null;
+
+            // Belt-and-braces: reject new orders while the kitchen is closed (10 PM – 6 AM).
+            // The primary gate lives in KitchenMonsterStateMachine.TryPickNextOrderTarget; this
+            // guard catches any direct callers that bypass the FSM (e.g. future automation).
+            // CreateTicketPreReserved is explicitly exempted — it is the save-reload path only.
+            var timeForTicket = Core.Instance != null ? Core.Services.GetService<InGameTimeService>() : null;
+            if (timeForTicket != null && TavernScheduleConfig.IsKitchenClosed(timeForTicket.Hour))
                 return null;
 
             EnsureServices();

@@ -280,6 +280,8 @@ namespace PitHero
         public const float PatronPatiencePreOrderSeconds = 600f;  // scaled seconds a patron waits for a server to take their order (10 min)
         public const float PatronPatiencePostOrderSeconds = 600f; // scaled seconds a patron waits for ordered food to arrive (10 min)
         public const float PatronLingerAfterEatingSeconds = 300f; // scaled seconds a patron sticks around after finishing their meal (5 min)
+        public const float MealBuffDurationSeconds = 360f;          // scaled seconds a food buff lasts (6 in-game hours, issue #392)
+        public const float PatronClosedKitchenPatienceFactor = 0.25f; // patience multiplier for patrons waiting to order while kitchen is closed (issue #392)
         public const float DishTipChance = 0.5f;                // chance an unhired merc tips on finishing a meal
         public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
         public const float DishTipMaxPercent = 0.15f;

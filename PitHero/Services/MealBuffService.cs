@@ -5,10 +5,11 @@ using RolePlayingFramework.Combat;
 namespace PitHero.Services
 {
     /// <summary>
-    /// Holds each party member's active food buffs for the day (issue #319). Battle buffs are
-    /// cleared at every battle boundary, so this service re-injects meal buffs at each battle
-    /// start as BattleBuffs with RemainingTurns = -1 (until battle end). Records clear at the
-    /// 6 AM daily reset. Food grants buffs only — HP/MP recovery is the inn's job.
+    /// Holds each party member's active food buffs (issue #319, expiry added in #392). Battle
+    /// buffs are cleared at every battle boundary, so this service re-injects meal buffs at each
+    /// battle start as BattleBuffs with RemainingTurns = -1 (until battle end). Records expire
+    /// 6 in-game hours after eating (GameConfig.MealBuffDurationSeconds); the 6 AM ClearAll()
+    /// is kept as belt-and-braces. Food grants buffs only — HP/MP recovery is the inn's job.
     /// </summary>
     public sealed class MealBuffService
     {
@@ -20,32 +21,47 @@ namespace PitHero.Services
             public ICombatant Combatant;
             public DishType Dish;
             public bool Deluxe;
+            public float ExpiresAtSeconds; // absolute InGameTimeService.AccumulatedSeconds
         }
 
         private readonly List<MealRecord> _records = new List<MealRecord>(3);
 
         /// <summary>
         /// Applies a finished meal: records the dish's buffs for injection into every battle
-        /// until the next 6 AM reset.
+        /// until the buff expires or the next 6 AM reset.
         /// </summary>
-        public void ApplyMeal(ICombatant combatant, DishType dish, bool deluxe)
-            => RestoreRecord(combatant, dish, deluxe);
+        public void ApplyMeal(ICombatant combatant, DishType dish, bool deluxe, float expiresAtSeconds)
+            => RestoreRecord(combatant, dish, deluxe, expiresAtSeconds);
 
-        /// <summary>Records a meal's day-long buffs (also the save-load path).</summary>
-        public void RestoreRecord(ICombatant combatant, DishType dish, bool deluxe)
+        /// <summary>Records a meal's timed buffs (also the save-load path).</summary>
+        public void RestoreRecord(ICombatant combatant, DishType dish, bool deluxe, float expiresAtSeconds)
         {
             if (combatant == null) return;
 
-            // One meal per member per day — replace any existing record for this combatant
+            // One active meal per member — replace any existing record for this combatant,
+            // keeping the latest expiry stamp so back-to-back meals don't stack forever.
             for (int i = 0; i < _records.Count; i++)
             {
                 if (ReferenceEquals(_records[i].Combatant, combatant))
                 {
-                    _records[i] = new MealRecord { Combatant = combatant, Dish = dish, Deluxe = deluxe };
+                    _records[i] = new MealRecord { Combatant = combatant, Dish = dish, Deluxe = deluxe, ExpiresAtSeconds = expiresAtSeconds };
                     return;
                 }
             }
-            _records.Add(new MealRecord { Combatant = combatant, Dish = dish, Deluxe = deluxe });
+            _records.Add(new MealRecord { Combatant = combatant, Dish = dish, Deluxe = deluxe, ExpiresAtSeconds = expiresAtSeconds });
+        }
+
+        /// <summary>
+        /// Removes all records whose expiry has elapsed. Reverse-iterate so RemoveAt is safe.
+        /// No RNG, no LINQ, no allocation. Call every frame from PartyDiningService.Update().
+        /// </summary>
+        public void Prune(float nowSeconds)
+        {
+            for (int i = _records.Count - 1; i >= 0; i--)
+            {
+                if (_records[i].ExpiresAtSeconds <= nowSeconds)
+                    _records.RemoveAt(i);
+            }
         }
 
         /// <summary>Returns true and the active meal for the combatant, if any.</summary>

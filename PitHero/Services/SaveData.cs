@@ -249,14 +249,15 @@ namespace PitHero.Services
         public int AnchorY;
     }
 
-    /// <summary>One party member's tavern-dining state for the day (issue #319).</summary>
+    /// <summary>One party member's tavern-dining state per meal period (issue #319, expiry added in #392).</summary>
     public struct SavedDiningRecord
     {
-        public int OrderedDishId;   // -1 = no open order
+        public int OrderedDishId;       // -1 = no open order
         public bool HasPaid;
-        public bool HasEatenToday;
-        public int MealDishId;      // -1 = no active meal buffs
+        public bool HasEatenThisMeal;   // true once the member finishes eating in the current meal period
+        public int MealDishId;          // -1 = no active meal buffs
         public bool MealDeluxe;
+        public float MealExpiresAtSeconds; // absolute InGameTimeService.AccumulatedSeconds; 0 = none
     }
 
     /// <summary>Central save data container implementing IPersistable for binary persistence.</summary>
@@ -268,7 +269,7 @@ namespace PitHero.Services
         /// is rejected with InvalidDataException, and SaveLoadService treats that slot as empty.
         /// Bump it whenever the byte layout changes.
         /// </summary>
-        public const int CurrentVersion = 29;
+        public const int CurrentVersion = 30;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -649,6 +650,7 @@ namespace PitHero.Services
             {
                 records[i].OrderedDishId = -1;
                 records[i].MealDishId = -1;
+                records[i].MealExpiresAtSeconds = 0f;
             }
             return records;
         }
@@ -1001,9 +1003,10 @@ namespace PitHero.Services
             {
                 writer.Write(PartyDining[i].OrderedDishId);
                 writer.Write(PartyDining[i].HasPaid);
-                writer.Write(PartyDining[i].HasEatenToday);
+                writer.Write(PartyDining[i].HasEatenThisMeal);
                 writer.Write(PartyDining[i].MealDishId);
                 writer.Write(PartyDining[i].MealDeluxe);
+                writer.Write(PartyDining[i].MealExpiresAtSeconds);
             }
 
             // 34. Automation (issue #321)
@@ -1481,9 +1484,10 @@ namespace PitHero.Services
                 {
                     OrderedDishId = reader.ReadInt(),
                     HasPaid = reader.ReadBool(),
-                    HasEatenToday = reader.ReadBool(),
+                    HasEatenThisMeal = reader.ReadBool(),
                     MealDishId = reader.ReadInt(),
                     MealDeluxe = reader.ReadBool(),
+                    MealExpiresAtSeconds = reader.ReadFloat(),
                 };
                 if (i < PartyDining.Length)
                     PartyDining[i] = record;

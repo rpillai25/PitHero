@@ -262,6 +262,9 @@ namespace PitHero.UI
             _monsterListTable.Clear();
             var manager = Core.Services.GetService<AlliedMonsterManager>();
             bool jobsAutomated = Core.Services.GetService<Services.AutoJobAssignmentService>()?.Enabled ?? false;
+            // One-shot: the monster window pauses the game so the clock can't cross 10 PM while open.
+            bool kitchenClosed = TavernScheduleConfig.IsKitchenClosed(
+                Core.Services?.GetService<Services.InGameTimeService>()?.Hour ?? 12);
 
             // One page per Monster House in the aggregate view; the per-house view is never paged.
             var houses = GetMonsterHouses();
@@ -442,13 +445,20 @@ namespace PitHero.UI
                             ImageUp = new SpriteDrawable(jobSprite)
                         };
                         var jobBtn = new HoverableImageButton(btnStyle, jobName);
+
+                        // Kitchen is closed 10 PM–6 AM in manual mode: dim and disable the button.
+                        // A monster already holding Cooking keeps its job (coordinator drains it;
+                        // it refields at 6 AM). Show the current selection at full brightness so
+                        // the player can see the active job, but don't allow clicking.
+                        bool disabledByClosure = kitchenClosed && jobValue == MonsterJob.Cooking && !jobsAutomated;
+
                         // With automation on, the system owns assignments: buttons stay visible
                         // (active job bright, others dimmed harder) but never accept clicks.
                         jobBtn.GetImage().SetColor(isSelected
                             ? Color.White
-                            : (jobsAutomated ? new Color(80, 80, 80, 140) : new Color(128, 128, 128, 200)));
+                            : (jobsAutomated || disabledByClosure ? new Color(80, 80, 80, 140) : new Color(128, 128, 128, 200)));
 
-                        if (!jobsAutomated)
+                        if (!jobsAutomated && !disabledByClosure)
                         {
                             var closuredMonster = capturedMonster;
                             var closuredJob = jobValue;
@@ -464,6 +474,9 @@ namespace PitHero.UI
                                 RefreshMonsterList();
                             };
                         }
+
+                        if (disabledByClosure)
+                            jobBtn.SetHoverText(GetText(TextType.UI, UITextKey.JobKitchenClosed));
 
                         buttonsTable.Add(jobBtn).Size(32f, 32f).Pad(1f);
                     }
