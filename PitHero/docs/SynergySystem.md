@@ -415,9 +415,9 @@ snapshot in `GameStateService.PlacedStencils` (`List<PlacedStencilRecord>`, each
 - `RemovePlacedStencil(patternId)` — no-op when absent.
 - `ClearPlacedStencils()` — removes all records.
 
-This list is persisted in **save v27, section 44** (appended after section 43, gated
-`fileVersion >= 27`). Older files (v17–v26) recover with an empty list; the grid re-mirrors
-placements on its next `ConnectToHero` call after loading.
+This list is persisted in **section 44** of the save file (appended after section 43). A save with
+no placed stencils recovers an empty list; the grid re-mirrors placements on its next
+`ConnectToHero` call after loading.
 
 `SaveLoadService` copies `GameStateService.PlacedStencils ↔ SaveData.PlacedStencils`
 (`List<SavedPlacedStencil>`) on save and load respectively.

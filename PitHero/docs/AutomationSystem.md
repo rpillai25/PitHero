@@ -91,30 +91,35 @@ Two distinct patterns — pick deliberately:
 
 ## Persistence
 
-Save version constants live in `PitHero/Services/SaveData.cs` (`CurrentVersion`,
-`MinSupportedVersion`). The format is **strictly append-only**: older files are byte-exact prefixes
-of newer ones, so a v17 file still loads into a v23 build with defaults for the missing tail.
+The save format is **a single version**. `SaveData.CurrentVersion` is the only header value the
+build reads or writes; `Recover` rejects anything else with `InvalidDataException` and
+`SaveLoadService` treats that slot as empty. There is no migration path, no `MinSupportedVersion`,
+and no version-gated branch anywhere in `Recover` — pre-launch, changing the layout means existing
+saves stop loading, which is the accepted cost.
 
-Removing a setting does **not** remove its bytes. The v26 removal of the "Auto-Purchase
-Consumables" master flag kept its bool slot in section 39 (always written `true` now) so older
-files stay byte-exact prefixes; `SaveData.ApplyLegacyPurchaseConsumablesMigration` translates a
-pre-v26 flag-off file into cleared selections on load. Follow that pattern — a dead slot plus a
-version-gated migration — rather than reshaping an existing section.
+Sections are still appended at the end and still numbered, because that keeps diffs and the
+Persist/Recover pairing readable — not because older files need to be prefixes of newer ones.
+
+Removing a setting does **not** remove its bytes; reshaping a section in the middle is what forces
+a version bump. The v26 removal of the "Auto-Purchase Consumables" master flag left its bool as a
+dead slot in section 39 (`Persist` always writes `true`, `Recover` reads and discards it). Follow
+that pattern when a setting goes away.
 
 Adding a persisted setting means, in order:
 
-1. Add the field to `SaveData` with a default and a `// Feature name (vNN)` comment.
+1. Add the field to `SaveData` with a default and a `// Feature name` comment.
 2. Append a **new numbered section at the very end** of `Persist`. Arrays are written as a count
    followed by the elements.
-3. Append the mirrored read at the very end of `Recover`: **initialize defaults first, then**
-   `if (fileVersion >= NN) { ... }`. Clamp array reads with `if (i < arr.Length)` so arrays that
-   grow later still load. Defaults for "allowed" filters are all-true, so categories added after a
-   save was written behave like a fresh enable.
-4. Bump `CurrentVersion` and extend the `MinSupportedVersion` doc comment's section list.
+3. Append the mirrored read at the very end of `Recover`, unconditionally. Clamp array reads with
+   `if (i < arr.Length)` and **pre-fill the array's defaults before reading** — a saved count
+   shorter than the current array leaves the tail at those defaults, which is how a rarity, gear
+   category, or consumable added later behaves like a fresh enable. Scalars need no pre-assignment;
+   the read always overwrites them.
+4. Bump `CurrentVersion`.
 5. Service → `SaveData` in `SaveLoadService` (the collect method); `SaveData` → service in
    `MainGameScene`'s load-apply path.
 6. Extend `SaveLoadTests` with a round-trip test *and* a defaults test (a null array persists a
-   zero count, which also exercises the "older file, section absent" path).
+   zero count, which exercises the pre-fill path).
 
 **Two indices are persisted identities and must stay append-only:**
 
