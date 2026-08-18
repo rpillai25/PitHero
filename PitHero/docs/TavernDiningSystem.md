@@ -350,11 +350,11 @@ point)`, rounded to 5g, min 10g. A monotonicity pass then guarantees that among 
 dishes of the same buff type, more magnitude costs strictly more. Rebalancing crop sell prices
 reprices the whole menu automatically (`DishPricingTests` guards this).
 
-## Persistence (save v18, section 33)
+## Persistence (section 33)
 
 Persisted per party slot (`SavedDiningRecord`): `OrderedDishId`, `HasPaid`, `HasEatenToday`,
-`MealDishId`, `MealDeluxe`; plus `FavoriteDishId` and `EatAtTavern`. v17 saves load with
-defaults. On load, meal buffs are rebuilt via `MealBuffService.RestoreRecord` (no HP/MP
+`MealDishId`, `MealDeluxe`; plus `FavoriteDishId` and `EatAtTavern`. On load, meal buffs are
+rebuilt via `MealBuffService.RestoreRecord` (no HP/MP
 re-grant), and an open order forces Stop mode back on so the party returns to the table —
 crops were deducted pre-save and `HasPaid` prevents double payment
 (`CreateTicketPreReserved` recreates the ticket as `ReadyToCook` with full-recipe refund data).

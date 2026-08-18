@@ -790,12 +790,19 @@ namespace PitHero.Tests
         }
 
         /// <summary>
-        /// Verifies that a save stream with an older version header is rejected with
-        /// InvalidDataException. Simulated by writing a current-version binary and patching the
-        /// version bytes down by one.
+        /// The save format is a single version: any header other than CurrentVersion is rejected
+        /// with InvalidDataException, whether it is older or newer. Simulated by writing a
+        /// current-version binary and patching the version bytes.
         /// </summary>
         [TestMethod]
-        public void SaveData_OlderVersionHeader_ThrowsInvalidData()
+        public void SaveData_ForeignVersionHeader_ThrowsInvalidData()
+        {
+            AssertHeaderRejected(SaveData.CurrentVersion - 1, "An older save version must be rejected");
+            AssertHeaderRejected(SaveData.CurrentVersion + 1, "A newer save version must be rejected");
+        }
+
+        /// <summary>Writes a current-version save, patches its version header, and asserts the load throws.</summary>
+        private static void AssertHeaderRejected(int patchedVersion, string message)
         {
             var ms = new MemoryStream();
             using (var writer = new BinaryPersistableWriter(ms))
@@ -807,8 +814,8 @@ namespace PitHero.Tests
 
             byte[] bytes = ms.ToArray();
 
-            // Patch bytes [0-3] to one version below the supported floor (little-endian int)
-            bytes[0] = (byte)(SaveData.MinSupportedVersion - 1);
+            // Patch bytes [0-3] to the target version (little-endian int)
+            bytes[0] = (byte)patchedVersion;
             bytes[1] = 0;
             bytes[2] = 0;
             bytes[3] = 0;
@@ -816,65 +823,8 @@ namespace PitHero.Tests
             var loaded = new SaveData();
             using (var rdr = new BinaryPersistableReader(new MemoryStream(bytes)))
             {
-                Assert.ThrowsException<InvalidDataException>(() => rdr.ReadPersistableInto(loaded),
-                    "Loading a save older than MinSupportedVersion should throw InvalidDataException");
+                Assert.ThrowsException<InvalidDataException>(() => rdr.ReadPersistableInto(loaded), message);
             }
-        }
-
-        /// <summary>
-        /// Verifies that a v17 save (a byte-exact prefix of the current format — no dining
-        /// section 33, automation section 34, or auto-dine section 35) still loads, with
-        /// defaults for all three.
-        /// </summary>
-        [TestMethod]
-        public void SaveData_V17File_LoadsWithDefaultDining()
-        {
-            var ms = new MemoryStream();
-            using (var writer = new BinaryPersistableWriter(ms))
-            {
-                var original = new SaveData();
-                original.HeroName = "LegacyHero";
-                original.FavoriteDishId = 7;
-                original.EatAtTavern = true;
-                writer.Write(original);
-            }
-            byte[] currentBytes = ms.ToArray();
-
-            // Measure the writer's int/bool encodings so the sections-33/34 tail length is exact
-            var probe = new MemoryStream();
-            int intSize, boolSize;
-            using (var probeWriter = new BinaryPersistableWriter(probe))
-            {
-                probeWriter.Write(0);
-                intSize = (int)probe.Length;
-                probeWriter.Write(false);
-                boolSize = (int)probe.Length - intSize;
-            }
-
-            // Section 33 = FavoriteDishId + EatAtTavern + count + 3 records of (2 ints + 3 bools);
-            // section 34 = AutomateMonsterJobs (1 bool); section 35 = PartyAutoDineResume (1 bool)
-            int tailLength = 2 * intSize + boolSize + 3 * (2 * intSize + 3 * boolSize) + 2 * boolSize;
-            byte[] v17Bytes = new byte[currentBytes.Length - tailLength];
-            System.Array.Copy(currentBytes, v17Bytes, v17Bytes.Length);
-
-            // Patch the header to version 17 (little-endian int)
-            v17Bytes[0] = 17;
-            v17Bytes[1] = 0;
-            v17Bytes[2] = 0;
-            v17Bytes[3] = 0;
-
-            var loaded = new SaveData();
-            using (var rdr = new BinaryPersistableReader(new MemoryStream(v17Bytes)))
-            {
-                rdr.ReadPersistableInto(loaded);
-            }
-
-            Assert.AreEqual("LegacyHero", loaded.HeroName, "v17 body should round-trip");
-            Assert.AreEqual(0, loaded.FavoriteDishId, "v17 load should default FavoriteDishId");
-            Assert.IsFalse(loaded.EatAtTavern, "v17 load should default EatAtTavern");
-            Assert.IsNotNull(loaded.PartyDining, "v17 load should get default dining records");
-            Assert.AreEqual(-1, loaded.PartyDining[0].OrderedDishId, "default dining record expected");
-            Assert.IsFalse(loaded.AutomateMonsterJobs, "v17 load should default AutomateMonsterJobs");
         }
 
         /// <summary>
@@ -905,60 +855,6 @@ namespace PitHero.Tests
             {
                 try { Directory.Delete(tempDir, recursive: true); } catch { }
             }
-        }
-
-        /// <summary>
-        /// Verifies the legacy inference for pre-v20 saves: a reloaded member with a meal still
-        /// in progress means the party auto-resumes when done; with no open orders it does not.
-        /// </summary>
-        [TestMethod]
-        public void SaveData_PreV20File_InfersAutoDineResumeFromOpenOrders()
-        {
-            Assert.IsTrue(LoadAsV19(openOrder: true).PartyAutoDineResume,
-                "Pre-v20 file with an open order should infer PartyAutoDineResume = true");
-            Assert.IsFalse(LoadAsV19(openOrder: false).PartyAutoDineResume,
-                "Pre-v20 file with no open orders should leave PartyAutoDineResume = false");
-        }
-
-        /// <summary>Writes a current save, truncates section 35, and patches the header to v19.</summary>
-        private static SaveData LoadAsV19(bool openOrder)
-        {
-            var ms = new MemoryStream();
-            using (var writer = new BinaryPersistableWriter(ms))
-            {
-                var original = new SaveData();
-                if (openOrder)
-                {
-                    original.PartyDining = SaveData.CreateDefaultDiningRecords();
-                    original.PartyDining[1].OrderedDishId = 3;
-                    original.PartyDining[1].HasEatenToday = false;
-                }
-                writer.Write(original);
-            }
-            byte[] v20Bytes = ms.ToArray();
-
-            // Measure the writer's bool encoding so the section-35 tail length is exact
-            var probe = new MemoryStream();
-            int boolSize;
-            using (var probeWriter = new BinaryPersistableWriter(probe))
-            {
-                probeWriter.Write(false);
-                boolSize = (int)probe.Length;
-            }
-
-            byte[] v19Bytes = new byte[v20Bytes.Length - boolSize];
-            System.Array.Copy(v20Bytes, v19Bytes, v19Bytes.Length);
-
-            // Patch the header to version 19 (little-endian int)
-            v19Bytes[0] = 19;
-            v19Bytes[1] = 0;
-            v19Bytes[2] = 0;
-            v19Bytes[3] = 0;
-
-            var loaded = new SaveData();
-            using (var rdr = new BinaryPersistableReader(new MemoryStream(v19Bytes)))
-                rdr.ReadPersistableInto(loaded);
-            return loaded;
         }
 
         /// <summary>
@@ -1012,7 +908,7 @@ namespace PitHero.Tests
                 }
 
                 byte[] bytes = ms.ToArray();
-                bytes[0] = (byte)(SaveData.MinSupportedVersion - 1);
+                bytes[0] = (byte)(SaveData.CurrentVersion - 1);
                 bytes[1] = 0;
                 bytes[2] = 0;
                 bytes[3] = 0;
@@ -1371,28 +1267,6 @@ namespace PitHero.Tests
         }
 
         /// <summary>
-        /// v23–v25 gated consumable auto-purchasing behind a master flag v26 removed. Loading an old
-        /// file with the flag off must clear the selections so behavior is preserved; v26+ files and
-        /// flag-on files must keep them.
-        /// </summary>
-        [TestMethod]
-        public void SaveData_LegacyPurchaseConsumablesMigration()
-        {
-            var selected = new bool[] { true, false, true };
-
-            SaveData.ApplyLegacyPurchaseConsumablesMigration(25, purchaseConsumables: false, selected);
-            CollectionAssert.AreEqual(new bool[3], selected, "Pre-v26 with the flag off clears every selection");
-
-            selected = new bool[] { true, false, true };
-            SaveData.ApplyLegacyPurchaseConsumablesMigration(25, purchaseConsumables: true, selected);
-            CollectionAssert.AreEqual(new[] { true, false, true }, selected, "Pre-v26 with the flag on keeps selections");
-
-            selected = new bool[] { true, false, true };
-            SaveData.ApplyLegacyPurchaseConsumablesMigration(26, purchaseConsumables: false, selected);
-            CollectionAssert.AreEqual(new[] { true, false, true }, selected, "v26+ files never migrate — the flag is a dead slot");
-        }
-
-        /// <summary>
         /// v27 round-trip: SaveData.PlacedStencils (2 records) persists and recovers correctly
         /// through the binary serializer (section 44).
         /// </summary>
@@ -1434,53 +1308,6 @@ namespace PitHero.Tests
             {
                 try { Directory.Delete(tempDir, recursive: true); } catch { }
             }
-        }
-
-        /// <summary>
-        /// Backward-compatibility: a v26 binary (no section 44) loads with an empty PlacedStencils
-        /// list. This mirrors the v17-file pattern in SaveData_V17File_LoadsWithDefaultDining.
-        /// </summary>
-        [TestMethod]
-        public void SaveData_V26File_LoadsWithEmptyPlacedStencils()
-        {
-            // Write a v27 (current-version) binary.
-            var ms = new MemoryStream();
-            using (var writer = new BinaryPersistableWriter(ms))
-            {
-                var original = new SaveData();
-                original.HeroName = "PreStencilHero";
-                writer.Write(original);
-            }
-            byte[] currentBytes = ms.ToArray();
-
-            // Measure the encoded size of one int (the stencil count for an empty list = writer.Write(0)).
-            var probe = new MemoryStream();
-            int intSize;
-            using (var probeWriter = new BinaryPersistableWriter(probe))
-            {
-                probeWriter.Write(0);
-                intSize = (int)probe.Length;
-            }
-
-            // Truncate the last intSize bytes (section 44: count=0 is the only byte written for an empty list).
-            byte[] v26Bytes = new byte[currentBytes.Length - intSize];
-            System.Array.Copy(currentBytes, v26Bytes, v26Bytes.Length);
-
-            // Patch the version header to 26 (little-endian int at bytes 0-3).
-            v26Bytes[0] = 26;
-            v26Bytes[1] = 0;
-            v26Bytes[2] = 0;
-            v26Bytes[3] = 0;
-
-            var loaded = new SaveData();
-            using (var rdr = new BinaryPersistableReader(new MemoryStream(v26Bytes)))
-            {
-                rdr.ReadPersistableInto(loaded);
-            }
-
-            Assert.AreEqual("PreStencilHero", loaded.HeroName, "v26 body must still load correctly");
-            Assert.IsNotNull(loaded.PlacedStencils, "v26 load must initialize PlacedStencils to an empty list");
-            Assert.AreEqual(0, loaded.PlacedStencils.Count, "v26 load must yield zero placed stencils");
         }
 
         /// <summary>

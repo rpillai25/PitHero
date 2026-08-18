@@ -262,19 +262,13 @@ namespace PitHero.Services
     /// <summary>Central save data container implementing IPersistable for binary persistence.</summary>
     public class SaveData : IPersistable
     {
-        /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 29;
-
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v26 files are byte-exact
-        /// prefixes of v27 (sections 33 dining, 34 automation, 35 auto-dine resume,
-        /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
-        /// 39 auto-purchase items, 40 auto-equip, 41 auto-hire mercenaries,
-        /// 42 auto-learn hero skills, 43 consumable sell options,
-        /// 44 placed stencils, 45 refrigerator, and 46 runner carry level were appended
-        /// at the end), so they load with default state for the missing sections.
+        /// The one and only save file version this build reads or writes. There is no migration
+        /// path and no reader for any other layout: a file whose header is not exactly this value
+        /// is rejected with InvalidDataException, and SaveLoadService treats that slot as empty.
+        /// Bump it whenever the byte layout changes.
         /// </summary>
-        public const int MinSupportedVersion = 17;
+        public const int CurrentVersion = 29;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -546,10 +540,9 @@ namespace PitHero.Services
         public bool AutoPurchaseMercenaryGear = false;
 
         /// <summary>
-        /// Legacy (v23–v25): whether the selected consumables were auto-purchased. The master flag
-        /// was removed in v26 — selection alone decides — but the slot stays in section 39 to keep
-        /// old files byte-exact prefixes; v26+ always writes true. On pre-v26 loads a false value
-        /// clears AutoPurchaseConsumableSelected so old behavior is preserved.
+        /// Dead slot. A v23-era master flag gating consumable auto-purchase; v26 removed it —
+        /// selection alone decides. The bool stays in section 39 so the layout is not reshaped
+        /// (Persist always writes true), and nothing reads this field outside serialization.
         /// </summary>
         public bool AutoPurchaseConsumables = true;
 
@@ -1039,7 +1032,7 @@ namespace PitHero.Services
             writer.Write(AutoPurchaseItems);
             writer.Write(AutoPurchaseConsumablesFirst);
             writer.Write(AutoPurchaseMercenaryGear);
-            writer.Write(true); // legacy AutoPurchaseConsumables slot — master flag removed in v26
+            writer.Write(true); // dead AutoPurchaseConsumables slot — kept so the layout stays unreshaped
 
             int buyRarityCount = AutoPurchaseRarityAllowed != null ? AutoPurchaseRarityAllowed.Length : 0;
             writer.Write(buyRarityCount);
@@ -1115,8 +1108,8 @@ namespace PitHero.Services
         {
             // 1. File Version
             int fileVersion = reader.ReadInt();
-            if (fileVersion < MinSupportedVersion || fileVersion > CurrentVersion)
-                throw new System.IO.InvalidDataException($"Unsupported save file version {fileVersion} (expected {MinSupportedVersion}-{CurrentVersion})");
+            if (fileVersion != CurrentVersion)
+                throw new System.IO.InvalidDataException($"Unsupported save file version {fileVersion} (expected {CurrentVersion})");
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
@@ -1476,95 +1469,64 @@ namespace PitHero.Services
             // 32. Auto-sell keep stacks
             AutoSellKeepStacks = reader.ReadInt();
 
-            // 33. Party dining (issue #319, v18+). v17 files end at section 32 — defaults apply.
+            // 33. Party dining (issue #319, section added in v18). The array is pre-built because a
+            // saved party smaller than the current one leaves the trailing slots at their defaults.
             PartyDining = CreateDefaultDiningRecords();
-            if (fileVersion >= 18)
+            FavoriteDishId = reader.ReadInt();
+            EatAtTavern = reader.ReadBool();
+            int diningCount = reader.ReadInt();
+            for (int i = 0; i < diningCount; i++)
             {
-                FavoriteDishId = reader.ReadInt();
-                EatAtTavern = reader.ReadBool();
-                int diningCount = reader.ReadInt();
-                for (int i = 0; i < diningCount; i++)
+                var record = new SavedDiningRecord
                 {
-                    var record = new SavedDiningRecord
-                    {
-                        OrderedDishId = reader.ReadInt(),
-                        HasPaid = reader.ReadBool(),
-                        HasEatenToday = reader.ReadBool(),
-                        MealDishId = reader.ReadInt(),
-                        MealDeluxe = reader.ReadBool(),
-                    };
-                    if (i < PartyDining.Length)
-                        PartyDining[i] = record;
-                }
+                    OrderedDishId = reader.ReadInt(),
+                    HasPaid = reader.ReadBool(),
+                    HasEatenToday = reader.ReadBool(),
+                    MealDishId = reader.ReadInt(),
+                    MealDeluxe = reader.ReadBool(),
+                };
+                if (i < PartyDining.Length)
+                    PartyDining[i] = record;
             }
 
-            // 34. Automation (issue #321, v19+). Older files end at section 33 — default false.
-            if (fileVersion >= 19)
-                AutomateMonsterJobs = reader.ReadBool();
+            // 34. Automation (issue #321, section added in v19).
+            AutomateMonsterJobs = reader.ReadBool();
 
-            // 35. Auto-dine resume (v20+). Legacy files can't distinguish a manual Stop from a
-            // breakfast trip, so infer: a reloaded member with a meal still in progress means
-            // the party should stand up when everyone finishes — otherwise they'd sit at the
-            // tavern forever waiting for a Play press.
-            if (fileVersion >= 20)
-            {
-                PartyAutoDineResume = reader.ReadBool();
-            }
-            else if (PartyDining != null)
-            {
-                for (int i = 0; i < PartyDining.Length; i++)
-                {
-                    if (PartyDining[i].OrderedDishId >= 0 && !PartyDining[i].HasEatenToday)
-                    {
-                        PartyAutoDineResume = true;
-                        break;
-                    }
-                }
-            }
+            // 35. Auto-dine resume (section added in v20).
+            PartyAutoDineResume = reader.ReadBool();
 
-            // 36. Auto-sell excess items (v21+). Older files end at section 35 — defaults apply
-            // (enabled, all rarities allowed). Rarities default to all-true so rarities added
-            // after the save was written behave like a fresh enable.
+            // 36. Auto-sell excess items (section added in v21). Rarities are pre-filled all-true so
+            // a rarity added after the file was written behaves like a fresh enable.
             AutoSellRarityAllowed = new bool[5];
             for (int i = 0; i < AutoSellRarityAllowed.Length; i++)
                 AutoSellRarityAllowed[i] = true;
-            if (fileVersion >= 21)
+            AutoSellExcessItems = reader.ReadBool();
+            int rarityCount = reader.ReadInt();
+            for (int i = 0; i < rarityCount; i++)
             {
-                AutoSellExcessItems = reader.ReadBool();
-                int rarityCount = reader.ReadInt();
-                for (int i = 0; i < rarityCount; i++)
-                {
-                    bool allowed = reader.ReadBool();
-                    if (i < AutoSellRarityAllowed.Length)
-                        AutoSellRarityAllowed[i] = allowed;
-                }
+                bool allowed = reader.ReadBool();
+                if (i < AutoSellRarityAllowed.Length)
+                    AutoSellRarityAllowed[i] = allowed;
             }
 
-            // 37. Auto-sell priority (v22+). Older files default to consumables-first.
-            AutoSellConsumablesFirst = true;
-            if (fileVersion >= 22)
-                AutoSellConsumablesFirst = reader.ReadBool();
+            // 37. Auto-sell priority (section added in v22).
+            AutoSellConsumablesFirst = reader.ReadBool();
 
-            // 38. Gear sell types (v23+). Older files end at section 37 — all categories sellable.
+            // 38. Gear sell types (section added in v23). Pre-filled all-true so categories added
+            // after the file was written stay sellable.
             AutoSellGearTypeAllowed = new bool[RolePlayingFramework.Equipment.GearCategoryUtils.Count];
             for (int i = 0; i < AutoSellGearTypeAllowed.Length; i++)
                 AutoSellGearTypeAllowed[i] = true;
-            if (fileVersion >= 23)
+            int sellTypeCount = reader.ReadInt();
+            for (int i = 0; i < sellTypeCount; i++)
             {
-                int sellTypeCount = reader.ReadInt();
-                for (int i = 0; i < sellTypeCount; i++)
-                {
-                    bool allowed = reader.ReadBool();
-                    if (i < AutoSellGearTypeAllowed.Length)
-                        AutoSellGearTypeAllowed[i] = allowed;
-                }
+                bool allowed = reader.ReadBool();
+                if (i < AutoSellGearTypeAllowed.Length)
+                    AutoSellGearTypeAllowed[i] = allowed;
             }
 
-            // 39. Auto-purchase items (v23+). Older files default to disabled with all filters open.
-            AutoPurchaseItems = false;
-            AutoPurchaseConsumablesFirst = false;
-            AutoPurchaseMercenaryGear = false;
-            AutoPurchaseConsumables = true;
+            // 39. Auto-purchase items (section added in v23). Filter arrays are pre-filled permissive
+            // and stacks default to 1 so entries beyond the saved count keep fresh-game behavior.
             AutoPurchaseRarityAllowed = new bool[5];
             for (int i = 0; i < AutoPurchaseRarityAllowed.Length; i++)
                 AutoPurchaseRarityAllowed[i] = true;
@@ -1575,74 +1537,55 @@ namespace PitHero.Services
             AutoPurchaseConsumableStacks = new int[RolePlayingFramework.Equipment.ConsumableCatalog.Count];
             for (int i = 0; i < AutoPurchaseConsumableStacks.Length; i++)
                 AutoPurchaseConsumableStacks[i] = 1;
-            if (fileVersion >= 23)
-            {
-                AutoPurchaseItems = reader.ReadBool();
-                AutoPurchaseConsumablesFirst = reader.ReadBool();
-                AutoPurchaseMercenaryGear = reader.ReadBool();
-                AutoPurchaseConsumables = reader.ReadBool();
 
-                int buyRarityCount = reader.ReadInt();
-                for (int i = 0; i < buyRarityCount; i++)
+            AutoPurchaseItems = reader.ReadBool();
+            AutoPurchaseConsumablesFirst = reader.ReadBool();
+            AutoPurchaseMercenaryGear = reader.ReadBool();
+            AutoPurchaseConsumables = reader.ReadBool(); // dead slot, always written true
+
+            int buyRarityCount = reader.ReadInt();
+            for (int i = 0; i < buyRarityCount; i++)
+            {
+                bool allowed = reader.ReadBool();
+                if (i < AutoPurchaseRarityAllowed.Length)
+                    AutoPurchaseRarityAllowed[i] = allowed;
+            }
+
+            int buyTypeCount = reader.ReadInt();
+            for (int i = 0; i < buyTypeCount; i++)
+            {
+                bool allowed = reader.ReadBool();
+                if (i < AutoPurchaseGearTypeAllowed.Length)
+                    AutoPurchaseGearTypeAllowed[i] = allowed;
+            }
+
+            int consumableCount = reader.ReadInt();
+            for (int i = 0; i < consumableCount; i++)
+            {
+                bool selected = reader.ReadBool();
+                int stacks = reader.ReadInt();
+                if (i < AutoPurchaseConsumableSelected.Length)
                 {
-                    bool allowed = reader.ReadBool();
-                    if (i < AutoPurchaseRarityAllowed.Length)
-                        AutoPurchaseRarityAllowed[i] = allowed;
+                    AutoPurchaseConsumableSelected[i] = selected;
+                    AutoPurchaseConsumableStacks[i] = stacks;
                 }
-
-                int buyTypeCount = reader.ReadInt();
-                for (int i = 0; i < buyTypeCount; i++)
-                {
-                    bool allowed = reader.ReadBool();
-                    if (i < AutoPurchaseGearTypeAllowed.Length)
-                        AutoPurchaseGearTypeAllowed[i] = allowed;
-                }
-
-                int consumableCount = reader.ReadInt();
-                for (int i = 0; i < consumableCount; i++)
-                {
-                    bool selected = reader.ReadBool();
-                    int stacks = reader.ReadInt();
-                    if (i < AutoPurchaseConsumableSelected.Length)
-                    {
-                        AutoPurchaseConsumableSelected[i] = selected;
-                        AutoPurchaseConsumableStacks[i] = stacks;
-                    }
-                }
-
-                ApplyLegacyPurchaseConsumablesMigration(fileVersion, AutoPurchaseConsumables, AutoPurchaseConsumableSelected);
             }
 
-            // 40. Auto-equip (v23+). Older files default to both on, matching the runtime defaults.
-            AutoEquipHero = true;
-            AutoEquipMercenaries = true;
-            if (fileVersion >= 23)
-            {
-                AutoEquipHero = reader.ReadBool();
-                AutoEquipMercenaries = reader.ReadBool();
-            }
+            // 40. Auto-equip (section added in v23).
+            AutoEquipHero = reader.ReadBool();
+            AutoEquipMercenaries = reader.ReadBool();
 
-            // 41. Auto-hire mercenaries (v24+). Older files default to disabled, both slots None.
-            AutoHireMercenariesEnabled = false;
-            AutoHireMerc1Job = 0;
-            AutoHireMerc2Job = 0;
-            if (fileVersion >= 24)
-            {
-                AutoHireMercenariesEnabled = reader.ReadBool();
-                AutoHireMerc1Job = reader.ReadInt();
-                AutoHireMerc2Job = reader.ReadInt();
-            }
+            // 41. Auto-hire mercenaries (section added in v24).
+            AutoHireMercenariesEnabled = reader.ReadBool();
+            AutoHireMerc1Job = reader.ReadInt();
+            AutoHireMerc2Job = reader.ReadInt();
 
-            // 42. Auto-learn hero skills (v25+). Older files default to disabled, Smart mode.
-            AutoLearnSkillsEnabled = false;
-            AutoLearnMode = 0;
-            if (fileVersion >= 25)
-            {
-                AutoLearnSkillsEnabled = reader.ReadBool();
-                AutoLearnMode = reader.ReadInt();
-            }
+            // 42. Auto-learn hero skills (section added in v25).
+            AutoLearnSkillsEnabled = reader.ReadBool();
+            AutoLearnMode = reader.ReadInt();
 
-            // 43. Consumable sell options (v26+). Older files default to everything sellable, keep 1 stack.
+            // 43. Consumable sell options (section added in v26). Pre-filled sellable/keep-1 so
+            // consumables added after the file was written stay sellable.
             AutoSellConsumableSelected = new bool[RolePlayingFramework.Equipment.ConsumableCatalog.Count];
             AutoSellConsumableMinStacks = new int[RolePlayingFramework.Equipment.ConsumableCatalog.Count];
             for (int i = 0; i < AutoSellConsumableSelected.Length; i++)
@@ -1650,78 +1593,51 @@ namespace PitHero.Services
                 AutoSellConsumableSelected[i] = true;
                 AutoSellConsumableMinStacks[i] = 1;
             }
-            if (fileVersion >= 26)
+            int sellConsumableCount = reader.ReadInt();
+            for (int i = 0; i < sellConsumableCount; i++)
             {
-                int sellConsumableCount = reader.ReadInt();
-                for (int i = 0; i < sellConsumableCount; i++)
+                bool selected = reader.ReadBool();
+                int minStacks = reader.ReadInt();
+                if (i < AutoSellConsumableSelected.Length)
                 {
-                    bool selected = reader.ReadBool();
-                    int minStacks = reader.ReadInt();
-                    if (i < AutoSellConsumableSelected.Length)
-                    {
-                        AutoSellConsumableSelected[i] = selected;
-                        AutoSellConsumableMinStacks[i] = minStacks;
-                    }
+                    AutoSellConsumableSelected[i] = selected;
+                    AutoSellConsumableMinStacks[i] = minStacks;
                 }
             }
 
-            // 44. Placed stencils (v27+). Older files default to no placed stencils.
+            // 44. Placed stencils (section added in v27).
             PlacedStencils = new List<SavedPlacedStencil>();
-            if (fileVersion >= 27)
+            int placedCount = reader.ReadInt();
+            for (int i = 0; i < placedCount; i++)
             {
-                int placedCount = reader.ReadInt();
-                for (int i = 0; i < placedCount; i++)
-                {
-                    SavedPlacedStencil s;
-                    s.PatternId = reader.ReadString();
-                    s.AnchorX = reader.ReadInt();
-                    s.AnchorY = reader.ReadInt();
-                    PlacedStencils.Add(s);
-                }
+                SavedPlacedStencil s;
+                s.PatternId = reader.ReadString();
+                s.AnchorX = reader.ReadInt();
+                s.AnchorY = reader.ReadInt();
+                PlacedStencils.Add(s);
             }
 
-            // 45. Refrigerator (v28+). Older files default to an empty fridge, slider at 1.
+            // 45. Refrigerator (section added in v28).
             FridgeSlots = new List<SavedHarvestSlot>();
-            FridgePreStockStackSize = 1;
-            if (fileVersion >= 28)
+            int fridgeSlotCount = reader.ReadInt();
+            for (int i = 0; i < fridgeSlotCount; i++)
             {
-                int fridgeSlotCount = reader.ReadInt();
-                for (int i = 0; i < fridgeSlotCount; i++)
-                {
-                    SavedHarvestSlot s;
-                    s.SlotIndex = reader.ReadInt();
-                    s.CropTypeId = reader.ReadInt();
-                    s.Count = reader.ReadInt();
-                    FridgeSlots.Add(s);
-                }
-                int preStock = reader.ReadInt();
-                if (preStock < GameConfig.KitchenPreStockStackSizeMin) preStock = GameConfig.KitchenPreStockStackSizeMin;
-                if (preStock > GameConfig.KitchenPreStockStackSizeMax) preStock = GameConfig.KitchenPreStockStackSizeMax;
-                FridgePreStockStackSize = preStock;
+                SavedHarvestSlot s;
+                s.SlotIndex = reader.ReadInt();
+                s.CropTypeId = reader.ReadInt();
+                s.Count = reader.ReadInt();
+                FridgeSlots.Add(s);
             }
+            int preStock = reader.ReadInt();
+            if (preStock < GameConfig.KitchenPreStockStackSizeMin) preStock = GameConfig.KitchenPreStockStackSizeMin;
+            if (preStock > GameConfig.KitchenPreStockStackSizeMax) preStock = GameConfig.KitchenPreStockStackSizeMax;
+            FridgePreStockStackSize = preStock;
 
-            // 46. Runner carry level (v29+). Older files default to level 1 (1 unit per crop).
-            RunnerCarryLevel = 1;
-            if (fileVersion >= 29)
-            {
-                int carry = reader.ReadInt();
-                if (carry < GameConfig.KitchenRunnerCarryLevelMin) carry = GameConfig.KitchenRunnerCarryLevelMin;
-                if (carry > GameConfig.KitchenRunnerCarryLevelMax) carry = GameConfig.KitchenRunnerCarryLevelMax;
-                RunnerCarryLevel = carry;
-            }
-        }
-
-        /// <summary>
-        /// v23–v25 gated consumable auto-purchasing behind a master flag that v26 removed. A pre-v26
-        /// file with the flag off must come back with no consumables selected, otherwise selections
-        /// the player made while the flag was off would silently start purchasing.
-        /// </summary>
-        public static void ApplyLegacyPurchaseConsumablesMigration(int fileVersion, bool purchaseConsumables, bool[] consumableSelected)
-        {
-            if (fileVersion >= 26 || purchaseConsumables || consumableSelected == null)
-                return;
-            for (int i = 0; i < consumableSelected.Length; i++)
-                consumableSelected[i] = false;
+            // 46. Runner carry level (section added in v29).
+            int carry = reader.ReadInt();
+            if (carry < GameConfig.KitchenRunnerCarryLevelMin) carry = GameConfig.KitchenRunnerCarryLevelMin;
+            if (carry > GameConfig.KitchenRunnerCarryLevelMax) carry = GameConfig.KitchenRunnerCarryLevelMax;
+            RunnerCarryLevel = carry;
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>
