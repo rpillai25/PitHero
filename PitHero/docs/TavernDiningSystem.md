@@ -415,6 +415,9 @@ reprices the whole menu automatically (`DishPricingTests` guards this).
 Save version **30** (issue #392). Persisted per party slot (`SavedDiningRecord`):
 `OrderedDishId`, `HasPaid`, `HasEatenThisMeal` (renamed from `HasEatenToday`),
 `MealDishId`, `MealDeluxe`, `MealExpiresAtSeconds`; plus `FavoriteDishId` and `EatAtTavern`.
+v29 files still load (backwards compatibility is mandatory — see AGENTS.md "Save Format"):
+`MealExpiresAtSeconds` is read only when `fileVersion >= 30` and defaults to 0 for v29, so a
+pre-#392 meal buff is dropped cleanly and the party simply re-eats at the next meal period.
 On load, meal buffs are rebuilt via `MealBuffService.RestoreRecord` only when
 `MealExpiresAtSeconds > InGameTimeService.AccumulatedSeconds` at load time (expired records
 are discarded and the slot mirrors cleared). An open order forces Stop mode back on so the

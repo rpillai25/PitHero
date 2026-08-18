@@ -790,14 +790,15 @@ namespace PitHero.Tests
         }
 
         /// <summary>
-        /// The save format is a single version: any header other than CurrentVersion is rejected
-        /// with InvalidDataException, whether it is older or newer. Simulated by writing a
-        /// current-version binary and patching the version bytes.
+        /// Backwards compatibility policy: versions MinSupportedVersion..CurrentVersion load;
+        /// anything below MinSupportedVersion or above CurrentVersion is rejected with
+        /// InvalidDataException. Simulated by writing a current-version binary and patching the
+        /// version bytes.
         /// </summary>
         [TestMethod]
-        public void SaveData_ForeignVersionHeader_ThrowsInvalidData()
+        public void SaveData_UnsupportedVersionHeader_ThrowsInvalidData()
         {
-            AssertHeaderRejected(SaveData.CurrentVersion - 1, "An older save version must be rejected");
+            AssertHeaderRejected(SaveData.MinSupportedVersion - 1, "A version below MinSupportedVersion must be rejected");
             AssertHeaderRejected(SaveData.CurrentVersion + 1, "A newer save version must be rejected");
         }
 
@@ -824,6 +825,61 @@ namespace PitHero.Tests
             using (var rdr = new BinaryPersistableReader(new MemoryStream(bytes)))
             {
                 Assert.ThrowsException<InvalidDataException>(() => rdr.ReadPersistableInto(loaded), message);
+            }
+        }
+
+        /// <summary>
+        /// Backwards compatibility (issue #392): a v29 dining record (no MealExpiresAtSeconds)
+        /// must still read, defaulting the expiry to 0 so the pre-#392 buff is dropped cleanly.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V29DiningRecord_ReadsWithDefaultExpiry()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                // v29 layout: OrderedDishId, HasPaid, HasEatenThisMeal, MealDishId, MealDeluxe
+                writer.Write(3);
+                writer.Write(true);
+                writer.Write(true);
+                writer.Write(5);
+                writer.Write(true);
+                // Trailing sentinel proves the v29 read consumed exactly the v29 bytes
+                writer.Write(42);
+            }
+
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+            {
+                var record = SaveData.ReadDiningRecord(rdr, 29);
+                Assert.AreEqual(3, record.OrderedDishId, "OrderedDishId should read from v29 layout");
+                Assert.AreEqual(true, record.HasPaid, "HasPaid should read from v29 layout");
+                Assert.AreEqual(true, record.HasEatenThisMeal, "HasEatenThisMeal should read from v29 layout");
+                Assert.AreEqual(5, record.MealDishId, "MealDishId should read from v29 layout");
+                Assert.AreEqual(true, record.MealDeluxe, "MealDeluxe should read from v29 layout");
+                Assert.AreEqual(0f, record.MealExpiresAtSeconds, "v29 records must default expiry to 0");
+                Assert.AreEqual(42, rdr.ReadInt(), "v29 read must not consume bytes past the record");
+            }
+        }
+
+        /// <summary>The v30 dining record layout reads its own expiry field back.</summary>
+        [TestMethod]
+        public void SaveData_V30DiningRecord_ReadsExpiry()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                writer.Write(3);
+                writer.Write(true);
+                writer.Write(true);
+                writer.Write(5);
+                writer.Write(true);
+                writer.Write(1234.5f);
+            }
+
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+            {
+                var record = SaveData.ReadDiningRecord(rdr, 30);
+                Assert.AreEqual(1234.5f, record.MealExpiresAtSeconds, "v30 records must read the expiry stamp");
             }
         }
 
@@ -908,7 +964,7 @@ namespace PitHero.Tests
                 }
 
                 byte[] bytes = ms.ToArray();
-                bytes[0] = (byte)(SaveData.CurrentVersion - 1);
+                bytes[0] = (byte)(SaveData.MinSupportedVersion - 1);
                 bytes[1] = 0;
                 bytes[2] = 0;
                 bytes[3] = 0;
