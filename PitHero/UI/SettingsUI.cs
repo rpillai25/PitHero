@@ -930,7 +930,9 @@ namespace PitHero.UI
         private void PopulateAutomationTab(Tab automationTab, Skin skin)
         {
             var autoShopTable = new Table();
-            autoShopTable.Pad(20);
+            // Horizontal only - the vertical insets live on the ScrollPane cell below, where they
+            // shrink the viewport instead of scrolling away with the rows.
+            autoShopTable.PadLeft(20f).PadRight(20f);
 
             string monsterJobsTooltip = GetText(TextType.UI, UITextKey.SettingsAutomateMonsterJobsTooltip);
             _automateMonsterJobsCheckBox = new HoverableCheckBox(
@@ -1090,11 +1092,15 @@ namespace PitHero.UI
             PopulateAutoHireControls(autoShopTable, skin);
 
             // The tab keeps growing as automation options are added, so it scrolls vertically.
-            // The right pad insets the scrollbar from the window edge instead of hugging it.
+            // The pads MUST stay on the cell, not on autoShopTable: cell pads shrink the viewport
+            // (and therefore the clip rect), while content pads just scroll away with the rows.
+            // Top keeps scrolled content off the tab strip, bottom keeps it off the window
+            // ninepatch frame (24px inset), right insets the scrollbar from the window edge.
             var automationScrollPane = new ScrollPane(autoShopTable, skin, "ph-default");
             automationScrollPane.SetScrollingDisabled(true, false);
             automationScrollPane.SetFadeScrollBars(false);
-            automationTab.Add(automationScrollPane).Expand().Fill().SetPadRight(12f);
+            automationTab.Add(automationScrollPane).Expand().Fill()
+                         .SetPadTop(8f).SetPadBottom(24f).SetPadRight(12f);
         }
 
         /// <summary>Adds the "Auto-Purchase Items" checkbox and its sub-controls to the Automation tab.</summary>
