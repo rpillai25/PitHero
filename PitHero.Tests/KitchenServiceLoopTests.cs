@@ -979,13 +979,15 @@ namespace PitHero.Tests
         public void HasClosingWork_CrewDrainsOnlyWhenEverythingIsDone()
         {
             // The closing crew must stay for each kind of remaining work independently:
-            // an undelivered ticket, a seated guest still at their food, or a queued plate.
-            // Dropping any term strands dirty tables overnight (issue #392 follow-up).
-            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(true, 0, 0), "undelivered ticket holds the crew");
-            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 1, 0), "queued plate holds the crew");
-            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 0, 1), "eating guest holds the crew");
-            Assert.IsFalse(KitchenTaskCoordinator.HasClosingWork(false, 0, 0),
-                "all tickets delivered, guests gone, plates bussed — crew goes home");
+            // an undelivered ticket, a seated guest still at their food, a queued plate, or an
+            // orphaned serving (cooked dish whose ticket was canceled at close). Dropping any
+            // term strands dirty tables or abandoned food overnight (issue #392 follow-ups).
+            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(true, 0, 0, 0), "undelivered ticket holds the crew");
+            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 1, 0, 0), "queued plate holds the crew");
+            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 0, 1, 0), "eating guest holds the crew");
+            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 0, 0, 1), "orphaned serving holds the crew");
+            Assert.IsFalse(KitchenTaskCoordinator.HasClosingWork(false, 0, 0, 0),
+                "all tickets delivered, guests gone, plates bussed, orphans sunk — crew goes home");
         }
     }
 }

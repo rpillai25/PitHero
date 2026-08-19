@@ -144,11 +144,14 @@ namespace PitHero.Services
 
         /// <summary>
         /// After closing time, work that must finish before the crew drains home: undelivered
-        /// tickets, seated guests still eating (their plates are coming), and plates queued for
-        /// bussing. Pure — the closure gate in Update() feeds it live counts.
+        /// tickets, seated guests still eating (their plates are coming), plates queued for
+        /// bussing, and orphaned servings (a cooked dish whose ticket was canceled — patron left
+        /// or party departed for night sleep — sits on the serving table until a server sinks
+        /// it). Pure — the closure gate in Update() feeds it live counts.
         /// </summary>
-        public static bool HasClosingWork(bool hasUndeliveredTickets, int busJobCount, int diningPatrons)
-            => hasUndeliveredTickets || busJobCount > 0 || diningPatrons > 0;
+        public static bool HasClosingWork(bool hasUndeliveredTickets, int busJobCount,
+            int diningPatrons, int orphanedDishes)
+            => hasUndeliveredTickets || busJobCount > 0 || diningPatrons > 0 || orphanedDishes > 0;
 
         /// <summary>Total kitchen role posts — the cap on simultaneous kitchen workers.</summary>
         public static int MaxWorkerPosts =>
@@ -638,7 +641,8 @@ namespace PitHero.Services
                 }
                 EnsureServices();
                 hasClosingWork = HasClosingWork(hasUndeliveredTickets, _busJobs.Count,
-                    _mercenaryManager != null ? _mercenaryManager.CountPatronsDining() : 0);
+                    _mercenaryManager != null ? _mercenaryManager.CountPatronsDining() : 0,
+                    _orphanServing.Count);
             }
 
             var roster = _alliedMonsters.AlliedMonsters;

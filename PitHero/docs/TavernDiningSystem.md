@@ -329,16 +329,19 @@ Issue #392. `TavernScheduleConfig.IsKitchenClosed(hour)` returns true for hours 
   return false when closed. `KitchenTaskCoordinator.CreateTicket` also returns null as a
   belt-and-braces guard. (`CreateTicketPreReserved` is exempted — it is the save-reload path.)
 - **Crew wind-down**: `KitchenTaskCoordinator.Update()` computes `closed` (from `timeService`,
-  null → open) and `HasClosingWork(hasUndeliveredTickets, busJobCount, diningPatrons)` —
-  undelivered tickets (any state not `Delivered`/`Canceled`), plates queued for bussing, and
-  seated guests still at their food (`MercenaryManager.CountPatronsDining()`:
-  `FoodDelivered`/`Eating`/`FinishedEating`). While closed and no closing work remains, workers
-  are not added to `_wantedAssignments`, so the existing reconcile sends everyone home via
-  `RequestReturnHome`. The crew therefore delivers every in-flight dish, waits out the last
-  eaters, busses the final plates, and only then drains — leaving every table clean for
-  overnight arrivals (a crew that left at the last delivery stranded dirty tables all night and
-  door-waiters piled up). This is independent of `IsAsleep`, which means nocturnal workers
-  (Orc, Skeleton, GhostMiner — awake 10 PM–6 AM) are also excluded from kitchen duty overnight.
+  null → open) and `HasClosingWork(hasUndeliveredTickets, busJobCount, diningPatrons,
+  orphanedDishes)` — undelivered tickets (any state not `Delivered`/`Canceled`), plates queued
+  for bussing, seated guests still at their food (`MercenaryManager.CountPatronsDining()`:
+  `FoodDelivered`/`Eating`/`FinishedEating`), and orphaned servings (`_orphanServing` — a
+  cooked dish whose ticket was canceled at close, e.g. the patron left on reduced patience or
+  the party departed for night sleep mid-order; a server sinks it). While closed and no closing
+  work remains, workers are not added to `_wantedAssignments`, so the existing reconcile sends
+  everyone home via `RequestReturnHome`. The crew therefore delivers every in-flight dish,
+  waits out the last eaters, busses the final plates, sinks any abandoned food, and only then
+  drains — leaving every table clean for overnight arrivals (a crew that left at the last
+  delivery stranded dirty tables all night and door-waiters piled up). This is independent of
+  `IsAsleep`, which means nocturnal workers (Orc, Skeleton, GhostMiner — awake 10 PM–6 AM) are
+  also excluded from kitchen duty overnight.
 - **Shift-end speech bubble**: `ReturnHome_Enter` now says the shift-end bubble when
   `IsAsleep(...) || IsKitchenClosed(hour)` (so nocturnal workers' closing-time departure looks
   like a real shift end, not a role change).
