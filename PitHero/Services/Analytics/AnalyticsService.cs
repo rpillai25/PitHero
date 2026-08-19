@@ -858,6 +858,25 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>
+        /// Logs the outcome of an auto-dine trip decision at a meal edge: "started", or the
+        /// reason the whole trip was skipped (e.g. "no_ingredients", "kitchen_unstaffed").
+        /// One event per meal period — makes silent meal skips diagnosable from the session log.
+        /// </summary>
+        [Conditional("DEBUG")]
+        public static void LogPartyMealTrip(string meal, string outcome)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("party_meal_trip"))
+                return;
+            _json.Field("meal", meal);
+            _json.Field("outcome", outcome);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs a party member skipped during a tavern seating (no order taken, no charge).</summary>
         [Conditional("DEBUG")]
         public static void LogPartyDineSkipped(int slot, string member, string dish, string reason)

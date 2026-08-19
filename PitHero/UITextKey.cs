@@ -309,6 +309,11 @@ namespace PitHero
         public const string ConsoleNightSleep = "ConsoleNightSleep";
         public const string ConsoleBreakfastSkipped = "ConsoleBreakfastSkipped";
         public const string ConsoleBreakfastSkippedGold = "ConsoleBreakfastSkippedGold";
+        public const string ConsoleLunchSkipped = "ConsoleLunchSkipped";
+        public const string ConsoleLunchSkippedGold = "ConsoleLunchSkippedGold";
+        public const string ConsoleDinnerSkipped = "ConsoleDinnerSkipped";
+        public const string ConsoleDinnerSkippedGold = "ConsoleDinnerSkippedGold";
+        public const string JobKitchenClosed = "JobKitchenClosed";
         public const string ConsoleMercenaryHired = "ConsoleMercenaryHired";
         public const string ConsoleMonsterAttack = "ConsoleMonsterAttack";
         public const string ConsoleItemFound = "ConsoleItemFound";

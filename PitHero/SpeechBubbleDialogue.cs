@@ -94,6 +94,20 @@ namespace PitHero
             new Option(DialogueTextKey.HeroBreakfastWhatsFor),
         });
 
+        // SayLunch — two variants, no gate (issue #392)
+        private static readonly OptionBag LunchOptions = new OptionBag(new Option[]
+        {
+            new Option(DialogueTextKey.HeroLunchTime),
+            new Option(DialogueTextKey.HeroLunchOptions),
+        });
+
+        // SayDinner — two variants, no gate (issue #392)
+        private static readonly OptionBag DinnerOptions = new OptionBag(new Option[]
+        {
+            new Option(DialogueTextKey.HeroDinnerTime),
+            new Option(DialogueTextKey.HeroDinnerServing),
+        });
+
         // SayPitAdventure — five variants, no gate
         private static readonly OptionBag PitAdventureOptions = new OptionBag(new Option[]
         {
@@ -234,6 +248,36 @@ namespace PitHero
         public static void SayBreakfast(Entity entity)
         {
             SayFromOptions(entity, BreakfastOptions);
+        }
+
+        /// <summary>Shows a randomly-picked lunch bubble (issue #392).</summary>
+        public static void SayLunch(Entity entity)
+        {
+            SayFromOptions(entity, LunchOptions);
+        }
+
+        /// <summary>Shows a randomly-picked dinner bubble (issue #392).</summary>
+        public static void SayDinner(Entity entity)
+        {
+            SayFromOptions(entity, DinnerOptions);
+        }
+
+        /// <summary>
+        /// Shows the skip-lunch bubble when lunch is skipped because no dish the hero
+        /// can order is makeable (not the no-gold path).
+        /// </summary>
+        public static void SayLunchSkipped(Entity entity)
+        {
+            SaySingle(entity, DialogueTextKey.HeroLunchSkipped);
+        }
+
+        /// <summary>
+        /// Shows the skip-dinner bubble when dinner is skipped because no dish the hero
+        /// can order is makeable (not the no-gold path).
+        /// </summary>
+        public static void SayDinnerSkipped(Entity entity)
+        {
+            SaySingle(entity, DialogueTextKey.HeroDinnerSkipped);
         }
 
         /// <summary>Shows a randomly-picked pit-adventure bubble (one-shot per trip).</summary>

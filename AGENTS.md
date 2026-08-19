@@ -106,6 +106,11 @@ See `PitHero/docs/RenderingSystem.md` for the full reference.  Key rules:
 - Route Cave enemy scaling through `GetScaledEnemyLevelForPitLevel` and Cave treasure transitions through `DetermineCaveTreasureLevel`
 - If a `private` method needs to be called from another class, make it `public` — don't use reflection
 
+### Save Format (backwards compatibility is mandatory)
+- The save system lives in `Services/SaveData.cs` (`CurrentVersion` / `MinSupportedVersion`). When a feature changes the byte layout, bump `CurrentVersion` **and keep every version from `MinSupportedVersion` up loadable**: read new fields conditionally on the file's version (`fileVersion >= N ? reader.ReadX() : safeDefault`) and pick defaults that degrade gracefully (e.g. "no active buff", "feature off")
+- Never raise `MinSupportedVersion` or drop a reader path on your own. Periodic **save unifications** (collapsing old versions into one, e.g. issue #311 → v17, PR #391 → v29) happen **only when the owner explicitly asks for one** — a past unification is a one-time cleanup, not a standing policy of rejecting old saves
+- Every version bump gets a backwards-compatibility test proving the previous layout still reads (see `SaveData_V29DiningRecord_ReadsWithDefaultExpiry` in `SaveLoadTests.cs`); loads always rewrite at `CurrentVersion` on the next save
+
 ### Code Style
 - Every public method gets a `/// <summary>` doc comment (keep it concise)
 - One component class per file (structs are exempt)

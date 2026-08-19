@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.Config;
 using PitHero.Dining;
 using PitHero.Services;
 using PitHero.Util;
@@ -106,13 +107,25 @@ namespace PitHero.ECS.Components
             switch (State)
             {
                 case PatronState.WaitingToOrder:
-                    // Kitchen needs to be open for orders — servers handle coming to us
-                    if (_elapsed >= GameConfig.PatronPatiencePreOrderSeconds)
+                {
+                    // Kitchen needs to be open for orders — servers handle coming to us.
+                    // When the kitchen is closed patrons who can't be served have reduced
+                    // patience (PatronClosedKitchenPatienceFactor × base) so overnight
+                    // arrivals linger for ambiance and then leave gracefully.
+                    var timeForPatience = Core.Instance != null
+                        ? Core.Services.GetService<InGameTimeService>()
+                        : null;
+                    int patronHour = timeForPatience?.Hour ?? 12; // null → open (headless tests)
+                    float patienceThreshold = TavernScheduleConfig.IsKitchenClosed(patronHour)
+                        ? GameConfig.PatronPatiencePreOrderSeconds * GameConfig.PatronClosedKitchenPatienceFactor
+                        : GameConfig.PatronPatiencePreOrderSeconds;
+                    if (_elapsed >= patienceThreshold)
                     {
                         // Patience expired — cancel and leave
                         LeaveOnPatienceExpiry();
                     }
                     break;
+                }
 
                 case PatronState.Ordered:
                     if (_elapsed >= GameConfig.PatronPatiencePostOrderSeconds)

@@ -148,6 +148,74 @@ namespace PitHero.Tests
             Assert.AreEqual(remainingBefore, bag.Bag.Remaining, "Bag must not advance when nothing is eligible");
         }
 
+        // ── Lunch and Dinner bags (issue #392) ───────────────────────────────────
+
+        [TestMethod]
+        public void SelectKey_LunchBag_TwoOptionsNoGate_EachKeyOncePerCycle()
+        {
+            // Mirrors the LunchOptions bag: 2 options, no gates
+            var bag = MakeBag(
+                new SpeechBubbleDialogue.Option("HeroLunchTime"),
+                new SpeechBubbleDialogue.Option("HeroLunchOptions"));
+            var rng = new System.Random(42);
+
+            for (int cycle = 0; cycle < 10; cycle++)
+            {
+                var seen = new HashSet<string>();
+                for (int i = 0; i < 2; i++)
+                {
+                    var key = SpeechBubbleDialogue.SelectKey(bag, hasMerc: false, tipPaid: null, rng);
+                    Assert.IsNotNull(key, "Ungated lunch bag must always yield a key");
+                    Assert.IsTrue(seen.Add(key), $"Key '{key}' repeated within cycle {cycle}");
+                }
+                Assert.AreEqual(2, seen.Count);
+            }
+        }
+
+        [TestMethod]
+        public void SelectKey_DinnerBag_TwoOptionsNoGate_EachKeyOncePerCycle()
+        {
+            // Mirrors the DinnerOptions bag: 2 options, no gates
+            var bag = MakeBag(
+                new SpeechBubbleDialogue.Option("HeroDinnerTime"),
+                new SpeechBubbleDialogue.Option("HeroDinnerServing"));
+            var rng = new System.Random(77);
+
+            for (int cycle = 0; cycle < 10; cycle++)
+            {
+                var seen = new HashSet<string>();
+                for (int i = 0; i < 2; i++)
+                {
+                    var key = SpeechBubbleDialogue.SelectKey(bag, hasMerc: false, tipPaid: null, rng);
+                    Assert.IsNotNull(key, "Ungated dinner bag must always yield a key");
+                    Assert.IsTrue(seen.Add(key), $"Key '{key}' repeated within cycle {cycle}");
+                }
+                Assert.AreEqual(2, seen.Count);
+            }
+        }
+
+        [TestMethod]
+        public void SelectKey_LunchBag_SameSeed_SameSequence()
+        {
+            var bag1 = MakeBag(
+                new SpeechBubbleDialogue.Option("HeroLunchTime"),
+                new SpeechBubbleDialogue.Option("HeroLunchOptions"));
+            var bag2 = MakeBag(
+                new SpeechBubbleDialogue.Option("HeroLunchTime"),
+                new SpeechBubbleDialogue.Option("HeroLunchOptions"));
+
+            var rng1 = new System.Random(2026);
+            var rng2 = new System.Random(2026);
+
+            for (int i = 0; i < 20; i++)
+            {
+                Assert.AreEqual(
+                    SpeechBubbleDialogue.SelectKey(bag1, false, null, rng1),
+                    SpeechBubbleDialogue.SelectKey(bag2, false, null, rng2),
+                    $"Lunch bag sequences diverged at draw {i}");
+            }
+        }
+
         [TestMethod]
         public void SelectKey_SameSeed_SameSequence()
         {

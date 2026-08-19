@@ -91,14 +91,19 @@ Two distinct patterns — pick deliberately:
 
 ## Persistence
 
-The save format is **a single version**. `SaveData.CurrentVersion` is the only header value the
-build reads or writes; `Recover` rejects anything else with `InvalidDataException` and
-`SaveLoadService` treats that slot as empty. There is no migration path, no `MinSupportedVersion`,
-and no version-gated branch anywhere in `Recover` — pre-launch, changing the layout means existing
-saves stop loading, which is the accepted cost.
+**Backwards compatibility is mandatory.** `SaveData.CurrentVersion` is the version the build
+writes; every version from `SaveData.MinSupportedVersion` up must remain loadable. `Recover`
+rejects only versions outside that range with `InvalidDataException` (and `SaveLoadService` treats
+that slot as empty). Fields added after `MinSupportedVersion` are read conditionally on the file's
+version with safe, gracefully degrading defaults (e.g. `fileVersion >= 30 ? reader.ReadFloat() :
+0f` — "no active buff"). Loads rewrite at `CurrentVersion` on the next save.
 
-Sections are still appended at the end and still numbered, because that keeps diffs and the
-Persist/Recover pairing readable — not because older files need to be prefixes of newer ones.
+Periodic **save unifications** (v17 via issue #311, v29 via PR #391) collapse the supported range
+back to a single version — they happen **only when the owner explicitly asks for one**, never as a
+side effect of a feature. See AGENTS.md "Save Format".
+
+Sections are appended at the end and numbered, because that keeps diffs and the Persist/Recover
+pairing readable.
 
 Removing a setting does **not** remove its bytes; reshaping a section in the middle is what forces
 a version bump. The v26 removal of the "Auto-Purchase Consumables" master flag left its bool as a
@@ -110,7 +115,9 @@ Adding a persisted setting means, in order:
 1. Add the field to `SaveData` with a default and a `// Feature name` comment.
 2. Append a **new numbered section at the very end** of `Persist`. Arrays are written as a count
    followed by the elements.
-3. Append the mirrored read at the very end of `Recover`, unconditionally. Clamp array reads with
+3. Append the mirrored read at the very end of `Recover`, gated on the file version when the
+   section postdates `MinSupportedVersion` (`if (fileVersion >= N)` with defaults pre-assigned for
+   older files). Clamp array reads with
    `if (i < arr.Length)` and **pre-fill the array's defaults before reading** — a saved count
    shorter than the current array leaves the tail at those defaults, which is how a rarity, gear
    category, or consumable added later behaves like a fresh enable. Scalars need no pre-assignment;
@@ -118,8 +125,9 @@ Adding a persisted setting means, in order:
 4. Bump `CurrentVersion`.
 5. Service → `SaveData` in `SaveLoadService` (the collect method); `SaveData` → service in
    `MainGameScene`'s load-apply path.
-6. Extend `SaveLoadTests` with a round-trip test *and* a defaults test (a null array persists a
-   zero count, which exercises the pre-fill path).
+6. Extend `SaveLoadTests` with a round-trip test, a defaults test (a null array persists a
+   zero count, which exercises the pre-fill path), *and* a previous-version layout test proving
+   the old byte layout still reads (pattern: `SaveData_V29DiningRecord_ReadsWithDefaultExpiry`).
 
 **Two indices are persisted identities and must stay append-only:**
 

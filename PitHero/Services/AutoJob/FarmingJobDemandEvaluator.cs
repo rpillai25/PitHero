@@ -41,8 +41,10 @@ namespace PitHero.Services.AutoJob
         public void ResetPressure(float nowSeconds) => _tracker.Reset(nowSeconds);
 
         /// <inheritdoc/>
-        public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers)
+        public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers, bool nocturnal)
         {
+            // Farming demand is shift-agnostic: nocturnal farmers tend crops overnight just as
+            // day farmers do during daylight hours.  The param is ignored here.
             int outstanding = _coordinator != null ? _coordinator.OutstandingTaskCount : 0;
             int careLoad = (_cropGrowth != null ? _cropGrowth.CropCount : 0)
                 + (_cropPlanting != null ? _cropPlanting.PlanCount : 0);

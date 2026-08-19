@@ -142,6 +142,17 @@ namespace PitHero.Services
         /// </summary>
         public bool HasActiveRunner => _runner1WorkerIdx >= 0;
 
+        /// <summary>
+        /// After closing time, work that must finish before the crew drains home: undelivered
+        /// tickets, seated guests still eating (their plates are coming), plates queued for
+        /// bussing, and orphaned servings (a cooked dish whose ticket was canceled — patron left
+        /// or party departed for night sleep — sits on the serving table until a server sinks
+        /// it). Pure — the closure gate in Update() feeds it live counts.
+        /// </summary>
+        public static bool HasClosingWork(bool hasUndeliveredTickets, int busJobCount,
+            int diningPatrons, int orphanedDishes)
+            => hasUndeliveredTickets || busJobCount > 0 || diningPatrons > 0 || orphanedDishes > 0;
+
         /// <summary>Total kitchen role posts — the cap on simultaneous kitchen workers.</summary>
         public static int MaxWorkerPosts =>
             GameConfig.MaxKitchenCooks + GameConfig.MaxKitchenServers + GameConfig.MaxKitchenRunners;
@@ -607,6 +618,33 @@ namespace PitHero.Services
             _wantedAssignments.Clear();
             _wantedRoles.Clear();
 
+            // Kitchen closure: at 10 PM stop wanting any new workers once the closing work is
+            // done — every ticket delivered, every seated guest finished eating, and every
+            // plate bussed. Only then does the reconcile path send everyone home via
+            // RequestReturnHome(). Leaving before the last plates are cleared strands dirty
+            // tables all night (no runner) and overnight arrivals pile up at the door.
+            // This is evaluated independently of IsAsleep (nocturnal workers are awake 10 PM–6 AM
+            // but must never be wanted while the kitchen is closed).
+            bool closed = timeService != null && TavernScheduleConfig.IsKitchenClosed(timeService.Hour);
+            bool hasClosingWork = false;
+            if (closed)
+            {
+                bool hasUndeliveredTickets = false;
+                for (int ti = 0; ti < _tickets.Count; ti++)
+                {
+                    var ts = _tickets[ti].State;
+                    if (ts != TicketState.Delivered && ts != TicketState.Canceled)
+                    {
+                        hasUndeliveredTickets = true;
+                        break;
+                    }
+                }
+                EnsureServices();
+                hasClosingWork = HasClosingWork(hasUndeliveredTickets, _busJobs.Count,
+                    _mercenaryManager != null ? _mercenaryManager.CountPatronsDining() : 0,
+                    _orphanServing.Count);
+            }
+
             var roster = _alliedMonsters.AlliedMonsters;
             for (int i = 0; i < roster.Count; i++)
             {
@@ -614,6 +652,8 @@ namespace PitHero.Services
                 if (m.Job != MonsterJob.Cooking)
                     continue;
                 if (MonsterScheduleConfig.IsAsleep(m.MonsterTypeName, timeService))
+                    continue;
+                if (closed && !hasClosingWork)
                     continue;
 
                 int insertPos = _wantedAssignments.Count;
@@ -948,6 +988,14 @@ namespace PitHero.Services
             Entity patronEntity, Point seatTile)
         {
             if (_tickets.Count >= MaxOpenTickets)
+                return null;
+
+            // Belt-and-braces: reject new orders while the kitchen is closed (10 PM – 6 AM).
+            // The primary gate lives in KitchenMonsterStateMachine.TryPickNextOrderTarget; this
+            // guard catches any direct callers that bypass the FSM (e.g. future automation).
+            // CreateTicketPreReserved is explicitly exempted — it is the save-reload path only.
+            var timeForTicket = Core.Instance != null ? Core.Services.GetService<InGameTimeService>() : null;
+            if (timeForTicket != null && TavernScheduleConfig.IsKitchenClosed(timeForTicket.Hour))
                 return null;
 
             EnsureServices();

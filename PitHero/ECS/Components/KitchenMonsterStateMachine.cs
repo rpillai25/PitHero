@@ -312,6 +312,11 @@ namespace PitHero.ECS.Components
             _targetPatron = null;
             _targetPartySlot = -1;
 
+            // No new orders while the kitchen is closed (10 PM – 6 AM).
+            var tsvc = Core.Instance != null ? Core.Services.GetService<InGameTimeService>() : null;
+            if (tsvc != null && TavernScheduleConfig.IsKitchenClosed(tsvc.Hour))
+                return false;
+
             if (!_coordinator.HasTicketCapacity)
                 return false;
 
@@ -639,7 +644,10 @@ namespace PitHero.ECS.Components
         private bool HasOrderWork(ServerZone zone)
         {
             // Mirrors TryPickNextOrderTarget's guards so wandering isn't interrupted for an
-            // order that could never be created (full board / empty pantry)
+            // order that could never be created (full board / empty pantry / kitchen closed).
+            var tsvcHOW = Core.Instance != null ? Core.Services.GetService<InGameTimeService>() : null;
+            if (tsvcHOW != null && TavernScheduleConfig.IsKitchenClosed(tsvcHOW.Hour))
+                return false;
             if (!_coordinator.HasTicketCapacity)
                 return false;
             var partyTable = TavernSeatConfig.GetTableTile(KitchenTaskCoordinator.GetPartySeatTile(0));
@@ -1296,11 +1304,14 @@ namespace PitHero.ECS.Components
                 Entity.Destroy();
                 return;
             }
-            // Only bubble on a real shift end (worker going to sleep, not a mid-shift role change)
+            // Only bubble on a real shift end (worker going to sleep or kitchen closing —
+            // not a mid-shift role change).
             var timeService = Core.Instance != null
                 ? Core.Services.GetService<InGameTimeService>()
                 : null;
-            if (timeService != null && MonsterScheduleConfig.IsAsleep(_monster.MonsterTypeName, timeService))
+            if (timeService != null
+                && (MonsterScheduleConfig.IsAsleep(_monster.MonsterTypeName, timeService)
+                    || TavernScheduleConfig.IsKitchenClosed(timeService.Hour)))
                 SpeechBubbleDialogue.SayWorkerShiftEnd(Entity);
         }
 

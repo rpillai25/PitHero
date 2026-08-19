@@ -825,9 +825,10 @@ namespace PitHero.Services
                     {
                         OrderedDishId = slot.OrderedDishId,
                         HasPaid = slot.HasPaid,
-                        HasEatenToday = slot.HasEatenToday,
+                        HasEatenThisMeal = slot.HasEatenThisMeal,
                         MealDishId = slot.MealDishId,
                         MealDeluxe = slot.MealDeluxe,
+                        MealExpiresAtSeconds = slot.MealExpiresAtSeconds,
                     };
                 }
             }

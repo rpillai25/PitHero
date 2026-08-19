@@ -298,6 +298,11 @@ ConsoleInnRest,Visiting inn to rest
 ConsoleNightSleep,Turning in for the night
 ConsoleBreakfastSkipped,The party skips breakfast - no ingredients for {0}
 ConsoleBreakfastSkippedGold,The party skips breakfast - not enough gold for {0}
+ConsoleLunchSkipped,The party skips lunch - no ingredients for {0}
+ConsoleLunchSkippedGold,The party skips lunch - not enough gold for {0}
+ConsoleDinnerSkipped,The party skips dinner - no ingredients for {0}
+ConsoleDinnerSkippedGold,The party skips dinner - not enough gold for {0}
+JobKitchenClosed,Kitchen closed
 ConsoleMercenaryHired,{0} {1} was hired
 ConsoleMonsterAttack,{0} attacks {1} for {2} damage!
 ConsoleItemFound,{0} found {1}.

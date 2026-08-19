@@ -22,7 +22,7 @@ The same gate covers kitchen role changes (the replacement waits for the old wor
 |---|---|---|
 | `AutoJobAssignmentService` | `PitHero/Services/AutoJobAssignmentService.cs` | Cadence + snapshot + apply loop. Registered/ticked/unloaded in `MainGameScene` (`Begin`, `Update` unpaused block, `Unload`). |
 | `JobAssignmentSolver` | `PitHero/Services/AutoJob/JobAssignmentSolver.cs` | Pure static solver. No service or ECS dependencies — fully unit-testable. |
-| `IJobDemandEvaluator` | `PitHero/Services/AutoJob/IJobDemandEvaluator.cs` | One per automatable job: reports how many workers the job wants right now (`EvaluateDemand`) and feeds its backpressure tracker (`SamplePressure`/`ResetPressure`). |
+| `IJobDemandEvaluator` | `PitHero/Services/AutoJob/IJobDemandEvaluator.cs` | One per automatable job: reports how many workers the job wants right now (`EvaluateDemand(rosterSize, availableWorkers, nocturnal)`) and feeds its backpressure tracker (`SamplePressure`/`ResetPressure`). |
 | `BackpressureTracker` | `PitHero/Services/AutoJob/BackpressureTracker.cs` | Per-job smoother: instant attack, EMA decay, one-worker-per-interval drain. Owned by each evaluator. |
 | `FarmingJobDemandEvaluator` | `PitHero/Services/AutoJob/FarmingJobDemandEvaluator.cs` | Farming demand (non-sticky). |
 | `KitchenJobDemandEvaluator` | `PitHero/Services/AutoJob/KitchenJobDemandEvaluator.cs` | Kitchen demand (sticky). |
@@ -89,9 +89,15 @@ Tracker state is transient (never persisted); it rebuilds within a few samples a
 Day monsters (work 6AM–10PM) and nocturnal monsters (10PM–6AM; see
 `MonsterScheduleConfig.IsNocturnal`) are **disjoint workforces that never work at the same time**.
 `ReassessNow()` partitions the roster by `IsNocturnal(MonsterTypeName)` and runs demand + solve
-separately per shift, so every job gets both a day crew and a night crew. Demand clamps
-(`rosterSize`) always refer to the *shift's* size, not the whole roster. Asleep monsters are
-assigned normally — the coordinators keep them home until their work window.
+separately per shift, passing `nocturnal` to each `IJobDemandEvaluator.EvaluateDemand(rosterSize,
+availableWorkers, nocturnal)`. Demand clamps (`rosterSize`) always refer to the *shift's* size,
+not the whole roster. Asleep monsters are assigned normally — the coordinators keep them home
+until their work window.
+
+**Kitchen night-shift demand (issue #392)**: `KitchenJobDemandEvaluator.EvaluateDemand` returns
+Min=0 / Desired=0 / Sticky=true when `nocturnal=true`. The kitchen only operates 6 AM–10 PM;
+nocturnal monsters are never assigned there by automation. `FarmingJobDemandEvaluator` accepts
+and ignores the `nocturnal` param — farming is shift-agnostic.
 
 ## The solver
 

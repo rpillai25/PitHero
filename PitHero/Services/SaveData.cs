@@ -249,26 +249,36 @@ namespace PitHero.Services
         public int AnchorY;
     }
 
-    /// <summary>One party member's tavern-dining state for the day (issue #319).</summary>
+    /// <summary>One party member's tavern-dining state per meal period (issue #319, expiry added in #392).</summary>
     public struct SavedDiningRecord
     {
-        public int OrderedDishId;   // -1 = no open order
+        public int OrderedDishId;       // -1 = no open order
         public bool HasPaid;
-        public bool HasEatenToday;
-        public int MealDishId;      // -1 = no active meal buffs
+        public bool HasEatenThisMeal;   // true once the member finishes eating in the current meal period
+        public int MealDishId;          // -1 = no active meal buffs
         public bool MealDeluxe;
+        public float MealExpiresAtSeconds; // absolute InGameTimeService.AccumulatedSeconds; 0 = none
     }
 
     /// <summary>Central save data container implementing IPersistable for binary persistence.</summary>
     public class SaveData : IPersistable
     {
         /// <summary>
-        /// The one and only save file version this build reads or writes. There is no migration
-        /// path and no reader for any other layout: a file whose header is not exactly this value
-        /// is rejected with InvalidDataException, and SaveLoadService treats that slot as empty.
-        /// Bump it whenever the byte layout changes.
+        /// The save file version this build writes. Bump it whenever the byte layout changes.
+        /// BACKWARDS COMPATIBILITY IS MANDATORY: every version from MinSupportedVersion up must
+        /// remain loadable — new fields are read conditionally on the file's version and given
+        /// safe defaults for older files. The v29 unification (issue #311/PR #391) was a one-time
+        /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
+        /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 29;
+        public const int CurrentVersion = 30;
+
+        /// <summary>
+        /// The oldest save file version this build can still load. Files below this (or above
+        /// CurrentVersion) are rejected with InvalidDataException and the slot reads as empty.
+        /// Only ever raised as part of an explicitly requested save unification.
+        /// </summary>
+        public const int MinSupportedVersion = 29;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -649,6 +659,7 @@ namespace PitHero.Services
             {
                 records[i].OrderedDishId = -1;
                 records[i].MealDishId = -1;
+                records[i].MealExpiresAtSeconds = 0f;
             }
             return records;
         }
@@ -1001,9 +1012,10 @@ namespace PitHero.Services
             {
                 writer.Write(PartyDining[i].OrderedDishId);
                 writer.Write(PartyDining[i].HasPaid);
-                writer.Write(PartyDining[i].HasEatenToday);
+                writer.Write(PartyDining[i].HasEatenThisMeal);
                 writer.Write(PartyDining[i].MealDishId);
                 writer.Write(PartyDining[i].MealDeluxe);
+                writer.Write(PartyDining[i].MealExpiresAtSeconds);
             }
 
             // 34. Automation (issue #321)
@@ -1103,13 +1115,33 @@ namespace PitHero.Services
             writer.Write(RunnerCarryLevel);
         }
 
+        /// <summary>
+        /// Reads one SavedDiningRecord in the layout of the given file version. Public so the
+        /// backwards-compatibility path is unit-testable per version.
+        /// </summary>
+        public static SavedDiningRecord ReadDiningRecord(IPersistableReader reader, int fileVersion)
+        {
+            return new SavedDiningRecord
+            {
+                OrderedDishId = reader.ReadInt(),
+                HasPaid = reader.ReadBool(),
+                HasEatenThisMeal = reader.ReadBool(),
+                MealDishId = reader.ReadInt(),
+                MealDeluxe = reader.ReadBool(),
+                // Added in v30 (issue #392). v29 files default to 0 = no active buff, so a
+                // pre-#392 meal is simply dropped on load and the party re-eats next meal.
+                MealExpiresAtSeconds = fileVersion >= 30 ? reader.ReadFloat() : 0f,
+            };
+        }
+
         /// <summary>Reads all game state from the persistence reader.</summary>
         void IPersistable.Recover(IPersistableReader reader)
         {
-            // 1. File Version
+            // 1. File Version. Older supported versions load with safe defaults for fields they
+            // predate (see the versioned reads below); the next save rewrites at CurrentVersion.
             int fileVersion = reader.ReadInt();
-            if (fileVersion != CurrentVersion)
-                throw new System.IO.InvalidDataException($"Unsupported save file version {fileVersion} (expected {CurrentVersion})");
+            if (fileVersion < MinSupportedVersion || fileVersion > CurrentVersion)
+                throw new System.IO.InvalidDataException($"Unsupported save file version {fileVersion} (expected {MinSupportedVersion}-{CurrentVersion})");
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
@@ -1477,14 +1509,7 @@ namespace PitHero.Services
             int diningCount = reader.ReadInt();
             for (int i = 0; i < diningCount; i++)
             {
-                var record = new SavedDiningRecord
-                {
-                    OrderedDishId = reader.ReadInt(),
-                    HasPaid = reader.ReadBool(),
-                    HasEatenToday = reader.ReadBool(),
-                    MealDishId = reader.ReadInt(),
-                    MealDeluxe = reader.ReadBool(),
-                };
+                var record = ReadDiningRecord(reader, fileVersion);
                 if (i < PartyDining.Length)
                     PartyDining[i] = record;
             }

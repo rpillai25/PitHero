@@ -172,8 +172,10 @@ namespace PitHero.Tests
         [TestMethod]
         public void ReassessNow_StaffsDayAndNightShiftsIndependently()
         {
-            // Day monsters (Slime) and nocturnal monsters (Orc) never work at the same time, so
-            // each shift must field its own kitchen crew — even when the day shift has better cooks.
+            // Day monsters (Slime) and nocturnal monsters (Orc) never work at the same time.
+            // The day shift fields its own kitchen crew independently of the night roster.
+            // Since issue #392 the kitchen is closed overnight (10 PM–6 AM): the nocturnal
+            // shift receives zero kitchen demand from the evaluator.
             var roster = new AlliedMonsterManager();
             roster.AddAlliedMonster(Monster("DayA", 1, 9, 1));
             roster.AddAlliedMonster(Monster("DayB", 1, 8, 1));
@@ -191,17 +193,19 @@ namespace PitHero.Tests
             Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[1].Job);
             Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[2].Job);
             Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[3].Job, "Fourth day monster exceeds the base crew");
-            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[4].Job,
-                "Night shift fields its own kitchen crew despite lower cooking skill than the day shift");
-            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[5].Job);
-            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[6].Job);
-            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[7].Job, "Fourth night monster exceeds the base crew");
+            // Night shift: kitchen is closed overnight — evaluator returns zero demand.
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[4].Job, "Night monsters are not assigned to the closed kitchen");
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[5].Job);
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[6].Job);
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[7].Job);
         }
 
         [TestMethod]
         public void ReassessNow_DemandClampsApplyPerShift()
         {
-            // Kitchen base crew clamps to each shift's own size, not the whole roster's.
+            // Kitchen base crew clamps to the day shift's own size, not the whole roster's.
+            // Since issue #392 the kitchen is closed overnight: nocturnal monsters receive zero
+            // kitchen demand regardless of roster size.
             var roster = new AlliedMonsterManager();
             roster.AddAlliedMonster(Monster("DayA", 1, 5, 1));
             roster.AddAlliedMonster(Monster("DayB", 1, 5, 1));
@@ -211,16 +215,23 @@ namespace PitHero.Tests
 
             service.ReassessNow();
 
-            for (int i = 0; i < 4; i++)
-                Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[i].Job,
-                    $"Monster {i}: with 2 monsters per shift, the whole shift staffs the kitchen");
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job,
+                "Day shift: with 2 day monsters, both fill the clamped kitchen crew");
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[1].Job,
+                "Day shift: second day monster fills the clamped base crew");
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[2].Job,
+                "Night shift: kitchen is closed overnight — nocturnal monster gets no kitchen assignment");
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[3].Job,
+                "Night shift: second nocturnal monster also gets no kitchen assignment");
         }
 
         [TestMethod]
         public void ReassessNow_StickyKitchenProtectionIsPerShift()
         {
             // A nocturnal monster already on Cooking must not shield the day shift from staffing
-            // its own kitchen, and vice versa — stickiness applies within each shift group only.
+            // its own kitchen — stickiness applies within each shift group only.
+            // Since issue #392 the kitchen is closed overnight: the night monster's Cooking job
+            // is removed by the solver (zero nocturnal demand) and the day shift is unaffected.
             var roster = new AlliedMonsterManager();
             roster.AddAlliedMonster(Monster("Day", 1, 4, 1));
             roster.AddAlliedMonster(Monster("Night", 1, 4, 1, MonsterJob.Cooking, typeName: "Monster_Orc"));
@@ -229,9 +240,9 @@ namespace PitHero.Tests
             service.ReassessNow();
 
             Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job,
-                "Day shift staffs its kitchen even though a night monster already holds a kitchen job");
-            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[1].Job,
-                "Sticky night kitchen worker keeps the job");
+                "Day shift staffs its kitchen regardless of what the night monster holds");
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[1].Job,
+                "Night monster's Cooking job is removed — kitchen is closed overnight");
         }
 
         // ── Farming priority over kitchen (issue: dead-end kitchen with unworked farm) ──
@@ -364,7 +375,7 @@ namespace PitHero.Tests
             public FixedDemandEvaluator(MonsterJob job, int min, int desired)
                 => _entry = new JobDemandEntry { Job = job, MinWorkers = min, DesiredWorkers = desired, Sticky = false };
             public MonsterJob Job => _entry.Job;
-            public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers) => _entry;
+            public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers, bool nocturnal) => _entry;
             public void SamplePressure(float nowSeconds) { }
             public void ResetPressure(float nowSeconds) { }
         }
@@ -428,7 +439,7 @@ namespace PitHero.Tests
                 planting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = i, TileY = 0 });
             var evaluator = new FarmingJobDemandEvaluator(null, growth, planting);
 
-            var d = evaluator.EvaluateDemand(rosterSize: 10, availableWorkers: 10);
+            var d = evaluator.EvaluateDemand(rosterSize: 10, availableWorkers: 10, nocturnal: false);
 
             Assert.AreEqual(1, d.DesiredWorkers,
                 "Placed plans with no outstanding tasks staff exactly the caretaker");
@@ -540,7 +551,7 @@ namespace PitHero.Tests
             var coordinator = CreateHeadlessKitchen(out _, out _);
             var evaluator = new KitchenJobDemandEvaluator(coordinator, null, null);
 
-            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3);
+            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3, nocturnal: false);
 
             Assert.AreEqual(0, d.DesiredWorkers, "Empty fridge + storage: no dish is coverable");
             Assert.AreEqual(0, d.MinWorkers);
@@ -555,10 +566,31 @@ namespace PitHero.Tests
                 Assert.IsTrue(storage.TryDeposit(1, def.Recipe[i].Crop, def.Recipe[i].Qty));
             var evaluator = new KitchenJobDemandEvaluator(coordinator, null, null);
 
-            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3);
+            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3, nocturnal: false);
 
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.DesiredWorkers,
                 "One coverable dish is enough to staff the kitchen");
+        }
+
+        // ── Kitchen night-shift zero demand (issue #392) ────────────────────
+
+        [TestMethod]
+        public void KitchenEvaluator_Nocturnal_ReportsZeroDemandRegardlessOfLarder()
+        {
+            // Even with a stocked larder and a live backlog, the kitchen evaluator must
+            // return Min=0/Desired=0/Sticky=true when nocturnal=true — kitchen only
+            // operates during the day shift (6 AM–10 PM).
+            var coordinator = CreateHeadlessKitchen(out _, out var storage);
+            var def = DishConfig.GetDefinition((DishType)0);
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.IsTrue(storage.TryDeposit(1, def.Recipe[i].Crop, def.Recipe[i].Qty));
+            var evaluator = new KitchenJobDemandEvaluator(coordinator, null, null);
+
+            var d = evaluator.EvaluateDemand(rosterSize: 10, availableWorkers: 10, nocturnal: true);
+
+            Assert.AreEqual(0, d.MinWorkers,    "Nocturnal kitchen must not hold any minimum workers");
+            Assert.AreEqual(0, d.DesiredWorkers, "Nocturnal kitchen must not want any workers");
+            Assert.IsTrue(d.Sticky,              "Nocturnal kitchen entry must be sticky to prevent reshuffling");
         }
 
         // ── End-to-end backpressure scaling (issue #375) ─────────────────────

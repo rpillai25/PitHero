@@ -268,21 +268,91 @@ clear either way, which is all the seat gate cares about.
 
 ## Walk-in patrons
 
-`MercenaryManager` spawns unhired mercs on a 60–120s rolled interval (5s when the tavern is
-empty) into 9 fixed seats; at the seat a `TavernPatronComponent` is added. **A patron never sits
-down at a table that still has an un-bussed plate.** `GetAvailableTavernPosition` prefers a free
-seat that is already cleared, and `TryReseatToClearedSeat` re-checks (plates appear and get
-bussed during the walk in) — only when *every* free seat is dirty does the patron wait at the
-tavern door (100,6), retrying the reseat every 0.25s until a plate is cleared. Waiting patrons
-are unseated, so they add no ordering pressure while the backlog drains. When full, the
-oldest patron in `FinishedEating` is walked off to free a seat — never one still waiting or
-eating. `PatronState`: `WaitingToOrder → Ordered → FoodDelivered → Eating → FinishedEating`.
+`MercenaryManager` spawns unhired mercs into 9 fixed seats. The arrival interval is
+**time-of-day dependent** (issue #392, `TavernScheduleConfig.GetArrivalIntervalMultiplier`):
+
+| Window | Hours | Multiplier | Effective interval |
+|---|---|---|---|
+| Morning rush | 6–8 AM | 0.5× | 30–60s rolled per arrival |
+| Lunch rush | 12–2 PM | 0.5× | 30–60s |
+| Dinner rush | 6–9 PM | 0.5× | 30–60s |
+| Daytime off-hours | 8–12 AM, 2–6 PM, 9–10 PM | 2× | 120–240s |
+| Overnight (kitchen closed) | 10 PM–6 AM | 1× | 60–120s |
+
+The multiplier is applied **at compare-time** (not reset-time), so a mid-wait hour flip adapts
+immediately. The empty-tavern 5s fast path also scales (2.5s at rush, 10s off-hours) but is
+**suppressed entirely while the kitchen is closed** — overnight the tavern may sit empty between
+trickle arrivals. Overnight runs at the base rate (denser than daytime off-hours) so the tavern
+keeps a steady night crowd — a night phase with stage/bar is planned later.
+
+**Closed-hours arrivals are purely timer-driven.** While the kitchen is open, a departing patron
+is replaced almost immediately (the walk-off coroutine calls `TrySpawnMercenary` directly after a
+2s beat, and a full tavern evicts the oldest `FinishedEating` patron for a fresh face). While the
+kitchen is **closed**, both paths are disabled — no fresh-face evictions, no per-departure
+respawn — so the closing exodus empties the tavern on its own. The arrival timer is reset
+**exactly once**, at the 10 PM open→closed edge (`_wasKitchenClosed`): the evening tavern is
+usually full, so the timer sits held at its threshold and would otherwise refill the first freed
+seat instantly. Departures during the exodus must NOT reset it again — the exodus stretches past
+midnight, and re-arming the full overnight interval per leaver starves the entire night of
+arrivals. Net effect: first night patron ~11 PM–midnight, then one every 1–2 game-hours,
+each sitting ~2.5 game-hours (1/4 patience) — one or two night patrons at a time for ambiance.
+
+At the seat a `TavernPatronComponent` is added. **A patron never sits down at a table that still
+has an un-bussed plate.** `GetAvailableTavernPosition` prefers a free seat that is already
+cleared, and `TryReseatToClearedSeat` re-checks (plates appear and get bussed during the walk
+in) — only when *every* free seat is dirty does the patron wait at the tavern door (100,6),
+retrying the reseat every 0.25s until a plate is cleared. Waiting patrons are unseated, so they
+add no ordering pressure while the backlog drains. When full, the oldest patron in
+`FinishedEating` is walked off to free a seat — never one still waiting or eating.
+
+`PatronState`: `WaitingToOrder → Ordered → FoodDelivered → Eating → FinishedEating`.
 Patience: 10 min pre-order and post-order (expiry cancels the ticket and leaves immediately);
-after eating they linger 5 min. On delivery the patron faces their table
-(`TavernSeatConfig.GetFacing`). On finishing: pays `DishConfig.GetPrice`, 50% chance of a
-5–15% tip (rounded up), logs `dish_served`. Hiring a patron mid-order calls
-`CancelTicketForPatron` before removing the component. Patrons order a random dish from
-`GetOrderableDishes` (= every dish whose recipe fridge+storage can cover).
+after eating they linger 5 min. **Closed-kitchen patience**: while the kitchen is closed
+(10 PM–6 AM) and the patron is still `WaitingToOrder`, the effective pre-order patience
+threshold drops to `PatronPatiencePreOrderSeconds × PatronClosedKitchenPatienceFactor`
+(600s × 0.25 = 150s ≈ 2.5 in-game hours, tunable via `GameConfig`). A patron seated before
+10 PM with accrued wait above that threshold leaves promptly at close; overnight arrivals sit
+for ambiance and then walk off via the normal `LeaveOnPatienceExpiry` path. Patrons in
+`Ordered` / `FoodDelivered` / `Eating` / `FinishedEating` keep their normal timers — the
+kitchen finishes serving them.
+
+On delivery the patron faces their table (`TavernSeatConfig.GetFacing`). On finishing: pays
+`DishConfig.GetPrice`, 50% chance of a 5–15% tip (rounded up), logs `dish_served`. Hiring a
+patron mid-order calls `CancelTicketForPatron` before removing the component. Patrons order a
+random dish from `GetOrderableDishes` (= every dish whose recipe fridge+storage can cover).
+
+## Kitchen hours (10 PM – 6 AM closure)
+
+Issue #392. `TavernScheduleConfig.IsKitchenClosed(hour)` returns true for hours ≥ 22 or < 6.
+
+- **No new orders**: `KitchenMonsterStateMachine.TryPickNextOrderTarget` and `HasOrderWork` both
+  return false when closed. `KitchenTaskCoordinator.CreateTicket` also returns null as a
+  belt-and-braces guard. (`CreateTicketPreReserved` is exempted — it is the save-reload path.)
+- **Crew wind-down**: `KitchenTaskCoordinator.Update()` computes `closed` (from `timeService`,
+  null → open) and `HasClosingWork(hasUndeliveredTickets, busJobCount, diningPatrons,
+  orphanedDishes)` — undelivered tickets (any state not `Delivered`/`Canceled`), plates queued
+  for bussing, seated guests still at their food (`MercenaryManager.CountPatronsDining()`:
+  `FoodDelivered`/`Eating`/`FinishedEating`), and orphaned servings (`_orphanServing` — a
+  cooked dish whose ticket was canceled at close, e.g. the patron left on reduced patience or
+  the party departed for night sleep mid-order; a server sinks it). While closed and no closing
+  work remains, workers are not added to `_wantedAssignments`, so the existing reconcile sends
+  everyone home via `RequestReturnHome`. The crew therefore delivers every in-flight dish,
+  waits out the last eaters, busses the final plates, sinks any abandoned food, and only then
+  drains — leaving every table clean for overnight arrivals (a crew that left at the last
+  delivery stranded dirty tables all night and door-waiters piled up). This is independent of
+  `IsAsleep`, which means nocturnal workers (Orc, Skeleton, GhostMiner — awake 10 PM–6 AM) are
+  also excluded from kitchen duty overnight.
+- **Shift-end speech bubble**: `ReturnHome_Enter` now says the shift-end bubble when
+  `IsAsleep(...) || IsKitchenClosed(hour)` (so nocturnal workers' closing-time departure looks
+  like a real shift end, not a role change).
+- **Overnight leftovers**: rare — the crew now outlasts the last eater and busses their plates
+  before draining. A plate can still be orphaned by an edge case (e.g. a bus claim released by a
+  despawning worker after the drain decision); it sits until the 6 AM crew clears it.
+- **Auto job assignment**: `KitchenJobDemandEvaluator.EvaluateDemand` returns Min=0 / Desired=0 /
+  Sticky=true when `nocturnal=true` — kitchen only operates on the day shift.
+- **Manual job window**: `MonsterUI.RefreshMonsterList` disables the Kitchen job button 10 PM–6 AM
+  in manual mode: dimmed, unclickable, hover text "Kitchen closed" (`UITextKey.JobKitchenClosed`).
+  A monster already holding Cooking keeps the job; the coordinator drains it and refields at 6 AM.
 
 Patrons, servers, cooks, and runners emit random speech bubbles at key moments (order taken,
 payment — tip-gated variants, patron walk-off farewell via `KitchenTicket.ServerEntity`, dish
@@ -297,25 +367,43 @@ Rides **Stop mode** — no new GOAP surface. Entry paths:
   (`WalkToTavernForStopAction`, `HeroComponent.StoppedAdventure && SeatedInTavern`). The party
   sits regardless of the "Eat at tavern" checkbox; when it's off, servers ignore them entirely
   and focus on walk-in patrons.
-- **Morning auto-dine**: `SleepInBedAction` calls `BeginAutoDine()` after waking if the
-  Food-tab "Eat at tavern" checkbox is on (default **on** for new games), the kitchen is open,
-  and the hero can order (favorite makeable + affordable — an ingredient or gold shortfall
-  skips the trip with a session-console line); it force-stops, and `CheckAllDone()`
-  auto-resumes when everyone finishes. `BeginAutoDine` no-ops when the party is already
-  player-stopped so it can't cancel a manual stop. At 10 PM a stopped party leaves the table
-  for night sleep (`OnNightSleepDeparture` settles tickets like a resume) and returns after
-  waking — `StoppedAdventure` stays true throughout.
+- **Three auto-dine meals** (issue #392): `BeginAutoDine(MealPeriod meal)` fires three times
+  per in-game day:
+  - **Breakfast** (6 AM): `SleepInBedAction` calls `BeginAutoDine(MealPeriod.Breakfast)` after
+    the party wakes from night sleep.
+  - **Lunch** (12 PM): `MainGameScene` fires at the 12 PM hour-edge (`ResetForNewMealPeriod()`,
+    then `BeginAutoDine(MealPeriod.Lunch)`).
+  - **Dinner** (6 PM): same pattern with `MealPeriod.Dinner`.
+
+  Each call checks: "Eat at tavern" on → party not already player-stopped → kitchen open →
+  `HasEatenThisMeal` false → **some dish the hero can order** exists (`TryPickHeroDish`:
+  Food-tab favorite first, then the hero's two job fallbacks via
+  `DishConfig.GetFallbackForJob`, each gated on `CanCoverRecipe` AND price — one missing crop
+  no longer starves the whole party). A full shortfall skips the trip with a session-console
+  line (console keys: `ConsoleLunchSkipped` / `ConsoleDinnerSkipped`) **and a hero skip
+  bubble** (`HeroLunchSkipped` / `HeroDinnerSkipped`, breakfast keeps
+  `HeroBreakfastNoIngredients`) on the no-ingredients branch only. Every `BeginAutoDine`
+  outcome logs a `party_meal_trip` analytics event (`started`, or the skip reason:
+  `hero_not_present` / `already_stopped` / `kitchen_closed` / `kitchen_unstaffed` /
+  `already_ate` / `no_ingredients` / `no_gold` / `no_stop_ui`) so a silently skipped meal is
+  diagnosable from the session log.
+  `BeginAutoDine` no-ops if the party is already player-stopped. `ResetForNewMealPeriod()` runs
+  **before** `BeginAutoDine` at every edge so `HasEatenThisMeal` is cleared for the new period.
+  At 10 PM a stopped party leaves the table for night sleep; `StoppedAdventure` stays true.
 
 `PartyDiningService` implements `IPartyOrderSource`; the coordinator polls
-`TryGetNextPartyOrder`. **The hero leads the meal**: he orders only the Food-tab favorite
-(`FavoriteDishId`) and pays for it; if it can't be made or afforded, the servers skip the
-whole party — mercenaries never eat unless the hero eats. Mercenary meals are **free** (no
+`TryGetNextPartyOrder`. **The hero leads the meal**: he orders the Food-tab favorite
+(`FavoriteDishId`), falling back through his job's two cheap dishes when the favorite can't
+be made or afforded (`TryPickHeroDish` — the same ladder `BeginAutoDine` pre-checks), and
+pays for it; only when nothing he can order is available do the servers skip the whole
+party — mercenaries never eat unless the hero eats. Mercenary meals are **free** (no
 gold in or out): job favorite via `DishConfig.GetFavoriteForJob(job)`, falling back through
 two job-specific cheap dishes, ingredient-gated only. Skips log `party_dine_skipped`
 analytics once (reason `already_ate` / `no_ingredients` / `no_gold`) but are **re-evaluated
 every poll**, so a seated party is still served when ingredients/gold appear later. One meal
-per member per day (`HasEatenToday`, reset at the 6 AM daily tick along with
-`MealBuffService.ClearAll()`).
+per member per **meal period** (`HasEatenThisMeal`, reset by `ResetForNewMealPeriod()` at each
+6/12/18 AM/PM edge). `MealBuffService.ClearAll()` runs at the 6 AM edge as belt-and-braces
+(the last dinner buff expires ~4 AM; the 6 AM clear removes any stragglers).
 
 **The hero pays at order time** (`OnPartyOrderTaken`), unlike patrons who pay after eating.
 Eating runs on `GetEatSeconds` (5/7/10s by class); `FinishMember` applies the meal buff, logs
@@ -327,14 +415,20 @@ otherwise in-flight meals finish and the party resumes — no endless sitting.
 
 ## Meal buffs
 
-`MealBuffService` keeps one `(combatant, dish, deluxe)` record per member per day. Buffs are
-**not persistent battle state** — `BattleEngine` clears battle state at battle start and then
-calls `InjectBuffsAtBattleStart` for the hero and each merc (and for late-joining mercs),
-adding each dish buff as `BattleBuff(type, magnitude, -1, "meal")` — turns = -1 means "until
-battle end". Injection is pure list writes: **it consumes no battle RNG** (RNG call order is a
-contract — see `VirtualGameLogicLayer.md`). Deluxe meals scale magnitude ×1.5 rounded up.
-MagicUp feeds skill formulas via `ICombatant.GetSkillStats()`; HP/MP regen ticks at end of
-round. Food never restores HP/MP directly — that's the inn's job.
+`MealBuffService` keeps one `(combatant, dish, deluxe, expiresAtSeconds)` record per active
+meal per member. Buffs last **6 in-game hours** (`GameConfig.MealBuffDurationSeconds = 360f` ×
+1 real-second-per-in-game-minute time scale). Each `MealRecord` stores an absolute
+`ExpiresAtSeconds` stamp; `Prune(nowSeconds)` removes expired records every frame (reverse
+iteration, no allocation). Three meals per day means up to three active buff slots around
+dinner time if the player eats them close together.
+
+Buffs are **not persistent battle state** — `BattleEngine` clears battle state at battle start
+and then calls `InjectBuffsAtBattleStart` for the hero and each merc (and for late-joining
+mercs), adding each non-expired dish buff as `BattleBuff(type, magnitude, -1, "meal")` — turns
+= -1 means "until battle end". Injection is pure list writes: **it consumes no battle RNG**
+(RNG call order is a contract — see `VirtualGameLogicLayer.md`). Deluxe meals scale magnitude
+×1.5 rounded up. MagicUp feeds skill formulas via `ICombatant.GetSkillStats()`; HP/MP regen
+ticks at end of round. Food never restores HP/MP directly — that's the inn's job.
 
 ## Dish data
 
@@ -352,12 +446,18 @@ reprices the whole menu automatically (`DishPricingTests` guards this).
 
 ## Persistence (section 33)
 
-Persisted per party slot (`SavedDiningRecord`): `OrderedDishId`, `HasPaid`, `HasEatenToday`,
-`MealDishId`, `MealDeluxe`; plus `FavoriteDishId` and `EatAtTavern`. On load, meal buffs are
-rebuilt via `MealBuffService.RestoreRecord` (no HP/MP
-re-grant), and an open order forces Stop mode back on so the party returns to the table —
-crops were deducted pre-save and `HasPaid` prevents double payment
-(`CreateTicketPreReserved` recreates the ticket as `ReadyToCook` with full-recipe refund data).
+Save version **30** (issue #392). Persisted per party slot (`SavedDiningRecord`):
+`OrderedDishId`, `HasPaid`, `HasEatenThisMeal` (renamed from `HasEatenToday`),
+`MealDishId`, `MealDeluxe`, `MealExpiresAtSeconds`; plus `FavoriteDishId` and `EatAtTavern`.
+v29 files still load (backwards compatibility is mandatory — see AGENTS.md "Save Format"):
+`MealExpiresAtSeconds` is read only when `fileVersion >= 30` and defaults to 0 for v29, so a
+pre-#392 meal buff is dropped cleanly and the party simply re-eats at the next meal period.
+On load, meal buffs are rebuilt via `MealBuffService.RestoreRecord` only when
+`MealExpiresAtSeconds > InGameTimeService.AccumulatedSeconds` at load time (expired records
+are discarded and the slot mirrors cleared). An open order forces Stop mode back on so the
+party returns to the table — crops were deducted pre-save and `HasPaid` prevents double
+payment (`CreateTicketPreReserved` recreates the ticket as `ReadyToCook` with full-recipe
+refund data).
 
 Fridge contents and the Pre-Stock Stack Size slider persist separately (save v28, section 45:
 `FridgeSlots` + `FridgePreStockStackSize`, restored into `FridgeInventoryService` on load), as
