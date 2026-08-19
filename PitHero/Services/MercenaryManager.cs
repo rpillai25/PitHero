@@ -85,7 +85,8 @@ namespace PitHero.Services
             // compare-time so a mid-wait hour flip adapts immediately without touching the timer.
             var timeService = Core.Services.GetService<InGameTimeService>();
             int hour = timeService?.Hour ?? 12;
-            float spawnThreshold = GetSpawnInterval() * TavernScheduleConfig.GetArrivalIntervalMultiplier(hour);
+            bool kitchenClosed = TavernScheduleConfig.IsKitchenClosed(hour);
+            float spawnThreshold = GetSpawnInterval(kitchenClosed) * TavernScheduleConfig.GetArrivalIntervalMultiplier(hour);
 
             if (_timeSinceLastSpawn >= spawnThreshold)
             {
@@ -104,10 +105,12 @@ namespace PitHero.Services
         /// <summary>
         /// Spawn cadence: an empty tavern gets its first patron quickly; after that a new
         /// patron arrives every 1-2 scaled minutes (rolled per arrival) whenever a seat is free.
+        /// The empty-tavern fast path only applies while the kitchen is open — overnight the
+        /// tavern is allowed to sit empty between slow-trickle arrivals (issue #392 follow-up).
         /// </summary>
-        private float GetSpawnInterval()
+        private float GetSpawnInterval(bool kitchenClosed)
         {
-            if (GetUnhiredMercenaries().Count == 0)
+            if (!kitchenClosed && GetUnhiredMercenaries().Count == 0)
                 return GameConfig.MercenaryMinSpawnIntervalSeconds;
             if (_nextSpawnInterval <= 0f)
                 _nextSpawnInterval = Nez.Random.Range(
@@ -132,6 +135,12 @@ namespace PitHero.Services
             var unhired = GetUnhiredMercenaries();
             if (unhired.Count >= MaxMercenariesInTavern)
             {
+                // While the kitchen is closed the tavern empties on its own (closing exodus) —
+                // never evict a finished patron just to seat a fresh face overnight.
+                var evictionTime = Core.Services.GetService<InGameTimeService>();
+                if (TavernScheduleConfig.IsKitchenClosed(evictionTime?.Hour ?? 12))
+                    return false;
+
                 // Fresh faces: the oldest patron who is done eating leaves right away
                 Entity doneEating = null;
                 int oldestSpawnId = int.MaxValue;
@@ -597,6 +606,18 @@ namespace PitHero.Services
             Debug.Log("[MercenaryManager] Waiting 2 seconds before spawning replacement mercenary");
             yield return Coroutine.WaitForSeconds(2.0f);
 
+            // While the kitchen is closed, departures are NOT replaced 1-for-1: restart the
+            // arrival timer so the next patron trickles in a full overnight interval later
+            // (issue #392 follow-up — the closing exodus used to spawn an instant replacement
+            // per leaver, and the replacements piled up at the door).
+            var replacementTime = Core.Services.GetService<InGameTimeService>();
+            if (TavernScheduleConfig.IsKitchenClosed(replacementTime?.Hour ?? 12))
+            {
+                _timeSinceLastSpawn = 0f;
+                _isRemovingMercenary = false;
+                yield break;
+            }
+
             _isRemovingMercenary = false;
 
             // Now that removal is complete and delay has passed, spawn the new mercenary
@@ -779,6 +800,34 @@ namespace PitHero.Services
                     continue;
                 var patron = entity.GetComponent<ECS.Components.TavernPatronComponent>();
                 if (patron != null && patron.State == ECS.Components.PatronState.WaitingToOrder)
+                    count++;
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Patrons with food on (or headed to) their table — FoodDelivered, Eating, or
+        /// FinishedEating. Their plates still need bussing, so the closing kitchen crew must
+        /// not drain home while any remain (issue #392 follow-up: un-bussed plates left all
+        /// nine tables dirty overnight and arrivals piled up at the door).
+        /// </summary>
+        public int CountPatronsDining()
+        {
+            int count = 0;
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                if (entity == null)
+                    continue;
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp == null || comp.IsHired)
+                    continue;
+                var patron = entity.GetComponent<ECS.Components.TavernPatronComponent>();
+                if (patron == null)
+                    continue;
+                if (patron.State == ECS.Components.PatronState.FoodDelivered
+                    || patron.State == ECS.Components.PatronState.Eating
+                    || patron.State == ECS.Components.PatronState.FinishedEating)
                     count++;
             }
             return count;

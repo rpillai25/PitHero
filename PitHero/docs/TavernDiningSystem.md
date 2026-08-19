@@ -279,8 +279,17 @@ clear either way, which is all the seat gate cares about.
 | Off-hours / overnight | all other hours | 2× | 120–240s |
 
 The multiplier is applied **at compare-time** (not reset-time), so a mid-wait hour flip adapts
-immediately. The empty-tavern 5s fast path also scales (2.5s at rush, 10s off-hours). Patrons keep
-arriving overnight at the 2× slow-trickle rate — a night phase with stage/bar is planned later.
+immediately. The empty-tavern 5s fast path also scales (2.5s at rush, 10s off-hours) but is
+**suppressed entirely while the kitchen is closed** — overnight the tavern may sit empty between
+trickle arrivals. Patrons keep arriving overnight at the 2× slow-trickle rate — a night phase
+with stage/bar is planned later.
+
+**Closed-hours arrivals are purely timer-driven.** While the kitchen is open, a departing patron
+is replaced almost immediately (the walk-off coroutine calls `TrySpawnMercenary` directly after a
+2s beat, and a full tavern evicts the oldest `FinishedEating` patron for a fresh face). While the
+kitchen is **closed**, both paths are disabled: no fresh-face evictions, and each departure
+resets `_timeSinceLastSpawn` instead of spawning a replacement — so the closing exodus empties
+the tavern and the next patron trickles in a full overnight interval later.
 
 At the seat a `TavernPatronComponent` is added. **A patron never sits down at a table that still
 has an un-bussed plate.** `GetAvailableTavernPosition` prefers a free seat that is already
@@ -314,17 +323,22 @@ Issue #392. `TavernScheduleConfig.IsKitchenClosed(hour)` returns true for hours 
   return false when closed. `KitchenTaskCoordinator.CreateTicket` also returns null as a
   belt-and-braces guard. (`CreateTicketPreReserved` is exempted — it is the save-reload path.)
 - **Crew wind-down**: `KitchenTaskCoordinator.Update()` computes `closed` (from `timeService`,
-  null → open) and `hasUndeliveredTickets` (any ticket whose state is not `Delivered`/`Canceled`).
-  While closed and no undelivered tickets exist, workers are not added to `_wantedAssignments`,
-  so the existing reconcile sends everyone home via `RequestReturnHome`. Workers carrying or
-  plating an in-flight dish stay until the dish is delivered, then they go home. This is
-  independent of `IsAsleep`, which means nocturnal workers (Orc, Skeleton, GhostMiner — awake
-  10 PM–6 AM) are also excluded from kitchen duty overnight.
+  null → open) and `HasClosingWork(hasUndeliveredTickets, busJobCount, diningPatrons)` —
+  undelivered tickets (any state not `Delivered`/`Canceled`), plates queued for bussing, and
+  seated guests still at their food (`MercenaryManager.CountPatronsDining()`:
+  `FoodDelivered`/`Eating`/`FinishedEating`). While closed and no closing work remains, workers
+  are not added to `_wantedAssignments`, so the existing reconcile sends everyone home via
+  `RequestReturnHome`. The crew therefore delivers every in-flight dish, waits out the last
+  eaters, busses the final plates, and only then drains — leaving every table clean for
+  overnight arrivals (a crew that left at the last delivery stranded dirty tables all night and
+  door-waiters piled up). This is independent of `IsAsleep`, which means nocturnal workers
+  (Orc, Skeleton, GhostMiner — awake 10 PM–6 AM) are also excluded from kitchen duty overnight.
 - **Shift-end speech bubble**: `ReturnHome_Enter` now says the shift-end bubble when
   `IsAsleep(...) || IsKitchenClosed(hour)` (so nocturnal workers' closing-time departure looks
   like a real shift end, not a role change).
-- **Overnight leftovers**: bus jobs and orphan plates from patrons who finish after the crew
-  drains sit until the 6 AM crew arrives and clears them. This is acceptable and expected.
+- **Overnight leftovers**: rare — the crew now outlasts the last eater and busses their plates
+  before draining. A plate can still be orphaned by an edge case (e.g. a bus claim released by a
+  despawning worker after the drain decision); it sits until the 6 AM crew clears it.
 - **Auto job assignment**: `KitchenJobDemandEvaluator.EvaluateDemand` returns Min=0 / Desired=0 /
   Sticky=true when `nocturnal=true` — kitchen only operates on the day shift.
 - **Manual job window**: `MonsterUI.RefreshMonsterList` disables the Kitchen job button 10 PM–6 AM

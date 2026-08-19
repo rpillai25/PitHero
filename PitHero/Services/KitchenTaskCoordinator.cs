@@ -142,6 +142,14 @@ namespace PitHero.Services
         /// </summary>
         public bool HasActiveRunner => _runner1WorkerIdx >= 0;
 
+        /// <summary>
+        /// After closing time, work that must finish before the crew drains home: undelivered
+        /// tickets, seated guests still eating (their plates are coming), and plates queued for
+        /// bussing. Pure — the closure gate in Update() feeds it live counts.
+        /// </summary>
+        public static bool HasClosingWork(bool hasUndeliveredTickets, int busJobCount, int diningPatrons)
+            => hasUndeliveredTickets || busJobCount > 0 || diningPatrons > 0;
+
         /// <summary>Total kitchen role posts — the cap on simultaneous kitchen workers.</summary>
         public static int MaxWorkerPosts =>
             GameConfig.MaxKitchenCooks + GameConfig.MaxKitchenServers + GameConfig.MaxKitchenRunners;
@@ -607,15 +615,18 @@ namespace PitHero.Services
             _wantedAssignments.Clear();
             _wantedRoles.Clear();
 
-            // Kitchen closure: at 10 PM stop wanting any new workers once all current tickets
-            // have been delivered.  Workers finishing in-flight dishes stay until done; then
-            // the existing reconcile path sends everyone home via RequestReturnHome().
+            // Kitchen closure: at 10 PM stop wanting any new workers once the closing work is
+            // done — every ticket delivered, every seated guest finished eating, and every
+            // plate bussed. Only then does the reconcile path send everyone home via
+            // RequestReturnHome(). Leaving before the last plates are cleared strands dirty
+            // tables all night (no runner) and overnight arrivals pile up at the door.
             // This is evaluated independently of IsAsleep (nocturnal workers are awake 10 PM–6 AM
             // but must never be wanted while the kitchen is closed).
             bool closed = timeService != null && TavernScheduleConfig.IsKitchenClosed(timeService.Hour);
-            bool hasUndeliveredTickets = false;
+            bool hasClosingWork = false;
             if (closed)
             {
+                bool hasUndeliveredTickets = false;
                 for (int ti = 0; ti < _tickets.Count; ti++)
                 {
                     var ts = _tickets[ti].State;
@@ -625,6 +636,9 @@ namespace PitHero.Services
                         break;
                     }
                 }
+                EnsureServices();
+                hasClosingWork = HasClosingWork(hasUndeliveredTickets, _busJobs.Count,
+                    _mercenaryManager != null ? _mercenaryManager.CountPatronsDining() : 0);
             }
 
             var roster = _alliedMonsters.AlliedMonsters;
@@ -635,7 +649,7 @@ namespace PitHero.Services
                     continue;
                 if (MonsterScheduleConfig.IsAsleep(m.MonsterTypeName, timeService))
                     continue;
-                if (closed && !hasUndeliveredTickets)
+                if (closed && !hasClosingWork)
                     continue;
 
                 int insertPos = _wantedAssignments.Count;

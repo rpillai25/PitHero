@@ -974,5 +974,18 @@ namespace PitHero.Tests
             Assert.IsTrue(_coordinator.TryClaimBusJob(out var fresh));
             Assert.AreEqual(990f, fresh.EnqueuedTime);
         }
+
+        [TestMethod]
+        public void HasClosingWork_CrewDrainsOnlyWhenEverythingIsDone()
+        {
+            // The closing crew must stay for each kind of remaining work independently:
+            // an undelivered ticket, a seated guest still at their food, or a queued plate.
+            // Dropping any term strands dirty tables overnight (issue #392 follow-up).
+            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(true, 0, 0), "undelivered ticket holds the crew");
+            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 1, 0), "queued plate holds the crew");
+            Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 0, 1), "eating guest holds the crew");
+            Assert.IsFalse(KitchenTaskCoordinator.HasClosingWork(false, 0, 0),
+                "all tickets delivered, guests gone, plates bussed — crew goes home");
+        }
     }
 }
