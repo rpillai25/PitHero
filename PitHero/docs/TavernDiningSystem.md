@@ -287,9 +287,14 @@ with stage/bar is planned later.
 **Closed-hours arrivals are purely timer-driven.** While the kitchen is open, a departing patron
 is replaced almost immediately (the walk-off coroutine calls `TrySpawnMercenary` directly after a
 2s beat, and a full tavern evicts the oldest `FinishedEating` patron for a fresh face). While the
-kitchen is **closed**, both paths are disabled: no fresh-face evictions, and each departure
-resets `_timeSinceLastSpawn` instead of spawning a replacement — so the closing exodus empties
-the tavern and the next patron trickles in a full overnight interval later.
+kitchen is **closed**, both paths are disabled — no fresh-face evictions, no per-departure
+respawn — so the closing exodus empties the tavern on its own. The arrival timer is reset
+**exactly once**, at the 10 PM open→closed edge (`_wasKitchenClosed`): the evening tavern is
+usually full, so the timer sits held at its threshold and would otherwise refill the first freed
+seat instantly. Departures during the exodus must NOT reset it again — the exodus stretches past
+midnight, and re-arming the full 2–4 game-hour overnight interval per leaver starves the entire
+night of arrivals. Net effect: first night patron ~midnight–2 AM, then one every 2–4 game-hours,
+each sitting ~2.5 game-hours (1/4 patience) — a handful of night patrons for ambiance.
 
 At the seat a `TavernPatronComponent` is added. **A patron never sits down at a table that still
 has an un-bussed plate.** `GetAvailableTavernPosition` prefers a free seat that is already

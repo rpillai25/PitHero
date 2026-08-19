@@ -39,6 +39,7 @@ namespace PitHero.Services
         private readonly HashSet<Point> _occupiedTavernPositions;
         private float _timeSinceLastSpawn;
         private float _nextSpawnInterval; // rolled 1-2 min per arrival; 0 = roll on first use
+        private bool _wasKitchenClosed;   // edge detector for the one-time arrival-timer reset at close
         private Scene _scene;
         private bool _hasSpawnedInitialMercenary;
         private int _nextSpawnId; // Global spawn ID counter
@@ -86,6 +87,16 @@ namespace PitHero.Services
             var timeService = Core.Services.GetService<InGameTimeService>();
             int hour = timeService?.Hour ?? 12;
             bool kitchenClosed = TavernScheduleConfig.IsKitchenClosed(hour);
+
+            // One-time reset at the 10 PM close: the tavern is typically full all evening, so
+            // the timer sits held at its threshold and the first freed seat would be refilled
+            // instantly. Resetting ONCE here starts the overnight trickle clock; individual
+            // departures during the closing exodus must NOT reset it again or the first night
+            // patron gets pushed back past dawn (each reset re-arms the full 2-4h interval).
+            if (kitchenClosed && !_wasKitchenClosed)
+                _timeSinceLastSpawn = 0f;
+            _wasKitchenClosed = kitchenClosed;
+
             float spawnThreshold = GetSpawnInterval(kitchenClosed) * TavernScheduleConfig.GetArrivalIntervalMultiplier(hour);
 
             if (_timeSinceLastSpawn >= spawnThreshold)
@@ -606,14 +617,13 @@ namespace PitHero.Services
             Debug.Log("[MercenaryManager] Waiting 2 seconds before spawning replacement mercenary");
             yield return Coroutine.WaitForSeconds(2.0f);
 
-            // While the kitchen is closed, departures are NOT replaced 1-for-1: restart the
-            // arrival timer so the next patron trickles in a full overnight interval later
-            // (issue #392 follow-up — the closing exodus used to spawn an instant replacement
-            // per leaver, and the replacements piled up at the door).
+            // While the kitchen is closed, departures are NOT replaced 1-for-1 — the overnight
+            // trickle is driven purely by the Update timer, which was reset once at the 10 PM
+            // transition. (Resetting it here per departure starved the whole night: the closing
+            // exodus stretches past midnight and every leaver re-armed the full 2-4h interval.)
             var replacementTime = Core.Services.GetService<InGameTimeService>();
             if (TavernScheduleConfig.IsKitchenClosed(replacementTime?.Hour ?? 12))
             {
-                _timeSinceLastSpawn = 0f;
                 _isRemovingMercenary = false;
                 yield break;
             }
