@@ -262,6 +262,24 @@ namespace PitHero
             SayFromOptions(entity, DinnerOptions);
         }
 
+        /// <summary>
+        /// Shows the skip-lunch bubble when lunch is skipped because no dish the hero
+        /// can order is makeable (not the no-gold path).
+        /// </summary>
+        public static void SayLunchSkipped(Entity entity)
+        {
+            SaySingle(entity, DialogueTextKey.HeroLunchSkipped);
+        }
+
+        /// <summary>
+        /// Shows the skip-dinner bubble when dinner is skipped because no dish the hero
+        /// can order is makeable (not the no-gold path).
+        /// </summary>
+        public static void SayDinnerSkipped(Entity entity)
+        {
+            SaySingle(entity, DialogueTextKey.HeroDinnerSkipped);
+        }
+
         /// <summary>Shows a randomly-picked pit-adventure bubble (one-shot per trip).</summary>
         public static void SayPitAdventure(Entity entity)
         {

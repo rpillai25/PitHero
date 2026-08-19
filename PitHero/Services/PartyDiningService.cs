@@ -175,7 +175,9 @@ namespace PitHero.Services
         /// Auto-dine for the given meal period. Breakfast is called from SleepInBedAction after
         /// night sleep; Lunch and Dinner are called from the hour-edge watcher in MainGameScene.
         /// Enters Stop mode and walks the party to the tavern — skipped when the hero, who leads
-        /// the meal, can't order (gold, storage coverage, kitchen closed, or already ate).
+        /// the meal, can't order anything (favorite and job fallbacks all unmakeable or
+        /// unaffordable, kitchen closed, or already ate). Every outcome is logged to analytics
+        /// so a skipped meal is diagnosable from the session log.
         /// </summary>
         public void BeginAutoDine(MealPeriod meal)
         {
@@ -187,6 +189,7 @@ namespace PitHero.Services
             var heroComponent = GetHeroComponent();
             if (heroComponent == null || heroComponent.LinkedHero == null)
             {
+                Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "hero_not_present");
                 Debug.Log("[PartyDiningService] Skipping meal trip — hero not present");
                 return;
             }
@@ -195,6 +198,7 @@ namespace PitHero.Services
             {
                 // A player-stopped party returns to the table on its own (SeatedInTavern goal)
                 // and orders once seated; arming auto-resume here would cancel the player's stop.
+                Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "already_stopped");
                 Debug.Log($"[PartyDiningService] Skipping {meal} trip — party already stopped");
                 return;
             }
@@ -203,6 +207,7 @@ namespace PitHero.Services
             int hour = timeService?.Hour ?? TavernScheduleConfig.KitchenOpenHour;
             if (TavernScheduleConfig.IsKitchenClosed(hour))
             {
+                Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "kitchen_closed");
                 Debug.Log($"[PartyDiningService] Skipping {meal} trip — kitchen is closed");
                 return;
             }
@@ -210,14 +215,15 @@ namespace PitHero.Services
             var coordinator = Core.Services.GetService<KitchenTaskCoordinator>();
             if (coordinator == null || !coordinator.IsKitchenOpen)
             {
+                Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "kitchen_unstaffed");
                 Debug.Log($"[PartyDiningService] Skipping {meal} trip — kitchen cannot serve");
                 return;
             }
 
-            // The hero leads the meal — mercs eat free but only when he eats — so the trip
-            // hinges entirely on his favorite dish being makeable and affordable.
+            // The hero leads the meal — mercs eat free but only when he eats.
             if (_slots[0].HasEatenThisMeal || GetCombatant(0) == null)
             {
+                Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "already_ate");
                 Debug.Log($"[PartyDiningService] Skipping {meal} trip — hero already ate this meal");
                 return;
             }
@@ -225,36 +231,50 @@ namespace PitHero.Services
             var favorite = FavoriteDishId >= 0 && FavoriteDishId < DishTypeInfo.Count
                 ? (DishType)FavoriteDishId
                 : DishType.RoastedOnionSkewers;
-            if (!coordinator.CanCoverRecipe(favorite))
-            {
-                string noIngrKey = meal == MealPeriod.Breakfast ? UITextKey.ConsoleBreakfastSkipped
-                    : meal == MealPeriod.Lunch ? UITextKey.ConsoleLunchSkipped
-                    : UITextKey.ConsoleDinnerSkipped;
-                EmitMealSkipped(noIngrKey, favorite);
-                if (meal == MealPeriod.Breakfast)
-                    SpeechBubbleDialogue.SayBreakfastNoIngredients(Core.Scene?.FindEntity("hero"));
-                Debug.Log($"[PartyDiningService] Skipping {meal} trip — no ingredients for favorite dish");
-                return;
-            }
-
             var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState == null || gameState.Funds < DishConfig.GetPrice(favorite))
+            bool anyCoverable = false;
+            if (gameState == null
+                || !TryPickHeroDish(coordinator, gameState, favorite, out _, out anyCoverable))
             {
-                string noGoldKey = meal == MealPeriod.Breakfast ? UITextKey.ConsoleBreakfastSkippedGold
-                    : meal == MealPeriod.Lunch ? UITextKey.ConsoleLunchSkippedGold
-                    : UITextKey.ConsoleDinnerSkippedGold;
-                EmitMealSkipped(noGoldKey, favorite);
-                Debug.Log($"[PartyDiningService] Skipping {meal} trip — not enough gold for favorite dish");
+                if (gameState != null && anyCoverable)
+                {
+                    string noGoldKey = meal == MealPeriod.Breakfast ? UITextKey.ConsoleBreakfastSkippedGold
+                        : meal == MealPeriod.Lunch ? UITextKey.ConsoleLunchSkippedGold
+                        : UITextKey.ConsoleDinnerSkippedGold;
+                    EmitMealSkipped(noGoldKey, favorite);
+                    Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "no_gold");
+                    Debug.Log($"[PartyDiningService] Skipping {meal} trip — not enough gold for any orderable dish");
+                }
+                else
+                {
+                    string noIngrKey = meal == MealPeriod.Breakfast ? UITextKey.ConsoleBreakfastSkipped
+                        : meal == MealPeriod.Lunch ? UITextKey.ConsoleLunchSkipped
+                        : UITextKey.ConsoleDinnerSkipped;
+                    EmitMealSkipped(noIngrKey, favorite);
+                    var heroEntity = Core.Scene?.FindEntity("hero");
+                    if (meal == MealPeriod.Breakfast)
+                        SpeechBubbleDialogue.SayBreakfastNoIngredients(heroEntity);
+                    else if (meal == MealPeriod.Lunch)
+                        SpeechBubbleDialogue.SayLunchSkipped(heroEntity);
+                    else
+                        SpeechBubbleDialogue.SayDinnerSkipped(heroEntity);
+                    Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "no_ingredients");
+                    Debug.Log($"[PartyDiningService] Skipping {meal} trip — no ingredients for any dish the hero can order");
+                }
                 return;
             }
 
             var stopUI = GetStopUI();
             if (stopUI == null)
+            {
+                Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "no_stop_ui");
                 return;
+            }
 
             _autoResumeWhenDone = true;
             stopUI.SetStopped(true);
             EmitMealBubble(meal);
+            Analytics.AnalyticsService.LogPartyMealTrip(meal.ToString(), "started");
             Debug.Log($"[PartyDiningService] Party heading to the tavern for {meal}");
         }
 
@@ -390,11 +410,12 @@ namespace PitHero.Services
 
         /// <summary>
         /// Next seated party member wanting to order. The hero leads the meal: he orders his
-        /// favorite dish only and pays for it; if it can't be made or afforded, the servers
-        /// skip the entire party — mercenaries never eat unless the hero eats. Mercenary meals
-        /// are free (job favorite, then the job's cheap fallbacks, ingredient-gated only).
-        /// Skips are re-evaluated on every poll, so the party is still served if ingredients
-        /// or gold appear while they remain seated.
+        /// favorite dish (falling back through his job's cheap fallbacks when it can't be made
+        /// or afforded) and pays for it; only when nothing he can order is available do the
+        /// servers skip the entire party — mercenaries never eat unless the hero eats.
+        /// Mercenary meals are free (job favorite, then the job's cheap fallbacks,
+        /// ingredient-gated only). Skips are re-evaluated on every poll, so the party is still
+        /// served if ingredients or gold appear while they remain seated.
         /// </summary>
         public bool TryGetNextPartyOrder(out int partySlot, out DishType dish)
         {
@@ -423,8 +444,7 @@ namespace PitHero.Services
                 if (heroCombatant == null || !TryGetFavorite(0, out var heroFavorite))
                     return false;
 
-                if (!coordinator.CanCoverRecipe(heroFavorite)
-                    || gameState.Funds < DishConfig.GetPrice(heroFavorite))
+                if (!TryPickHeroDish(coordinator, gameState, heroFavorite, out var heroDish, out _))
                 {
                     MarkPartySkippedByHero(coordinator, heroFavorite, heroCombatant.Name);
                     return false;
@@ -432,7 +452,7 @@ namespace PitHero.Services
 
                 _skippedThisSeating[0] = false;
                 partySlot = 0;
-                dish = heroFavorite;
+                dish = heroDish;
                 return true;
             }
 
@@ -637,6 +657,46 @@ namespace PitHero.Services
         /// it can't be made — the job class's two cheap fallback dishes, in order. Ingredient-
         /// gated only; mercenary meals never touch gold.
         /// </summary>
+        /// <summary>
+        /// Picks the dish the hero orders: his chosen favorite first, then his job's cheap
+        /// fallbacks — each candidate must be makeable AND affordable since the hero pays.
+        /// One missing crop no longer starves the whole party (issue #392 follow-up).
+        /// </summary>
+        private bool TryPickHeroDish(KitchenTaskCoordinator coordinator, GameStateService gameState,
+            DishType favorite, out DishType dish, out bool anyCoverable)
+        {
+            return TryPickHeroDishCore(favorite, GetJobName(0), gameState.Funds,
+                coordinator.CanCoverRecipe, out dish, out anyCoverable);
+        }
+
+        /// <summary>
+        /// Pure candidate ladder for the hero's order (public static for headless tests):
+        /// favorite → job fallback 0 → job fallback 1, first candidate that is coverable and
+        /// within <paramref name="funds"/> wins. <paramref name="anyCoverable"/> reports
+        /// whether any candidate had ingredients, so a full failure can be attributed to
+        /// ingredients vs gold.
+        /// </summary>
+        public static bool TryPickHeroDishCore(DishType favorite, string jobName, int funds,
+            System.Predicate<DishType> canCover, out DishType dish, out bool anyCoverable)
+        {
+            anyCoverable = false;
+            for (int c = 0; c < 3; c++)
+            {
+                var candidate = c == 0 ? favorite : DishConfig.GetFallbackForJob(jobName, c - 1);
+                if (c > 0 && candidate == favorite)
+                    continue; // favorite already failed — don't re-check it
+                if (!canCover(candidate))
+                    continue;
+                anyCoverable = true;
+                if (funds < DishConfig.GetPrice(candidate))
+                    continue;
+                dish = candidate;
+                return true;
+            }
+            dish = default;
+            return false;
+        }
+
         private bool TryPickMercDish(int slot, DishType favorite,
             KitchenTaskCoordinator coordinator, out DishType dish)
         {

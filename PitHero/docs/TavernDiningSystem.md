@@ -353,16 +353,27 @@ Rides **Stop mode** — no new GOAP surface. Entry paths:
   - **Dinner** (6 PM): same pattern with `MealPeriod.Dinner`.
 
   Each call checks: "Eat at tavern" on → party not already player-stopped → kitchen open →
-  `HasEatenThisMeal` false → hero's favorite can be made and afforded. A shortfall skips the
-  trip with a session-console line (console keys: `ConsoleLunchSkipped` / `ConsoleDinnerSkipped`).
+  `HasEatenThisMeal` false → **some dish the hero can order** exists (`TryPickHeroDish`:
+  Food-tab favorite first, then the hero's two job fallbacks via
+  `DishConfig.GetFallbackForJob`, each gated on `CanCoverRecipe` AND price — one missing crop
+  no longer starves the whole party). A full shortfall skips the trip with a session-console
+  line (console keys: `ConsoleLunchSkipped` / `ConsoleDinnerSkipped`) **and a hero skip
+  bubble** (`HeroLunchSkipped` / `HeroDinnerSkipped`, breakfast keeps
+  `HeroBreakfastNoIngredients`) on the no-ingredients branch only. Every `BeginAutoDine`
+  outcome logs a `party_meal_trip` analytics event (`started`, or the skip reason:
+  `hero_not_present` / `already_stopped` / `kitchen_closed` / `kitchen_unstaffed` /
+  `already_ate` / `no_ingredients` / `no_gold` / `no_stop_ui`) so a silently skipped meal is
+  diagnosable from the session log.
   `BeginAutoDine` no-ops if the party is already player-stopped. `ResetForNewMealPeriod()` runs
   **before** `BeginAutoDine` at every edge so `HasEatenThisMeal` is cleared for the new period.
   At 10 PM a stopped party leaves the table for night sleep; `StoppedAdventure` stays true.
 
 `PartyDiningService` implements `IPartyOrderSource`; the coordinator polls
-`TryGetNextPartyOrder`. **The hero leads the meal**: he orders only the Food-tab favorite
-(`FavoriteDishId`) and pays for it; if it can't be made or afforded, the servers skip the
-whole party — mercenaries never eat unless the hero eats. Mercenary meals are **free** (no
+`TryGetNextPartyOrder`. **The hero leads the meal**: he orders the Food-tab favorite
+(`FavoriteDishId`), falling back through his job's two cheap dishes when the favorite can't
+be made or afforded (`TryPickHeroDish` — the same ladder `BeginAutoDine` pre-checks), and
+pays for it; only when nothing he can order is available do the servers skip the whole
+party — mercenaries never eat unless the hero eats. Mercenary meals are **free** (no
 gold in or out): job favorite via `DishConfig.GetFavoriteForJob(job)`, falling back through
 two job-specific cheap dishes, ingredient-gated only. Skips log `party_dine_skipped`
 analytics once (reason `already_ate` / `no_ingredients` / `no_gold`) but are **re-evaluated

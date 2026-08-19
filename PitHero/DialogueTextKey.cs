@@ -86,5 +86,7 @@ namespace PitHero
         public const string HeroLunchOptions              = "HeroLunchOptions";
         public const string HeroDinnerTime                = "HeroDinnerTime";
         public const string HeroDinnerServing             = "HeroDinnerServing";
+        public const string HeroLunchSkipped              = "HeroLunchSkipped";
+        public const string HeroDinnerSkipped             = "HeroDinnerSkipped";
     }
 }

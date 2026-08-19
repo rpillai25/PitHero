@@ -122,8 +122,8 @@ virtual/live run parity. See the comment block at the top of `SpeechBubbleDialog
 | Lands in the pit | `JumpIntoPitAction` after `InsidePit = true` | [G] variant + silent |
 | Exits pit for night sleep / rest | `EmitPitIntentBubbles` | Discriminated at plan formation: `IsNighttime` → bedtime, else `HPCritical‖MPCritical` → rest set; **player-Stop exits never bubble**; `_pitExitBubbleEmitted` latch |
 | Breakfast commit / skipped (no ingredients) | `PartyDiningService.BeginAutoDine(Breakfast)` | Keys `HeroBreakfastTime` / `HeroBreakfastOptions`; skip line only on the `CanCoverRecipe` failure branch, not no-gold |
-| Lunch commit | `PartyDiningService.BeginAutoDine(Lunch)` | Keys `HeroLunchTime` / `HeroLunchOptions` (shuffle-bag, 2 options); same guard ladder as breakfast; triggers at 12 PM hour-edge |
-| Dinner commit | `PartyDiningService.BeginAutoDine(Dinner)` | Keys `HeroDinnerTime` / `HeroDinnerServing` (shuffle-bag, 2 options); triggers at 6 PM hour-edge |
+| Lunch commit / skipped (no ingredients) | `PartyDiningService.BeginAutoDine(Lunch)` | Keys `HeroLunchTime` / `HeroLunchOptions` (shuffle-bag, 2 options); skip key `HeroLunchSkipped` on the no-ingredients branch only, not no-gold; triggers at 12 PM hour-edge |
+| Dinner commit / skipped (no ingredients) | `PartyDiningService.BeginAutoDine(Dinner)` | Keys `HeroDinnerTime` / `HeroDinnerServing` (shuffle-bag, 2 options); skip key `HeroDinnerSkipped` on the no-ingredients branch only; triggers at 6 PM hour-edge |
 | Boss defeated | `LiveBattleAdapter.OnEnemyDefeated` | Live layer only; `VirtualBattleSink` untouched |
 | Respawn after defeat | `WalkToStatueForCrystalAction.WalkToStatue` start | See the deferral trap above |
 | Crystal ceremony prayer | `HeroPromotionService.ExecuteHeroCrystalCeremony` top | The pre-lightning dwell was extended to 4.0s (0.5 + 3.5) specifically to fit this line's reveal+linger — don't shorten one without the other |
