@@ -39,13 +39,17 @@ namespace PitHero.Config
         /// <summary>
         /// Returns the patron-arrival interval multiplier for the given in-game hour.
         /// Rush windows [6,8), [12,14), [18,21) receive double the base rate (0.5× interval);
-        /// all other hours including overnight receive the slow-trickle rate (2× interval).
+        /// daytime off-hours receive the slow-trickle rate (2× interval); overnight
+        /// (kitchen closed, 10 PM–6 AM) runs at the base rate (1×) so the tavern keeps a
+        /// steady night crowd for the future night phase — patrons sit ~2.5 game-hours on
+        /// reduced patience, so 1–2 game-hour arrival gaps hold one or two at a time.
         /// </summary>
         public static float GetArrivalIntervalMultiplier(int hour)
         {
             if (hour >= 6  && hour < 8)  return 0.5f;
             if (hour >= 12 && hour < 14) return 0.5f;
             if (hour >= 18 && hour < 21) return 0.5f;
+            if (IsKitchenClosed(hour))   return 1f;
             return 2f;
         }
 

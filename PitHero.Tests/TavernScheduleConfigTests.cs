@@ -61,15 +61,29 @@ namespace PitHero.Tests
 
         [TestMethod]
         [TestCategory("TavernSchedule")]
-        public void GetArrivalIntervalMultiplier_OffPeakHours_Return2f()
+        public void GetArrivalIntervalMultiplier_DaytimeOffPeakHours_Return2f()
         {
-            // Off-peak between rushes and overnight
-            int[] offPeak = { 0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 14, 15, 16, 17, 21, 22, 23 };
+            // Off-peak between rushes while the kitchen is open
+            int[] offPeak = { 8, 9, 10, 11, 14, 15, 16, 17, 21 };
             for (int i = 0; i < offPeak.Length; i++)
             {
                 int hour = offPeak[i];
                 Assert.AreEqual(2f, TavernScheduleConfig.GetArrivalIntervalMultiplier(hour),
                     $"Hour {hour} should be off-peak (2x interval)");
+            }
+        }
+
+        [TestMethod]
+        [TestCategory("TavernSchedule")]
+        public void GetArrivalIntervalMultiplier_OvernightHours_ReturnBaseRate()
+        {
+            // Kitchen-closed hours run at the base rate so the tavern keeps a night crowd
+            int[] overnight = { 22, 23, 0, 1, 2, 3, 4, 5 };
+            for (int i = 0; i < overnight.Length; i++)
+            {
+                int hour = overnight[i];
+                Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(hour),
+                    $"Hour {hour} should be the overnight base rate (1x interval)");
             }
         }
 

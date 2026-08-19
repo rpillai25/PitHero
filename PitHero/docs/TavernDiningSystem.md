@@ -276,13 +276,14 @@ clear either way, which is all the seat gate cares about.
 | Morning rush | 6–8 AM | 0.5× | 30–60s rolled per arrival |
 | Lunch rush | 12–2 PM | 0.5× | 30–60s |
 | Dinner rush | 6–9 PM | 0.5× | 30–60s |
-| Off-hours / overnight | all other hours | 2× | 120–240s |
+| Daytime off-hours | 8–12 AM, 2–6 PM, 9–10 PM | 2× | 120–240s |
+| Overnight (kitchen closed) | 10 PM–6 AM | 1× | 60–120s |
 
 The multiplier is applied **at compare-time** (not reset-time), so a mid-wait hour flip adapts
 immediately. The empty-tavern 5s fast path also scales (2.5s at rush, 10s off-hours) but is
 **suppressed entirely while the kitchen is closed** — overnight the tavern may sit empty between
-trickle arrivals. Patrons keep arriving overnight at the 2× slow-trickle rate — a night phase
-with stage/bar is planned later.
+trickle arrivals. Overnight runs at the base rate (denser than daytime off-hours) so the tavern
+keeps a steady night crowd — a night phase with stage/bar is planned later.
 
 **Closed-hours arrivals are purely timer-driven.** While the kitchen is open, a departing patron
 is replaced almost immediately (the walk-off coroutine calls `TrySpawnMercenary` directly after a
@@ -292,9 +293,9 @@ respawn — so the closing exodus empties the tavern on its own. The arrival tim
 **exactly once**, at the 10 PM open→closed edge (`_wasKitchenClosed`): the evening tavern is
 usually full, so the timer sits held at its threshold and would otherwise refill the first freed
 seat instantly. Departures during the exodus must NOT reset it again — the exodus stretches past
-midnight, and re-arming the full 2–4 game-hour overnight interval per leaver starves the entire
-night of arrivals. Net effect: first night patron ~midnight–2 AM, then one every 2–4 game-hours,
-each sitting ~2.5 game-hours (1/4 patience) — a handful of night patrons for ambiance.
+midnight, and re-arming the full overnight interval per leaver starves the entire night of
+arrivals. Net effect: first night patron ~11 PM–midnight, then one every 1–2 game-hours,
+each sitting ~2.5 game-hours (1/4 patience) — one or two night patrons at a time for ambiance.
 
 At the seat a `TavernPatronComponent` is added. **A patron never sits down at a table that still
 has an un-bussed plate.** `GetAvailableTavernPosition` prefers a free seat that is already
