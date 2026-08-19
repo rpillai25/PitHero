@@ -38,14 +38,14 @@ namespace PitHero.Config
 
         /// <summary>
         /// Returns the patron-arrival interval multiplier for the given in-game hour.
-        /// Rush windows [6,8), [12,14), [18,21) receive the base rate (1×);
-        /// all other hours including overnight receive the slow-trickle rate (2×).
+        /// Rush windows [6,8), [12,14), [18,21) receive double the base rate (0.5× interval);
+        /// all other hours including overnight receive the slow-trickle rate (2× interval).
         /// </summary>
         public static float GetArrivalIntervalMultiplier(int hour)
         {
-            if (hour >= 6  && hour < 8)  return 1f;
-            if (hour >= 12 && hour < 14) return 1f;
-            if (hour >= 18 && hour < 21) return 1f;
+            if (hour >= 6  && hour < 8)  return 0.5f;
+            if (hour >= 12 && hour < 14) return 0.5f;
+            if (hour >= 18 && hour < 21) return 0.5f;
             return 2f;
         }
 

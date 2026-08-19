@@ -80,8 +80,8 @@ namespace PitHero.Services
             // Use scaled time for spawn timer
             _timeSinceLastSpawn += Time.DeltaTime;
 
-            // Arrival pacing: rush-hour windows use the base interval (1×); all other hours
-            // (including overnight) use a 2× slow-trickle rate.  The multiplier is applied at
+            // Arrival pacing: rush-hour windows use half the base interval (0.5×, double speed);
+            // all other hours (including overnight) use a 2× slow-trickle rate.  The multiplier is applied at
             // compare-time so a mid-wait hour flip adapts immediately without touching the timer.
             var timeService = Core.Services.GetService<InGameTimeService>();
             int hour = timeService?.Hour ?? 12;

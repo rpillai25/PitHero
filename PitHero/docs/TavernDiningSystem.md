@@ -273,13 +273,13 @@ clear either way, which is all the seat gate cares about.
 
 | Window | Hours | Multiplier | Effective interval |
 |---|---|---|---|
-| Morning rush | 6–8 AM | 1× | 60–120s rolled per arrival |
-| Lunch rush | 12–2 PM | 1× | 60–120s |
-| Dinner rush | 6–9 PM | 1× | 60–120s |
+| Morning rush | 6–8 AM | 0.5× | 30–60s rolled per arrival |
+| Lunch rush | 12–2 PM | 0.5× | 30–60s |
+| Dinner rush | 6–9 PM | 0.5× | 30–60s |
 | Off-hours / overnight | all other hours | 2× | 120–240s |
 
 The multiplier is applied **at compare-time** (not reset-time), so a mid-wait hour flip adapts
-immediately. The empty-tavern 5s fast path also doubles at off-hours (10s). Patrons keep
+immediately. The empty-tavern 5s fast path also scales (2.5s at rush, 10s off-hours). Patrons keep
 arriving overnight at the 2× slow-trickle rate — a night phase with stage/bar is planned later.
 
 At the seat a `TavernPatronComponent` is added. **A patron never sits down at a table that still

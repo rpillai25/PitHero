@@ -45,18 +45,18 @@ namespace PitHero.Tests
 
         [TestMethod]
         [TestCategory("TavernSchedule")]
-        public void GetArrivalIntervalMultiplier_RushWindows_Return1f()
+        public void GetArrivalIntervalMultiplier_RushWindows_ReturnHalf()
         {
             // Morning rush [6, 8)
-            Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(6),  "6 AM is rush");
-            Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(7),  "7 AM is rush");
+            Assert.AreEqual(0.5f, TavernScheduleConfig.GetArrivalIntervalMultiplier(6),  "6 AM is rush");
+            Assert.AreEqual(0.5f, TavernScheduleConfig.GetArrivalIntervalMultiplier(7),  "7 AM is rush");
             // Lunch rush [12, 14)
-            Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(12), "12 PM is rush");
-            Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(13), "1 PM is rush");
+            Assert.AreEqual(0.5f, TavernScheduleConfig.GetArrivalIntervalMultiplier(12), "12 PM is rush");
+            Assert.AreEqual(0.5f, TavernScheduleConfig.GetArrivalIntervalMultiplier(13), "1 PM is rush");
             // Dinner rush [18, 21)
-            Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(18), "6 PM is rush");
-            Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(19), "7 PM is rush");
-            Assert.AreEqual(1f, TavernScheduleConfig.GetArrivalIntervalMultiplier(20), "8 PM is rush");
+            Assert.AreEqual(0.5f, TavernScheduleConfig.GetArrivalIntervalMultiplier(18), "6 PM is rush");
+            Assert.AreEqual(0.5f, TavernScheduleConfig.GetArrivalIntervalMultiplier(19), "7 PM is rush");
+            Assert.AreEqual(0.5f, TavernScheduleConfig.GetArrivalIntervalMultiplier(20), "8 PM is rush");
         }
 
         [TestMethod]
