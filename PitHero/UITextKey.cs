@@ -330,8 +330,14 @@ namespace PitHero
         public const string AddMonsterWindowTitle = "AddMonsterWindowTitle";
         public const string AddMonsterRemainingSpace = "AddMonsterRemainingSpace";
         public const string AddMonsterDaytimeLabel = "AddMonsterDaytimeLabel";
-        public const string AddMonsterNocturnalLabel = "AddMonsterNocturnalLabel";
+        public const string AddMonsterNighttimeLabel = "AddMonsterNighttimeLabel";
         public const string AddMonsterConfirmPrompt = "AddMonsterConfirmPrompt";
+        public const string WindowMonsterInfo = "WindowMonsterInfo";
+        public const string MonsterInfoTotalDaytime = "MonsterInfoTotalDaytime";
+        public const string MonsterInfoTotalNighttime = "MonsterInfoTotalNighttime";
+        public const string MonsterInfoFarmWorkers = "MonsterInfoFarmWorkers";
+        public const string MonsterInfoKitchenWorkers = "MonsterInfoKitchenWorkers";
+        public const string MonsterInfoIdleWorkers = "MonsterInfoIdleWorkers";
         public const string ConsoleTrapTriggered = "ConsoleTrapTriggered";
         public const string ConsoleTrapDisarmed = "ConsoleTrapDisarmed";
         public const string TabAutomation = "TabAutomation";
