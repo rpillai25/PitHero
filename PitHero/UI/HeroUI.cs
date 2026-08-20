@@ -880,6 +880,10 @@ namespace PitHero.UI
                 // Update Mercenaries tab
                 RefreshMercenariesTab();
 
+                // The Crystals tab only refreshed on tab switch, so reopening the window while it
+                // was still the selected tab showed a stale queue/inventory after a job change.
+                _crystalsTabComponent?.RefreshAll();
+
                 PositionHeroWindow();
                 _stage.AddElement(_heroWindow);
                 _heroWindow.SetVisible(true);
@@ -1216,6 +1220,11 @@ namespace PitHero.UI
 
         /// <summary>Gets the hero crystal tab reference for UI reconnection.</summary>
         public HeroCrystalTab GetCrystalTab() => _heroCrystalTab;
+
+        /// <summary>Re-reads the crystal collection into the Crystals tab slots. Called on hero
+        /// reconnection so a crystal consumed by the ceremony leaves the queue and the outgoing
+        /// crystal appears in the inventory without needing a tab switch.</summary>
+        public void RefreshCrystalsTab() => _crystalsTabComponent?.RefreshAll();
 
         /// <summary>Force close window</summary>
         public void ForceCloseWindow()

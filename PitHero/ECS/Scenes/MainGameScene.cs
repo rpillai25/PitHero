@@ -2594,6 +2594,10 @@ namespace PitHero.ECS.Scenes
                 Debug.Log("[MainGameScene] Reconnected inventory grid to new hero");
             }
 
+            // The ceremony pulled a crystal off the queue and pushed the outgoing one back into
+            // the inventory — resync the Crystals tab slots so they aren't stale next open.
+            _settingsUI?.HeroUI?.RefreshCrystalsTab();
+
             Debug.Log("[MainGameScene] Reconnected all UI to new hero");
         }
 
