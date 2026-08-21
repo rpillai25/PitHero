@@ -135,7 +135,7 @@ namespace PitHero.UI
             var actorsAtlas = TryLoadActorsAtlas();
 
             AddSection(GetText(UITextKey.AddMonsterDaytimeLabel), daytime, actorsAtlas, remaining);
-            AddSection(GetText(UITextKey.AddMonsterNocturnalLabel), nocturnal, actorsAtlas, remaining);
+            AddSection(GetText(UITextKey.AddMonsterNighttimeLabel), nocturnal, actorsAtlas, remaining);
         }
 
         private void AddSection(string header, List<IEnemy> monsters, Nez.Sprites.SpriteAtlas actorsAtlas, int remaining)

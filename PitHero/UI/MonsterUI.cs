@@ -41,7 +41,14 @@ namespace PitHero.UI
         // Aggregate view only: one page per Monster House. Empty in the per-house view.
         private PagerRow _pagerRow;
 
+        // Aggregate view only: workforce summary card docked to the right of the roster window.
+        private MonsterInfoPanel _infoPanel;
+        // Pre-allocated so the per-frame dismissal poll never allocates.
+        private System.Collections.Generic.List<Element> _dismissEnvelope;
+
         private const float SpriteSize = 32f;
+        // Gap between the roster window and the info card, matching HeroCrystalCard's dock spacing.
+        private const float InfoPanelGap = 10f;
         private static readonly Color BrownColor = new Color(71, 36, 7);
         private static LabelStyle BrownStyle() => new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownColor };
 
@@ -182,6 +189,9 @@ namespace PitHero.UI
 
             _monsterWindow.Add(content).Expand().Fill();
             _monsterWindow.SetVisible(false);
+
+            _infoPanel = new MonsterInfoPanel(skin);
+            _dismissEnvelope = new System.Collections.Generic.List<Element>(2) { _monsterWindow, _infoPanel };
         }
 
         private void ToggleMonsterWindow()
@@ -194,6 +204,9 @@ namespace PitHero.UI
                 _stage.AddElement(_monsterWindow);
                 _monsterWindow.SetVisible(true);
                 _monsterWindow.ToFront();
+                // Added after the roster window so the card sits above it when the two overlap.
+                _stage.AddElement(_infoPanel);
+                _infoPanel.ToFront();
                 PositionWindow();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
@@ -206,6 +219,8 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 _monsterWindow.SetVisible(false);
                 _monsterWindow.Remove();
+                _infoPanel.SetVisible(false);
+                _infoPanel.Remove();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
@@ -263,8 +278,15 @@ namespace PitHero.UI
             var manager = Core.Services.GetService<AlliedMonsterManager>();
             bool jobsAutomated = Core.Services.GetService<Services.AutoJobAssignmentService>()?.Enabled ?? false;
             // One-shot: the monster window pauses the game so the clock can't cross 10 PM while open.
-            bool kitchenClosed = TavernScheduleConfig.IsKitchenClosed(
-                Core.Services?.GetService<Services.InGameTimeService>()?.Hour ?? 12);
+            var timeService = Core.Services?.GetService<InGameTimeService>();
+            bool kitchenClosed = TavernScheduleConfig.IsKitchenClosed(timeService?.Hour ?? 12);
+
+            // The workforce summary belongs to the aggregate view only; the per-house view lists a
+            // subset that the roster-wide totals would not describe.
+            bool aggregateView = _houseFilterId < 0;
+            _infoPanel.SetVisible(aggregateView);
+            if (aggregateView)
+                _infoPanel.Refresh(manager?.AlliedMonsters, timeService?.IsNighttime ?? false);
 
             // One page per Monster House in the aggregate view; the per-house view is never paged.
             var houses = GetMonsterHouses();
@@ -388,7 +410,6 @@ namespace PitHero.UI
                 textTable.Add(statsLabel).Left();
 
                 // Show a red, waving "Sleeping" label when the monster is outside its work window.
-                var timeService = Core.Services?.GetService<InGameTimeService>();
                 if (MonsterScheduleConfig.IsAsleep(monster.MonsterTypeName, timeService))
                 {
                     var sleepStyle = (_skin?.Get<LabelStyle>("ph-sleeping"))
@@ -506,8 +527,13 @@ namespace PitHero.UI
             float stageW = _stage.GetWidth();
             float stageH = _stage.GetHeight();
 
+            // The info card docks to the right of the roster window, so the pair is placed as one
+            // block — otherwise the flip-to-the-left fallback would still leave the card off-stage.
+            bool infoShown = _infoPanel != null && _infoPanel.IsVisible();
+            float blockW = winW + (infoShown ? InfoPanelGap + _infoPanel.GetWidth() : 0f);
+
             float winX = btnX + btnW + 4f;
-            if (winX + winW > stageW) winX = btnX - 4f - winW;
+            if (winX + blockW > stageW) winX = btnX - 4f - blockW;
             if (winX < 0) winX = 0;
 
             float winY = _monsterButton.GetY() + 4f;
@@ -515,6 +541,15 @@ namespace PitHero.UI
             if (winY < 0) winY = 0;
 
             _monsterWindow.SetPosition(winX, winY);
+
+            if (infoShown)
+            {
+                float infoY = winY;
+                float infoH = _infoPanel.GetHeight();
+                if (infoY + infoH > stageH) infoY = stageH - infoH;
+                if (infoY < 0) infoY = 0;
+                _infoPanel.SetPosition(winX + winW + InfoPanelGap, infoY);
+            }
         }
 
         /// <summary>Sets the position of the monster icon button.</summary>
@@ -539,6 +574,8 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 _monsterWindow?.SetVisible(false);
                 _monsterWindow?.Remove();
+                _infoPanel?.SetVisible(false);
+                _infoPanel?.Remove();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
@@ -620,7 +657,9 @@ namespace PitHero.UI
             if (ConfirmationDialog.AnyVisible) return;
             // Clicks on the window's own top-bar button are the toggle handler's job, not ours
             if (OutsideClickDismissal.IsMouseInside(_monsterButton, _stage)) return;
-            if (OutsideClickDismissal.ShouldDismiss(_monsterWindow, _stage, _windowShownFrame))
+            // Envelope of the roster window plus the info card: a click on the card, or in the gap
+            // between the two, is inside this UI and must not close it.
+            if (OutsideClickDismissal.ShouldDismiss(_dismissEnvelope, _stage, _windowShownFrame))
                 ToggleMonsterWindow();
         }
     }

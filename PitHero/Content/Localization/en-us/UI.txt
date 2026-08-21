@@ -322,7 +322,7 @@ ButtonAddMonsters,Add Monsters
 AddMonsterWindowTitle,Add Monsters
 AddMonsterRemainingSpace,Remaining Space: {0}
 AddMonsterDaytimeLabel,Daytime
-AddMonsterNocturnalLabel,Nocturnal
+AddMonsterNighttimeLabel,Nighttime
 TabAutomation,Automation
 SettingsAutomateMonsterJobs,Automate monster jobs
 SettingsAutomateMonsterJobsTooltip,Monster job assignments are handled automatically.  Player can't assign monster jobs when this is enabled
@@ -450,3 +450,11 @@ WindowRefrigerator,Refrigerator
 FridgePreStockStackSize,Pre-Stock Stack Size: {0}
 FridgePreStockStackSizeTooltip,Maintain this many stacks of each available crop for use in cooking
 ButtonSendToCropStorage,Send to Crop Storage
+
+# Monster Info (issue #394)
+WindowMonsterInfo,Monster Info
+MonsterInfoTotalDaytime,Total Daytime Monsters:
+MonsterInfoTotalNighttime,Total Nighttime Monsters:
+MonsterInfoFarmWorkers,Current Farm Workers:
+MonsterInfoKitchenWorkers,Current Kitchen Workers:
+MonsterInfoIdleWorkers,Current Idle Workers:
