@@ -131,6 +131,10 @@ namespace PitHero.UI
         private int _freeMoveDragStartWindowY;
         private FreeMoveInputBlocker _freeMoveBlocker;
         private TextButton _freeMoveExitButton;
+
+        // New-game intro mode (issue #396): HUD snapped off-screen + transparent full-stage blocker
+        private bool _isIntroModeActive;
+        private FreeMoveInputBlocker _introBlocker;
         private TextButton _freeMoveButton;
 
         private Game _game;
@@ -2201,6 +2205,13 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
+            // New-game intro owns the HUD: keep everything pinned off-screen and swallow all input
+            if (_isIntroModeActive)
+            {
+                SnapHudHiddenForIntro();
+                return;
+            }
+
             // Free-move mode suspends shortcuts, farm modes, auto-hide and smooth scrolling for its duration
             if (_isFreeMoveModeActive)
             {
@@ -2576,13 +2587,19 @@ namespace PitHero.UI
         /// </summary>
         private class FreeMoveInputBlocker : Element, IInputListener
         {
-            public FreeMoveInputBlocker()
+            private readonly bool _drawDim;
+
+            /// <param name="drawDim">False for an invisible blocker (new-game intro); true draws the pause dim.</param>
+            public FreeMoveInputBlocker(bool drawDim = true)
             {
+                _drawDim = drawDim;
                 SetTouchable(Touchable.Enabled);
             }
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
+                if (!_drawDim)
+                    return;
                 batcher.DrawRect(GetX(), GetY(), GetWidth(), GetHeight(), new Color(0, 0, 0, 100));
             }
 
@@ -2601,6 +2618,118 @@ namespace PitHero.UI
             void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
 
             bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => true;
+        }
+
+        // ── New-game intro mode (issue #396) ─────────────────────────────────────
+
+        /// <summary>Returns true while the new-game intro sequence owns the HUD and input</summary>
+        public bool IsIntroModeActive => _isIntroModeActive;
+
+        /// <summary>
+        /// Enters intro mode: snaps the top bar, shortcut bar and event console off-screen (no slide,
+        /// so nothing flashes on the first frame), hides the auto-hide markers and raises a transparent
+        /// full-stage blocker so every stage hit-test succeeds — which closes all world-interaction
+        /// gates and the camera's pointer-over-UI zoom. Update() early-returns for the duration, so
+        /// hotkeys, farm modes and auto-hide are suspended too.
+        /// </summary>
+        public void EnterIntroMode()
+        {
+            if (_isIntroModeActive)
+                return;
+
+            if (_introBlocker == null)
+            {
+                _introBlocker = new FreeMoveInputBlocker(drawDim: false);
+                _stage.AddElement(_introBlocker);
+            }
+
+            _introBlocker.SetVisible(true);
+            _introBlocker.ToFront();
+            _isIntroModeActive = true;
+            SnapHudHiddenForIntro();
+        }
+
+        /// <summary>Exits intro mode: drops the blocker and slides the bars back into view</summary>
+        public void ExitIntroMode()
+        {
+            if (!_isIntroModeActive)
+                return;
+
+            _isIntroModeActive = false;
+            _introBlocker?.SetVisible(false);
+            ShowUIBar();
+            ShowShortcutBar();
+            ShowEventConsole();
+        }
+
+        /// <summary>
+        /// Pins every bar at its hidden offset and the blocker at full-stage. Idempotent and re-run
+        /// every intro frame: the stage reports Screen dimensions until the UICanvas is initialised
+        /// and the window may still be resized during scene start, so offsets computed once inside
+        /// Begin() can be stale by the first rendered frame.
+        /// </summary>
+        private void SnapHudHiddenForIntro()
+        {
+            _uiBarHidden = true;
+            _uiBarAnimating = false;
+            _uiBarIdleTimer = 0f;
+            _uiBarSlideY = -GetUIBarHideOffset();
+            _farmUI?.DismissSubButtons();
+            _constructionUI?.DismissSubButtons();
+            SetTopBarButtonsTouchable(false);
+            PositionUI();
+
+            if (_shortcutBar != null)
+            {
+                _shortcutBarHidden = true;
+                _shortcutBarAnimating = false;
+                _shortcutBarSlideY = GetShortcutBarHideOffset(WindowManager.IsHalfHeightMode());
+                _shortcutBar.SetSlideOffsetY(_shortcutBarSlideY);
+            }
+
+            if (_eventConsolePanel != null)
+            {
+                _consoleHidden = true;
+                _consoleAnimating = false;
+                _consoleSlideY = GetConsoleHideOffset();
+                _eventConsolePanel.SetSlideOffsetY(_consoleSlideY);
+            }
+
+            _topBarMarker?.SetVisible(false);
+            _shortcutBarMarker?.SetVisible(false);
+            _consoleMarker?.SetVisible(false);
+
+            _introBlocker?.SetBounds(0, 0, _stage.GetWidth(), _stage.GetHeight());
+        }
+
+        /// <summary>
+        /// Slide distance that parks the top bar fully above the window. Derived from the live button
+        /// height so half-size (2x sprite) mode clears the screen edge too.
+        /// </summary>
+        private float GetUIBarHideOffset()
+        {
+            return _gearButton != null ? (_gearButton.GetHeight() + 4f) : GameConfig.UIBarHideOffset;
+        }
+
+        /// <summary>
+        /// Slide distance that parks the shortcut bar fully below the window. Mirrors the
+        /// PositionShortcutBar formula: bottomY = stageH - barHeight - 16 + yOffset, so the distance
+        /// from bottomY to stageH is barHeight + 16 - yOffset (+4 margin).
+        /// </summary>
+        private static float GetShortcutBarHideOffset(bool isHalfMode)
+        {
+            float sbScale = isHalfMode ? 2f : 1f;
+            float sbBarHeight = 32f * sbScale;
+            float sbYOffset = isHalfMode ? -16f : 0f;
+            return sbBarHeight + 16f - sbYOffset + 4f;
+        }
+
+        /// <summary>Slide distance that pushes the event console fully below the bottom edge</summary>
+        private float GetConsoleHideOffset()
+        {
+            if (_eventConsolePanel == null)
+                return 0f;
+            return (_stage.GetHeight() - _eventConsolePanel.BaseY) + 4f;
         }
 
         /// <summary>
@@ -2800,7 +2929,7 @@ namespace PitHero.UI
 
             // Derive the hide offset from the actual button height so half-size (2x sprite) mode
             // moves the bar far enough to fully clear the screen edge.
-            float hideOffset = _gearButton != null ? (_gearButton.GetHeight() + 4f) : GameConfig.UIBarHideOffset;
+            float hideOffset = GetUIBarHideOffset();
             float targetY = _uiBarHidden ? -hideOffset : 0f;
             float delta = targetY - _uiBarSlideY;
             float step = GameConfig.UIBarSlideSpeed * Time.UnscaledDeltaTime;
@@ -2929,13 +3058,9 @@ namespace PitHero.UI
 
             if (!_shortcutBarAnimating) return;
 
-            // Mirror the PositionShortcutBar formula to compute how far the bar must slide
-            // before its top edge clears the bottom of the stage.
-            // PositionShortcutBar: bottomY = stageH - barHeight - 16 + yOffset
-            //   => distance from bottomY to stageH = barHeight + 16 - yOffset
-            float sbBarHeight = 32f * sbScale;
-            float sbYOffset = isHalfMode ? -16f : 0f;
-            float sbHideOffset = sbBarHeight + 16f - sbYOffset + 4f; // +4 margin
+            // How far the bar must slide before its top edge clears the bottom of the stage
+            // (shared with the intro-mode snap so the two can't drift apart).
+            float sbHideOffset = GetShortcutBarHideOffset(isHalfMode);
             float targetOffsetY = _shortcutBarHidden ? sbHideOffset : 0f;
             float sbDelta = targetOffsetY - _shortcutBarSlideY;
             float sbStep = GameConfig.UIBarSlideSpeed * Time.UnscaledDeltaTime;
@@ -3037,10 +3162,8 @@ namespace PitHero.UI
             // Marker is only shown once the panel has fully slid off-screen, and never during farm modes.
             _consoleMarker?.SetVisible(_consoleHidden && !_consoleAnimating && !ecFarmActive);
 
-            float stageH = _stage.GetHeight();
-            float consolePanelBaseY = _eventConsolePanel.BaseY;
             // Push the panel far enough below the bottom edge to fully clear it.
-            float hideOffset = (stageH - consolePanelBaseY) + 4f;
+            float hideOffset = GetConsoleHideOffset();
 
             if (!_consoleAnimating)
             {

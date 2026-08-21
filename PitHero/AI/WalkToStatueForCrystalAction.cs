@@ -13,8 +13,8 @@ namespace PitHero.AI
     /// </summary>
     public class WalkToStatueForCrystalAction : HeroActionBase
     {
-        private const int StatueTileX = 112;
-        private const int StatueTileY = 6;
+        private const int StatueTileX = GameConfig.HeroStatueStandTileX;
+        private const int StatueTileY = GameConfig.HeroStatueStandTileY;
         private ICoroutine _walkCoroutine;
 
         public WalkToStatueForCrystalAction() : base(GoapConstants.WalkToStatueForCrystalAction, 1)

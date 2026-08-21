@@ -116,16 +116,31 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            UpdateJumpVerticalOffset(progress);
+            if (progress < 0f) progress = 0f;
+            var heightFactor = 4f * progress * (1f - progress);
+            SetAirborneHeight(MAX_JUMP_HEIGHT_PX * heightFactor);
         }
 
         /// <summary>Starts a jump in a direction for duration</summary>
         public void StartJump(Direction direction, float duration)
         {
-            _jumpDirection = direction;
             _jumpDuration = duration;
             _jumpStartTime = Time.TotalTime;
             _isJumping = true;
+
+            if (BeginAirbornePose(direction))
+                Debug.Log($"[HeroJumpComponent] Started jump animation for direction {direction} with duration {duration}s");
+        }
+
+        /// <summary>
+        /// Puts the hero into the airborne look without any timing: faces the direction, plays the
+        /// per-layer jump pose, shows the ground shadow and records the rest offset that
+        /// <see cref="SetAirborneHeight"/> lifts from. Returns false when graphics are unavailable
+        /// (headless tests). Used by StartJump and by scripted drops such as the new-game intro.
+        /// </summary>
+        public bool BeginAirbornePose(Direction direction)
+        {
+            _jumpDirection = direction;
 
             // Update facing
             var facing = Entity.GetComponent<ActorFacingComponent>();
@@ -139,8 +154,8 @@ namespace PitHero.ECS.Components
 
             if (_multiSpriteAnimator == null && (_heroAnimators.Count == 0 || _actorsAtlas == null))
             {
-                Debug.Warn("[HeroJumpComponent] StartJump called but graphics components not available (this is normal in tests)");
-                return;
+                Debug.Warn("[HeroJumpComponent] BeginAirbornePose called but graphics components not available (this is normal in tests)");
+                return false;
             }
 
             // Arc offset lives on the composite's LocalOffset when present; otherwise per-layer.
@@ -148,21 +163,48 @@ namespace PitHero.ECS.Components
                 ? _multiSpriteAnimator.LocalOffset.Y
                 : (_heroAnimators.Count > 0 ? _heroAnimators[0].LocalOffset.Y : 0f);
 
-            foreach (var animator in _heroAnimators)
-                animator?.PlayJumpAnimation(direction);
+            for (int i = 0; i < _heroAnimators.Count; i++)
+                _heroAnimators[i]?.PlayJumpAnimation(direction);
 
             if (_shadowRenderer != null)
                 _shadowRenderer.SetEnabled(true);
 
-            Debug.Log($"[HeroJumpComponent] Started jump animation for direction {direction} with duration {duration}s");
+            return true;
         }
 
-        /// <summary>Ends current jump</summary>
-        public void EndJump()
+        /// <summary>
+        /// Lifts the hero sprite heightPx above its rest offset. Render-only: the entity (collider,
+        /// pathfinding, bubble anchor) does not move.
+        /// </summary>
+        public void SetAirborneHeight(float heightPx)
         {
-            if (!_isJumping) return;
-            _isJumping = false;
+            if (_heroAnimators == null)
+                InitializeAnimators();
 
+            if (heightPx < 0f) heightPx = 0f;
+            var yOffset = _initialYOffset - heightPx;
+
+            if (_multiSpriteAnimator != null)
+            {
+                _multiSpriteAnimator.LocalOffset = new Vector2(0f, yOffset);
+            }
+            else
+            {
+                for (int i = 0; i < _heroAnimators.Count; i++)
+                {
+                    var animator = _heroAnimators[i];
+                    if (animator != null)
+                        animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, yOffset));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Restores the grounded look: rest offset, walking animation for the airborne direction,
+        /// shadow hidden.
+        /// </summary>
+        public void EndAirbornePose()
+        {
             // Initialize _heroAnimators if null (may happen in tests)
             if (_heroAnimators == null)
             {
@@ -171,14 +213,22 @@ namespace PitHero.ECS.Components
 
             // Reset the arc offset — on the composite when present, per-layer in legacy path.
             if (_multiSpriteAnimator != null)
+            {
                 _multiSpriteAnimator.LocalOffset = new Vector2(0f, _initialYOffset);
+            }
             else
-                foreach (var animator in _heroAnimators)
+            {
+                for (int i = 0; i < _heroAnimators.Count; i++)
+                {
+                    var animator = _heroAnimators[i];
                     if (animator != null)
                         animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, _initialYOffset));
+                }
+            }
 
-            foreach (var animator in _heroAnimators)
+            for (int i = 0; i < _heroAnimators.Count; i++)
             {
+                var animator = _heroAnimators[i];
                 if (animator != null)
                 {
                     animator.UpdateAnimationForDirection(_jumpDirection);
@@ -188,35 +238,17 @@ namespace PitHero.ECS.Components
 
             if (_shadowRenderer != null)
                 _shadowRenderer.SetEnabled(false);
-
-            Debug.Log("[HeroJumpComponent] Ended jump animation");
         }
 
-        /// <summary>Updates vertical offset along parabolic arc</summary>
-        private void UpdateJumpVerticalOffset(float progress)
+        /// <summary>Ends current jump</summary>
+        public void EndJump()
         {
-            if (_heroAnimators == null)
-                InitializeAnimators();
+            if (!_isJumping) return;
+            _isJumping = false;
 
-            if (progress < 0f) progress = 0f;
-            if (progress > 1f) progress = 1f;
+            EndAirbornePose();
 
-            var heightFactor = 4f * progress * (1f - progress);
-            var yOffset = _initialYOffset - (MAX_JUMP_HEIGHT_PX * heightFactor);
-
-            if (_multiSpriteAnimator != null)
-            {
-                _multiSpriteAnimator.LocalOffset = new Vector2(0f, yOffset);
-            }
-            else
-            {
-                if (_heroAnimators.Count == 0) return;
-                foreach (var animator in _heroAnimators)
-                {
-                    if (animator != null)
-                        animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, yOffset));
-                }
-            }
+            Debug.Log("[HeroJumpComponent] Ended jump animation");
         }
 
         /// <summary>Returns true if jumping</summary>

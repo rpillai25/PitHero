@@ -127,6 +127,7 @@ virtual/live run parity. See the comment block at the top of `SpeechBubbleDialog
 | Boss defeated | `LiveBattleAdapter.OnEnemyDefeated` | Live layer only; `VirtualBattleSink` untouched |
 | Respawn after defeat | `WalkToStatueForCrystalAction.WalkToStatue` start | See the deferral trap above |
 | Crystal ceremony prayer | `HeroPromotionService.ExecuteHeroCrystalCeremony` top | The pre-lightning dwell was extended to 4.0s (0.5 + 3.5) specifically to fit this line's reveal+linger — don't shorten one without the other |
+| New-game intro prayer | `NewGameIntroService.Run` after touchdown (issue #396) | Key `HeroIntroDestiny`; `GameConfig.IntroPrayerDwellSeconds` (4.5 s) is sized to 44 chars @ 20 cps + 2 s linger = 4.2 s — change them together. Fires well after the hero's creation frame, so the deferral trap above doesn't apply |
 
 ### Tavern & workers
 
