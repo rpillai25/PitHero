@@ -30,6 +30,7 @@ namespace PitHero
         public const string HeroRespawnOuch               = "HeroRespawnOuch";
         public const string HeroRespawnNotAsPlanned       = "HeroRespawnNotAsPlanned";
         public const string HeroCeremonyGrantStrength     = "HeroCeremonyGrantStrength";
+        public const string HeroIntroDestiny              = "HeroIntroDestiny";
 
         // Wave 3 — patron
         public const string PatronOrderIllHave            = "PatronOrderIllHave";

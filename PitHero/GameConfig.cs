@@ -403,6 +403,20 @@ namespace PitHero
         public const int NewGameStarterSlimeFishingProficiency = 3;
         public const int NewGameStarterSlimeCookingProficiency = 3;
 
+        // Hero statue (issue #396): sprite anchor tile and the ground tile the hero stands on to pray
+        public const int HeroStatueTileX = 112;
+        public const int HeroStatueTileY = 3;
+        public const int HeroStatueStandTileX = 112;
+        public const int HeroStatueStandTileY = 6;
+
+        // New-game intro (issue #396): fall from the sky onto the statue tile, pray, lightning
+        public const float IntroFallDurationSeconds = 1.0f; // Gravity-eased drop from above the screen to the ground
+        public const float IntroPostLandingDelaySeconds = 0.5f; // Beat between touchdown and turning to the statue
+        public const float IntroPrayerDwellSeconds = 4.5f; // Must cover the HeroIntroDestiny bubble: 44 chars @ SpeechBubbleCharsPerSecond (20) = 2.2 s + SpeechBubbleLingerSeconds (2) = 4.2 s — change together
+        public const float IntroPostLightningDelaySeconds = 0.5f; // Beat after the strike before the HUD returns
+        public const float IntroFallOffscreenMarginPx = 48f; // Extra lift above the visible top edge (render target may still resize a few frames after a window restore)
+        public const int IntroAnimatorReadyMaxFrames = 10; // Frames to wait for the paperdoll animators to load (mirrors ApplySpawnSleepPoses)
+
         // Render Layers (the lower the number, the higher the layer)
 
         public const int RenderLayerLowest = 0; // Lowest possible layer

@@ -52,6 +52,7 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
+        private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
         private TillModeOverlay _tillModeOverlay;
@@ -264,6 +265,9 @@ namespace PitHero.ECS.Scenes
             if (_isInitializationComplete)
                 return;
 
+            // Captured up front: ApplyPendingLoadData() below clears PendingLoadData
+            bool isNewGame = SaveLoadService.PendingLoadData == null;
+
             LoadMap();
             SpawnPit();
 
@@ -272,7 +276,7 @@ namespace PitHero.ECS.Scenes
             // saved level.  Generating here first would create deferred entities that
             // ClearExistingPitEntities cannot find, producing a conflicting dual-state pit.
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager != null && SaveLoadService.PendingLoadData == null)
+            if (pitWidthManager != null && isNewGame)
             {
                 // New game — ensure tier state is clean before setting the initial level.
                 pitWidthManager.SetPitTier(1);
@@ -280,7 +284,7 @@ namespace PitHero.ECS.Scenes
                 pitWidthManager.SetPitLevel(1);
             }
 
-            SpawnHero();
+            var hero = SpawnHero(isNewGame);
             SpawnHeroStatue();
             SpawnInnkeeper();
 
@@ -399,6 +403,11 @@ namespace PitHero.ECS.Scenes
             // scene swap never run their close path) and re-apply the persistent window size —
             // otherwise the deferred size restore never fires again after loading a save.
             UI.UIWindowManager.ResetForNewScene();
+
+            // A brand-new game opens with the hero dropping in at the statue (issue #396). Started
+            // last so the window size above is settled and every UI element exists.
+            if (isNewGame)
+                StartNewGameIntro(hero);
 
             _isInitializationComplete = true;
         }
@@ -1402,11 +1411,72 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Spawns the initial hero at tile (62, 6)
+        /// Spawns the initial hero. A new game starts at the hero statue's feet without a state
+        /// machine (the intro adds it when it ends); a loaded game spawns at tile (62, 6) as before.
         /// </summary>
-        private void SpawnHero()
+        private Entity SpawnHero(bool isNewGame)
         {
-            CreateHeroEntity(62, 6);
+            if (isNewGame)
+                return CreateHeroEntity(GameConfig.HeroStatueStandTileX, GameConfig.HeroStatueStandTileY, addStateMachine: false);
+            return CreateHeroEntity(62, 6);
+        }
+
+        /// <summary>True while the new-game intro sequence owns the HUD, input and hero</summary>
+        public bool IsIntroActive => _newGameIntroService != null && _newGameIntroService.IsActive;
+
+        /// <summary>
+        /// Kicks off the new-game intro: hides the hero until the drop is posed, locks the
+        /// presentation and launches the sequence coroutine.
+        /// </summary>
+        private void StartNewGameIntro(Entity hero)
+        {
+            if (hero == null)
+                return;
+
+            hero.GetComponent<MultiSpriteAnimator>()?.SetEnabled(false);
+            BeginIntroPresentation();
+            _newGameIntroService = new Services.NewGameIntroService(this, _cameraController);
+            _newGameIntroService.Start(hero);
+        }
+
+        /// <summary>
+        /// Hides every HUD element, locks input and parks the camera on the statue for the intro.
+        /// The camera centre is latched and applied by the controller's deferred init.
+        /// </summary>
+        private void BeginIntroPresentation()
+        {
+            _graphicalHUD?.SetEnabled(false);
+            _heroActionQueueViz?.SetEnabled(false);
+            _pitLevelLabel?.SetVisible(false);
+            _fundsLabel?.SetVisible(false);
+            _clockLabel?.SetVisible(false);
+            _settingsUI?.EnterIntroMode();
+
+            if (_cameraController != null)
+            {
+                _cameraController.InputSuspended = true;
+                _cameraController.CenterOnWorldPosition(new Vector2(
+                    GameConfig.HeroStatueStandTileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                    GameConfig.HeroStatueStandTileY * GameConfig.TileSize + GameConfig.TileSize / 2f));
+            }
+        }
+
+        /// <summary>
+        /// Ends the intro presentation: restores the HUD and input, and gives the hero its GOAP state
+        /// machine so it plans its first pit trip from the statue (the pit-adventure bubble fires
+        /// naturally — the speech bubble component is long initialised by now).
+        /// </summary>
+        public void EndIntroPresentation(Entity hero)
+        {
+            _pitLevelLabel?.SetVisible(true);
+            _fundsLabel?.SetVisible(true);
+            _clockLabel?.SetVisible(true);
+            _settingsUI?.ExitIntroMode();
+            if (_cameraController != null)
+                _cameraController.InputSuspended = false;
+
+            if (hero != null && !hero.IsDestroyed && hero.GetComponent<HeroStateMachine>() == null)
+                hero.AddComponent(new HeroStateMachine());
         }
 
         /// <summary>
@@ -1494,7 +1564,7 @@ namespace PitHero.ECS.Scenes
         /// Creates a hero entity at the specified tile coordinates using HeroDesign for appearance.
         /// When needsCrystal is true, the hero spawns without a crystal and waits for the promotion ceremony.
         /// </summary>
-        private Entity CreateHeroEntity(int tileX, int tileY, bool needsCrystal = false)
+        private Entity CreateHeroEntity(int tileX, int tileY, bool needsCrystal = false, bool addStateMachine = true)
         {
             var designService = Core.Services.GetService<HeroDesignService>();
             var design = designService.GetDesign();
@@ -1611,7 +1681,10 @@ namespace PitHero.ECS.Scenes
             heroBouncyText.SetEnabled(false);
 
             hero.AddComponent(new Historian());
-            hero.AddComponent(new HeroStateMachine());
+            // The new-game intro adds the state machine when it ends: adding it here would plan the
+            // first pit trip immediately (Idle_Enter runs inside the deferred OnAddedToEntity).
+            if (addStateMachine)
+                hero.AddComponent(new HeroStateMachine());
             hero.AddComponent(new SpeechBubbleComponent());
             hero.AddComponent(new CharacterSelectorComponent());
 
@@ -1775,12 +1848,13 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Spawn the hero statue at tile coordinate (112, 6)
+        /// Spawn the hero statue sprite anchored at GameConfig.HeroStatueTileX/Y (112, 3). The
+        /// 181px-tall sprite's base lands on row 6, so heroes stand at HeroStatueStandTileX/Y (112, 6).
         /// </summary>
         private void SpawnHeroStatue()
         {
-            var tileX = 112;
-            var tileY = 3;
+            var tileX = GameConfig.HeroStatueTileX;
+            var tileY = GameConfig.HeroStatueTileY;
 
             var worldPos = new Vector2(
                 tileX * GameConfig.TileSize + GameConfig.TileSize / 2,
@@ -2760,7 +2834,9 @@ namespace PitHero.ECS.Scenes
 
             UpdatePlantingCropsLabel();
 
-            UpdateHeroHUD();
+            // The intro keeps the graphical HUD hidden; UpdateHeroHUD would re-enable it every frame
+            if (!IsIntroActive)
+                UpdateHeroHUD();
             UpdateHudFontMode();
 
             // Update shortcut bar position (handles offset when inventory open)
@@ -2769,18 +2845,21 @@ namespace PitHero.ECS.Scenes
             // Refresh shortcut bar to keep it in sync with inventory
             _shortcutBar?.RefreshItems();
 
-            // Handle keyboard shortcuts via shortcut bar
-            _shortcutBar?.HandleKeyboardShortcuts();
+            // Handle keyboard shortcuts via shortcut bar (suspended during the new-game intro)
+            if (!IsIntroActive)
+                _shortcutBar?.HandleKeyboardShortcuts();
 
             // Update mercenary manager
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             mercenaryManager?.Update();
 
-            // Sync farming monster workers with job assignments
-            Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
-
-            // Sync kitchen/tavern workers and ticket queue
-            Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
+            // Sync farming / kitchen workers with job assignments. Held during the new-game intro so
+            // the starter Slime stays inside its house until the hero has arrived (issue #396).
+            if (!IsIntroActive)
+            {
+                Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
+                Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
+            }
 
             // Tick party dining (eat timers, auto-resume, reload restart)
             Core.Services.GetService<Services.PartyDiningService>()?.Update();

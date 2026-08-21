@@ -26,6 +26,14 @@ namespace PitHero.ECS.Components
         private float _keyboardPanHeldTime = 0f; // continuous seconds arrow/WASD pan keys have been held
         private Vector2 _keyboardPanRemainder; // banked sub-pixel movement released in whole-pixel steps
         private Entity _heroEntity; // cached reference to hero entity
+        private bool _hasPendingCenter; // CenterOnWorldPosition called before OnAddedToEntity initialised the camera
+        private Vector2 _pendingCenter;
+
+        /// <summary>
+        /// While true every input path (zoom, pan, quadrant/keyboard pan, hero following) is skipped;
+        /// the camera stays wherever it was put. Used by the new-game intro (issue #396).
+        /// </summary>
+        public bool InputSuspended { get; set; }
 
         /// <summary>
         /// Optional hook set by the scene; returns true when the pointer is over a UI element.
@@ -58,7 +66,9 @@ namespace PitHero.ECS.Components
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 _defaultCameraPosition = ConstrainCameraPosition(new Vector2(
                     _tileMapBounds.X + _tileMapBounds.Width / 2f, GameConfig.VirtualHeight / 2f));
-                _camera.Position = _defaultCameraPosition;
+                // A centre requested during scene setup (before this deferred init) wins over the default
+                _camera.Position = _hasPendingCenter ? ConstrainCameraPosition(_pendingCenter) : _defaultCameraPosition;
+                _hasPendingCenter = false;
                 QuantizeCameraPosition();
             }
         }
@@ -77,6 +87,10 @@ namespace PitHero.ECS.Components
                 _camera.Position = ConstrainCameraPosition(_camera.Position);
                 QuantizeCameraPosition();
             }
+
+            // Scripted sequences (new-game intro) own the camera: no input, no hero following
+            if (InputSuspended)
+                return;
 
             // Only the manual (menu) pause freezes the camera; the farm-mode pause keeps camera
             // controls live so the player can right-mouse pan while planning crops.
@@ -574,6 +588,44 @@ namespace PitHero.ECS.Components
                 desiredPosition.Y = MathHelper.Clamp(desiredPosition.Y, minY, maxY);
 
             return desiredPosition;
+        }
+
+        /// <summary>
+        /// Centers the camera on a world position (clamped to the map). Safe to call during scene
+        /// setup before the camera is initialised: the request is latched and applied in
+        /// OnAddedToEntity instead of the default map-center position. Does not switch to manual
+        /// control, so hero auto-follow (if enabled) resumes seamlessly afterwards.
+        /// </summary>
+        public void CenterOnWorldPosition(Vector2 worldPosition)
+        {
+            if (_camera == null)
+            {
+                _pendingCenter = worldPosition;
+                _hasPendingCenter = true;
+                return;
+            }
+
+            _camera.Position = ConstrainCameraPosition(worldPosition);
+            QuantizeCameraPosition();
+        }
+
+        /// <summary>
+        /// World-space Y of the top edge of the visible area, computed from the scene render target
+        /// (not Camera.Bounds, which reads the backbuffer viewport when called outside Scene.Update).
+        /// </summary>
+        public float GetVisibleWorldTop()
+        {
+            if (_camera == null)
+                return _tileMapBounds.Y;
+            return ComputeVisibleWorldTop(_camera.Position.Y, GetSceneRenderTargetSize().Y, _camera.RawZoom);
+        }
+
+        /// <summary>Pure helper: visible top edge for a camera centre Y, render-target height and zoom</summary>
+        public static float ComputeVisibleWorldTop(float cameraY, int renderTargetHeight, float zoom)
+        {
+            if (zoom <= 0f)
+                zoom = 1f;
+            return cameraY - (renderTargetHeight / zoom) * 0.5f;
         }
 
         /// <summary>

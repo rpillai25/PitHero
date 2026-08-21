@@ -348,6 +348,12 @@ namespace PitHero
             SaySingle(entity, DialogueTextKey.HeroCeremonyGrantStrength);
         }
 
+        /// <summary>Shows the new-game intro prayer bubble at the hero statue (issue #396).</summary>
+        public static void SayIntro(Entity entity)
+        {
+            SaySingle(entity, DialogueTextKey.HeroIntroDestiny);
+        }
+
         /// <summary>
         /// Shows a randomly-picked patron-order bubble formatted with the localized dish name.
         /// </summary>

@@ -103,7 +103,7 @@ namespace PitHero.Services
             yield return Coroutine.WaitForSeconds(3.5f);
 
             // Play lightning strike animation on the hero entity
-            yield return PlayLightningStrikeAtHero(heroEntity);
+            yield return Util.LightningStrikeEffect.PlayAt(_scene, heroEntity.Transform.Position);
 
             Debug.Log("[HeroPromotionService] Crystal ceremony lightning complete — granting crystal to hero");
 
@@ -212,41 +212,6 @@ namespace PitHero.Services
             // New job, new cycle: shrink the pit back to level 1 (waits for any mercenaries
             // still inside; the party followed the hero out, so this is normally immediate)
             (_scene as MainGameScene)?.StartPitResetForNewCycle();
-        }
-
-        /// <summary>
-        /// Plays the lightning strike animation centered on the hero entity
-        /// </summary>
-        private IEnumerator PlayLightningStrikeAtHero(Entity heroEntity)
-        {
-            Debug.Log("[HeroPromotionService] Playing lightning strike on hero");
-
-            var lightningEntity = _scene.CreateEntity("lightning-strike-hero");
-            lightningEntity.SetPosition(heroEntity.Transform.Position);
-
-            var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
-            if (actorsAtlas == null)
-            {
-                Debug.Error("[HeroPromotionService] Failed to load Actors.atlas for hero lightning strike");
-                yield break;
-            }
-
-            var animator = lightningEntity.AddComponent<PausableSpriteAnimator>();
-            animator.AddAnimationsFromAtlas(actorsAtlas);
-            animator.SetRenderLayer(GameConfig.RenderLayerTop);
-
-            animator.Play("LightningStrike", Nez.Sprites.SpriteAnimator.LoopMode.Once);
-
-            float timeout = 5.0f;
-            float elapsed = 0f;
-            while (animator.IsRunning && elapsed < timeout)
-            {
-                yield return null;
-                elapsed += Time.DeltaTime;
-            }
-
-            lightningEntity.Destroy();
-            Debug.Log("[HeroPromotionService] Hero lightning strike complete");
         }
 
         /// <summary>

@@ -24,6 +24,7 @@ HeroRespawnStronger,Each defeat makes me stronger.
 HeroRespawnOuch,Ouch! That'll leave a mark!
 HeroRespawnNotAsPlanned,That didn't go as planned...
 HeroCeremonyGrantStrength,Guardian Spirit, show me a new path!
+HeroIntroDestiny,Guardian Spirit, help me fulfill my destiny!
 PatronOrderIllHave,I'll have a {0}
 PatronOrderOnePlease,One {0} please
 PatronPaidDelicious,That was delicious!

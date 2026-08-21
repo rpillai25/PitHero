@@ -21,20 +21,37 @@ When a hero dies (see [Permadeath.md](Permadeath.md) for the death animation and
 
 ## Hero Statue
 
-**Location:** statue sprite at tile (112, 3); hero destination tile (112, 6)
+**Location:** statue sprite anchored at `GameConfig.HeroStatueTileX/Y` (112, 3); the 181px-tall sprite's base lands on row 6, so heroes stand at `GameConfig.HeroStatueStandTileX/Y` (112, 6)
 **Sprite:** "HeroStatue" from Actors.atlas
 **Render Layer:** `GameConfig.RenderLayerActors`
 
 ## Lightning Strike Animation
 
+**Helper:** `Util/LightningStrikeEffect.PlayAt(scene, worldPosition)` — a coroutine shared by the ceremony and the new-game intro
 **Animation:** "LightningStrike" from Actors.atlas
 **Play Mode:** Once (`LoopMode.Once`), 5-second safety timeout
 **Render Layer:** `GameConfig.RenderLayerTop`
+**Sound:** none (cosmetic only)
+
+## New-Game Intro (issue #396)
+
+A brand-new game (`SaveLoadService.PendingLoadData == null`, captured at the top of `MainGameScene.Begin()` because `ApplyPendingLoadData` clears it) opens with a scripted sequence run by `Services/NewGameIntroService`:
+
+1. The hero is created at the statue's feet (`HeroStatueStandTileX/Y`) **without** a `HeroStateMachine` — Nez's `SimpleStateMachine.InitialState` setter runs `Idle_Enter` synchronously inside the deferred `OnAddedToEntity`, which would plan the first pit trip (and burn the one-shot pit bubble) immediately. Its `MultiSpriteAnimator` is disabled so no standing frame renders.
+2. `MainGameScene.BeginIntroPresentation` hides the labels and graphical HUD, `SettingsUI.EnterIntroMode()` snaps the top bar / shortcut bar / event console off-screen (re-pinned every frame while active) and raises a transparent full-stage blocker (every stage hit-test succeeds → all world-interaction gates close), and `CameraControllerComponent.InputSuspended` + `CenterOnWorldPosition` park the camera on the statue (the centre is latched until the controller's deferred init). The farm/kitchen coordinator ticks are also held while `IsIntroActive`, so the starter Slime stays inside its Monster House and emerges only after the intro.
+3. Once the paperdoll animators are loaded, the hero is posed with `HeroJumpComponent.BeginAirbornePose(Down)` and lifted above the visible top edge (`ComputeFallStartHeight` from the controller's render-target math — not `Camera.Bounds`, which reads the backbuffer from a coroutine), then dropped with a gravity ease (`ComputeFallHeight`, `GameConfig.IntroFallDurationSeconds`) and the Land sound.
+4. `SetFacing(Up)`, `SpeechBubbleDialogue.SayIntro` (`HeroIntroDestiny`), and a dwell of `GameConfig.IntroPrayerDwellSeconds` sized to the bubble's reveal + linger (change them together), then `LightningStrikeEffect.PlayAt` — purely for show, the hero already has its crystal.
+5. `MainGameScene.EndIntroPresentation` restores the HUD (bars slide back in), re-enables camera input and adds the `HeroStateMachine`, whose first plan is the normal pit trip from the statue.
+
+No save-format change (the intro never applies to a loaded game) and no virtual-layer counterpart (presentation only).
 
 ## Related Files
 
 - `PitHero/Services/HeroPromotionService.cs` — `CheckAndPromoteHeroIfNeeded`, `ExecuteHeroCrystalCeremony`, `GetNextCrystalForHero`
+- `PitHero/Util/LightningStrikeEffect.cs` — shared lightning strike coroutine
+- `PitHero/Services/NewGameIntroService.cs` — new-game intro sequence
 - `PitHero/AI/WalkToStatueForCrystalAction.cs` — GOAP walk-to-statue action
-- `PitHero/ECS/Scenes/MainGameScene.cs` — `RespawnHero`, `ReconnectUIToHero`, per-frame ceremony check
+- `PitHero/ECS/Scenes/MainGameScene.cs` — `RespawnHero`, `ReconnectUIToHero`, per-frame ceremony check, `BeginIntroPresentation` / `EndIntroPresentation`
 - `PitHero/ECS/Components/HeroComponent.cs` — `NeedsCrystal`, `HasArrivedAtStatueForCrystal`
+- `PitHero/ECS/Components/HeroJumpComponent.cs` — `BeginAirbornePose` / `SetAirborneHeight` / `EndAirbornePose` (airborne look without the jump timing)
 - `PitHero/docs/Permadeath.md` — the death animation and crystal-vault half of the death→respawn cycle
