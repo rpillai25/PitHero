@@ -907,6 +907,7 @@ namespace PitHero.UI
                 _selectedItemCard?.Hide();
                 _crystalsTabComponent?.Cleanup();
                 _stencilLibraryPanel?.SetVisible(false);
+                ClearHoverVisuals();
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
                 var pauseService = Core.Services.GetService<PauseService>();
@@ -1219,15 +1220,35 @@ namespace PitHero.UI
         }
 
         /// <summary>Periodic safety-net hover check: ensures the item tooltip appears if the mouse is
-        /// inside a slot but the hover event was not delivered. Runs every 5 frames.</summary>
+        /// inside a slot but the hover event was not delivered, and disappears once the cursor is no
+        /// longer over a hoverable slot. Runs every 5 frames.</summary>
         private void PerformPeriodicHoverCheck()
         {
             if (_itemTooltip == null || _inventoryGrid == null) return;
-            if (_itemTooltip.GetContainer().HasParent()) return;
 
-            var mousePos = _stage.GetMousePosition();
+            var mousePos = HoverProbe.GetStageMousePosition(_stage);
             var slot = _inventoryGrid.GetSlotAtStagePosition(mousePos);
-            if (slot != null && slot.SlotData.Item != null)
+
+            // The grid keeps its laid-out coordinates while another tab is active, so a bounds hit
+            // alone proves nothing — require the slot to be the top-most thing under the cursor.
+            if (slot != null && !HoverProbe.IsTopmostAt(slot, _stage, mousePos))
+                slot = null;
+
+            if (slot == null || slot.SlotData.Item == null)
+            {
+                // Nothing hoverable under the cursor, so nothing should be tipped. A detached or
+                // covered slot never fires OnMouseExit, making this the only path that can clear a
+                // tooltip raised while the Inventory tab was off screen. The drag ghost sits under
+                // the cursor and hides the slot from this probe, so leave hover state alone mid-drag
+                // — the drag's own hover lift owns it there.
+                if (!InventoryDragManager.IsDragging)
+                    _inventoryGrid.ClearStaleHoverStates();
+                if (_itemTooltip.GetContainer().HasParent())
+                    _itemTooltip.GetContainer().Remove();
+                return;
+            }
+
+            if (!_itemTooltip.GetContainer().HasParent())
                 HandleItemHovered(slot.SlotData.Item, slot);
         }
 
@@ -1249,7 +1270,7 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _stencilLibraryPanel?.SetVisible(false); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _stencilLibraryPanel?.SetVisible(false); ClearHoverVisuals(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 
@@ -1290,6 +1311,21 @@ namespace PitHero.UI
             
             tooltipContainer.SetPosition(tooltipX, tooltipY);
             tooltipContainer.ToFront();
+        }
+
+        /// <summary>
+        /// Tears down every cursor-following popup the window owns. These live on the stage rather
+        /// than inside the window, so closing the window does not take them with it — and once the
+        /// window is closed the periodic hover check no longer runs to clean up after them.
+        /// </summary>
+        private void ClearHoverVisuals()
+        {
+            _inventoryGrid?.ClearStaleHoverStates();
+            if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
+                _itemTooltip.GetContainer().Remove();
+            if (_equipPreviewTooltip != null && _equipPreviewTooltip.GetContainer().HasParent())
+                _equipPreviewTooltip.GetContainer().Remove();
+            _heroCrystalTab?.Cleanup();
         }
 
         private void HandleItemUnhovered()

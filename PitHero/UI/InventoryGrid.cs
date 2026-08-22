@@ -180,6 +180,26 @@ namespace PitHero.UI
             OnItemUnhovered?.Invoke();
         }
 
+        /// <summary>
+        /// Clears hover flags left behind when slots stop receiving mouse events at all — switching to
+        /// another tab detaches the grid, so the slot under the cursor never gets its OnMouseExit and
+        /// would keep drawing as hovered. No-ops (and fires no event) when nothing is flagged.
+        /// </summary>
+        public void ClearStaleHoverStates()
+        {
+            bool anyCleared = false;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null || !slot.SlotData.IsHovered) continue;
+                slot.SlotData.IsHovered = false;
+                slot.SetItemSpriteOffsetY(0f);
+                anyCleared = true;
+            }
+            if (anyCleared)
+                OnItemUnhovered?.Invoke();
+        }
+
         /// <summary>Returns true if any slot is currently hovered.</summary>
         public bool HasAnyHoveredSlot()
         {

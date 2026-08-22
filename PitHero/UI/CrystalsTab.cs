@@ -76,6 +76,9 @@ namespace PitHero.UI
             _hoverTooltipWindow.SetResizable(false);
             _hoverTooltipWindow.SetKeepWithinStage(false);
             _hoverTooltipWindow.SetColor(GameConfig.TransparentMenu);
+            // Passive label that trails the cursor: it must never take a hit, or it would both shadow
+            // the slot it describes in hover hit-tests and eat clicks meant for whatever is beneath it.
+            _hoverTooltipWindow.SetTouchable(Touchable.Disabled);
             _hoverLabel = new Label("", skin, "ph-default");
             _hoverTooltipWindow.Add(_hoverLabel).Pad(4f);
             _hoverTooltipWindow.Pack();
@@ -280,8 +283,7 @@ namespace PitHero.UI
 
         private void OnSlotUnhovered(CrystalSlotElement slot)
         {
-            _hoverTooltipWindow.SetVisible(false);
-            _hoverTooltipWindow.Remove();
+            HideHoverTooltip();
         }
 
         // ── Swap animation ────────────────────────────────────────────────────────
@@ -440,23 +442,35 @@ namespace PitHero.UI
             _hoverCheckFrame++;
             if (_hoverCheckFrame % 5 != 0) return;
 
-            if (_hoverTooltipWindow != null && _hoverTooltipWindow.GetParent() != null && _hoverTooltipWindow.IsVisible()) return;
+            var mousePos = HoverProbe.GetStageMousePosition(_stage);
+            var hovered = FindHoveredSlot(mousePos);
 
-            var mousePos = _stage.GetMousePosition();
+            if (hovered == null)
+            {
+                // No live crystal under the cursor, so no name tooltip should be up. Slots that went
+                // off screen (another tab is active) or got covered never fire OnSlotUnhovered, which
+                // makes this the only path that can retire a tooltip this check itself raised.
+                HideHoverTooltip();
+                return;
+            }
 
+            if (_hoverTooltipWindow == null || _hoverTooltipWindow.GetParent() == null || !_hoverTooltipWindow.IsVisible())
+                OnSlotHovered(hovered);
+        }
+
+        /// <summary>
+        /// Returns the crystal-bearing slot under the cursor, or null. Bounds alone are not enough:
+        /// an inactive tab keeps its layout, so slots must also be the top-most hit-testable element
+        /// at that point to count as hovered.
+        /// </summary>
+        private CrystalSlotElement FindHoveredSlot(Vector2 stagePos)
+        {
             if (_inventorySlots != null)
             {
                 for (int i = 0; i < _inventorySlots.Length; i++)
                 {
-                    var slot = _inventorySlots[i];
-                    if (slot == null || slot.Crystal == null) continue;
-                    var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
-                    if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + slot.GetWidth() &&
-                        mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + slot.GetHeight())
-                    {
-                        OnSlotHovered(slot);
-                        return;
-                    }
+                    if (IsSlotHoveredAt(_inventorySlots[i], stagePos))
+                        return _inventorySlots[i];
                 }
             }
 
@@ -464,39 +478,35 @@ namespace PitHero.UI
             {
                 for (int i = 0; i < _queueSlots.Length; i++)
                 {
-                    var slot = _queueSlots[i];
-                    if (slot == null || slot.Crystal == null) continue;
-                    var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
-                    if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + slot.GetWidth() &&
-                        mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + slot.GetHeight())
-                    {
-                        OnSlotHovered(slot);
-                        return;
-                    }
+                    if (IsSlotHoveredAt(_queueSlots[i], stagePos))
+                        return _queueSlots[i];
                 }
             }
 
-            if (_forgeInputA != null && _forgeInputA.Crystal != null)
-            {
-                var topLeft = _forgeInputA.LocalToStageCoordinates(Vector2.Zero);
-                if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + _forgeInputA.GetWidth() &&
-                    mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + _forgeInputA.GetHeight())
-                {
-                    OnSlotHovered(_forgeInputA);
-                    return;
-                }
-            }
+            if (IsSlotHoveredAt(_forgeInputA, stagePos)) return _forgeInputA;
+            if (IsSlotHoveredAt(_forgeInputB, stagePos)) return _forgeInputB;
 
-            if (_forgeInputB != null && _forgeInputB.Crystal != null)
-            {
-                var topLeft = _forgeInputB.LocalToStageCoordinates(Vector2.Zero);
-                if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + _forgeInputB.GetWidth() &&
-                    mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + _forgeInputB.GetHeight())
-                {
-                    OnSlotHovered(_forgeInputB);
-                    return;
-                }
-            }
+            return null;
+        }
+
+        private bool IsSlotHoveredAt(CrystalSlotElement slot, Vector2 stagePos)
+        {
+            if (slot == null || slot.Crystal == null) return false;
+
+            var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+            if (stagePos.X < topLeft.X || stagePos.X > topLeft.X + slot.GetWidth() ||
+                stagePos.Y < topLeft.Y || stagePos.Y > topLeft.Y + slot.GetHeight())
+                return false;
+
+            return HoverProbe.IsTopmostAt(slot, _stage, stagePos);
+        }
+
+        /// <summary>Takes the crystal-name tooltip off the stage.</summary>
+        private void HideHoverTooltip()
+        {
+            if (_hoverTooltipWindow == null || _hoverTooltipWindow.GetParent() == null) return;
+            _hoverTooltipWindow.SetVisible(false);
+            _hoverTooltipWindow.Remove();
         }
 
         /// <summary>The crystal info card element, for parent-window bounds checks (may be null).</summary>
@@ -506,6 +516,7 @@ namespace PitHero.UI
         public void Cleanup()
         {
             HideCrystalCard();
+            HideHoverTooltip();
         }
 
         private void OnForgeClicked(Button b)

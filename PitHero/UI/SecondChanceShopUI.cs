@@ -723,10 +723,26 @@ namespace PitHero.UI
             _hoverCheckFrame++;
             if (_hoverCheckFrame % 5 != 0) return;
             if (_heroInventoryTooltip == null || _heroInventoryGrid == null) return;
-            if (_heroInventoryTooltip.GetContainer().HasParent()) return;
 
             var slot = _heroInventoryGrid.GetSlotAtStagePosition(mousePos);
-            if (slot != null && slot.SlotData.Item != null)
+
+            // A hidden or covered grid keeps its layout, so bounds alone would report phantom hovers
+            // that no OnMouseExit can ever take back — require the slot to actually be on top.
+            if (slot != null && !HoverProbe.IsTopmostAt(slot, _stage, mousePos))
+                slot = null;
+
+            if (slot == null || slot.SlotData.Item == null)
+            {
+                // Mid-drag the ghost sits under the cursor and hides the slot from this probe, so the
+                // drag's own hover lift keeps ownership of the hover state.
+                if (!InventoryDragManager.IsDragging)
+                    _heroInventoryGrid.ClearStaleHoverStates();
+                if (_heroInventoryTooltip.GetContainer().HasParent())
+                    _heroInventoryTooltip.GetContainer().Remove();
+                return;
+            }
+
+            if (!_heroInventoryTooltip.GetContainer().HasParent())
                 HandleHeroInventoryItemHovered(slot.SlotData.Item, slot);
         }
 

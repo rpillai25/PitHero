@@ -625,14 +625,29 @@ namespace PitHero.UI
             _confirmDialog?.Hide();
         }
 
-        /// <summary>Updates tooltip position if visible</summary>
+        /// <summary>Updates tooltip position if visible, and drops it once this tab leaves the screen.</summary>
         public void Update()
         {
-            if (_skillTooltip != null && _skillTooltip.GetContainer().HasParent() && _stage != null)
+            if (_skillTooltip == null || !_skillTooltip.GetContainer().HasParent() || _stage == null)
+                return;
+
+            // The tooltip lives on the stage, not in the tab, so a tab switch would otherwise strand
+            // it: a detached skill button never fires the OnMouseExit that hides it.
+            if (!HoverProbe.IsLive(_mainContainer, _stage))
             {
-                var mousePos = _stage.GetMousePosition();
-                _skillTooltip.PositionWithinBounds(mousePos, _stage);
+                _skillTooltip.GetContainer().Remove();
+                return;
             }
+
+            var mousePos = _stage.GetMousePosition();
+            _skillTooltip.PositionWithinBounds(mousePos, _stage);
+        }
+
+        /// <summary>Removes the skill tooltip from the stage. Called when the parent Hero UI closes.</summary>
+        public void Cleanup()
+        {
+            if (_skillTooltip != null && _skillTooltip.GetContainer().HasParent())
+                _skillTooltip.GetContainer().Remove();
         }
 
         private void ClearDisplay()
