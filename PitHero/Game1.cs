@@ -106,10 +106,7 @@ namespace PitHero
             base.LoadContent();
 
             // Configure window as horizontal strip docked at bottom
-            //WindowManager.ConfigureHorizontalStrip(this,
-            //    alwaysOnTop: GameConfig.AlwaysOnTop,
-            //    clickThrough: GameConfig.ClickThrough);
-            WindowManager.ConfigureHorizontalStripOneThird(this,
+            WindowManager.ConfigureHorizontalStrip(this,
                 alwaysOnTop: GameConfig.AlwaysOnTop);
         }
 

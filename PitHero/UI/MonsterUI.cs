@@ -49,6 +49,8 @@ namespace PitHero.UI
         private const float SpriteSize = 32f;
         // Gap between the roster window and the info card, matching HeroCrystalCard's dock spacing.
         private const float InfoPanelGap = 10f;
+        private const float MonsterWindowWidth = 460f;
+        private const float MonsterWindowHeight = 340f; // design height at GameConfig.VirtualHeight = 360
         private static readonly Color BrownColor = new Color(71, 36, 7);
         private static LabelStyle BrownStyle() => new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownColor };
 
@@ -167,8 +169,9 @@ namespace PitHero.UI
         private void CreateMonsterWindow(Skin skin)
         {
             _monsterWindow = new Window(GetText(TextType.UI, UITextKey.WindowMonsters), skin);
-            // Nearly the full 360px virtual stage height, so the roster list fills the window.
-            _monsterWindow.SetSize(460f, 340f);
+            // Design height at GameConfig.VirtualHeight = 360; PositionWindow fits it to the live stage
+            // so the roster list fills the window at any configured design height.
+            _monsterWindow.SetSize(MonsterWindowWidth, MonsterWindowHeight);
 
             _monsterListTable = new Table();
             _monsterListTable.Top().Left();
@@ -517,39 +520,41 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>
+        /// Sizes the roster window to fit the live stage height and places it (with the info card
+        /// docked beside it) under the Monsters button.
+        /// </summary>
         private void PositionWindow()
         {
             if (_monsterButton == null || _monsterWindow == null) return;
             float btnX = _monsterButton.GetX();
             float btnW = _monsterButton.GetWidth();
-            float winW = _monsterWindow.GetWidth();
-            float winH = _monsterWindow.GetHeight();
             float stageW = _stage.GetWidth();
             float stageH = _stage.GetHeight();
+
+            float winY = _monsterButton.GetY() + GameConfig.UIWindowBelowBarGap;
+            float winH = UILayout.FitHeight(MonsterWindowHeight, stageH, winY, GameConfig.UIStageMargin);
+            if (winH != _monsterWindow.GetHeight())
+            {
+                _monsterWindow.SetSize(MonsterWindowWidth, winH);
+                _monsterWindow.Validate();
+            }
+            float winW = _monsterWindow.GetWidth();
 
             // The info card docks to the right of the roster window, so the pair is placed as one
             // block — otherwise the flip-to-the-left fallback would still leave the card off-stage.
             bool infoShown = _infoPanel != null && _infoPanel.IsVisible();
             float blockW = winW + (infoShown ? InfoPanelGap + _infoPanel.GetWidth() : 0f);
 
-            float winX = btnX + btnW + 4f;
-            if (winX + blockW > stageW) winX = btnX - 4f - blockW;
+            float winX = btnX + btnW + GameConfig.UIWindowBelowBarGap;
+            if (winX + blockW > stageW) winX = btnX - GameConfig.UIWindowBelowBarGap - blockW;
             if (winX < 0) winX = 0;
 
-            float winY = _monsterButton.GetY() + 4f;
-            if (winY + winH > stageH) winY = stageH - winH;
-            if (winY < 0) winY = 0;
-
+            winY = UILayout.ClampY(winY, winH, stageH);
             _monsterWindow.SetPosition(winX, winY);
 
             if (infoShown)
-            {
-                float infoY = winY;
-                float infoH = _infoPanel.GetHeight();
-                if (infoY + infoH > stageH) infoY = stageH - infoH;
-                if (infoY < 0) infoY = 0;
-                _infoPanel.SetPosition(winX + winW + InfoPanelGap, infoY);
-            }
+                _infoPanel.SetPosition(winX + winW + InfoPanelGap, UILayout.ClampY(winY, _infoPanel.GetHeight(), stageH));
         }
 
         /// <summary>Sets the position of the monster icon button.</summary>

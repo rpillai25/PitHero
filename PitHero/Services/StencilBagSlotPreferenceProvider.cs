@@ -1,4 +1,5 @@
 using Nez;
+using PitHero.UI;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Synergies;
@@ -11,14 +12,13 @@ namespace PitHero.Services
     /// </summary>
     public sealed class StencilBagSlotPreferenceProvider : IBagSlotPreferenceProvider
     {
-        // Grid-layout constants — must stay in sync with InventoryGrid.UpdateBagSlots.
-        // Rows 3-8 (inclusive) of the 20-wide grid back the 120 bag slots.
-        // bagIndex = (gridY - GridBagRowStart) * GridWidth + gridX
-        private const int GridWidth        = 20;
-        private const int GridBagRowStart  = 3;   // first grid row that is bag-backed
-        private const int GridBagRowEnd    = 8;   // last  grid row that is bag-backed (inclusive)
+        // Grid layout, taken straight from InventoryGrid so a resize of the grid can never leave this
+        // mapping behind: bagIndex = (gridY - GridBagRowStart) * GridWidth + gridX
+        private const int GridWidth        = InventoryGrid.BagColumns;
+        private const int GridBagRowStart  = InventoryGrid.BagRowStart;                          // first bag-backed row
+        private const int GridBagRowEnd    = InventoryGrid.BagRowStart + InventoryGrid.BagRows - 1; // last, inclusive
         private const int GridColMin       = 0;
-        private const int GridColMax       = 19;
+        private const int GridColMax       = InventoryGrid.BagColumns - 1;
 
         private readonly GameStateService _gameStateService;
 
@@ -60,7 +60,7 @@ namespace PitHero.Services
                     int gridX = record.AnchorX + offsets[i].X;
                     int gridY = record.AnchorY + offsets[i].Y;
 
-                    // Only rows 3-8 map to bag slots; discard out-of-bounds coordinates.
+                    // Only the bag rows map to bag slots; discard out-of-bounds coordinates.
                     if (gridY < GridBagRowStart || gridY > GridBagRowEnd) continue;
                     if (gridX < GridColMin      || gridX > GridColMax)    continue;
 

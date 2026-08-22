@@ -189,52 +189,20 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Configures the game window as a horizontal strip docked at the bottom of the screen.
+        /// Physical window height for the strip on a monitor of the given height. The design height
+        /// (GameConfig.VirtualHeight) is 1:1 at GameConfig.ReferenceDisplayHeight and scales from there,
+        /// so the FixedHeight render target always maps to whole pixels (1080 -> 1x, 2160 -> 2x).
         /// </summary>
-        public static void ConfigureHorizontalStrip(Game game, bool alwaysOnTop = true)
+        public static int GetStripHeight(int displayHeight)
         {
-            var window = game.Window;
-            IntPtr sdlWindow = window.Handle;
-            if (sdlWindow == IntPtr.Zero)
-            {
-                Debug.Log("Could not get SDL window handle.");
-                return;
-            }
-
-            int windowWidth = GameConfig.VirtualWidth;
-            int windowHeight = GameConfig.VirtualHeight;
-
-            // Clamp to current display
-            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
-            windowWidth = Math.Min(windowWidth, displayMode.Width);
-            windowHeight = Math.Min(windowHeight, displayMode.Height);
-
-            int x = Math.Max(0, (displayMode.Width - windowWidth) / 2);
-            int y = Math.Max(0, displayMode.Height - windowHeight);
-
-            if (y + windowHeight > displayMode.Height)
-                y = displayMode.Height - windowHeight;
-            if (y < 0)
-                y = 0;
-
-            // Borderless
-            if (window is Microsoft.Xna.Framework.GameWindow gw)
-                gw.IsBorderlessEXT = true;
-
-            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
-            SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? true : false);
-
-            _currentDockMode = DockMode.Bottom; // treat initial configuration as bottom dock
-            _currentDockYOffset = 0;
-
-            Debug.Log($"Window configured as horizontal strip at ({x},{y}) - Always on top: {alwaysOnTop}");
+            return displayHeight * GameConfig.VirtualHeight / GameConfig.ReferenceDisplayHeight;
         }
 
         /// <summary>
         /// Configures the game window as a horizontal strip docked at the bottom of the screen,
-        /// taking up 1/3 of the screen height.
+        /// sized by GetStripHeight (the design height scaled to the monitor).
         /// </summary>
-        public static void ConfigureHorizontalStripOneThird(Game game, bool alwaysOnTop = true)
+        public static void ConfigureHorizontalStrip(Game game, bool alwaysOnTop = true)
         {
             var window = game.Window;
             IntPtr sdlWindow = window.Handle;
@@ -249,7 +217,7 @@ namespace PitHero
             int displayHeight = displayMode.Height;
 
             int windowWidth = displayWidth;
-            int windowHeight = (int)(displayHeight / 3);
+            int windowHeight = GetStripHeight(displayHeight);
 
             int x = 0;
             int y = displayHeight - windowHeight;
@@ -367,7 +335,7 @@ namespace PitHero
             EnsureCurrentDisplay(sdlWindow);
 
             int windowWidth = _currentDisplayBounds.w;
-            int windowHeight = _currentDisplayBounds.h / 3;
+            int windowHeight = GetStripHeight(_currentDisplayBounds.h);
 
             int x = _currentDisplayBounds.x;
             int y = _currentDisplayBounds.y + Math.Max(0, Math.Min(yOffset, _currentDisplayBounds.h - 100));
@@ -391,7 +359,7 @@ namespace PitHero
             EnsureCurrentDisplay(sdlWindow);
 
             int windowWidth = _currentDisplayBounds.w;
-            int windowHeight = _currentDisplayBounds.h / 3;
+            int windowHeight = GetStripHeight(_currentDisplayBounds.h);
 
             int baseY = _currentDisplayBounds.y + _currentDisplayBounds.h - windowHeight;
             int y = Math.Max(_currentDisplayBounds.y + 100, Math.Min(baseY + yOffset, _currentDisplayBounds.y + _currentDisplayBounds.h - 100));
@@ -416,7 +384,7 @@ namespace PitHero
             EnsureCurrentDisplay(sdlWindow);
 
             int windowWidth = _currentDisplayBounds.w;
-            int windowHeight = _currentDisplayBounds.h / 3;
+            int windowHeight = GetStripHeight(_currentDisplayBounds.h);
 
             int centerY = _currentDisplayBounds.y + (_currentDisplayBounds.h - windowHeight) / 2;
             int y = Math.Max(_currentDisplayBounds.y + 100, Math.Min(centerY + yOffset, _currentDisplayBounds.y + _currentDisplayBounds.h - 100));
@@ -483,7 +451,7 @@ namespace PitHero
 
             // Use docking mode to decide target position/size
             int targetWidth = nextBounds.w;
-            int targetHeight = nextBounds.h / 3;
+            int targetHeight = GetStripHeight(nextBounds.h);
             int targetX = nextBounds.x;
             int targetY;
             switch (_currentDockMode)

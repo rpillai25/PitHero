@@ -187,7 +187,7 @@ namespace PitHero.UI
             float dialogH = GetHeight();
             SetPosition(
                 (_stage.GetWidth()  - dialogW) / 2f,
-                (_stage.GetHeight() - dialogH) / 2f
+                UILayout.CenterY(dialogH, _stage.GetHeight(), 0f)
             );
 
             _skillTooltip = new SkillTooltip(this, skin);

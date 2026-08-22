@@ -20,15 +20,25 @@ namespace PitHero.UI
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PAD = 1f;
 
+        /// <summary>Gap between the window's left edge and the Crystal Inventory column.</summary>
+        public const float LeftMargin = 16f;
+        /// <summary>Gap the host leaves between the Crystal Queue column and the window's right edge.</summary>
+        public const float RightMargin = 16f;
+
         // Pre-allocated slot number strings to avoid dynamic allocation (AOT compliance)
         private static readonly string[] QueueSlotNumbers = { "1", "2", "3", "4", "5" };
 
         private CrystalSlotElement[] _inventorySlots;
         private CrystalSlotElement[] _queueSlots;
 
+        private Table _mainTable;
         private Stage _stage;
         private Skin _skin;
         private CrystalCollectionService _crystalService;
+        private TextService _textService;
+
+        /// <summary>Width the content actually needs, including the left margin but not the right one.</summary>
+        public float ContentWidth => _mainTable != null ? _mainTable.PreferredWidth : 0f;
 
         // Hover tooltip
         private Window _hoverTooltip;
@@ -43,6 +53,14 @@ namespace PitHero.UI
 
         /// <summary>Fired when a hero crystal slot is clicked and has a crystal.</summary>
         public event System.Action<HeroCrystal> OnCrystalSlotClicked;
+
+        /// <summary>Gets localized text, falling back to the key when Core is not initialized.</summary>
+        private string GetText(string key)
+        {
+            if (_textService == null && Core.Services != null)
+                _textService = Core.Services.GetService<TextService>();
+            return _textService?.DisplayText(TextType.UI, key) ?? key;
+        }
 
         /// <summary>Creates the panel content and returns the root Table.</summary>
         public Table CreateContent(Skin skin, Stage stage)
@@ -62,11 +80,13 @@ namespace PitHero.UI
             _hoverTooltip.SetVisible(false);
 
             var mainTable = new Table();
-            mainTable.Top().Left().PadLeft(4f);
+            _mainTable = mainTable;
+            // The window's left edge sits flush against this, so the inset is the panel's left margin
+            mainTable.Top().Left().PadLeft(LeftMargin);
 
             // ── Inventory section (left column) ─────────────────────────────────
             var invCol = new Table();
-            invCol.Add(new Label("Crystal Inventory:", skin, "ph-default")).Left().Pad(5);
+            invCol.Add(new Label(GetText(UITextKey.CrystalInventoryTitle), skin, "ph-default")).Left().Pad(5);
             invCol.Row();
 
             _inventorySlots = new CrystalSlotElement[INV_TOTAL];
@@ -87,7 +107,7 @@ namespace PitHero.UI
 
             // ── Queue section (right column, slots stacked vertically) ─────────
             var queueCol = new Table();
-            queueCol.Add(new Label("Queue:", skin, "ph-default")).Left().Pad(5);
+            queueCol.Add(new Label(GetText(UITextKey.CrystalQueueTitle), skin, "ph-default")).Left().Pad(5);
             queueCol.Row();
 
             _queueSlots = new CrystalSlotElement[QUEUE_SLOTS];
@@ -108,9 +128,10 @@ namespace PitHero.UI
                 queueCol.Row();
             }
 
-            // Side-by-side: inventory left, queue right (mirrors CrystalsTab layout)
-            mainTable.Add(invCol).Top().Left().Pad(2);
-            mainTable.Add(queueCol).Top().Left().Pad(2, 16, 2, 5);
+            // Side-by-side: inventory left, queue right (mirrors CrystalsTab layout). The queue cell
+            // carries no right padding so the host can put exactly RightMargin past it.
+            mainTable.Add(invCol).Top().Left().Pad(2, 0, 2, 2);
+            mainTable.Add(queueCol).Top().Left().Pad(2, 16, 2, 0);
 
             RefreshAll();
             return mainTable;

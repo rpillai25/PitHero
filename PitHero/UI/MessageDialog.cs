@@ -42,7 +42,7 @@ namespace PitHero.UI
         {
             var stageWidth = stage.GetWidth();
             var stageHeight = stage.GetHeight();
-            SetPosition((stageWidth - GetWidth()) / 2f, (stageHeight - GetHeight()) / 2f);
+            SetPosition((stageWidth - GetWidth()) / 2f, UILayout.CenterY(GetHeight(), stageHeight, 0f));
 
             stage.AddElement(this);
             SetVisible(true);

@@ -60,6 +60,11 @@ namespace PitHero.UI
         private const float FallStartOffset = -600f;
         private const float SlotSize = 100f;
         private const float WinPad = 16f;
+        // Upward nudge off centre so the window clears the bottom UI bars.
+        private const float CenterYBias = 30f;
+        
+        // Gap between the Buildings window and the description card.
+        private const float DescWindowGap = 8f;
 
         private TextService _textService;
 
@@ -281,9 +286,10 @@ namespace PitHero.UI
             _inventoryWindow.Pack();
             float w = _inventoryWindow.GetWidth();
             float h = _inventoryWindow.GetHeight();
+            float stageH = _stage.GetHeight();
             _inventoryWindow.SetPosition(
                 (_stage.GetWidth()  - w) / 2f,
-                (_stage.GetHeight() - h) / 2f - 30f);
+                UILayout.CenterY(h, stageH, CenterYBias));
             _inventoryWindow.SetVisible(true);
         }
 
@@ -333,10 +339,30 @@ namespace PitHero.UI
 
             _descWindow.Pack();
 
+            // Below the Buildings window when there is room; otherwise beside it, so the card is never
+            // pushed off the bottom at short design heights.
             float invX = _inventoryWindow.GetX();
             float invY = _inventoryWindow.GetY();
+            float invW = _inventoryWindow.GetWidth();
             float invH = _inventoryWindow.GetHeight();
-            _descWindow.SetPosition(invX, invY + invH + 8f);
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+            float descW = _descWindow.GetWidth();
+            float descH = _descWindow.GetHeight();
+
+            if (invY + invH + DescWindowGap + descH <= stageH - GameConfig.UIStageMargin)
+            {
+                _descWindow.SetPosition(invX, invY + invH + DescWindowGap);
+            }
+            else
+            {
+                float descX = invX + invW + DescWindowGap;
+                if (descX + descW > stageW)
+                    descX = invX - DescWindowGap - descW;
+                if (descX < 0f)
+                    descX = 0f;
+                _descWindow.SetPosition(descX, UILayout.ClampY(invY, descH, stageH));
+            }
             _descWindow.SetVisible(true);
         }
 

@@ -40,7 +40,7 @@ namespace PitHero.UI
         }
 
         private const float WindowWidth = 500f;
-        private const float WindowHeight = 300f;
+        private const float WindowHeight = 300f; // design height at GameConfig.VirtualHeight = 360; fitted to the stage at show time
         private const float SlotRowHeight = 50f;
         private const float SlotPadding = 4f;
 
@@ -90,7 +90,9 @@ namespace PitHero.UI
                 ? GetText(TextType.UI, UITextKey.WindowSaveGame) 
                 : GetText(TextType.UI, UITextKey.WindowLoadGame);
             _window = new Window(title, windowStyle);
-            _window.SetSize(WindowWidth, WindowHeight);
+            float stageH = _stage.GetHeight();
+            float windowH = UILayout.FitHeight(WindowHeight, stageH, GameConfig.UIStageMargin, GameConfig.UIStageMargin);
+            _window.SetSize(WindowWidth, windowH);
             _window.SetMovable(false);
 
             var contentTable = new Table();
@@ -137,7 +139,7 @@ namespace PitHero.UI
             // Center the window on stage
             _window.SetPosition(
                 (_stage.GetWidth() - WindowWidth) / 2f,
-                (_stage.GetHeight() - WindowHeight) / 2f
+                UILayout.CenterY(windowH, stageH, 0f)
             );
 
             _stage.AddElement(_window);

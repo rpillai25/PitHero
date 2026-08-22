@@ -64,8 +64,11 @@ namespace PitHero.ECS.Components
                 _camera.SetMinimumZoom(_currentMinimumZoom);
                 _camera.SetMaximumZoom(_currentMaximumZoom);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
+                // Vertically centre on the pit's centre row (statue / rim-walk row) rather than on
+                // half the design height, so the whole pit is framed at any GameConfig.VirtualHeight
                 _defaultCameraPosition = ConstrainCameraPosition(new Vector2(
-                    _tileMapBounds.X + _tileMapBounds.Width / 2f, GameConfig.VirtualHeight / 2f));
+                    _tileMapBounds.X + _tileMapBounds.Width / 2f,
+                    (GameConfig.MapCenterTileY + 0.5f) * GameConfig.TileSize));
                 // A centre requested during scene setup (before this deferred init) wins over the default
                 _camera.Position = _hasPendingCenter ? ConstrainCameraPosition(_pendingCenter) : _defaultCameraPosition;
                 _hasPendingCenter = false;
@@ -144,6 +147,11 @@ namespace PitHero.ECS.Components
                     WindowManager.RestoreOriginalSize(Core.Instance);
 
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
+                // Vertically centre on the pit's centre row (statue / rim-walk row) rather than on
+                // half the design height, so the whole pit is framed at any GameConfig.VirtualHeight
+                _defaultCameraPosition = ConstrainCameraPosition(new Vector2(
+                    _tileMapBounds.X + _tileMapBounds.Width / 2f,
+                    (GameConfig.MapCenterTileY + 0.5f) * GameConfig.TileSize));
                 _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
                 QuantizeCameraPosition();
                 Debug.Log($"[CameraController] SHIFT+RightClick reset zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");

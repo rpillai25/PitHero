@@ -24,6 +24,8 @@ namespace PitHero.UI
 
         private Window _inventoryWindow;
         private Table _slotTable;
+        private Table _outerTable;
+        private Cell _scrollCell;
 
         private Window _descWindow;
         private Label _descNameLabel;
@@ -51,8 +53,9 @@ namespace PitHero.UI
         private const int   Columns      = 8;
         private const float ButtonWidth  = 110f;
         private const float ButtonHeight = 16f;
-        // One page is 4 rows of 44px (40px slot + 2px pad each side), so 224 fits a full storage
-        // without scrolling while keeping the window clear of the top of the screen.
+        // One page is 4 rows of 44px (40px slot + 2px pad each side), so 224 fits a full storage at the
+        // 360px design height without scrolling. ShowInventoryWindow shrinks it when the configured
+        // GameConfig.VirtualHeight is shorter (the grid then scrolls).
         private const float ScrollHeight = 224f;
         // Upward nudge off centre so the window clears the bottom UI bars.
         private const float CenterYBias  = 30f;
@@ -334,12 +337,13 @@ namespace PitHero.UI
             _inventoryWindow.SetResizable(false);
 
             var outer = new Table();
+            _outerTable = outer;
             outer.Pad(WinPad);
 
             _slotTable = new Table();
             var scroll = new ScrollPane(_slotTable, skin, "ph-default");
             scroll.SetScrollingDisabled(true, false);
-            outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(ScrollHeight);
+            _scrollCell = outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(ScrollHeight);
             outer.Row();
 
             _pagerRow = new PagerRow(skin);
@@ -412,20 +416,16 @@ namespace PitHero.UI
         private void ShowInventoryWindow()
         {
             _descWindow?.SetVisible(false);
-            _inventoryWindow.Pack();
-            float w = _inventoryWindow.GetWidth();
-            float h = _inventoryWindow.GetHeight();
             float stageW = _stage.GetWidth();
             float stageH = _stage.GetHeight();
 
-            // Sits slightly above centre to clear the bottom UI bars, then is clamped to the stage so a
-            // taller window — an extra button row, a larger slot grid — can never run off the top.
+            // Shrink the slot grid when the configured design height cannot fit the full window, then
+            // sit slightly above centre to clear the bottom UI bars (clamped to the stage).
+            UILayout.FitScrollCellToStage(_inventoryWindow, _outerTable, _scrollCell, ScrollHeight, stageH, GameConfig.UIStageMargin);
+            float w = _inventoryWindow.GetWidth();
+            float h = _inventoryWindow.GetHeight();
             float x = (stageW - w) / 2f;
-            float y = (stageH - h) / 2f - CenterYBias;
-            if (y + h > stageH)
-                y = stageH - h;
-            if (y < 0f)
-                y = 0f;
+            float y = UILayout.CenterY(h, stageH, CenterYBias);
             if (x < 0f)
                 x = 0f;
 

@@ -13,10 +13,24 @@ namespace PitHero
         // while the render-target width grows with the window aspect (ultrawide sees more world).
         // VirtualWidth is only a reference width (initial backbuffer, minimum-layout reference) —
         // runtime layout/camera code must use Stage.GetWidth()/Scene.SceneRenderTargetSize instead.
+        // VirtualHeight is the single knob for the strip's height: the OS window height follows it
+        // (WindowManager.GetStripHeight scales it by the monitor height), and every tall UI window
+        // fits itself to Stage.GetHeight() at show time, so it can be flipped (e.g. 360 <-> 296).
         public const int VirtualWidth = 1920;
-        public const int VirtualHeight = 360;
+        public const int VirtualHeight = 296;
         public const int InternalWorldWidth = 1920;
         public const int InternalWorldHeight = 800;
+
+        /// <summary>Monitor height at which the strip renders 1:1 (window height = VirtualHeight).</summary>
+        public const int ReferenceDisplayHeight = 1080;
+
+        // UI layout budget (all UI windows fit themselves to Stage.GetHeight() at show time)
+        /// <summary>Gap kept between a stage-fitted window and the top/bottom stage edges.</summary>
+        public const float UIStageMargin = 4f;
+        /// <summary>Gap between a top-bar button and the window opened beneath it.</summary>
+        public const float UIWindowBelowBarGap = 4f;
+        /// <summary>Distance from the bottom of the stage to the baseline HUD labels (Pit Lv / Gold).</summary>
+        public const float HudBottomLabelOffsetY = 10f;
 
         // Window Configuration
         public const bool AlwaysOnTop = true;
@@ -501,24 +515,28 @@ namespace PitHero
         public const float UIBarProximityY = 48f;     // Mouse Y <= this (stage coords) triggers proximity-unhide
 
         // Second Chance Shop layout positions
-        // Composed for a 1920-wide stage; SecondChanceShopUI centers the whole composition on
-        // wider stages by shifting all X positions right by (stageWidth - VirtualWidth) / 2.
+        // Composed for a 1920x360 stage; SecondChanceShopUI centers the whole composition on
+        // wider stages by shifting all X positions right by (stageWidth - VirtualWidth) / 2, and fits
+        // the panel heights/Y to the live stage height when VirtualHeight is shorter than 360.
         // Shop window (vault grid + tabs) positioned near left-center
-        public const float SecondChanceShopWindowX = 573f;
+        public const float SecondChanceShopWindowX = 509f;
         public const float SecondChanceShopWindowY = 12f;
         public const float SecondChanceShopWindowWidth = 350f;
         public const float SecondChanceShopWindowHeight = 310f;
 
-        // Hero panel (inventory/crystal) positioned to fill right side of screen
-        public const float SecondChanceHeroPanelX = 1200f;
+        // Hero panel (inventory/crystal) sized around the 824px inventory grid and right-aligned to
+        // the 1920 reference stage (1068 + 852 = 1920); the shop and merchant shift left to match.
+        public const float SecondChanceHeroPanelX = 1068f;
         public const float SecondChanceHeroPanelY = 12f;
-        public const float SecondChanceHeroPanelWidth = 720f;
+        public const float SecondChanceHeroPanelWidth = 852f;
         public const float SecondChanceHeroPanelHeight = 340f;
 
-        // Merchant sprite positioned between shop window and hero panel
-        // Sprite is 256x256; Y=50 places it within the 360px stage height (50 to 306)
-        public const float SecondChanceMerchantSpriteX = 935f;
-        public const float SecondChanceMerchantSpriteY = 50f;
+        // Merchant sprite centered in the span between the shop window and the hero panel:
+        // (509 + 350 + 1068) / 2 - 128 = 835.5, snapped to a whole pixel so the art stays crisp.
+        // The 256px frame is wider than that span, so its transparent margins overlap both windows.
+        // The sprite Y is derived at show time: SecondChanceShopUI stands the merchant on the bottom
+        // edge of the panels, so it follows the fitted panel height at any design height.
+        public const float SecondChanceMerchantSpriteX = 836f;
 
         // Merchant greeting bubble tail-tip anchor, relative to the sprite's top-left (issue #385).
         // X centers on the 256px art; Y sits at the top of the merchant's head within the frame.

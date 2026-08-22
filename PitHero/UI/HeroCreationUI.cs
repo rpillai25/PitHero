@@ -32,7 +32,7 @@ namespace PitHero.UI
 
         // Shared layout constants for the Appearance + Job Info window pair
         private const float AppearanceWindowWidth = 560f;
-        private const float CreationWindowHeight = 340f;
+        private const float CreationWindowHeight = 340f; // design height at GameConfig.VirtualHeight = 360
         private const float CreationWindowGap = 10f;
         private const float JobInfoWindowWidth = 350f;
 
@@ -108,6 +108,12 @@ namespace PitHero.UI
             RebuildPreviewAppearance();
         }
 
+        /// <summary>Height of the Appearance / Job Info windows, fitted to the live stage height.</summary>
+        private static float FittedCreationHeight(float stageH)
+        {
+            return UILayout.FitHeight(CreationWindowHeight, stageH, GameConfig.UIStageMargin, GameConfig.UIStageMargin);
+        }
+
         /// <summary>Creates the controls window with appearance options and hero preview</summary>
         private void CreateControlsWindow(Skin skin)
         {
@@ -116,14 +122,15 @@ namespace PitHero.UI
             _controlsWindow = window;
 
             const float windowWidth = AppearanceWindowWidth;
-            const float windowHeight = CreationWindowHeight;
             const float gap = CreationWindowGap;
             const float jobInfoWidth = JobInfoWindowWidth;
             float totalWidth = windowWidth + gap + jobInfoWidth;
             float startX = (_stage.GetWidth() - totalWidth) / 2f;
 
-            window.SetSize(windowWidth, windowHeight);
-            window.SetPosition(startX, (_stage.GetHeight() - windowHeight) / 2f);
+            float stageH = _stage.GetHeight();
+            float fittedHeight = FittedCreationHeight(stageH);
+            window.SetSize(windowWidth, fittedHeight);
+            window.SetPosition(startX, UILayout.CenterY(fittedHeight, stageH, 0f));
 
             // Main layout: top row (controls + preview), bottom row (buttons)
             var mainTable = new Table();
@@ -134,10 +141,10 @@ namespace PitHero.UI
 
             // Left: controls table
             var controlsTable = new Table();
-            controlsTable.Defaults().SetPadBottom(8f);
+            controlsTable.Defaults().SetPadBottom(3f); // tight rows so the Appearance content fits short design heights
 
             const float arrowWidth = 40f;
-            const float arrowHeight = 30f;
+            const float arrowHeight = 26f;
             const float labelWidth = 160f;
 
             // --- Name row ---
@@ -324,10 +331,10 @@ namespace PitHero.UI
             cancelButton.OnClicked += (btn) => OnCancel();
 
             var buttonsTable = new Table();
-            buttonsTable.Add(createButton).Size(160f, 40f).SetPadRight(10f);
-            buttonsTable.Add(cancelButton).Size(140f, 40f);
+            buttonsTable.Add(createButton).Size(160f, 34f).SetPadRight(10f);
+            buttonsTable.Add(cancelButton).Size(140f, 34f);
 
-            mainTable.Add(buttonsTable).Left().SetPadTop(10f);
+            mainTable.Add(buttonsTable).Left().SetPadTop(6f);
 
             window.Add(mainTable).Expand().Fill();
             _stage.AddElement(window);
@@ -431,13 +438,14 @@ namespace PitHero.UI
 
             const float windowWidth = AppearanceWindowWidth;
             const float jobInfoWidth = JobInfoWindowWidth;
-            const float windowHeight = CreationWindowHeight;
             const float gap = CreationWindowGap;
             float totalWidth = windowWidth + gap + jobInfoWidth;
             float startX = (_stage.GetWidth() - totalWidth) / 2f;
 
-            jobInfoWindow.SetSize(jobInfoWidth, windowHeight);
-            jobInfoWindow.SetPosition(startX + windowWidth + gap, (_stage.GetHeight() - windowHeight) / 2f);
+            float stageH = _stage.GetHeight();
+            float fittedHeight = FittedCreationHeight(stageH);
+            jobInfoWindow.SetSize(jobInfoWidth, fittedHeight);
+            jobInfoWindow.SetPosition(startX + windowWidth + gap, UILayout.CenterY(fittedHeight, stageH, 0f));
 
             _jobInfoContentTable = new Table();
             _jobInfoContentTable.Pad(10f);
@@ -599,9 +607,12 @@ namespace PitHero.UI
 
                 float totalWidth = AppearanceWindowWidth + CreationWindowGap + JobInfoWindowWidth;
                 float startX = (stageW - totalWidth) / 2f;
-                float windowY = (stageH - CreationWindowHeight) / 2f;
+                float fittedHeight = FittedCreationHeight(stageH);
+                float windowY = UILayout.CenterY(fittedHeight, stageH, 0f);
 
+                _controlsWindow?.SetSize(AppearanceWindowWidth, fittedHeight);
                 _controlsWindow?.SetPosition(startX, windowY);
+                _jobInfoWindow?.SetSize(JobInfoWindowWidth, fittedHeight);
                 _jobInfoWindow?.SetPosition(startX + AppearanceWindowWidth + CreationWindowGap, windowY);
                 // Preview sits above the direction buttons on the right side of the Appearance window
                 _previewEntity?.SetPosition(startX + AppearanceWindowWidth - 128f, stageH * 0.48f);

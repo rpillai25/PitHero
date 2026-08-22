@@ -19,17 +19,42 @@ namespace PitHero.UI
     /// <summary>Grid layout container for inventory slots with interaction logic (single linear buffer version).</summary>
     public class InventoryGrid : Group
     {
-        private const int GRID_WIDTH = 20;
-        private const int GRID_HEIGHT = 9;  // 1 row for hero name space + 2 rows for equipment area + 6 rows for inventory
+        private const int GRID_WIDTH = 24;
+        private const int GRID_HEIGHT = 8;  // 1 row for hero name space + 2 rows for equipment area + 5 rows for inventory
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
         private const float HOVER_OFFSET_Y = -16f; // Offset in pixels when hovering over a slot while another is selected
         private const float SWAP_TWEEN_DURATION = 0.2f; // Duration in seconds for swap animation
 
-        // Mercenary equip slot column positions (3 columns each, matching hero layout)
-        private const int MERC0_COL_START = 4;   // First mercenary: columns 4-6 (left of hero)
-        private const int MERC1_COL_START = 12;  // Second mercenary: columns 12-14 (right of hero)
+        // Pixel geometry of the grid. It is deliberately wide and short — 24 columns x 5 bag rows is
+        // the same 120 bag slots the old 20 x 6 layout had, but one row shorter so the whole grid
+        // fits the design height (GameConfig.VirtualHeight) without scrolling.
+        private const int BAG_START_ROW = 3;                                            // rows 0-2 are names + equipment
+        private const int BAG_ROW_COUNT = GRID_HEIGHT - BAG_START_ROW;                  // 5
+        private const float ROW_PITCH = SLOT_SIZE + SLOT_PADDING;                       // 33
+        private const float X_OFFSET = 32f;                                             // left padding before column 0
+        private const float Y_OFFSET = -16f;                                            // grid sits 16px higher (half the name row)
+
+        /// <summary>Bag columns — also the widest a synergy stencil may be.</summary>
+        public const int BagColumns = GRID_WIDTH;                                       // 24
+        /// <summary>Bag rows — also the tallest a synergy stencil may be.</summary>
+        public const int BagRows = BAG_ROW_COUNT;                                       // 5
+        /// <summary>First grid row backed by a bag slot (rows above it are names and equipment).</summary>
+        public const int BagRowStart = BAG_START_ROW;                                   // 3
+        /// <summary>Bag slot count (rows 3..7 across every column).</summary>
+        public const int BagCapacity = GRID_WIDTH * BAG_ROW_COUNT;                      // 120
+        /// <summary>Width of the whole grid, which a host must give it in full.</summary>
+        public const float ContentWidth = GRID_WIDTH * ROW_PITCH + X_OFFSET;            // 824
+        /// <summary>Height of the whole grid, which a host must give it in full.</summary>
+        public const float ContentHeight = GRID_HEIGHT * ROW_PITCH + Y_OFFSET;          // 248
+
+        // Equipment block: mercenary / hero / mercenary, three columns each with a one-column gap,
+        // centered over the grid width (11 = 3 + 1 + 3 + 1 + 3).
+        private const int EQUIP_BLOCK_START = (GRID_WIDTH - 11) / 2;
+        private const int MERC0_COL_START = EQUIP_BLOCK_START;      // First mercenary (left of hero)
+        private const int HERO_COL_START = EQUIP_BLOCK_START + 4;   // Hero equipment columns
+        private const int MERC1_COL_START = EQUIP_BLOCK_START + 8;  // Second mercenary (right of hero)
         private const int MAX_MERCENARY_SLOTS = 2;
 
         private readonly FastList<InventorySlot> _slots;   // Row-major, may contain nulls for Null slots or capacity-disabled slots
@@ -218,19 +243,19 @@ namespace PitHero.UI
             // Rows 1-2 (y=1,2) are for equipment display (hero + mercenaries)
             if (y >= 1 && y <= 2)
             {
-                // Hero equipment slots (columns 8-10)
-                if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
-                if (y == 1 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
-                if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
-                if (y == 2 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
-                if (y == 2 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
-                if (y == 2 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
+                // Hero equipment slots (three columns starting at HERO_COL_START)
+                if (y == 1 && x == HERO_COL_START) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
+                if (y == 1 && x == HERO_COL_START + 1) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
+                if (y == 1 && x == HERO_COL_START + 2) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
+                if (y == 2 && x == HERO_COL_START) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
+                if (y == 2 && x == HERO_COL_START + 1) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
+                if (y == 2 && x == HERO_COL_START + 2) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
 
-                // Mercenary 0 equipment slots (columns 4-6, left of hero)
+                // Mercenary 0 equipment slots (left of hero)
                 var merc0Data = TryCreateMercenarySlotData(x, y, MERC0_COL_START, 0);
                 if (merc0Data != null) return merc0Data;
 
-                // Mercenary 1 equipment slots (columns 12-14, right of hero)
+                // Mercenary 1 equipment slots (right of hero)
                 var merc1Data = TryCreateMercenarySlotData(x, y, MERC1_COL_START, 1);
                 if (merc1Data != null) return merc1Data;
 
@@ -238,7 +263,7 @@ namespace PitHero.UI
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
 
-            // Rows 3-8: Pure inventory (6 rows × 20 columns = 120 inventory slots)
+            // Rows 3-7: Pure inventory (5 rows × 24 columns = 120 inventory slots)
             return new InventorySlotData(x, y, InventorySlotType.Inventory);
         }
 
@@ -317,15 +342,60 @@ namespace PitHero.UI
                 {
                     _stencilManager.ClearAll();
                     var records = gameState.PlacedStencils;
-                    for (int i = 0; i < records.Count; i++)
+                    // Backwards: a record whose pattern can no longer fit is removed as we go
+                    for (int i = records.Count - 1; i >= 0; i--)
                     {
                         var record = records[i];
                         var pattern = SynergyPatternRegistry.GetById(record.PatternId);
                         if (pattern == null) continue;
-                        _stencilManager.PlaceStencil(pattern, new Point(record.AnchorX, record.AnchorY));
+
+                        var anchor = new Point(record.AnchorX, record.AnchorY);
+                        if (!TryFitStencilAnchor(pattern, ref anchor))
+                        {
+                            gameState.RemovePlacedStencil(record.PatternId);
+                            continue;
+                        }
+
+                        _stencilManager.PlaceStencil(pattern, anchor);
+                        if (anchor.X != record.AnchorX || anchor.Y != record.AnchorY)
+                            gameState.SetPlacedStencil(record.PatternId, anchor.X, anchor.Y);
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Clamps a restored stencil anchor so the whole pattern lands on bag slots. Saves written for
+        /// the older, taller grid (20 columns x 6 bag rows) can carry anchors on a row that no longer
+        /// exists. Returns false when the pattern cannot fit the bag area at all.
+        /// </summary>
+        private static bool TryFitStencilAnchor(SynergyPattern pattern, ref Point anchor)
+        {
+            var offsets = pattern.GridOffsets;
+            if (offsets.Count == 0) return false;
+
+            int minOffX = offsets[0].X, maxOffX = offsets[0].X;
+            int minOffY = offsets[0].Y, maxOffY = offsets[0].Y;
+            for (int i = 1; i < offsets.Count; i++)
+            {
+                if (offsets[i].X < minOffX) minOffX = offsets[i].X;
+                if (offsets[i].X > maxOffX) maxOffX = offsets[i].X;
+                if (offsets[i].Y < minOffY) minOffY = offsets[i].Y;
+                if (offsets[i].Y > maxOffY) maxOffY = offsets[i].Y;
+            }
+
+            int minAnchorX = -minOffX;
+            int maxAnchorX = GRID_WIDTH - 1 - maxOffX;
+            int minAnchorY = BAG_START_ROW - minOffY;
+            int maxAnchorY = GRID_HEIGHT - 1 - maxOffY;
+            if (minAnchorX > maxAnchorX || minAnchorY > maxAnchorY)
+                return false;
+
+            if (anchor.X < minAnchorX) anchor.X = minAnchorX;
+            else if (anchor.X > maxAnchorX) anchor.X = maxAnchorX;
+            if (anchor.Y < minAnchorY) anchor.Y = minAnchorY;
+            else if (anchor.Y > maxAnchorY) anchor.Y = maxAnchorY;
+            return true;
         }
 
         /// <summary>Updates mercenary equip slots with the current set of hired mercenaries.</summary>
@@ -599,30 +669,21 @@ namespace PitHero.UI
         /// <summary>Positions slot components based on grid coordinates.</summary>
         private void LayoutSlots()
         {
-            const float X_OFFSET = 32f; // Move grid right by 32 pixels for left padding
-            const float Y_OFFSET = -16f; // Move grid up by 16 pixels
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
                 var data = slot.SlotData;
-                slot.SetPosition(data.X * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET, data.Y * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET);
+                slot.SetPosition(data.X * ROW_PITCH + X_OFFSET, data.Y * ROW_PITCH + Y_OFFSET);
             }
         }
 
-        /// <summary>Sets the explicit size of the grid to account for offsets and ensure all slots are clickable.</summary>
+        /// <summary>Sets the explicit size of the grid so every slot is drawn and clickable.</summary>
         private void SetGridSize()
         {
-            const float X_OFFSET = 32f; // Left padding
-            const float Y_OFFSET = -16f; // Top offset (negative means moving up)
-            
-            // Calculate total grid dimensions including offsets
-            // Width: (20 columns * 33px per slot) + 32px left padding = 692px
-            // Height: (9 rows * 33px per slot) - 16px top offset = 281px (but we use absolute value for size)
-            float gridWidth = (GRID_WIDTH * (SLOT_SIZE + SLOT_PADDING)) + X_OFFSET;
-            float gridHeight = (GRID_HEIGHT * (SLOT_SIZE + SLOT_PADDING)) + System.Math.Abs(Y_OFFSET);
-            
-            SetSize(gridWidth, gridHeight);
+            // Width:  (24 columns * 33px per slot) + 32px left padding = 824px
+            // Height: (8 rows * 33px per slot) - 16px top offset = 248px, the real content extent
+            SetSize(ContentWidth, ContentHeight);
         }
 
         /// <summary>Routes slot clicks to stencil-mode handling. No item movement on click — drag-and-drop only.</summary>
@@ -1136,8 +1197,7 @@ namespace PitHero.UI
         {
             if (_nameFont == null) return;
 
-            const float X_OFFSET = 32f;
-            const float Y_OFFSET = 8f;
+            const float NAME_Y = 8f; // baseline inside the name row
             int[] colStarts = { MERC0_COL_START, MERC1_COL_START };
 
             for (int m = 0; m < MAX_MERCENARY_SLOTS; m++)
@@ -1146,10 +1206,10 @@ namespace PitHero.UI
                 if (merc == null) continue;
 
                 // Center name above the 3 equip columns (colStart to colStart+2)
-                float leftX = colStarts[m] * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
-                float rightX = (colStarts[m] + 3) * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
+                float leftX = colStarts[m] * ROW_PITCH + X_OFFSET;
+                float rightX = (colStarts[m] + 3) * ROW_PITCH + X_OFFSET;
                 float centerX = (leftX + rightX) / 2f;
-                float nameY = 0f * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET;
+                float nameY = NAME_Y;
 
                 var nameText = merc.Name;
                 var textSize = _nameFont.MeasureString(nameText);
@@ -1158,14 +1218,13 @@ namespace PitHero.UI
                 batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), MercenaryNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
 
-            // Draw hero name at the same Y position, centered above hero equip columns (8-10)
+            // Draw hero name at the same Y position, centered above the hero equip columns
             if (_heroComponent?.LinkedHero != null)
             {
-                const int HERO_COL_START = 8;
-                float heroLeftX = HERO_COL_START * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
-                float heroRightX = (HERO_COL_START + 3) * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
+                float heroLeftX = HERO_COL_START * ROW_PITCH + X_OFFSET;
+                float heroRightX = (HERO_COL_START + 3) * ROW_PITCH + X_OFFSET;
                 float heroCenterX = (heroLeftX + heroRightX) / 2f;
-                float heroNameY = 0f * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET;
+                float heroNameY = NAME_Y;
 
                 var heroNameText = _heroComponent.LinkedHero.Name ?? "Hero";
                 var heroTextSize = _nameFont.MeasureString(heroNameText);

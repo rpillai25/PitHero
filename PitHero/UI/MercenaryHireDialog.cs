@@ -211,7 +211,7 @@ namespace PitHero.UI
                 Pack();
                 SetPosition(
                     (stage.GetWidth() - GetWidth()) / 2f,
-                    (stage.GetHeight() - GetHeight()) / 2f
+                    UILayout.CenterY(GetHeight(), stage.GetHeight(), 0f)
                 );
             }
         }

@@ -51,6 +51,11 @@ namespace PitHero.UI
         // ── Constants ─────────────────────────────────────────────────────────────
         private const float SlotSize   = 40f;
         private const float WinPad     = 16f;
+        // Slot-grid height at the 360px design height; ShowInventoryWindow shrinks it (and the grid
+        // scrolls) when the configured GameConfig.VirtualHeight is shorter.
+        private const float ScrollHeight = 200f;
+        // Upward nudge off centre so the window clears the bottom UI bars.
+        private const float CenterYBias = 30f;
         private const int   CropsPerRow = 4;
 
         // ── Localization ──────────────────────────────────────────────────────────
@@ -353,6 +358,8 @@ namespace PitHero.UI
         // ── Inventory window ──────────────────────────────────────────────────────
 
         private Table _slotTable;
+        private Table _outerTable;
+        private Cell _scrollCell;
 
         private void CreateInventoryWindow()
         {
@@ -362,12 +369,13 @@ namespace PitHero.UI
             _inventoryWindow.SetResizable(false);
 
             var outer = new Table();
+            _outerTable = outer;
             outer.Pad(WinPad);
 
             _slotTable = new Table();
             var scroll = new ScrollPane(_slotTable, skin, "ph-default");
             scroll.SetScrollingDisabled(true, false);
-            outer.Add(scroll).Width(SlotSize * CropsPerRow + 16f).Height(200f);
+            _scrollCell = outer.Add(scroll).Width(SlotSize * CropsPerRow + 16f).Height(ScrollHeight);
             outer.Row();
 
             var cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
@@ -403,12 +411,15 @@ namespace PitHero.UI
                     _slotTable.Row();
             }
 
-            _inventoryWindow.Pack();
+            // Shrink the slot grid when the configured design height cannot fit the full window, then
+            // sit slightly above centre to clear the bottom UI bars (clamped to the stage).
+            float stageH = _stage.GetHeight();
+            UILayout.FitScrollCellToStage(_inventoryWindow, _outerTable, _scrollCell, ScrollHeight, stageH, GameConfig.UIStageMargin);
             float w = _inventoryWindow.GetWidth();
             float h = _inventoryWindow.GetHeight();
             _inventoryWindow.SetPosition(
                 (_stage.GetWidth()  - w) / 2f,
-                (_stage.GetHeight() - h) / 2f - 30f);
+                UILayout.CenterY(h, stageH, CenterYBias));
             _inventoryWindow.SetVisible(true);
         }
 

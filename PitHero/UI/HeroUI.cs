@@ -93,8 +93,10 @@ namespace PitHero.UI
         private MercenariesTab _mercenariesTabComponent;
         private FoodTab _foodTabComponent;
 
-        private const float HERO_WINDOW_WIDTH = 870f;
+        // Inventory tab width: the grid cell plus the stencil button column and its padding
+        private const float HERO_WINDOW_WIDTH = InventoryGrid.ContentWidth + 178f; // 1002
         private const float COMPACT_WINDOW_WIDTH = 490f;
+        private const float HERO_WINDOW_HEIGHT = GameConfig.VirtualHeight; // full stage height: the window is flush with the top and bottom edges
         private const float TAB_STRIP_MARGIN = 24f; // breathing room beside the tab button strip
         private float _minTabStripWidth; // computed from the real tab buttons so new tabs can't overflow
 
@@ -183,9 +185,9 @@ namespace PitHero.UI
         {
             _heroWindow = new Window("", skin); // Empty title since tabs provide context
             _heroWindow.Pad(0); // Remove all window padding so tabs are flush with edges
-            // Start with inventory tab width (850px)
-            // Width will be adjusted dynamically when tabs change
-            _heroWindow.SetSize(HERO_WINDOW_WIDTH, 350f);
+            // Start at the inventory tab width; the width follows the active tab and the height is
+            // fitted to the live stage in PositionHeroWindow.
+            _heroWindow.SetSize(HERO_WINDOW_WIDTH, HERO_WINDOW_HEIGHT);
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
@@ -264,7 +266,7 @@ namespace PitHero.UI
             if (newWidth < _minTabStripWidth)
                 newWidth = _minTabStripWidth;
 
-            _heroWindow.SetSize(newWidth, 350f);
+            _heroWindow.SetWidth(newWidth); // PositionHeroWindow fits the height to the stage
             PositionHeroWindow(); // Reposition after resize to keep it on screen
         }
 
@@ -316,9 +318,10 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false);
 
-            // Add scroll pane to left side with explicit width to ensure rightmost column is clickable
-            // Grid is 692px wide (20 columns � 33px + 32px left padding)
-            inventoryContainer.Add(scrollPane).Width(700f).Expand().Fill().Pad(0f);
+            // Add scroll pane to left side with explicit width to ensure rightmost column is clickable.
+            // The grid never scrolls: it is 824px wide and 248px tall (24 columns x 5 bag rows), which
+            // fits the window, which spans the full design height (see PositionHeroWindow).
+            inventoryContainer.Add(scrollPane).Width(InventoryGrid.ContentWidth + 8f).Expand().Fill().Pad(0f);
 
             // Add stencil control buttons vertically on the right
             var buttonTable = new Table();
@@ -400,6 +403,7 @@ namespace PitHero.UI
                 }
 
                 _stencilLibraryPanel.ResetSelection();
+                _stencilLibraryPanel.FitToStage(_stage.GetHeight());
                 // Dock flush against the Hero window's left edge so the two never overlap;
                 // fall back to its right edge when there is no room on the left
                 float panelX = _heroWindow.GetX() - _stencilLibraryPanel.GetWidth();
@@ -713,7 +717,10 @@ namespace PitHero.UI
         {
             _crystalsTabComponent = new CrystalsTab();
             var content = _crystalsTabComponent.CreateContent(skin, _stage, _heroWindow);
-            tab.Add(content).Expand().Fill();
+            // The card list is taller than the window at short design heights, so it scrolls vertically
+            var scrollPane = new ScrollPane(content, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            tab.Add(scrollPane).Expand().Fill();
         }
 
         private void PopulateMercenariesTab(Tab mercenariesTab, Skin skin)
@@ -908,20 +915,31 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>
+        /// Sizes the hero window to the full stage height — flush with the top and bottom edges, so the
+        /// tabs and grid read as one panel — and places it beside the Party button.
+        /// </summary>
         private void PositionHeroWindow()
         {
             if (_heroWindow == null || _heroButton == null) return;
-            _heroWindow.Validate();
             float heroX = _heroButton.GetX();
-            float heroY = _heroButton.GetY();
             float heroW = _heroButton.GetWidth();
-            float winW = _heroWindow.GetWidth();
-            float winH = _heroWindow.GetHeight();
-            const float padding = 4f; float targetX = heroX + heroW + padding; float targetY = heroY + padding;
-            float stageW = _stage.GetWidth(); float stageH = _stage.GetHeight();
-            if (targetX + winW > stageW) targetX = heroX - padding - winW;
-            if (targetX < 0) targetX = 0; if (targetY < 0) targetY = 0; if (targetY + winH > stageH) targetY = stageH - winH;
-            _heroWindow.SetPosition(targetX, targetY);
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+
+            float winH = stageH;
+            _heroWindow.SetSize(_heroWindow.GetWidth(), winH);
+            _heroWindow.Validate();
+
+            // Anchor to the right of the Party button, sliding left only as far as it takes to fit on
+            // stage — it stays under its button instead of jumping to the opposite side of the screen.
+            // The fit is always measured against the widest tab (inventory), so narrower tabs keep the
+            // same left edge and only their right edge moves; switching tabs never shifts the window.
+            float targetX = heroX + heroW + GameConfig.UIWindowBelowBarGap;
+            float maxX = stageW - HERO_WINDOW_WIDTH - GameConfig.UIStageMargin;
+            if (targetX > maxX) targetX = maxX;
+            if (targetX < 0) targetX = 0;
+            _heroWindow.SetPosition(targetX, 0f);
         }
 
         private HeroComponent GetHeroComponent()
