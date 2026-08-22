@@ -28,6 +28,7 @@ namespace PitHero.UI
         private readonly Label[] _jobLabels = new Label[2];
         private readonly Label[] _statsLabels = new Label[2];
         private readonly Table[] _skillGrids = new Table[2];
+        private readonly Label[] _skillsSectionLabels = new Label[2];
         private readonly Label[] _noMercLabels = new Label[2];
 
         // Per-mercenary sprite preview containers
@@ -133,23 +134,25 @@ namespace PitHero.UI
             leftCol.Row();
             leftCol.Add(_statsLabels[index]).Left();
 
-            infoSection.Add(leftCol).Left().Expand().Pad(5f);
-            infoSection.Add(_previewContainers[index]).Center().Pad(5f).SetPadRight(64f);
+            infoSection.Add(leftCol).Left().Top().Expand().Pad(5f);
+
+            // Middle column: a mercenary only ever has four skills, so the label and icons fit beside
+            // the info labels instead of costing two more rows underneath them
+            _skillsSectionLabels[index] = new Label(_textService.DisplayText(TextType.UI, UITextKey.LabelJobSkills), skin, "ph-default");
+            var skillsCol = new Table();
+            skillsCol.Add(_skillsSectionLabels[index]).Center();
+            skillsCol.Row();
+            skillsCol.Add(_skillGrids[index]).Center().SetPadTop(2f);
+            infoSection.Add(skillsCol).Center().Expand().Pad(5f);
+
+            // Right column: sprite preview with the Dismiss button tucked 8px beneath it
+            var previewCol = new Table();
+            previewCol.Add(_previewContainers[index]).Center();
+            previewCol.Row();
+            previewCol.Add(_dismissButtons[index]).Center().SetPadTop(8f).SetMinWidth(80f).SetMinHeight(28f);
+            infoSection.Add(previewCol).Center().Pad(5f).SetPadRight(64f);
 
             row.Add(infoSection).Expand().Fill();
-            row.Row();
-
-            // Row: "Job Skills" label
-            var skillsSectionLabel = new Label(_textService.DisplayText(TextType.UI, UITextKey.LabelJobSkills), skin, "ph-default");
-            row.Add(skillsSectionLabel).Left().SetPadTop(4f);
-            row.Row();
-
-            // Row: Skill icon grid
-            row.Add(_skillGrids[index]).Left().SetPadTop(2f);
-            row.Row();
-
-            // Row: Dismiss button (right-aligned)
-            row.Add(_dismissButtons[index]).Right().SetPadTop(6f).SetMinWidth(80f).SetMinHeight(28f);
             row.Row();
 
             // The no-merc label is shown/hidden via SetVisible on the row
@@ -181,6 +184,8 @@ namespace PitHero.UI
                     _statsLabels[m].SetText("");
                     _mercRows[m].SetVisible(m == 0);
                     _dismissButtons[m].SetVisible(false);
+                    // The header would otherwise sit above the "no mercenaries" placeholder
+                    _skillsSectionLabels[m].SetVisible(false);
                     if (m == 0)
                     {
                         _skillGrids[m].Add(_noMercLabels[m]).Center();
@@ -190,6 +195,7 @@ namespace PitHero.UI
 
                 _mercRows[m].SetVisible(true);
                 _dismissButtons[m].SetVisible(true);
+                _skillsSectionLabels[m].SetVisible(true);
 
                 // Update info labels
                 _nameLabels[m].SetText(merc.Name);

@@ -29,6 +29,8 @@ namespace PitHero.UI
 
         private const float SlotSize = 64f;
         private const int Columns = 6;
+        private const float DialogWidth = 460f;
+        private const float DialogDesignHeight = 340f; // design height at GameConfig.VirtualHeight = 360
         private static readonly Color BrownColor = new Color(71, 36, 7);
 
         /// <summary>Whether the dialog is currently visible.</summary>
@@ -40,7 +42,7 @@ namespace PitHero.UI
             _stage = stage;
             SetMovable(false);
             SetResizable(false);
-            SetSize(460f, 340f);
+            SetSize(DialogWidth, DialogDesignHeight);
 
             GetTitleLabel().SetText(GetText(UITextKey.AddMonsterWindowTitle));
 
@@ -95,11 +97,16 @@ namespace PitHero.UI
             Core.Services.GetService<PauseService>()?.Unpause();
         }
 
+        /// <summary>Fits the dialog to the live stage height and centers it.</summary>
         private void CenterOnStage()
         {
             var stage = _stage ?? GetStage();
             if (stage == null) return;
-            SetPosition((stage.GetWidth() - GetWidth()) / 2f, (stage.GetHeight() - GetHeight()) / 2f);
+            float stageH = stage.GetHeight();
+            float h = UILayout.FitHeight(DialogDesignHeight, stageH, GameConfig.UIStageMargin, GameConfig.UIStageMargin);
+            SetSize(DialogWidth, h);
+            Validate();
+            SetPosition((stage.GetWidth() - GetWidth()) / 2f, UILayout.CenterY(h, stageH, 0f));
         }
 
         private void Rebuild()

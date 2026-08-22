@@ -4,7 +4,7 @@ This file is the source of truth for project-wide development rules for any AI a
 
 ## Project Overview
 
-PitHero is a horizontal RPG strip game built in **C# (.NET 8.0)** with **FNA + Nez** (not MonoGame). The game runs as a borderless window at the bottom of the screen at a virtual resolution of **1920×360**. A single hero adventures in a single growing pit while the player interacts with other desktop apps.
+PitHero is a horizontal RPG strip game built in **C# (.NET 8.0)** with **FNA + Nez** (not MonoGame). The game runs as a borderless window at the bottom of the screen at a virtual resolution of **1920×`GameConfig.VirtualHeight`** (currently **296**; was 360 — the OS window height follows the constant). A single hero adventures in a single growing pit while the player interacts with other desktop apps.
 
 ## Commands
 
@@ -42,7 +42,7 @@ Game1 (Nez.Core)
 - **Single hero, single pit** — no multi-hero or multi-pit support
 - **`WorldState` is a struct** — always pass by `ref` to methods that mutate it
 - **`VirtualGame/VirtualGameSimulation.cs`** runs the full game loop without graphics; use it for testing game logic and balance without launching the game
-- Virtual resolution **1920×360**; game runs borderless, always-on-top, with optional click-through; maintain integer scaling for pixel-perfect rendering
+- Virtual resolution **1920×`GameConfig.VirtualHeight`** (currently **296**, flip the constant to compare heights; every tall UI window fits itself to `Stage.GetHeight()` at show time); game runs borderless, always-on-top, with optional click-through; maintain integer scaling for pixel-perfect rendering
 - Pit width grows every 10 pit levels (Pit Center X is dynamic); pit height is constant (Pit Center Y is constant)
 - Game continues running idle while the player interacts with other desktop apps
 

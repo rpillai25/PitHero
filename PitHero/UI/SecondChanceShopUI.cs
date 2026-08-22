@@ -18,6 +18,8 @@ namespace PitHero.UI
     /// <summary>UI shell for the Second Chance Shop - provides a button, a vault window, and a separate hero panel for purchasing items and crystals.</summary>
     public class SecondChanceShopUI
     {
+        private const float MerchantSpriteSize = 256f; // merchant art is 256x256
+
         private Stage _stage;
         private HoverableImageButton _shopButton;
 
@@ -202,11 +204,10 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(_heroInventoryGrid, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
 
-            // Use Expand().Fill() to match HeroUI's PopulateInventoryTab layout so the
-            // ScrollPane gets an explicit height (without Fill, InventoryGrid reports 0
-            // preferred height and the ScrollPane collapses to nothing)
+            // Use Expand().Fill() to match HeroUI's PopulateInventoryTab layout so the pane gets an
+            // explicit height. The grid never scrolls — the panel is sized to show all 824x248 of it.
             var content = new Table();
-            content.Add(scrollPane).Width(700f).Expand().Fill().Pad(0f);
+            content.Add(scrollPane).Width(InventoryGrid.ContentWidth + 8f).Expand().Fill().Pad(0f);
 
             _heroInventoryWindow.Add(content).Expand().Fill();
             _heroInventoryWindow.SetVisible(false);
@@ -225,8 +226,10 @@ namespace PitHero.UI
 
             var heroPanel = _heroCrystalPanel.CreateContent(skin, _stage);
 
+            // No left/right padding here: the panel owns its own margins, and the window is sized to
+            // the content so the crystal panel is only as wide as it needs to be.
             var content = new Table();
-            content.Add(heroPanel).Top().Left().Pad(4f);
+            content.Add(heroPanel).Top().Left().Pad(4f, 0f, 4f, 0f);
 
             _heroCrystalWindow.Add(content).Expand().Fill();
             _heroCrystalWindow.SetVisible(false);
@@ -452,19 +455,31 @@ namespace PitHero.UI
             {
                 UIWindowManager.OnUIWindowOpening();
 
-                // The layout constants compose a full-strip arrangement designed for a 1920-wide
-                // stage; center the intact composition on wider stages (FixedHeight policy).
+                // The layout constants compose a full-strip arrangement designed for a 1920x360
+                // stage; center the intact composition on wider stages (FixedHeight policy) and fit
+                // the panel heights to the configured design height (GameConfig.VirtualHeight).
                 float xOffset = System.Math.Max(0f, (_stage.GetWidth() - GameConfig.VirtualWidth) / 2f);
+                float stageH = _stage.GetHeight();
+                const float margin = GameConfig.UIStageMargin;
 
                 // Shop (left panel)
+                float shopH = UILayout.FitHeight(GameConfig.SecondChanceShopWindowHeight, stageH, margin, margin);
+                float shopY = System.Math.Min(GameConfig.SecondChanceShopWindowY, stageH - shopH - margin);
+                _shopWindow.SetSize(GameConfig.SecondChanceShopWindowWidth, shopH);
                 _stage.AddElement(_shopWindow);
                 _shopWindow.SetVisible(true);
-                _shopWindow.SetPosition(GameConfig.SecondChanceShopWindowX + xOffset, GameConfig.SecondChanceShopWindowY);
+                _shopWindow.SetPosition(GameConfig.SecondChanceShopWindowX + xOffset, UILayout.ClampY(shopY, shopH, stageH));
                 _shopWindow.ToFront();
 
-                // Merchant sprite (between panels)
+                // Hero panel geometry, needed here because the merchant stands on its baseline
+                float heroH = UILayout.FitHeight(GameConfig.SecondChanceHeroPanelHeight, stageH, margin, margin);
+                float heroY = UILayout.ClampY(System.Math.Min(GameConfig.SecondChanceHeroPanelY, stageH - heroH - margin), heroH, stageH);
+
+                // Merchant sprite (between panels) — his feet land on the bottom edge of the panels
+                float spriteY = heroY + heroH - MerchantSpriteSize;
+                if (spriteY < 0f) spriteY = 0f;
                 _stage.AddElement(_merchantSprite);
-                _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX + xOffset, GameConfig.SecondChanceMerchantSpriteY);
+                _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX + xOffset, spriteY);
                 _merchantSprite.ToFront();
 
                 // Greeting bubble above the merchant's head; persists until the shop closes
@@ -474,16 +489,22 @@ namespace PitHero.UI
                     _stage.AddElement(_merchantBubble);
                     _merchantBubble.SetTailAnchor(
                         GameConfig.SecondChanceMerchantSpriteX + xOffset + GameConfig.SecondChanceMerchantBubbleAnchorX,
-                        GameConfig.SecondChanceMerchantSpriteY + GameConfig.SecondChanceMerchantBubbleAnchorY);
+                        spriteY + GameConfig.SecondChanceMerchantBubbleAnchorY);
                     _merchantBubble.Show(greeting);
                     _merchantBubble.ToFront();
                 }
 
-                // Hero panel (right) — show the one matching the active tab
+                // Hero panel (right) — show the one matching the active tab. The crystal panel is much
+                // narrower than the inventory grid, so it only takes the width its columns need.
+                float crystalW = _heroCrystalPanel != null
+                    ? _heroCrystalPanel.ContentWidth + SecondChanceHeroCrystalPanel.RightMargin
+                    : GameConfig.SecondChanceHeroPanelWidth;
+                _heroInventoryWindow.SetSize(GameConfig.SecondChanceHeroPanelWidth, heroH);
+                _heroCrystalWindow.SetSize(crystalW, heroH);
                 _stage.AddElement(_heroInventoryWindow);
                 _stage.AddElement(_heroCrystalWindow);
-                _heroInventoryWindow.SetPosition(GameConfig.SecondChanceHeroPanelX + xOffset, GameConfig.SecondChanceHeroPanelY);
-                _heroCrystalWindow.SetPosition(GameConfig.SecondChanceHeroPanelX + xOffset, GameConfig.SecondChanceHeroPanelY);
+                _heroInventoryWindow.SetPosition(GameConfig.SecondChanceHeroPanelX + xOffset, heroY);
+                _heroCrystalWindow.SetPosition(GameConfig.SecondChanceHeroPanelX + xOffset, heroY);
 
                 if (_activeTabIndex == 0)
                 {

@@ -30,6 +30,8 @@ namespace PitHero.UI
 
         private Window _window;
         private Table _slotTable;
+        private Table _outerTable;
+        private Cell _scrollCell;
         private HoverableLabel _preStockLabel;
         private EnhancedSlider _preStockSlider;
         private uint _shownFrame;
@@ -79,12 +81,13 @@ namespace PitHero.UI
             _window.SetResizable(false);
 
             var outer = new Table();
+            _outerTable = outer;
             outer.Pad(WinPad);
 
             _slotTable = new Table();
             var scroll = new ScrollPane(_slotTable, _skin, "ph-default");
             scroll.SetScrollingDisabled(true, false);
-            outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(ScrollHeight);
+            _scrollCell = outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(ScrollHeight);
             outer.Row();
 
             var sliderRow = new Table();
@@ -169,10 +172,12 @@ namespace PitHero.UI
                 _preStockLabel.SetText(string.Format(GetText(UITextKey.FridgePreStockStackSize), svc.PreStockStackSize));
             }
             RebuildSlots();
-            _window.Pack();
+            // Shrink the slot grid when the configured design height cannot fit the full window
+            float stageH = _stage.GetHeight();
+            UILayout.FitScrollCellToStage(_window, _outerTable, _scrollCell, ScrollHeight, stageH, GameConfig.UIStageMargin);
             _window.SetPosition(
                 (_stage.GetWidth() - _window.GetWidth()) / 2f,
-                (_stage.GetHeight() - _window.GetHeight()) / 2f);
+                UILayout.CenterY(_window.GetHeight(), stageH, 0f));
             _window.SetVisible(true);
             _window.ToFront();
             _shownFrame = Time.FrameCount;
@@ -267,7 +272,7 @@ namespace PitHero.UI
             _descWindow.Pack();
             _descWindow.SetPosition(
                 (_stage.GetWidth() - _descWindow.GetWidth()) / 2f,
-                (_stage.GetHeight() - _descWindow.GetHeight()) / 2f);
+                UILayout.CenterY(_descWindow.GetHeight(), _stage.GetHeight(), 0f));
             _descWindow.SetVisible(true);
             _descWindow.ToFront();
         }

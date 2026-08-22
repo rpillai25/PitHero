@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using PitHero.Services;
+using PitHero.UI;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Stats;
@@ -122,13 +123,13 @@ namespace PitHero.Tests
 
         // ---- StencilBagSlotPreferenceProvider: anchor+offset → bagIndex ---------------
         //
-        // Grid layout (20 wide, rows 3-8 are bag-backed):
-        //   bagIndex = (gridY - 3) * 20 + gridX
+        // Grid layout (InventoryGrid.BagColumns wide, rows BagRowStart..+BagRows-1 are bag-backed):
+        //   bagIndex = (gridY - BagRowStart) * BagColumns + gridX
         //
         // ShieldMastery offsets: (0,0)=Sword at anchor; (1,0)=Shield at anchor+(1,0)
         // If anchor = (2, 3):
-        //   Sword cell: gridX=2, gridY=3 → bagIndex = (3-3)*20+2 = 2
-        //   Shield cell: gridX=3, gridY=3 → bagIndex = (3-3)*20+3 = 3
+        //   Sword cell: gridX=2, gridY=3 → bagIndex = 2
+        //   Shield cell: gridX=3, gridY=3 → bagIndex = 3
 
         [TestMethod]
         public void Provider_MatchingKind_ReturnsCorrectBagIndex()
@@ -187,26 +188,27 @@ namespace PitHero.Tests
             var sword = GearItems.ShortSword();
             bag.TryAdd(sword);
 
-            // Cell at row 0 is outside rows 3-8, so provider returns -1; item goes to first-empty = slot 0
+            // Row 0 is not a bag row, so the provider returns -1; item goes to first-empty = slot 0
             Assert.AreSame(sword, bag.GetSlotItem(0), "Out-of-range row must be skipped; sword falls to slot 0");
         }
 
         [TestMethod]
         public void Provider_OutOfRangeColumn_CellSkipped()
         {
-            // Place ShieldMastery at anchor (19, 3): Sword cell gridX=19 (ok), Shield cell gridX=20 (out of range col 0-19)
-            var svc = MakeServiceWithStencil(ShieldMasteryId, anchorX: 19, anchorY: 3);
+            // Anchor on the last column: the Sword cell is still on the grid, the Shield cell is not
+            int lastCol = InventoryGrid.BagColumns - 1;
+            var svc = MakeServiceWithStencil(ShieldMasteryId, anchorX: lastCol, anchorY: InventoryGrid.BagRowStart);
             var bag = MakeBagWithProvider(120, svc);
 
-            // Sword at (19,3) → bagIndex = (3-3)*20+19 = 19 (valid)
+            // Sword on the first bag row lands at bagIndex == its column
             var sword = GearItems.ShortSword();
             bag.TryAdd(sword);
-            Assert.AreSame(sword, bag.GetSlotItem(19), "Sword at valid col 19 should land at bagIndex 19");
+            Assert.AreSame(sword, bag.GetSlotItem(lastCol), $"Sword at valid col {lastCol} should land at that bagIndex");
 
-            // Shield at (20,3) → col 20 is out of range; falls to first-empty non-19 slot = slot 0
+            // Shield would be one column past the grid; it falls back to the first empty slot
             var shield = GearItems.IronShield();
             bag.TryAdd(shield);
-            Assert.AreSame(shield, bag.GetSlotItem(0), "Shield cell col 20 is out of range; falls to first empty");
+            Assert.AreSame(shield, bag.GetSlotItem(0), "Shield cell past the last column is out of range; falls to first empty");
         }
 
         [TestMethod]

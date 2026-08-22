@@ -94,11 +94,9 @@ namespace PitHero.ECS.Scenes
 
         // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
         private const float PitLabelBaseX = 10f; // X position for Pit Lv label (bottom-left)
-        private const float PitLabelBaseY = 350f; // Y position for Pit Lv label (bottom-left, ~30px from bottom at 360px height)
         private const float FundsLabelGapX = 16f; // Gap between the measured Pit Lv label text and the Funds label
         private const float ClockLabelRightPadding = 32f; // Pixels from right edge for clock label
         private const float ClockLabelBaseY = 16f; // Y position for clock label (top area, offset to avoid cutoff)
-        private const float FundsLabelBaseY = 350f; // Y position for Funds label (same as Pit Lv)
         private const float GraphicalHudBaseX = 10f; // Base X position for graphical HUD (shifted left to fill space)
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
         private const float GraphicalHudHalfModeXOffset = 0f; // No additional X offset needed since Pit Lv is at bottom
@@ -1996,7 +1994,7 @@ namespace PitHero.ECS.Scenes
             // Pit level label (bottom-left, always visible, no scaling)
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-            _pitLevelLabel.SetPosition(PitLabelBaseX, PitLabelBaseY);
+            _pitLevelLabel.SetPosition(PitLabelBaseX, HudBottomLabelY());
 
             // Funds label (bottom-left next to Pit Lv, always visible, no scaling)
             _fundsLabel = uiCanvas.Stage.AddElement(new Label("Gold: 0", _hudFontNormal));
@@ -2162,6 +2160,26 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
+        /// Y for the bottom-left HUD labels, derived from the live stage height so they follow the
+        /// configured design height (GameConfig.VirtualHeight) and every window/dock mode.
+        /// </summary>
+        private float HudBottomLabelY()
+        {
+            float stageH = _uiStage != null ? _uiStage.GetHeight() : GameConfig.VirtualHeight;
+            return stageH - GameConfig.HudBottomLabelOffsetY;
+        }
+
+        /// <summary>
+        /// Re-anchor the bottom-left HUD labels (Pit Lv / Gold) after a stage size change
+        /// </summary>
+        private void RepositionBottomLabels()
+        {
+            if (_pitLevelLabel != null)
+                _pitLevelLabel.SetPosition(PitLabelBaseX, HudBottomLabelY());
+            RepositionFundsLabel();
+        }
+
+        /// <summary>
         /// Position the Funds label just right of the Pit Lv label based on its measured text width
         /// </summary>
         private void RepositionFundsLabel()
@@ -2170,7 +2188,7 @@ namespace PitHero.ECS.Scenes
                 return;
 
             float pitLabelWidth = _hudFontNormal.MeasureString(_pitLevelLabel.GetText()).X;
-            _fundsLabel.SetPosition(PitLabelBaseX + pitLabelWidth + FundsLabelGapX, FundsLabelBaseY);
+            _fundsLabel.SetPosition(PitLabelBaseX + pitLabelWidth + FundsLabelGapX, HudBottomLabelY());
         }
 
         /// <summary>
@@ -2690,6 +2708,7 @@ namespace PitHero.ECS.Scenes
                     _lastStageWidth = stageW;
                     _lastStageHeight = stageH;
                     PositionShortcutBar();
+                    RepositionBottomLabels();
                     PositionEventConsolePanel();
                     if (_pauseOverlayRenderer != null)
                     {

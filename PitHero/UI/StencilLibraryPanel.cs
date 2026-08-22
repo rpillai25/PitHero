@@ -16,6 +16,7 @@ namespace PitHero.UI
         private const int TOTAL_SLOTS = GRID_COLUMNS * GRID_ROWS;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 2f;
+        private const float ScrollCellDesignHeight = 200f; // slot-grid height at the 360px design height
 
         private GameStateService _gameStateService;
         private List<SynergyPattern> _allPatterns;
@@ -27,6 +28,7 @@ namespace PitHero.UI
         private SynergyPattern _selectedPattern;
         private TextService _textService;
         private SkillTooltip _hoverTooltip;
+        private Cell _scrollCell;
 
         public event System.Action<SynergyPattern> OnStencilActivated;
 
@@ -41,10 +43,21 @@ namespace PitHero.UI
             _hoverTooltip = new SkillTooltip(this, skin);
             BuildUI(skin);
 
-            // Size the window to exactly fit its rows — the stage is only ~360 tall,
-            // so any slack height pushes the title bar off-screen.
+            // Size the window to exactly fit its rows — the stage is only as tall as
+            // GameConfig.VirtualHeight, so any slack height pushes the title bar off-screen.
+            // FitToStage shrinks the slot grid further when the design height is short.
             Pack();
         }
+
+        /// <summary>
+        /// Shrinks the slot grid until the whole panel fits the stage, then re-packs. Called before the
+        /// panel is docked beside the hero window so it never runs past the top or bottom edge.
+        /// </summary>
+        public void FitToStage(float stageH)
+        {
+            UILayout.FitScrollCellToStage(this, this, _scrollCell, ScrollCellDesignHeight, stageH, GameConfig.UIStageMargin);
+        }
+
         /// <summary>
         /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
         /// </summary>
@@ -93,7 +106,7 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(_gridTable, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
             scrollPane.SetFadeScrollBars(false);
-            Add(scrollPane).Height(200f).Width(420f).Pad(5f).Top();
+            _scrollCell = Add(scrollPane).Height(ScrollCellDesignHeight).Width(420f).Pad(5f).Top();
             Row();
 
             _detailsLabel = new Label(GetText(TextType.UI, UITextKey.StencilSelectPrompt), skin);

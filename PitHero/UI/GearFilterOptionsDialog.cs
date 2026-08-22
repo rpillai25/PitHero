@@ -153,7 +153,7 @@ namespace PitHero.UI
             _window.Pack();
             _window.SetPosition(
                 (_stage.GetWidth() - _window.GetWidth()) / 2f,
-                (_stage.GetHeight() - _window.GetHeight()) / 2f);
+                UILayout.CenterY(_window.GetHeight(), _stage.GetHeight(), 0f));
             _window.SetVisible(true);
             _window.ToFront();
             _shownFrame = Time.FrameCount;

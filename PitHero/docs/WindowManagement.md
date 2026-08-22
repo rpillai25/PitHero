@@ -5,7 +5,7 @@ This document describes the window management features that configure PitHero as
 ## Features
 
 ### Horizontal Strip Display
-- **Resolution**: 1920×360 virtual resolution as specified in game requirements
+- **Resolution**: 1920×`GameConfig.VirtualHeight` virtual resolution (currently 296). `WindowManager.GetStripHeight` scales the design height to the monitor (1:1 at 1080p, 2x at 4K) so the FixedHeight render target maps to whole pixels
 - **Position**: Automatically positioned at the bottom center of the screen
 - **Borderless**: Removes window border, title bar, and system controls
 - **Always on Top**: Stays above other applications (configurable)
@@ -32,10 +32,9 @@ public const bool BorderlessWindow = true; // Remove window decorations
 The window is automatically configured when the game starts:
 
 ```csharp
-// In Game1.Initialize()
-WindowManager.ConfigureHorizontalStrip(this, 
-    alwaysOnTop: GameConfig.AlwaysOnTop, 
-    clickThrough: GameConfig.ClickThrough);
+// In Game1.LoadContent()
+WindowManager.ConfigureHorizontalStrip(this,
+    alwaysOnTop: GameConfig.AlwaysOnTop);
 ```
 
 ### Manual Control
@@ -59,7 +58,8 @@ WindowManager.UpdatePosition(game);
 
 The `WindowManager` class provides static methods for window manipulation:
 
-- `ConfigureHorizontalStrip()`: Main setup method
+- `ConfigureHorizontalStrip()`: Main setup method (full-width strip, `GetStripHeight` tall, docked bottom)
+- `GetStripHeight()`: Physical window height for a monitor height, derived from `GameConfig.VirtualHeight`
 - `SetAlwaysOnTop()`: Control topmost behavior
 - `SetClickThrough()`: Control mouse transparency
 - `UpdatePosition()`: Reposition after screen changes
@@ -84,5 +84,5 @@ This implementation fulfills the Copilot instruction requirements:
 - ✅ Borderless window
 - ✅ Always-on-top capability
 - ✅ Optional click-through
-- ✅ 1920×600 virtual resolution
+- ✅ 1920×`GameConfig.VirtualHeight` virtual resolution (single configurable knob)
 - ✅ Continues running while user interacts with other apps

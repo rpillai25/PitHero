@@ -17,6 +17,13 @@ namespace PitHero.UI
     /// </summary>
     public class HeroCrystalTab
     {
+        // Skill icons are 32px with 2px padding, so eight columns take 288px of the ~490px window —
+        // twice as many skills per row as before, which lifts the sections below out of dead space.
+        private const int SkillGridColumns = 8;
+
+        /// <summary>Vertical gap between the info label rows (Name/Job/Level, JP/stats).</summary>
+        private const float InfoRowSpacing = 2f;
+
         private Table _mainContainer;
         private HeroComponent _heroComponent;
 
@@ -76,7 +83,8 @@ namespace PitHero.UI
 
             // Middle section: Three skill grids in scroll pane
             var skillGridsPane = CreateSkillGrids(skin);
-            _mainContainer.Add(skillGridsPane).Expand().Fill().Pad(20f);
+            // Modest padding so the skill grids keep as much of the window as possible at short design heights
+            _mainContainer.Add(skillGridsPane).Expand().Fill().Pad(10f);
 
             // Create confirmation dialog (hidden initially)
             CreateConfirmationDialog(skin);
@@ -108,8 +116,10 @@ namespace PitHero.UI
         {
             var infoTable = new Table();
 
-            // Left column: Name, Job and Level info
+            // Left column: Name, Job and Level info. The label rows breathe by InfoRowSpacing so they
+            // are not crammed together; the Change Job button keeps its own larger gap below them.
             var leftCol = new Table();
+            leftCol.Defaults().SetPadBottom(InfoRowSpacing);
             _heroNameLabel = new Label(GetText(TextType.UI, UITextKey.HeroNameLabel), skin, "ph-default");
             leftCol.Add(_heroNameLabel).Left();
             leftCol.Row();
@@ -138,8 +148,9 @@ namespace PitHero.UI
             // Middle column: Hero sprite preview
             _heroPreviewContainer = new Table();
 
-            // Right column: JP info and stats
+            // Right column: JP info and stats, spaced to match the left column
             var rightCol = new Table();
+            rightCol.Defaults().SetPadBottom(InfoRowSpacing);
             _currentJPLabel = new Label(GetText(TextType.UI, UITextKey.HeroCurrentJpLabel), skin, "ph-default");
             rightCol.Add(_currentJPLabel).Left();
             rightCol.Row();
@@ -151,9 +162,11 @@ namespace PitHero.UI
             _statsLabel = new Label(GetText(TextType.UI, UITextKey.HeroStatsLabel), skin, "ph-default");
             rightCol.Add(_statsLabel).Left();
 
-            infoTable.Add(leftCol).Left().Expand().Pad(5f);
+            // Both label columns are top-aligned so Current JP lines up with Name; without this the
+            // shorter right column is centered against the taller left one and sits lower.
+            infoTable.Add(leftCol).Left().Top().Expand().Pad(5f);
             infoTable.Add(_heroPreviewContainer).Center().Pad(5f);
-            infoTable.Add(rightCol).Right().Expand().Pad(5f);
+            infoTable.Add(rightCol).Right().Top().Expand().Pad(5f);
 
             return infoTable;
         }
@@ -287,7 +300,7 @@ namespace PitHero.UI
                 return;
             }
 
-            const int columns = 4;
+            const int columns = SkillGridColumns;
             int col = 0;
 
             for (int i = 0; i < jobSkills.Count; i++)
@@ -366,7 +379,7 @@ namespace PitHero.UI
                 return;
             }
 
-            const int columns = 4;
+            const int columns = SkillGridColumns;
             int col = 0;
 
             for (int i = 0; i < synergySkills.Count; i++)
@@ -412,7 +425,7 @@ namespace PitHero.UI
                 return;
             }
 
-            const int columns = 4;
+            const int columns = SkillGridColumns;
             int col = 0;
 
             for (int i = 0; i < activeSynergyGroups.Count; i++)

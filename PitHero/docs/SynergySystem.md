@@ -136,13 +136,13 @@ var pattern = new SynergyPattern(
 var detector = new SynergyDetector();
 detector.RegisterPattern(pattern);
 
-// Create inventory grid (8x7 in PitHero)
-var grid = new IItem[8, 7];
+// Create inventory grid (24 wide x 8 tall in PitHero; rows 3-7 are the 120 bag slots)
+var grid = new IItem[24, 8];
 grid[0, 3] = GearItems.ShortSword();
 grid[1, 3] = GearItems.WoodenShield();
 
 // Detect active synergies
-var synergies = detector.DetectSynergies(grid, 8, 7);
+var synergies = detector.DetectSynergies(grid, 24, 8);
 
 // Apply to hero
 hero.UpdateActiveSynergies(synergies);
@@ -163,6 +163,10 @@ hero.EarnSynergyPoints(10);
 ### 1. Pattern Size
 - Keep patterns compact (2-4 items typically)
 - Larger patterns = more powerful effects but harder to achieve
+- **Hard limit:** a pattern must fit the bag area — at most `InventoryGrid.BagRows` tall (5) and
+  `InventoryGrid.BagColumns` wide (24). The bag is wide and short, so grow patterns sideways, not
+  down: the two biggest ones are Dragon Bolt (6×4) and Elemental Champion (9×4).
+  `SynergyPatternFitTests` fails the build if a pattern stops fitting.
 
 ### 2. Item Requirements
 - Use job-specific equipment for thematic synergies
@@ -433,8 +437,10 @@ bag items toward the first empty stencil cell whose `RequiredKind` matches the i
 2. **First matching empty cell wins.** The provider iterates `PlacedStencils` in list order
    (placement order). Within each stencil, it iterates the pattern's offsets in definition order.
    The first cell whose kind matches and whose bag slot is empty is returned.
-3. **Out-of-bounds cells are skipped.** Only cells in grid rows 3–8 (the 120 bag slots,
-   `bagIndex = (gridY-3)*20 + gridX`) and columns 0–19 are valid.
+3. **Out-of-bounds cells are skipped.** Only cells in the bag rows (the 120 bag slots,
+   `bagIndex = (gridY - InventoryGrid.BagRowStart) * InventoryGrid.BagColumns + gridX`) and
+   columns `0 .. BagColumns-1` are valid. The grid is currently 24 columns × 5 bag rows (rows 3–7);
+   `StencilBagSlotPreferenceProvider` reads those constants, so resizing the grid cannot desync it.
 4. **Occupied cells are skipped.** If the preferred slot is already taken the provider returns -1
    for that candidate and the next valid candidate is tried.
 5. **Fallback to first-empty.** A return value of -1 from the provider causes `ItemBag.TryAdd`

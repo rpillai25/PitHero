@@ -19,6 +19,8 @@ namespace PitHero.UI
         private Stage _stage;
         private Table _mainTable;
         private HoverableImageButton _gearButton;
+        private const float SettingsWindowWidth = 450f;
+        private const float SettingsWindowHeight = 350f; // design height at GameConfig.VirtualHeight = 360; fitted to the stage in PositionUI
         private Window _settingsWindow;
         private bool _isVisible = false;
 
@@ -578,7 +580,7 @@ namespace PitHero.UI
             var windowStyle = skin.Get<WindowStyle>("ph-default");
             _settingsWindow = new Window("", windowStyle); // Empty title since tabs provide context
             _settingsWindow.Pad(0); // Remove all window padding so tabs are flush with edges
-            _settingsWindow.SetSize(450, 350);
+            _settingsWindow.SetSize(SettingsWindowWidth, SettingsWindowHeight);
 
             // Create TabPane with proper styling
             var tabWindowStyle = skin.Get<TabWindowStyle>("ph-default"); // Use PitHero's custom tab window style
@@ -1931,21 +1933,20 @@ namespace PitHero.UI
 
             if (_isVisible)
             {
-                const float padding = 4f;
+                // Fit the window to the stage first: the design height may exceed the configured
+                // GameConfig.VirtualHeight, and KeepWithinStage would otherwise clip the tab strip.
+                float winY = buttonY + GameConfig.UIWindowBelowBarGap;
+                float winH = UILayout.FitHeight(SettingsWindowHeight, stageH, winY, GameConfig.UIStageMargin);
+                _settingsWindow.SetSize(SettingsWindowWidth, winH);
+                _settingsWindow.Validate();
+
                 float winW = _settingsWindow.GetWidth();
-                float winH = _settingsWindow.GetHeight();
-
-                float winX = gearX + gearW + padding;
-                float winY = buttonY + padding;
-
+                float winX = gearX + gearW + GameConfig.UIWindowBelowBarGap;
                 if (winX + winW > stageW)
-                    winX = gearX - padding - winW;
-
+                    winX = gearX - GameConfig.UIWindowBelowBarGap - winW;
                 if (winX < 0) winX = 0;
-                if (winY < 0) winY = 0;
-                if (winY + winH > stageH) winY = stageH - winH;
 
-                _settingsWindow.SetPosition(winX, winY);
+                _settingsWindow.SetPosition(winX, UILayout.ClampY(winY, winH, stageH));
             }
 
             _lastStageW = stageW;

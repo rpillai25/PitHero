@@ -20,6 +20,9 @@ namespace PitHero.UI
         private const float SpriteSize = 32f;
         private const float WinPad = 16f;
         private const float GridMaxHeight = 200f;
+        // Window chrome around the grid (title bar, label, button row, padding) — the grid cap is the
+        // stage height minus this, so the dialog always fits the configured design height.
+        private const float GridChromeHeight = 109f;
         private const float SliderWidth = 120f;
 
         private readonly Stage _stage;
@@ -28,6 +31,8 @@ namespace PitHero.UI
         private readonly HoverableLabel[] _stackLabels = new HoverableLabel[ConsumableCatalog.Count];
         private readonly EnhancedSlider[] _stackSliders = new EnhancedSlider[ConsumableCatalog.Count];
 
+        private Table _contentTable;
+        private Cell _gridCell;
         private Window _window;
         private uint _shownFrame;
         private TextService _textService;
@@ -55,6 +60,7 @@ namespace PitHero.UI
             _window.SetResizable(false);
 
             var content = new Table();
+            _contentTable = content;
             content.Pad(WinPad);
 
             content.Add(new Label(GetText(UITextKey.LabelConsumablesAutoPurchased), skin, "ph-default")).Left().SetPadBottom(8f);
@@ -124,7 +130,7 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(grid, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
             scrollPane.SetFadeScrollBars(false);
-            content.Add(scrollPane).SetMaxHeight(GridMaxHeight).Expand().Fill();
+            _gridCell = content.Add(scrollPane).SetMaxHeight(GridMaxHeight).Expand().Fill();
             content.Row();
 
             var buttonRow = new Table();
@@ -152,10 +158,17 @@ namespace PitHero.UI
         public void Show()
         {
             SyncFromService();
+            // Cap the grid so title bar, button row and padding still fit the configured design height
+            float stageH = _stage.GetHeight();
+            float gridMax = stageH - 2f * GameConfig.UIStageMargin - GridChromeHeight;
+            if (gridMax > GridMaxHeight) gridMax = GridMaxHeight;
+            if (gridMax < UILayout.MinScrollCellHeight) gridMax = UILayout.MinScrollCellHeight;
+            _gridCell.SetMaxHeight(gridMax);
+            _contentTable.InvalidateHierarchy();
             _window.Pack();
             _window.SetPosition(
                 (_stage.GetWidth() - _window.GetWidth()) / 2f,
-                (_stage.GetHeight() - _window.GetHeight()) / 2f);
+                UILayout.CenterY(_window.GetHeight(), stageH, 0f));
             _window.SetVisible(true);
             _window.ToFront();
             _shownFrame = Time.FrameCount;

@@ -9,8 +9,10 @@ namespace PitHero.UI
     /// <summary>The main content of the Crystals collection tab.</summary>
     public class CrystalsTab
     {
-        private const int INVENTORY_COLS = 8;
-        private const int INVENTORY_ROWS = 5;
+        // Wide and short: 40 slots either way, but one row less costs 34px of height. The queue column
+        // is the next cell of the same table row, so it shifts right with the extra columns on its own.
+        private const int INVENTORY_COLS = 10;
+        private const int INVENTORY_ROWS = 4;
         private const int INVENTORY_TOTAL = INVENTORY_COLS * INVENTORY_ROWS; // 40 slots
         private const int QUEUE_SLOTS = 5;
         private const float SLOT_SIZE = 32f;
@@ -86,7 +88,7 @@ namespace PitHero.UI
 
             // ── Forge section (spans both columns) ───────────────────────────────
             var forgeSection = new Table();
-            forgeSection.Add(new HoverableLabel(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default", GetText(UITextKey.CrystalForgeTitleTooltip), _stage)).Left().Pad(5);
+            forgeSection.Add(new HoverableLabel(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default", GetText(UITextKey.CrystalForgeTitleTooltip), _stage)).Left().Pad(2);
             forgeSection.Row();
 
             var forgeRow = new Table();
@@ -151,7 +153,7 @@ namespace PitHero.UI
 
             // ── Inventory section (left) ──────────────────────────────────────────
             var invCol = new Table();
-            invCol.Add(new Label(GetText(UITextKey.CrystalInventoryTitle), skin, "ph-default")).Left().Pad(5);
+            invCol.Add(new Label(GetText(UITextKey.CrystalInventoryTitle), skin, "ph-default")).Left().Pad(2);
             invCol.Row();
 
             var invGrid = new Table();
@@ -176,11 +178,11 @@ namespace PitHero.UI
             _createButton = new HoverableTextButton(GetText(UITextKey.CrystalCreateButton), skin, "ph-default", GetText(UITextKey.CrystalCreateButtonTooltip), _stage);
             _createButton.OnClicked += OnCreateClicked;
             _createButton.OnClicked += (_) => _createButton.HideTooltip();
-            invCol.Add(_createButton).Height(24).Left().Pad(5);
+            invCol.Add(_createButton).Height(24).Left().Pad(2);
 
             // ── Queue section (right) ─────────────────────────────────────────────
             var queueCol = new Table();
-            queueCol.Add(new HoverableLabel(GetText(UITextKey.CrystalQueueTitle), skin, "ph-default", GetText(UITextKey.CrystalQueueTitleTooltip), _stage)).Left().Pad(5);
+            queueCol.Add(new HoverableLabel(GetText(UITextKey.CrystalQueueTitle), skin, "ph-default", GetText(UITextKey.CrystalQueueTitleTooltip), _stage)).Left().Pad(2);
             queueCol.Row();
 
             _queueSlots = new CrystalSlotElement[QUEUE_SLOTS];
