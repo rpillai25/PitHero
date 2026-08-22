@@ -37,7 +37,7 @@ ServerFarewellComeAgain,Thanks, come again!
 ServerFarewellGladToHaveYou,We were glad to have you!
 CookOrderUp,Order up!
 CookHandsPlease,Hands, please!
-CookNeedHands,I need hands!
+CookNeedHands,Service!
 CookDishReady,{0} is ready!
 RunnerBusy,Busy busy busy!
 RunnerOffIGo,Off I go!
