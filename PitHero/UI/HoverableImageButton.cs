@@ -39,6 +39,15 @@ namespace PitHero.UI
 
         public override void Draw(Batcher batcher, float parentAlpha)
         {
+            // Correct the hover flag before base.Draw picks a style from it. Nez only clears
+            // _mouseOver from OnMouseExit, which fires solely on a mouse-move where the hit-tested
+            // element changed. Any way the cursor stops being "on" the button without such a move -
+            // a window opening over it, the top bar becoming untouchable, the button sliding away
+            // under a stationary cursor, the element being detached and re-added - strands the flag
+            // and the button comes back stuck in its Over (highlight) sprite.
+            if (_mouseOver && !MouseIsInsideBounds())
+                _mouseOver = _mouseDown = false;
+
             // Call base draw first
             base.Draw(batcher, parentAlpha);
 
@@ -64,6 +73,23 @@ namespace PitHero.UI
             }
 
             _wasMouseOver = isMouseOver;
+        }
+
+        /// <summary>
+        /// True when the cursor is genuinely within this button's current stage bounds. Used to
+        /// self-heal a stranded hover flag; returns true when there is no stage to measure against so
+        /// the flag is left alone rather than cleared on a guess.
+        /// </summary>
+        private bool MouseIsInsideBounds()
+        {
+            var stage = GetStage();
+            if (stage == null)
+                return true;
+
+            var mouse = stage.GetMousePosition();
+            var pos = GetStagePosition();
+            return mouse.X >= pos.X && mouse.X <= pos.X + GetWidth()
+                && mouse.Y >= pos.Y && mouse.Y <= pos.Y + GetHeight();
         }
 
         /// <summary>

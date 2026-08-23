@@ -28,6 +28,9 @@ namespace PitHero.UI
         private Tab _crystalsTab;
         private Tab _seedsTab;
 
+        // Graphical close button anchored outside the shop window's left edge (issue #399)
+        private WindowCloseButton _closeButton;
+
         // Right panel: separate windows for hero inventory and crystal panel
         private Window _heroInventoryWindow;
         private Window _heroCrystalWindow;
@@ -171,6 +174,10 @@ namespace PitHero.UI
 
             _shopWindow.Add(_tabPane).Expand().Fill().Pad(0);
             _shopWindow.SetVisible(false);
+
+            // Anchored to the left panel as a whole, so switching tabs never moves it
+            _closeButton = WindowCloseButton.Create(_shopWindow,
+                GetText(TextType.UI, UITextKey.ButtonClose), ToggleShopWindow);
         }
 
         /// <summary>Creates the hero inventory window (right panel for the Items tab).</summary>
@@ -470,6 +477,8 @@ namespace PitHero.UI
                 _shopWindow.SetPosition(GameConfig.SecondChanceShopWindowX + xOffset, UILayout.ClampY(shopY, shopH, stageH));
                 _shopWindow.ToFront();
 
+                _closeButton.ShowOn(_stage);
+
                 // Hero panel geometry, needed here because the merchant stands on its baseline
                 float heroH = UILayout.FitHeight(GameConfig.SecondChanceHeroPanelHeight, stageH, margin, margin);
                 float heroY = UILayout.ClampY(System.Math.Min(GameConfig.SecondChanceHeroPanelY, stageH - heroH - margin), heroH, stageH);
@@ -543,6 +552,7 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 _shopWindow.SetVisible(false);
                 _shopWindow.Remove();
+                _closeButton.HideAndDetach();
                 _merchantSprite.Remove();
                 RemoveMerchantBubble();
                 _heroInventoryWindow.SetVisible(false);
@@ -575,6 +585,7 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 _shopWindow?.SetVisible(false);
                 _shopWindow?.Remove();
+                _closeButton?.HideAndDetach();
                 _merchantSprite?.Remove();
                 RemoveMerchantBubble();
                 _heroInventoryWindow?.SetVisible(false);
@@ -711,9 +722,12 @@ namespace PitHero.UI
         private List<Nez.UI.Element> GetWindowBoundsElements()
         {
             if (_windowBoundsElements == null)
-                _windowBoundsElements = new List<Nez.UI.Element>(6);
+                _windowBoundsElements = new List<Nez.UI.Element>(7);
             _windowBoundsElements.Clear();
             _windowBoundsElements.Add(_shopWindow);
+            // The close button hangs outside the left panel, so it must widen the envelope or a click
+            // on it would also register as an outside click.
+            _windowBoundsElements.Add(_closeButton);
             _windowBoundsElements.Add(_merchantSprite);
             _windowBoundsElements.Add(_merchantBubble);
             _windowBoundsElements.Add(_heroInventoryWindow);

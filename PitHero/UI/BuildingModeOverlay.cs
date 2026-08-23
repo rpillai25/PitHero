@@ -273,7 +273,7 @@ namespace PitHero.UI
             var cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
             cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             cancelButton.OnClicked += (_) => RequestExitBuildingMode?.Invoke();
-            content.Add(cancelButton).SetColspan(2).Width(100f).SetPadTop(8f);
+            content.Add(cancelButton).SetColspan(2).Width(100f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadTop(8f);
 
             _inventoryWindow.Add(content).Expand().Fill();
             _inventoryWindow.Pack();
@@ -320,7 +320,7 @@ namespace PitHero.UI
 
             _buildButton = new TextButton(GetText(UITextKey.ButtonBuild), skin, "ph-default");
             _buildButton.OnClicked += (_) => { if (!_buildButton.GetDisabled()) OnBuildClicked(); };
-            content.Add(_buildButton).Width(80f);
+            content.Add(_buildButton).Width(80f).SetMinHeight(GameConfig.DialogButtonMinHeight);
 
             _descWindow.Add(content).Expand().Fill();
             _descWindow.Pack();

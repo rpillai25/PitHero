@@ -24,6 +24,9 @@ namespace PitHero.UI
         private Window _settingsWindow;
         private bool _isVisible = false;
 
+        // Graphical close button anchored outside the settings window's left edge (issue #399).
+        private WindowCloseButton _closeButton;
+
         // Tab management using actual TabPane
         private TabPane _tabPane;
         private Tab _windowTab;
@@ -614,6 +617,11 @@ namespace PitHero.UI
 
             // Initially hidden
             _settingsWindow.SetVisible(false);
+
+            // Anchored to the window as a whole, so switching tabs never moves it. LayoutUI keeps its
+            // stage membership and visibility in lockstep with the window.
+            _closeButton = WindowCloseButton.Create(_settingsWindow,
+                GetText(TextType.UI, UITextKey.ButtonClose), ToggleSettingsVisibility);
 
             // Create confirmation dialogs (initially hidden)
             CreateConfirmationDialogs(skin);
@@ -1851,6 +1859,12 @@ namespace PitHero.UI
                 _stage.AddElement(_settingsWindow);
 
             _settingsWindow.SetVisible(_isVisible);
+
+            if (_isVisible)
+                _closeButton?.ShowOn(_stage);
+            else
+                _closeButton?.HideAndDetach();
+
             PositionUI();
         }
 
@@ -1947,6 +1961,8 @@ namespace PitHero.UI
                 if (winX < 0) winX = 0;
 
                 _settingsWindow.SetPosition(winX, UILayout.ClampY(winY, winH, stageH));
+
+                _closeButton?.SyncPosition(_stage);
             }
 
             _lastStageW = stageW;
