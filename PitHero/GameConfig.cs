@@ -531,17 +531,18 @@ namespace PitHero
         public const float SecondChanceHeroPanelWidth = 852f;
         public const float SecondChanceHeroPanelHeight = 340f;
 
-        // Merchant sprite centered in the span between the shop window and the hero panel:
-        // (509 + 350 + 1068) / 2 - 128 = 835.5, snapped to a whole pixel so the art stays crisp.
-        // The 256px frame is wider than that span, so its transparent margins overlap both windows.
-        // The sprite Y is derived at show time: SecondChanceShopUI stands the merchant on the bottom
-        // edge of the panels, so it follows the fitted panel height at any design height.
-        public const float SecondChanceMerchantSpriteX = 836f;
+        // Merchant sprite centered in the span between the shop window and the hero panel. Only the
+        // span center is a constant - SecondChanceShopUI measures the atlas frame at load time and
+        // derives X (center - width/2, snapped to a whole pixel so the art stays crisp) and Y (feet
+        // on the bottom edge of the panels, so it follows the fitted panel height at any design
+        // height). Swapping in differently sized merchant art needs no change here.
+        public const float SecondChanceMerchantSpriteCenterX =
+            (SecondChanceShopWindowX + SecondChanceShopWindowWidth + SecondChanceHeroPanelX) / 2f;
 
-        // Merchant greeting bubble tail-tip anchor, relative to the sprite's top-left (issue #385).
-        // X centers on the 256px art; Y sits at the top of the merchant's head within the frame.
-        public const float SecondChanceMerchantBubbleAnchorX = 128f;
-        public const float SecondChanceMerchantBubbleAnchorY = 40f;
+        // Merchant greeting bubble tail-tip anchor (issue #385). X is the sprite's own center; this
+        // is how far below the top of the frame the merchant's head starts. The current art is
+        // cropped tight to the hood, so the head begins at the very top of the frame.
+        public const float SecondChanceMerchantBubbleHeadTopY = 0f;
 
         // Inventory interaction
         /// <summary>Minimum pixel movement to initiate a drag operation.</summary>

@@ -1,348 +1,357 @@
 EverpitTitle
 	0,0,338,64
 	0.5,0.5
-SecondChanceMerchant
-	0,65,256,256
-	0.5,0.5
 HudTemplate
-	0,322,160,32
+	0,65,160,32
 	0.5,0.5
 HudTemplateMercenary
-	257,65,160,32
+	0,98,160,32
+	0.5,0.5
+SecondChanceMerchant
+	339,0,142,220
 	0.5,0.5
 NinepatchWindowBackground
-	257,98,72,72
+	0,131,72,72
 	0.5,0.5
 HighlightBox
-	339,0,32,32
+	0,204,32,32
 	0.5,0.5
 JobCooking
-	0,355,32,32
+	73,131,32,32
 	0.5,0.5
 JobFarming
-	372,0,32,32
+	161,65,32,32
 	0.5,0.5
 JobFishing
-	0,388,32,32
+	106,131,32,32
 	0.5,0.5
 JobNone
-	33,355,32,32
+	73,164,32,32
 	0.5,0.5
 SelectBox
-	405,0,32,32
+	33,204,32,32
 	0.5,0.5
 UIBuildings
-	0,421,32,32
+	194,65,32,32
 	0.5,0.5
 UIBuildingsHighlight
-	33,388,32,32
+	161,98,32,32
 	0.5,0.5
 UIBuildingsInverse
-	66,355,32,32
+	66,204,32,32
+	0.5,0.5
+UIClose
+	106,164,32,32
+	0.5,0.5
+UICloseHighlight
+	139,131,32,32
+	0.5,0.5
+UICloseInverse
+	194,98,32,32
 	0.5,0.5
 UIConstruction
-	257,171,32,32
+	227,65,32,32
 	0.5,0.5
 UIConstructionHighlight
-	330,98,32,32
+	139,164,32,32
 	0.5,0.5
 UIConstructionInverse
-	438,0,32,32
+	99,197,32,32
 	0.5,0.5
 UIContinue
-	66,388,32,32
+	172,131,32,32
 	0.5,0.5
 UIContinueHighlight
-	33,421,32,32
+	227,98,32,32
 	0.5,0.5
 UIContinueInverse
-	99,355,32,32
+	260,65,32,32
 	0.5,0.5
 UIDestroyCrop
-	0,454,32,32
+	132,197,32,32
 	0.5,0.5
 UIDestroyCropHighlight
-	330,131,32,32
+	205,131,32,32
 	0.5,0.5
 UIDestroyCropInverse
-	363,98,32,32
+	172,164,32,32
 	0.5,0.5
 UIFarm
-	257,204,32,32
+	293,65,32,32
 	0.5,0.5
 UIFarmHighlight
-	290,171,32,32
+	260,98,32,32
 	0.5,0.5
 UIFarmInverse
-	418,33,32,32
+	165,197,32,32
 	0.5,0.5
 UIFarmOptions
-	471,0,32,32
+	205,164,32,32
 	0.5,0.5
 UIFarmOptionsHighlight
-	161,322,32,32
+	238,131,32,32
 	0.5,0.5
 UIFarmOptionsInverse
-	418,66,32,32
+	293,98,32,32
 	0.5,0.5
 UIFastF
-	451,33,32,32
+	198,197,32,32
 	0.5,0.5
 UIFastFHighlight
-	33,454,32,32
+	271,131,32,32
 	0.5,0.5
 UIFastFInverse
-	132,355,32,32
+	238,164,32,32
 	0.5,0.5
 UIGear
-	99,388,32,32
+	231,197,32,32
 	0.5,0.5
 UIGearHighlight
-	66,421,32,32
+	271,164,32,32
 	0.5,0.5
 UIGearInverse
-	290,204,32,32
+	304,131,32,32
 	0.5,0.5
 UIHarvestedCrops
-	363,131,32,32
+	264,197,32,32
 	0.5,0.5
 UIHarvestedCropsHighlight
-	257,237,32,32
+	304,164,32,32
 	0.5,0.5
 UIHarvestedCropsInverse
-	323,171,32,32
+	297,197,32,32
 	0.5,0.5
 UIHero
-	194,322,32,32
+	330,221,32,32
 	0.5,0.5
 UIHeroHighlight
-	451,66,32,32
+	363,221,32,32
 	0.5,0.5
 UIHeroInverse
-	396,99,32,32
+	396,221,32,32
 	0.5,0.5
 UIIrrigation
-	99,421,32,32
+	429,221,32,32
 	0.5,0.5
 UIIrrigationHighlight
-	66,454,32,32
+	462,221,32,32
 	0.5,0.5
 UIIrrigationInverse
-	132,388,32,32
+	0,237,32,32
 	0.5,0.5
 UIMarker
-	165,355,32,32
+	33,237,32,32
 	0.5,0.5
 UIMonster
-	257,270,32,32
+	0,270,32,32
 	0.5,0.5
 UIMonsterHighlight
-	356,164,32,32
+	33,270,32,32
 	0.5,0.5
 UIMonsterInverse
-	323,204,32,32
+	66,237,32,32
 	0.5,0.5
 UIRefrigerator
-	290,237,32,32
+	0,303,32,32
 	0.5,0.5
 UIRefrigeratorHighlight
-	396,132,32,32
+	99,230,32,32
 	0.5,0.5
 UIRefrigeratorInverse
-	429,99,32,32
+	66,270,32,32
 	0.5,0.5
 UIReplenish
-	227,322,32,32
+	33,303,32,32
 	0.5,0.5
 UIReplenishHighlight
-	198,355,32,32
+	0,336,32,32
 	0.5,0.5
 UIReplenishInverse
-	165,388,32,32
+	99,263,32,32
 	0.5,0.5
 UIRestoreGrass
-	356,197,32,32
+	132,230,32,32
 	0.5,0.5
 UIRestoreGrassHighlight
-	132,421,32,32
+	66,303,32,32
 	0.5,0.5
 UIRestoreGrassInverse
-	99,454,32,32
+	33,336,32,32
 	0.5,0.5
 UISecondChance
-	323,237,32,32
+	0,369,32,32
 	0.5,0.5
 UISecondChanceHighlight
-	290,270,32,32
+	132,263,32,32
 	0.5,0.5
 UISecondChanceInverse
-	462,99,32,32
+	165,230,32,32
 	0.5,0.5
 UISeed
-	429,132,32,32
+	99,296,32,32
 	0.5,0.5
 UISeedHighlight
-	389,165,32,32
+	66,336,32,32
 	0.5,0.5
 UISeedInverse
-	260,303,32,32
+	33,369,32,32
 	0.5,0.5
 UISettings
-	132,454,32,32
+	0,402,32,32
 	0.5,0.5
 UISettingsHighlight
-	356,230,32,32
+	132,296,32,32
 	0.5,0.5
 UISettingsInverse
-	165,421,32,32
+	198,230,32,32
 	0.5,0.5
 UIStop
-	198,388,32,32
+	165,263,32,32
 	0.5,0.5
 UIStopHighlight
-	231,355,32,32
+	99,329,32,32
 	0.5,0.5
 UIStopInverse
-	389,198,32,32
+	66,369,32,32
 	0.5,0.5
 UITill
-	422,165,32,32
+	33,402,32,32
 	0.5,0.5
 UITillHighlight
-	323,270,32,32
+	0,435,32,32
 	0.5,0.5
 UITillInverse
-	462,132,32,32
+	231,230,32,32
 	0.5,0.5
 NinePatchTab_Active
-	339,33,24,24
+	198,263,24,24
 	0.5,0.5
 NinePatchTab_Hover
-	364,33,24,24
+	165,296,24,24
 	0.5,0.5
 NinePatchTab_Inactive
-	389,33,24,24
+	132,329,24,24
 	0.5,0.5
 SkillIcon1
-	484,33,24,24
+	99,362,24,24
 	0.5,0.5
 SkillIcon10
-	484,58,24,24
+	33,435,24,24
 	0.5,0.5
 SkillIcon2
-	293,303,24,24
+	0,468,24,24
 	0.5,0.5
 SkillIcon3
-	231,388,24,24
+	66,402,24,24
 	0.5,0.5
 SkillIcon4
-	165,454,24,24
+	482,0,24,24
 	0.5,0.5
 SkillIcon5
-	198,421,24,24
+	99,387,24,24
 	0.5,0.5
 SkillIcon6
-	264,336,24,24
+	190,296,24,24
 	0.5,0.5
 SkillIcon7
-	356,263,24,24
+	165,321,24,24
 	0.5,0.5
 SkillIcon8
-	422,198,24,24
+	132,354,24,24
 	0.5,0.5
 SkillIcon9
-	455,165,24,24
+	223,263,24,24
 	0.5,0.5
 UISortAlpha
-	389,231,24,24
+	66,427,24,24
 	0.5,0.5
 UISortAlphaHighlight
-	293,328,24,24
+	33,460,24,24
 	0.5,0.5
 UISortAlphaInverse
-	318,303,24,24
+	264,230,24,24
 	0.5,0.5
 UISortTime
-	264,361,24,24
+	482,25,24,24
 	0.5,0.5
 UISortTimeHighlight
-	381,263,24,24
+	190,321,24,24
 	0.5,0.5
 UISortTimeInverse
-	356,288,24,24
+	157,346,24,24
 	0.5,0.5
 UISortType
-	165,479,24,24
+	124,379,24,24
 	0.5,0.5
 UISortTypeHighlight
-	223,421,24,24
+	215,288,24,24
 	0.5,0.5
 UISortTypeInverse
-	198,446,24,24
+	248,263,24,24
 	0.5,0.5
 CharacterSelector
-	0,487,20,19
+	91,412,20,19
 	0.5,0.5
 UIRadioButton_Selected
-	21,487,18,18
+	58,452,18,18
 	0.5,0.5
 UIRadioButton_Unselected
-	40,487,18,18
+	25,485,18,18
 	0.5,0.5
 UIRadioButton_Unselected_Highlight
-	59,487,18,18
+	289,230,18,18
 	0.5,0.5
 UICheckbox_Checked
-	78,487,16,16
+	91,432,16,16
 	0.5,0.5
 UICheckbox_Unchecked
-	95,487,16,16
+	112,412,16,16
 	0.5,0.5
 UICheckbox_Unchecked_Highlight
-	495,83,16,16
+	149,379,16,16
 	0.5,0.5
 UISliderKnob
-	495,100,14,14
+	0,493,14,14
 	0.5,0.5
 UISliderKnobDown
-	112,487,14,14
+	215,313,14,14
 	0.5,0.5
 UISliderKnobOver
-	495,115,14,14
+	240,288,14,14
 	0.5,0.5
 NinePatchButton_Down
-	127,487,12,12
+	326,65,12,12
 	0.5,0.5
 NinePatchButton_Over
-	495,130,12,12
+	326,78,12,12
 	0.5,0.5
 NinePatchButton_Up
-	140,487,12,12
+	326,91,12,12
 	0.5,0.5
 NinePatchSpeechBubble
-	495,143,12,12
+	326,104,12,12
 	0.5,0.5
 UISortOrderArrow
-	484,83,10,13
+	326,117,10,13
 	0.5,0.5
 NinePatchScroll
-	153,487,9,9
+	15,493,9,9
 	0.5,0.5
 NinePatchScrollKnob
-	256,388,9,9
+	182,346,9,9
 	0.5,0.5
 SpeechBubbleTail
-	455,190,9,8
+	58,471,9,8
 	0.5,0.5
 HPUnit2x
-	414,33,2,8
+	157,329,2,8
 	0.5,0.5
 MPUnit2x
-	414,42,2,8
+	124,362,2,8
 	0.5,0.5
 HPUnit
-	339,58,1,4
+	73,197,1,4
 	0.5,0.5
 MPUnit
-	341,58,1,4
+	75,197,1,4
 	0.5,0.5

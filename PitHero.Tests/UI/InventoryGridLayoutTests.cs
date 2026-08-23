@@ -59,14 +59,13 @@ namespace PitHero.Tests.UI
         [TestMethod]
         public void Merchant_IsCenteredBetweenTheShopAndHeroPanels()
         {
-            const float spriteSize = 256f;
+            // The sprite's own width drives its X at runtime; all this constant has to be is the
+            // midpoint of the gap between the two windows.
             float shopRight = GameConfig.SecondChanceShopWindowX + GameConfig.SecondChanceShopWindowWidth;
-            float spriteCenter = GameConfig.SecondChanceMerchantSpriteX + spriteSize / 2f;
             float spanCenter = (shopRight + GameConfig.SecondChanceHeroPanelX) / 2f;
 
-            // The sprite X is a whole pixel, so allow the half-pixel rounding
-            Assert.IsTrue(System.Math.Abs(spriteCenter - spanCenter) <= 0.5f,
-                $"merchant center {spriteCenter} should sit at the span center {spanCenter}");
+            Assert.AreEqual(spanCenter, GameConfig.SecondChanceMerchantSpriteCenterX, 0.001f,
+                "the merchant is centered on the span between the shop and hero panels");
         }
     }
 }

@@ -18,8 +18,6 @@ namespace PitHero.UI
     /// <summary>UI shell for the Second Chance Shop - provides a button, a vault window, and a separate hero panel for purchasing items and crystals.</summary>
     public class SecondChanceShopUI
     {
-        private const float MerchantSpriteSize = 256f; // merchant art is 256x256
-
         private Stage _stage;
         private HoverableImageButton _shopButton;
 
@@ -105,10 +103,11 @@ namespace PitHero.UI
             _shopButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _shopButton.OnClicked += (button) => TriggerToggle();
 
-            // Load merchant sprite - 256x256 px; displayed between shop and hero panels
+            // Load merchant sprite; displayed between shop and hero panels. Sized to the atlas frame
+            // so the full character is visible, and the layout reads those dimensions back off the
+            // Image rather than hardcoding them.
             var merchantSprite = uiAtlas.GetSprite("SecondChanceMerchant");
             _merchantSprite = new Image(new SpriteDrawable(merchantSprite));
-            // Display at natural sprite dimensions so the full character is visible
             _merchantSprite.SetSize(merchantSprite.SourceRect.Width, merchantSprite.SourceRect.Height);
 
             _merchantBubble = new MerchantSpeechBubble();
@@ -475,11 +474,17 @@ namespace PitHero.UI
                 float heroH = UILayout.FitHeight(GameConfig.SecondChanceHeroPanelHeight, stageH, margin, margin);
                 float heroY = UILayout.ClampY(System.Math.Min(GameConfig.SecondChanceHeroPanelY, stageH - heroH - margin), heroH, stageH);
 
-                // Merchant sprite (between panels) — his feet land on the bottom edge of the panels
-                float spriteY = heroY + heroH - MerchantSpriteSize;
+                // Merchant sprite (between panels) — measured from the art itself, so the frame size
+                // can change without touching the layout. He is centered on the span between the two
+                // windows and his feet land on the bottom edge of the panels.
+                float merchantW = _merchantSprite.GetWidth();
+                float merchantH = _merchantSprite.GetHeight();
+                // Snap to a whole pixel so the art stays crisp when the width is odd
+                float spriteX = Mathf.Round(GameConfig.SecondChanceMerchantSpriteCenterX - merchantW * 0.5f) + xOffset;
+                float spriteY = heroY + heroH - merchantH;
                 if (spriteY < 0f) spriteY = 0f;
                 _stage.AddElement(_merchantSprite);
-                _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX + xOffset, spriteY);
+                _merchantSprite.SetPosition(spriteX, spriteY);
                 _merchantSprite.ToFront();
 
                 // Greeting bubble above the merchant's head; persists until the shop closes
@@ -488,8 +493,8 @@ namespace PitHero.UI
                 {
                     _stage.AddElement(_merchantBubble);
                     _merchantBubble.SetTailAnchor(
-                        GameConfig.SecondChanceMerchantSpriteX + xOffset + GameConfig.SecondChanceMerchantBubbleAnchorX,
-                        spriteY + GameConfig.SecondChanceMerchantBubbleAnchorY);
+                        spriteX + merchantW * 0.5f,
+                        spriteY + GameConfig.SecondChanceMerchantBubbleHeadTopY);
                     _merchantBubble.Show(greeting);
                     _merchantBubble.ToFront();
                 }
