@@ -33,6 +33,9 @@ namespace PitHero.UI
         private Tab _foodTab;
         private bool _windowVisible = false;
 
+        // Graphical close button anchored outside the hero window's left edge (issue #399).
+        private WindowCloseButton _closeButton;
+
         // References for single window policy enforcement
         private SettingsUI _settingsUI;
         private SecondChanceShopUI _secondChanceShopUI;
@@ -229,6 +232,10 @@ namespace PitHero.UI
             
             _heroWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
             _heroWindow.SetVisible(false);
+
+            // Anchored to the window as a whole, so switching tabs never moves it
+            _closeButton = WindowCloseButton.Create(_heroWindow,
+                GetText(TextType.UI, UITextKey.ButtonClose), ToggleHeroWindow);
         }
 
         /// <summary>Adjusts window width when tabs are changed.</summary>
@@ -895,6 +902,7 @@ namespace PitHero.UI
                 _stage.AddElement(_heroWindow);
                 _heroWindow.SetVisible(true);
                 _heroWindow.ToFront();
+                _closeButton.ShowOn(_stage);
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null) pauseService.IsPaused = true;
                 // Stamp the frame so the click that opened the window can't also dismiss it
@@ -910,6 +918,7 @@ namespace PitHero.UI
                 ClearHoverVisuals();
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
+                _closeButton.HideAndDetach();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null) pauseService.IsPaused = false;
                 Debug.Log("Hero window closed and game unpaused");
@@ -941,6 +950,8 @@ namespace PitHero.UI
             if (targetX > maxX) targetX = maxX;
             if (targetX < 0) targetX = 0;
             _heroWindow.SetPosition(targetX, 0f);
+
+            _closeButton?.SyncPosition(_stage);
         }
 
         private HeroComponent GetHeroComponent()
@@ -1210,9 +1221,12 @@ namespace PitHero.UI
         private List<Element> GetWindowBoundsElements()
         {
             if (_windowBoundsElements == null)
-                _windowBoundsElements = new List<Element>(4);
+                _windowBoundsElements = new List<Element>(5);
             _windowBoundsElements.Clear();
             _windowBoundsElements.Add(_heroWindow);
+            // The close button hangs outside the window, so it must widen the envelope or a click on
+            // it would also register as an outside click.
+            _windowBoundsElements.Add(_closeButton);
             _windowBoundsElements.Add(_stencilLibraryPanel);
             _windowBoundsElements.Add(_selectedItemCard);
             _windowBoundsElements.Add(_crystalsTabComponent?.CrystalCardElement);
@@ -1270,7 +1284,7 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _stencilLibraryPanel?.SetVisible(false); ClearHoverVisuals(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _stencilLibraryPanel?.SetVisible(false); ClearHoverVisuals(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); _closeButton?.HideAndDetach(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 

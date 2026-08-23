@@ -109,16 +109,16 @@ namespace PitHero.UI
             var buttonRow = new Table();
             var selectAllButton = new TextButton(GetText(UITextKey.ButtonSelectAll), skin, "ph-default");
             selectAllButton.OnClicked += (_) => SetAllDesignations(true);
-            buttonRow.Add(selectAllButton).Width(110f).SetPadRight(8f);
+            buttonRow.Add(selectAllButton).Width(110f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(8f);
 
             var deselectAllButton = new TextButton(GetText(UITextKey.ButtonDeselectAll), skin, "ph-default");
             deselectAllButton.OnClicked += (_) => SetAllDesignations(false);
-            buttonRow.Add(deselectAllButton).Width(110f).SetPadRight(8f);
+            buttonRow.Add(deselectAllButton).Width(110f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(8f);
 
             var closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
             closeButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             closeButton.OnClicked += (_) => Hide();
-            buttonRow.Add(closeButton).Width(100f);
+            buttonRow.Add(closeButton).Width(100f).SetMinHeight(GameConfig.DialogButtonMinHeight);
 
             content.Add(buttonRow).SetPadTop(12f);
 

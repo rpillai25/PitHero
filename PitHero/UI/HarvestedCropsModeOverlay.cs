@@ -52,7 +52,6 @@ namespace PitHero.UI
         private const float WinPad       = 16f;
         private const int   Columns      = 8;
         private const float ButtonWidth  = 110f;
-        private const float ButtonHeight = 16f;
         // One page is 4 rows of 44px (40px slot + 2px pad each side), so 224 fits a full storage at the
         // 360px design height without scrolling. ShowInventoryWindow shrinks it when the configured
         // GameConfig.VirtualHeight is shorter (the grid then scrolls).
@@ -134,18 +133,18 @@ namespace PitHero.UI
             var buildingService = Core.Services.GetService<BuildingService>();
 
             if (_filterBuildingId < 0 && AnyStorageHasCrops(storage, buildingService))
-                _buttonRow.Add(_sellAllButton).Width(ButtonWidth).SetMinHeight(ButtonHeight).SetPadRight(8f);
+                _buttonRow.Add(_sellAllButton).Width(ButtonWidth).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(8f);
 
             int shownId = CurrentPageBuildingId;
             bool hasCrops = storage != null && shownId >= 0 && storage.HasAvailableCrops(shownId);
             bool otherStorageExists = (buildingService?.CropStorageCount ?? 0) > 1;
 
             if (hasCrops && otherStorageExists)
-                _buttonRow.Add(_moveAllButton).Width(ButtonWidth).SetMinHeight(ButtonHeight).SetPadRight(8f);
+                _buttonRow.Add(_moveAllButton).Width(ButtonWidth).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(8f);
             if (hasCrops)
-                _buttonRow.Add(_sellStorageButton).Width(ButtonWidth).SetMinHeight(ButtonHeight).SetPadRight(8f);
+                _buttonRow.Add(_sellStorageButton).Width(ButtonWidth).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(8f);
 
-            _buttonRow.Add(_closeButton).Width(100f).SetMinHeight(ButtonHeight);
+            _buttonRow.Add(_closeButton).Width(100f).SetMinHeight(GameConfig.DialogButtonMinHeight);
         }
 
         /// <summary>
@@ -456,13 +455,13 @@ namespace PitHero.UI
 
             var sellButton = new TextButton(GetText(UITextKey.ButtonSell), skin, "ph-default");
             sellButton.OnClicked += (_) => OnSellStackClicked();
-            content.Add(sellButton).Width(80f).SetPadBottom(4f);
+            content.Add(sellButton).Width(80f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadBottom(4f);
             content.Row();
 
             var closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
             closeButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             closeButton.OnClicked += (_) => _descWindow.SetVisible(false);
-            content.Add(closeButton).Width(80f);
+            content.Add(closeButton).Width(80f).SetMinHeight(GameConfig.DialogButtonMinHeight);
 
             _descWindow.Add(content).Expand().Fill();
             _descWindow.Pack();

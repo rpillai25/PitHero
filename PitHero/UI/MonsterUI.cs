@@ -43,6 +43,10 @@ namespace PitHero.UI
 
         // Aggregate view only: workforce summary card docked to the right of the roster window.
         private MonsterInfoPanel _infoPanel;
+
+        // Graphical close button anchored outside the roster window's left edge (issue #399).
+        private WindowCloseButton _closeButton;
+
         // Pre-allocated so the per-frame dismissal poll never allocates.
         private System.Collections.Generic.List<Element> _dismissEnvelope;
 
@@ -194,7 +198,12 @@ namespace PitHero.UI
             _monsterWindow.SetVisible(false);
 
             _infoPanel = new MonsterInfoPanel(skin);
-            _dismissEnvelope = new System.Collections.Generic.List<Element>(2) { _monsterWindow, _infoPanel };
+
+            _closeButton = WindowCloseButton.Create(_monsterWindow,
+                GetText(TextType.UI, UITextKey.ButtonClose), ToggleMonsterWindow);
+
+            // The close button joins the envelope so a click on it is not also read as an outside click.
+            _dismissEnvelope = new System.Collections.Generic.List<Element>(3) { _monsterWindow, _infoPanel, _closeButton };
         }
 
         private void ToggleMonsterWindow()
@@ -210,6 +219,7 @@ namespace PitHero.UI
                 // Added after the roster window so the card sits above it when the two overlap.
                 _stage.AddElement(_infoPanel);
                 _infoPanel.ToFront();
+                _closeButton.ShowOn(_stage);
                 PositionWindow();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
@@ -224,6 +234,7 @@ namespace PitHero.UI
                 _monsterWindow.Remove();
                 _infoPanel.SetVisible(false);
                 _infoPanel.Remove();
+                _closeButton.HideAndDetach();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
@@ -555,6 +566,8 @@ namespace PitHero.UI
 
             if (infoShown)
                 _infoPanel.SetPosition(winX + winW + InfoPanelGap, UILayout.ClampY(winY, _infoPanel.GetHeight(), stageH));
+
+            _closeButton?.SyncPosition(_stage);
         }
 
         /// <summary>Sets the position of the monster icon button.</summary>
@@ -581,6 +594,7 @@ namespace PitHero.UI
                 _monsterWindow?.Remove();
                 _infoPanel?.SetVisible(false);
                 _infoPanel?.Remove();
+                _closeButton?.HideAndDetach();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
