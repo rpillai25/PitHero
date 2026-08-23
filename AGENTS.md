@@ -96,8 +96,9 @@ See `PitHero/docs/RenderingSystem.md` for the full reference.  Key rules:
 - `Stage.Hit(Stage.GetMousePosition())` (pointer-over-UI) is a *separate* guard — most pick sites need both
 
 ### Localization
-- All display text lives in `Content/Localization/en-US/UI.txt`, accessed via `TextService.GetText(TextKey.X)`
+- All display text lives in `Content/Localization/en-us/*.txt` (one file per `TextType`: UI, Inventory, Skill, Job, Monster, Dialogue, Name), accessed via `TextService.DisplayText(TextType.X, SomeTextKey.Y)`
 - No hardcoded display strings anywhere in game code (debug logs are exempt)
+- `Names.txt` is **list-valued**: each line is `PoolKey,entry,entry,...`, a key may repeat across lines (entries append), and callers read it with `TextService.DisplayTextList`. Character name pools live there, not in C#
 
 ### Constants
 - All sizes, positions, speeds, and physics layers go in `GameConfig.cs`

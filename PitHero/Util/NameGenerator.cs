@@ -1,3 +1,5 @@
+using Nez;
+using PitHero.Services;
 using RolePlayingFramework;
 
 namespace PitHero.Util
@@ -6,93 +8,67 @@ namespace PitHero.Util
     /// Shared utility for generating random character names. Humans (heroes and mercenaries) draw
     /// a gendered first name plus a surname; monsters draw a single syllable-forged first name with
     /// no surname, from pools that never overlap the human ones.
+    ///
+    /// The pools themselves live in Content/Localization/{lang}/Names.txt so they can be swapped
+    /// per language without a rebuild; see NameTextKey for the keys.
     /// </summary>
     public static class NameGenerator
     {
-        private static readonly string[] MaleFirstNames =
-        {
-            "Adrian", "Alaric", "Aldric", "Ansel", "Arden",
-            "Aymer", "Baldwin", "Bertram", "Bran", "Brom",
-            "Cedric", "Corwin", "Cuthbert", "Drake", "Dunstan",
-            "Edmund", "Elric", "Emeric", "Everard", "Finn",
-            "Fulk", "Gareth", "Garrick", "Godfrey", "Gunnar",
-            "Hale", "Hugh", "Ivan", "Jasper", "John",
-            "Kael", "Lambert", "Leofric", "Lucan", "Marcus",
-            "Merrick", "Milo", "Nolan", "Odo", "Osric",
-            "Owen", "Percival", "Quentin", "Ralf", "Reynard",
-            "Roland", "Rowan", "Rurik", "Sigurd", "Simon",
-            "Talbot", "Thane", "Theobald", "Tom", "Tristan",
-            "Ulric", "Wallace", "Warin", "Wulfric", "Wystan"
-        };
+        // Last-resort pools, used only when Names.txt is missing or a key is absent. They keep a
+        // broken content install from crashing character creation, and the placeholder names make
+        // the failure obvious rather than silent.
+        private static readonly string[] FallbackMaleFirstNames = { "Nameless" };
+        private static readonly string[] FallbackFemaleFirstNames = { "Nameless" };
+        private static readonly string[] FallbackLastNames = { "Onemore" };
+        private static readonly string[] FallbackMonsterPrefixes = { "Grunt" };
+        private static readonly string[] FallbackMonsterSuffixes = { "ling" };
 
-        /// <summary>
-        /// Authored ahead of the art: nothing passes Gender.Female yet, so this pool is currently
-        /// unreachable in normal play. Keep it populated so enabling female characters is a one-line change.
-        /// </summary>
-        private static readonly string[] FemaleFirstNames =
-        {
-            "Adelina", "Agnes", "Alice", "Amabel", "Aveline",
-            "Beatrix", "Blanche", "Brynn", "Cecily", "Clarice",
-            "Constance", "Diana", "Edith", "Elara", "Eleanor",
-            "Elowen", "Emeline", "Evelyn", "Freya", "Gisela",
-            "Godiva", "Greta", "Helena", "Hilda", "Ingrid",
-            "Isolde", "Jade", "Joan", "Juliana", "Katrin",
-            "Lucia", "Luna", "Mabel", "Margery", "Matilda",
-            "Maude", "Nina", "Odilia", "Petra", "Rosalind",
-            "Rowena", "Sasha", "Sibyl", "Solene", "Sybilla",
-            "Thea", "Ursula", "Vivienne", "Wilhelmina", "Yseult"
-        };
+        private static TextService _textService;
+        private static string[] _maleFirstNames;
+        private static string[] _femaleFirstNames;
+        private static string[] _lastNames;
+        private static string[] _monsterPrefixes;
+        private static string[] _monsterSuffixes;
 
-        private static readonly string[] LastNames =
+        private static TextService GetTextService()
         {
-            "Swift", "Strong", "Wise", "Brave", "Bold",
-            "Quick", "Keen", "True", "Steel", "Bright",
-            "Hall", "Romero", "Carmack", "Happ", "Blow",
-            "Brush", "Fletcher", "Cooper", "Thatcher", "Mason",
-            "Chandler", "Tanner", "Wright", "Baker", "Miller",
-            "Turner", "Sawyer", "Weaver", "Marsh", "Ashford",
-            "Blackwood", "Thornton", "Greenhill", "Whitlock", "Ravensworth",
-            "Holloway", "Ironside", "Longshaw", "Stonebridge", "Hawksley",
-            "Redmayne", "Fairbairn", "Underhill", "Bramble", "Falconer",
-            "Winterbourne", "Oakes", "Vance", "Alderton", "Grimsby"
-        };
+            if (_textService == null)
+            {
+                // Core.Instance is null in headless hosts (unit tests, virtual balance runs) and
+                // Core.Services would throw there, so load the localization files directly instead.
+                if (Core.Instance != null)
+                    _textService = Core.Services?.GetService<TextService>();
+                if (_textService == null)
+                    _textService = new TextService();
+            }
+            return _textService;
+        }
 
-        /// <summary>Leading syllables for forged monster names. Deliberately disjoint from the suffix
-        /// list (lowercased) so a name can never come out doubled, e.g. "Grimgrim".</summary>
-        private static readonly string[] MonsterPrefixes =
+        /// <summary>Loads a pool from Names.txt once and caches it, falling back if the key is missing.</summary>
+        private static string[] GetPool(ref string[] cache, string key, string[] fallback)
         {
-            "Gru", "Vrak", "Skar", "Morr", "Ulg",
-            "Thug", "Zog", "Nask", "Brol", "Krug",
-            "Hesh", "Vord", "Gnash", "Drel", "Skulg",
-            "Xar", "Gorm", "Vex", "Snarl", "Rott",
-            "Blud", "Kral", "Murg", "Ghol", "Zeth",
-            "Yurg", "Thrak", "Wretch", "Slog", "Fell",
-            "Grull", "Necr", "Ozz", "Varg", "Skree",
-            "Drog", "Hrak", "Nurg", "Bael", "Krix"
-        };
+            if (cache != null)
+                return cache;
 
-        /// <summary>Trailing syllables for forged monster names.</summary>
-        private static readonly string[] MonsterSuffixes =
-        {
-            "nash", "ka", "rul", "ek", "ath",
-            "gor", "rim", "ul", "dak", "esh",
-            "nak", "var", "mog", "tusk", "fang",
-            "maw", "gash", "rax", "zul", "thok",
-            "grim", "nok", "vek", "durr", "shak",
-            "lok", "rag", "muk", "threx", "gorn"
-        };
+            var loaded = GetTextService().DisplayTextList(TextType.Name, key);
+            cache = loaded.Length > 0 ? loaded : fallback;
+            return cache;
+        }
 
         /// <summary>Generates a random first-last name for the given gender using Nez.Random</summary>
         public static string GenerateRandomName(Gender gender = Gender.Male)
         {
-            return $"{GenerateFirstName(gender)} {LastNames[Nez.Random.Range(0, LastNames.Length)]}";
+            var lastNames = GetPool(ref _lastNames, NameTextKey.LastNames, FallbackLastNames);
+            return $"{GenerateFirstName(gender)} {lastNames[Random.Range(0, lastNames.Length)]}";
         }
 
         /// <summary>Generates a random first name only for the given gender using Nez.Random</summary>
         public static string GenerateFirstName(Gender gender = Gender.Male)
         {
-            var pool = gender == Gender.Female ? FemaleFirstNames : MaleFirstNames;
-            return pool[Nez.Random.Range(0, pool.Length)];
+            var pool = gender == Gender.Female
+                ? GetPool(ref _femaleFirstNames, NameTextKey.FemaleFirstNames, FallbackFemaleFirstNames)
+                : GetPool(ref _maleFirstNames, NameTextKey.MaleFirstNames, FallbackMaleFirstNames);
+            return pool[Random.Range(0, pool.Length)];
         }
 
         /// <summary>
@@ -101,9 +77,9 @@ namespace PitHero.Util
         /// </summary>
         public static string GenerateMonsterName()
         {
-            var prefix = MonsterPrefixes[Nez.Random.Range(0, MonsterPrefixes.Length)];
-            var suffix = MonsterSuffixes[Nez.Random.Range(0, MonsterSuffixes.Length)];
-            return prefix + suffix;
+            var prefixes = GetPool(ref _monsterPrefixes, NameTextKey.MonsterPrefixes, FallbackMonsterPrefixes);
+            var suffixes = GetPool(ref _monsterSuffixes, NameTextKey.MonsterSuffixes, FallbackMonsterSuffixes);
+            return prefixes[Random.Range(0, prefixes.Length)] + suffixes[Random.Range(0, suffixes.Length)];
         }
     }
 }

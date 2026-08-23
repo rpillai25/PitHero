@@ -57,7 +57,7 @@ namespace PitHero.Tests
         {
             var male = SampleFirstNames(Gender.Male);
 
-            foreach (var required in new[] { "John", "Adrian", "Tom" })
+            foreach (var required in new[] { "John", "Adrian", "Tom", "Jordan", "Ken" })
                 Assert.IsTrue(male.Contains(required), $"Male pool must contain '{required}'");
 
             foreach (var female in KnownFemaleOnly)
@@ -71,7 +71,7 @@ namespace PitHero.Tests
             var male = SampleFirstNames(Gender.Male);
 
             Assert.IsTrue(female.Count >= 40, "The female pool should be authored ahead of the art");
-            foreach (var expected in new[] { "Diana", "Luna", "Petra" })
+            foreach (var expected in new[] { "Diana", "Luna", "Petra", "Roberta", "Corrine" })
                 Assert.IsTrue(female.Contains(expected), $"Female pool must contain '{expected}'");
 
             female.IntersectWith(male);
@@ -79,14 +79,16 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void LastNames_ContainOwnerAdditions()
+        public void LastNames_ContainOwnerAdditions_AndNotTheRetiredOnes()
         {
             var surnames = new HashSet<string>();
             for (int i = 0; i < Samples; i++)
                 surnames.Add(NameGenerator.GenerateRandomName(Gender.Male).Split(' ')[1]);
 
-            foreach (var required in new[] { "Hall", "Romero", "Carmack", "Happ", "Blow", "Brush" })
-                Assert.IsTrue(surnames.Contains(required), $"Surname pool must contain '{required}'");
+            Assert.IsTrue(surnames.Contains("Brush"), "Surname pool must contain 'Brush'");
+
+            foreach (var retired in new[] { "Hall", "Romero", "Carmack", "Happ", "Blow" })
+                Assert.IsFalse(surnames.Contains(retired), $"Surname '{retired}' was retired from the pool");
         }
 
         [TestMethod]
@@ -115,6 +117,48 @@ namespace PitHero.Tests
 
             monsters.IntersectWith(humans);
             Assert.AreEqual(0, monsters.Count, "Monster names must never overlap the human first-name pools");
+        }
+
+        /// <summary>
+        /// The pools live in Content/Localization/en-us/Names.txt. If that file fails to load,
+        /// NameGenerator silently falls back to placeholder names and every character in the game
+        /// is called "Nameless Onemore" -- this is the guard against shipping that.
+        /// </summary>
+        [TestMethod]
+        public void Pools_AreLoadedFromLocalization_NotTheFallbacks()
+        {
+            var male = SampleFirstNames(Gender.Male);
+            var female = SampleFirstNames(Gender.Female);
+
+            Assert.IsTrue(male.Count >= 50, $"Male pool should come from Names.txt, only saw {male.Count} distinct names");
+            Assert.IsTrue(female.Count >= 50, $"Female pool should come from Names.txt, only saw {female.Count} distinct names");
+            Assert.IsFalse(male.Contains("Nameless"), "The fallback pool was used, so Names.txt did not load");
+
+            var surnames = new HashSet<string>();
+            for (int i = 0; i < Samples; i++)
+                surnames.Add(NameGenerator.GenerateRandomName(Gender.Male).Split(' ')[1]);
+            Assert.IsTrue(surnames.Count >= 40, $"Surname pool should come from Names.txt, only saw {surnames.Count}");
+            Assert.IsFalse(surnames.Contains("Onemore"), "The fallback surname pool was used, so Names.txt did not load");
+        }
+
+        /// <summary>
+        /// Names.txt wraps each pool over several lines that repeat the same key, which only works
+        /// because TextService appends duplicate keys for that file. A regression there would
+        /// silently shrink every pool to its last line.
+        /// </summary>
+        [TestMethod]
+        public void TextService_AppendsDuplicateKeysForNamePools()
+        {
+            var textService = new PitHero.Services.TextService();
+
+            var male = textService.DisplayTextList(TextType.Name, NameTextKey.MaleFirstNames);
+            Assert.IsTrue(male.Length >= 50, $"MaleFirstNames spans multiple lines and must append, got {male.Length}");
+            CollectionAssert.Contains(male, "John");
+            CollectionAssert.Contains(male, "Wystan", "Entries from the last line must survive");
+            CollectionAssert.Contains(male, "Adrian", "Entries from the first line must survive");
+
+            // A single-valued file must keep overwrite semantics.
+            Assert.AreEqual("Bat", textService.DisplayText(TextType.Monster, MonsterTextKey.Monster_Bat));
         }
     }
 }

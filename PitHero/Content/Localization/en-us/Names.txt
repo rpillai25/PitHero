@@ -1,0 +1,64 @@
+# Character name pools.
+#
+# Each line is "PoolKey,entry,entry,entry". A pool key may repeat across lines and the
+# entries are appended, so long pools are wrapped here purely for readability.
+#
+# Humans (heroes and mercenaries) draw a gendered first name plus a surname.
+# Monsters draw a single forged name: one MonsterPrefixes entry + one MonsterSuffixes
+# entry, no surname. Keep those two lists disjoint when lowercased, or names come out
+# doubled ("Grim" + "grim" = "Grimgrim").
+
+MaleFirstNames,Adrian,Alaric,Aldric,Ansel,Arden
+MaleFirstNames,Aymer,Baldwin,Bertram,Bran,Brom
+MaleFirstNames,Cedric,Corwin,Cuthbert,Drake,Dunstan
+MaleFirstNames,Edmund,Elric,Emeric,Everard,Finn
+MaleFirstNames,Fulk,Gareth,Garrick,Godfrey,Gunnar
+MaleFirstNames,Hale,Hugh,Ivan,Jasper,John
+MaleFirstNames,Jordan,Kael,Ken,Lambert,Leofric
+MaleFirstNames,Lucan,Marcus,Merrick,Milo,Nolan
+MaleFirstNames,Odo,Osric,Owen,Percival,Quentin
+MaleFirstNames,Ralf,Reynard,Roland,Rowan,Rurik
+MaleFirstNames,Sigurd,Simon,Talbot,Thane,Theobald
+MaleFirstNames,Tom,Tristan,Ulric,Wallace,Warin
+MaleFirstNames,Wulfric,Wystan
+
+# Authored ahead of the art: nothing passes Gender.Female yet, so this pool is currently
+# unreachable in normal play. Keep it populated so enabling female characters stays a
+# one-line change at the two generation sites.
+FemaleFirstNames,Adelina,Agnes,Alice,Amabel,Aveline
+FemaleFirstNames,Beatrix,Blanche,Brynn,Cecily,Clarice
+FemaleFirstNames,Constance,Corrine,Diana,Edith,Elara
+FemaleFirstNames,Eleanor,Elowen,Emeline,Evelyn,Freya
+FemaleFirstNames,Gisela,Godiva,Greta,Helena,Hilda
+FemaleFirstNames,Ingrid,Isolde,Jade,Joan,Juliana
+FemaleFirstNames,Katrin,Lucia,Luna,Mabel,Margery
+FemaleFirstNames,Matilda,Maude,Nina,Odilia,Petra
+FemaleFirstNames,Roberta,Rosalind,Rowena,Sasha,Sibyl
+FemaleFirstNames,Solene,Sybilla,Thea,Ursula,Vivienne
+FemaleFirstNames,Wilhelmina,Yseult
+
+LastNames,Swift,Strong,Wise,Brave,Bold
+LastNames,Quick,Keen,True,Steel,Bright
+LastNames,Brush,Fletcher,Cooper,Thatcher,Mason
+LastNames,Chandler,Tanner,Wright,Baker,Miller
+LastNames,Turner,Sawyer,Weaver,Marsh,Ashford
+LastNames,Blackwood,Thornton,Greenhill,Whitlock,Ravensworth
+LastNames,Holloway,Ironside,Longshaw,Stonebridge,Hawksley
+LastNames,Redmayne,Fairbairn,Underhill,Bramble,Falconer
+LastNames,Winterbourne,Oakes,Vance,Alderton,Grimsby
+
+MonsterPrefixes,Gru,Vrak,Skar,Morr,Ulg
+MonsterPrefixes,Thug,Zog,Nask,Brol,Krug
+MonsterPrefixes,Hesh,Vord,Gnash,Drel,Skulg
+MonsterPrefixes,Xar,Gorm,Vex,Snarl,Rott
+MonsterPrefixes,Blud,Kral,Murg,Ghol,Zeth
+MonsterPrefixes,Yurg,Thrak,Wretch,Slog,Fell
+MonsterPrefixes,Grull,Necr,Ozz,Varg,Skree
+MonsterPrefixes,Drog,Hrak,Nurg,Bael,Krix
+
+MonsterSuffixes,nash,ka,rul,ek,ath
+MonsterSuffixes,gor,rim,ul,dak,esh
+MonsterSuffixes,nak,var,mog,tusk,fang
+MonsterSuffixes,maw,gash,rax,zul,thok
+MonsterSuffixes,grim,nok,vek,durr,shak
+MonsterSuffixes,lok,rag,muk,threx,gorn
