@@ -3,6 +3,7 @@ using Nez;
 using PitHero;
 using PitHero.Config;
 using PitHero.ECS.Components;
+using RolePlayingFramework;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
@@ -215,11 +216,12 @@ namespace PitHero.Services
             // Generate random base stats (simplified for now - just use defaults)
             var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
 
-            // Generate random name
-            var name = GenerateRandomName();
+            // Every mercenary is male until female art exists; roll the gender here once it does.
+            var gender = Gender.Male;
+            var name = Util.NameGenerator.GenerateRandomName(gender);
 
             // Create mercenary
-            var mercenary = new Mercenary(name, job, mercLevel, baseStats);
+            var mercenary = new Mercenary(name, job, mercLevel, baseStats, gender);
             mercenary.LearnAllJobSkills();
 
             Analytics.AnalyticsService.LogMercArrived(mercenary, BalanceConfig.CalculateMercenaryHireCost(mercLevel));
@@ -1092,7 +1094,7 @@ namespace PitHero.Services
             var baseStats = new StatBlock(
                 saved.BaseStrength, saved.BaseAgility,
                 saved.BaseVitality, saved.BaseMagic);
-            var mercenary = new Mercenary(saved.Name, job, saved.Level, baseStats);
+            var mercenary = new Mercenary(saved.Name, job, saved.Level, baseStats, saved.Gender);
             mercenary.LearnAllJobSkills();
 
             // Restore partial experience toward next level (set directly to avoid re-triggering level-ups)
@@ -1303,12 +1305,6 @@ namespace PitHero.Services
 
             var randomType = jobTypes[global::Nez.Random.Range(0, jobTypes.Length)];
             return (IJob)Activator.CreateInstance(randomType);
-        }
-
-        /// <summary>Generates a random name for mercenary using shared NameGenerator</summary>
-        private string GenerateRandomName()
-        {
-            return Util.NameGenerator.GenerateRandomName();
         }
 
         /// <summary>Checks if player can hire more mercenaries</summary>
