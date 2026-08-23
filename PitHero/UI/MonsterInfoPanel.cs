@@ -16,6 +16,8 @@ namespace PitHero.UI
     {
         private const float ContentPadding = 6f;
         private const float CaptionGap = 12f;
+        /// <summary>Vertical gap between stat rows, so the labels do not run together.</summary>
+        private const float RowGap = 4f;
 
         private static readonly Color BrownColor = new Color(71, 36, 7);
 
@@ -27,6 +29,7 @@ namespace PitHero.UI
         private readonly Label _idleValue;
 
         private TextService _textService;
+        private bool _hasStatRow;
 
         public MonsterInfoPanel(Skin skin) : base("", skin)
         {
@@ -62,12 +65,19 @@ namespace PitHero.UI
             Pack();
         }
 
-        /// <summary>Adds a caption/value row and returns the value label for later updates.</summary>
+        /// <summary>
+        /// Adds a caption/value row and returns the value label for later updates. Every row but the
+        /// first carries the gap, so the spacing lands between the labels rather than above the list.
+        /// Both cells take it, or the caption and its value would sit on different baselines.
+        /// </summary>
         private Label AddStatRow(string captionKey)
         {
+            float padTop = _hasStatRow ? RowGap : 0f;
+            _hasStatRow = true;
+
             var valueLabel = new Label("0", BrownStyle());
-            _contentTable.Add(new Label(GetText(captionKey), BrownStyle())).Left().SetPadRight(CaptionGap);
-            _contentTable.Add(valueLabel).Right().SetExpandX();
+            _contentTable.Add(new Label(GetText(captionKey), BrownStyle())).Left().SetPadRight(CaptionGap).SetPadTop(padTop);
+            _contentTable.Add(valueLabel).Right().SetExpandX().SetPadTop(padTop);
             _contentTable.Row();
             return valueLabel;
         }

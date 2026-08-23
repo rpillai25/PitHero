@@ -31,11 +31,21 @@ namespace PitHero.Tests.UI
         {
             // The Party window spans the full design height (flush top and bottom) and the tab strip
             // comes off the top. The grid must fit what is left, since nothing scrolls.
-            const float tabStripHeight = 37f;
-            float tabArea = GameConfig.VirtualHeight - tabStripHeight;
+            float tabArea = GameConfig.VirtualHeight - GameConfig.TabStripHeight;
 
             Assert.IsTrue(InventoryGrid.ContentHeight <= tabArea,
                 $"grid is {InventoryGrid.ContentHeight}px but only {tabArea}px of tab area exists");
+        }
+
+        [TestMethod]
+        public void NameRow_FitsTwoLinesOfText()
+        {
+            // Equip-slot names stack first name over last name, so the row above the slots has to
+            // hold two lines of Express (GameConfig.FontMainUI, line height 9).
+            const float expressLineHeight = 9f;
+
+            Assert.IsTrue(InventoryGrid.NameRowHeight >= expressLineHeight * 2f,
+                $"name row is {InventoryGrid.NameRowHeight}px, too short for two {expressLineHeight}px lines");
         }
 
         [TestMethod]

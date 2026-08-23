@@ -508,6 +508,21 @@ namespace PitHero
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons
 
+        // Tab strips (Party, Settings, Second Chance shop -- they all share one TabButtonStyle from
+        // PitHeroSkin, so these two numbers govern every tab strip in the game).
+        // Padding above and below a tab button's label. Nez defaults to 8; 4 keeps the strip short
+        // enough that the Party window's equip-slot names fit on two lines above the slots.
+        public const float TabButtonLabelPaddingVertical = 4f;
+        // Resulting tab strip height, derived from the TabButton table:
+        //   TabButtonStyle.PaddingTop (4, overrides the background's top inset)
+        //   + label pad top (TabButtonLabelPaddingVertical)
+        //   + Express line height (9)
+        //   + label pad bottom (TabButtonLabelPaddingVertical)
+        //   + NinePatchTab bottom inset (8)
+        // Nothing lays out against this constant -- Nez measures the real buttons -- but layout
+        // tests assert against it, so keep it in step with the two inputs above.
+        public const float TabStripHeight = 29f;
+
         // UI bar auto-hide
         public const float UIBarAutoHideDelay = 5f;   // Seconds of idle before the UI bar auto-hides
         public const float UIBarSlideSpeed = 500f;    // Stage pixels per second for the slide animation
