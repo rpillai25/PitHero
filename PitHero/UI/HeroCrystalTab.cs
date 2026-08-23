@@ -467,7 +467,7 @@ namespace PitHero.UI
 
         private void OnSkillUnhover()
         {
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.HideOnUnhover();
         }
 
         /// <summary>Handles drag start on a skill button — begins a global skill drag.</summary>
@@ -475,7 +475,7 @@ namespace PitHero.UI
         {
             if (_stage == null) return;
             // Dismiss tooltip while dragging
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.Hide();
             InventoryDragManager.BeginSkillDrag(skill, _stage);
             InventoryDragManager.UpdateDrag(stagePos);
         }
@@ -516,7 +516,7 @@ namespace PitHero.UI
 
         private void OnEffectUnhover()
         {
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.HideOnUnhover();
         }
 
         private void OnSkillClick(ISkill skill, bool isLearned, bool isSynergySkill)
@@ -635,7 +635,7 @@ namespace PitHero.UI
             // it: a detached skill button never fires the OnMouseExit that hides it.
             if (!HoverProbe.IsLive(_mainContainer, _stage))
             {
-                _skillTooltip.GetContainer().Remove();
+                _skillTooltip?.Hide();
                 return;
             }
 
@@ -646,8 +646,7 @@ namespace PitHero.UI
         /// <summary>Removes the skill tooltip from the stage. Called when the parent Hero UI closes.</summary>
         public void Cleanup()
         {
-            if (_skillTooltip != null && _skillTooltip.GetContainer().HasParent())
-                _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.Hide();
         }
 
         private void ClearDisplay()

@@ -301,7 +301,7 @@ namespace PitHero.UI
         /// <summary>Handles skill unhover to hide tooltip.</summary>
         private void OnSkillUnhover()
         {
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.HideOnUnhover();
         }
 
         /// <summary>Handles drag start on a mercenary skill button — begins a global skill drag tagged with the owner.</summary>
@@ -309,7 +309,7 @@ namespace PitHero.UI
         {
             if (_stage == null) return;
             // Dismiss tooltip while dragging
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.Hide();
             InventoryDragManager.BeginSkillDrag(skill, owner, _stage);
             InventoryDragManager.UpdateDrag(stagePos);
         }

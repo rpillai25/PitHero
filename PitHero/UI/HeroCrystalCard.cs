@@ -79,7 +79,7 @@ namespace PitHero.UI
         {
             SetVisible(false);
             _crystal = null;
-            _skillTooltip?.GetContainer().Remove();
+            _skillTooltip?.Hide();
         }
 
         /// <summary>Positions the card so its left edge is just past the right edge of the given window, shifted down 32px.</summary>
@@ -220,7 +220,7 @@ namespace PitHero.UI
 
         private void OnSkillUnhover()
         {
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.HideOnUnhover();
         }
 
         // ── Private skill icon button ───────────────────────────────────────────

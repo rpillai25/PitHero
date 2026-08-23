@@ -16,6 +16,30 @@ namespace PitHero.UI
         private Table _contentTable;
         private TextService _textService;
 
+        // Content cache. A hovered icon re-enters constantly (border jitter, tab refreshes), and the
+        // card is rebuilt from scratch on every ShowSkill, so key the built content on everything it
+        // renders and skip the rebuild when nothing changed. The two card kinds clear each other's
+        // key so switching between a skill card and a synergy card always rebuilds.
+        private ISkill _cachedSkill;
+        private SynergyPattern _cachedPattern;
+        private bool _cachedIsLearned;
+        private Hero _cachedHero;
+        private int _cachedHeroJP;
+        private bool _cachedIsSynergySkill;
+        private int _cachedCurrentPoints;
+        private int _cachedRequiredPoints;
+        private bool _cachedShowCostAndStatus;
+        private string _cachedOwnerName;
+        private string _cachedMultiplierLine;
+        private bool _cachedShowGrantsSkillNote;
+
+        // Frame stamp of the most recent Show* call, -1 when the card is down. Nez fires OnMouseEnter
+        // on the element being entered BEFORE OnMouseExit on the one being left (Stage.UpdateInputMoved),
+        // so moving straight from one icon to its neighbour raises the card for the new entry and then
+        // immediately tears it back down — the card only ever survived when the cursor arrived from dead
+        // space. HideOnUnhover consults this stamp so the exit cannot cancel a sibling's fresh show.
+        private long _lastShownFrame = -1;
+
         // Brown font color matching PitHeroSkin default
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
         private static readonly Color Detail1FontColor = new Color(37, 80, 112);
@@ -31,6 +55,11 @@ namespace PitHero.UI
             _container.SetResizable(false);
             _container.SetKeepWithinStage(false);
             _container.SetColor(GameConfig.TransparentMenu);
+
+            // The card sits directly under the cursor and follows it, so a touchable window would win
+            // the hit test over the icons it overlaps: the neighboring button never gets MouseEnter
+            // and hover feels laggy when moving between adjacent skills. Tooltips never take input.
+            _container.SetTouchable(Touchable.Disabled);
 
             _contentTable = new Table();
             _container.Add(_contentTable).Expand().Fill().Pad(5f);
@@ -61,6 +90,18 @@ namespace PitHero.UI
 
         public void ShowSkill(ISkill skill, bool isLearned, Hero hero, bool isSynergySkill = false, int synergyCurrentPoints = 0, int synergyRequiredPoints = 0, bool showCostAndStatus = true, string ownerName = null)
         {
+            // Hero JP is part of the key: it drives the "insufficient JP" line.
+            var heroJP = hero != null ? hero.GetCurrentJP() : 0;
+            if (ReferenceEquals(skill, _cachedSkill) && _cachedPattern == null
+                && isLearned == _cachedIsLearned && ReferenceEquals(hero, _cachedHero) && heroJP == _cachedHeroJP
+                && isSynergySkill == _cachedIsSynergySkill
+                && synergyCurrentPoints == _cachedCurrentPoints && synergyRequiredPoints == _cachedRequiredPoints
+                && showCostAndStatus == _cachedShowCostAndStatus && ownerName == _cachedOwnerName)
+            {
+                MarkShown();
+                return;
+            }
+
             _contentTable.Clear();
 
             // Skill name, optionally suffixed with the owning character's name, e.g. "Fire (Fynn Swift)"
@@ -137,7 +178,18 @@ namespace PitHero.UI
                 }
             }
 
-            _container.SetVisible(true);
+            _cachedSkill = skill;
+            _cachedPattern = null;
+            _cachedIsLearned = isLearned;
+            _cachedHero = hero;
+            _cachedHeroJP = heroJP;
+            _cachedIsSynergySkill = isSynergySkill;
+            _cachedCurrentPoints = synergyCurrentPoints;
+            _cachedRequiredPoints = synergyRequiredPoints;
+            _cachedShowCostAndStatus = showCostAndStatus;
+            _cachedOwnerName = ownerName;
+
+            MarkShown();
             _container.Pack();
         }
 
@@ -161,6 +213,13 @@ namespace PitHero.UI
 
         private void BuildSynergyCard(SynergyPattern pattern, string multiplierLine, bool showGrantsSkillNote = false)
         {
+            if (ReferenceEquals(pattern, _cachedPattern) && multiplierLine == _cachedMultiplierLine
+                && showGrantsSkillNote == _cachedShowGrantsSkillNote)
+            {
+                MarkShown();
+                return;
+            }
+
             _contentTable.Clear();
 
             // Pattern name
@@ -217,8 +276,37 @@ namespace PitHero.UI
                 _contentTable.Row();
             }
 
-            _container.SetVisible(true);
+            _cachedSkill = null;
+            _cachedPattern = pattern;
+            _cachedMultiplierLine = multiplierLine;
+            _cachedShowGrantsSkillNote = showGrantsSkillNote;
+
+            MarkShown();
             _container.Pack();
+        }
+
+        /// <summary>Marks the card visible and records the frame, so a sibling icon's mouse-exit
+        /// later in the same frame knows not to take it back down.</summary>
+        private void MarkShown()
+        {
+            _container.SetVisible(true);
+            _lastShownFrame = Time.FrameCount;
+        }
+
+        /// <summary>Hides the card in response to a mouse-exit. No-ops when another icon already
+        /// claimed the card this frame — see the _lastShownFrame note above.</summary>
+        public void HideOnUnhover()
+        {
+            if (_lastShownFrame == Time.FrameCount)
+                return;
+            Hide();
+        }
+
+        /// <summary>Hides the card unconditionally: teardown, drag start, panel close.</summary>
+        public void Hide()
+        {
+            _lastShownFrame = -1;
+            _container.Remove();
         }
 
         /// <summary>Sanitizes text by removing or replacing unsupported characters.</summary>

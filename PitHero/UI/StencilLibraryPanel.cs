@@ -226,7 +226,7 @@ namespace PitHero.UI
         private void HandleCloseClicked(Button button)
         {
             ResetSelection();
-            HandleSlotHoverEnd();
+            _hoverTooltip.Hide();
             SetVisible(false);
         }
 
@@ -248,7 +248,7 @@ namespace PitHero.UI
 
         private void HandleSlotHoverEnd()
         {
-            _hoverTooltip.GetContainer().Remove();
+            _hoverTooltip.HideOnUnhover();
         }
 
         /// <summary>
@@ -263,7 +263,7 @@ namespace PitHero.UI
 
             if (!IsVisible())
             {
-                container.Remove();
+                _hoverTooltip.Hide();
                 return;
             }
 

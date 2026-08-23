@@ -475,7 +475,7 @@ namespace PitHero.UI
             _skillButtons.Clear();
 
             // Hide tooltip if visible
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.Hide();
 
             var job = PrimaryJobs[_currentJobIndex];
 
@@ -564,7 +564,7 @@ namespace PitHero.UI
         /// <summary>Handles skill button unhover to hide tooltip</summary>
         private void OnSkillUnhover()
         {
-            _skillTooltip.GetContainer().Remove();
+            _skillTooltip?.HideOnUnhover();
         }
 
         /// <summary>Creates the HeroDesign, stores it in HeroDesignService, and transitions to MainGameScene</summary>

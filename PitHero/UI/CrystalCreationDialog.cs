@@ -231,7 +231,7 @@ namespace PitHero.UI
             }
             _skillButtons.Clear();
 
-            _skillTooltip?.GetContainer().Remove();
+            _skillTooltip?.Hide();
 
             var job = Jobs[_currentJobIndex];
 
@@ -305,7 +305,7 @@ namespace PitHero.UI
 
         private void OnSkillUnhover()
         {
-            _skillTooltip?.GetContainer().Remove();
+            _skillTooltip?.HideOnUnhover();
         }
 
         private void OnCreateClicked(Button btn)

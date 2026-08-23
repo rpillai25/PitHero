@@ -586,7 +586,7 @@ namespace PitHero.UI
         /// <summary>Hides the skill tooltip if it is showing.</summary>
         private void HideSkillTooltip()
         {
-            _skillTooltip?.GetContainer().Remove();
+            _skillTooltip?.Hide();
         }
 
         private void HandleSlotUnhovered(int index)
@@ -594,7 +594,7 @@ namespace PitHero.UI
             var visualSlot = _visualSlots.Buffer[index];
             visualSlot?.SetItemSpriteOffsetY(0f);
             OnItemUnhovered?.Invoke();
-            HideSkillTooltip();
+            _skillTooltip?.HideOnUnhover();
         }
 
         /// <summary>Gets the item referenced by the shortcut slot at the given index, or null if none.</summary>
