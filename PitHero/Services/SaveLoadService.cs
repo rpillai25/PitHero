@@ -200,6 +200,7 @@ namespace PitHero.Services
             {
                 var design = designService.GetDesign();
                 data.HeroName = design.Name;
+                data.HeroGender = design.Gender;
                 data.SkinColor = design.SkinColor;
                 data.HairColor = design.HairColor;
                 data.HairstyleIndex = design.HairstyleIndex;
@@ -408,6 +409,7 @@ namespace PitHero.Services
                     var merc = mercComp.LinkedMercenary;
                     var savedMerc = new SavedMercenary();
                     savedMerc.Name = merc.Name;
+                    savedMerc.Gender = merc.Gender;
                     savedMerc.JobName = merc.Job.Name;
                     savedMerc.Level = merc.Level;
                     savedMerc.Experience = merc.Experience;
@@ -926,7 +928,8 @@ namespace PitHero.Services
                     data.HairColor,
                     data.HairstyleIndex,
                     data.ShirtColor,
-                    data.JobName
+                    data.JobName,
+                    data.HeroGender
                 );
                 designService.SetDesign(design);
             }

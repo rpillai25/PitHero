@@ -7,6 +7,7 @@ using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 using PitHero.Util;
+using RolePlayingFramework;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
@@ -38,6 +39,8 @@ namespace PitHero.UI
 
         // Current selections
         private string _currentName;
+        /// <summary>Hero gender. Male-only until female art exists; roll it here once it does.</summary>
+        private Gender _currentGender = Gender.Male;
         private int _currentJobIndex;
         private int _currentSkinIndex;
         private int _currentHairColorIndex;
@@ -90,7 +93,7 @@ namespace PitHero.UI
             _textService = Core.Services.GetService<TextService>();
 
             // Randomize initial selections
-            _currentName = NameGenerator.GenerateRandomName();
+            _currentName = NameGenerator.GenerateRandomName(_currentGender);
             _currentJobIndex = Nez.Random.Range(0, PrimaryJobNames.Length);
             _currentSkinIndex = Nez.Random.Range(0, GameConfig.SkinColors.Count);
             _currentHairColorIndex = Nez.Random.Range(0, GameConfig.HairColors.Count);
@@ -152,7 +155,7 @@ namespace PitHero.UI
             var rerollButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonReroll), skin);
             rerollButton.OnClicked += (btn) =>
             {
-                _currentName = NameGenerator.GenerateRandomName();
+                _currentName = NameGenerator.GenerateRandomName(_currentGender);
                 _currentJobIndex = Nez.Random.Range(0, PrimaryJobNames.Length);
                 _currentSkinIndex = Nez.Random.Range(0, GameConfig.SkinColors.Count);
                 _currentHairColorIndex = Nez.Random.Range(0, GameConfig.HairColors.Count);
@@ -573,7 +576,8 @@ namespace PitHero.UI
                 GameConfig.HairColors[_currentHairColorIndex],
                 _currentHairstyleIndex,
                 GameConfig.ShirtColors[_currentShirtIndex],
-                PrimaryJobNames[_currentJobIndex]
+                PrimaryJobNames[_currentJobIndex],
+                _currentGender
             );
 
             var designService = Core.Services.GetService<HeroDesignService>();

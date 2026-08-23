@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez.Persistence.Binary;
+using RolePlayingFramework;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Stats;
@@ -225,6 +226,7 @@ namespace PitHero.Services
     public struct SavedMercenary
     {
         public string Name;
+        public Gender Gender;
         public string JobName;
         public int Level;
         public int Experience;
@@ -271,7 +273,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 30;
+        public const int CurrentVersion = 31;
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -290,6 +292,9 @@ namespace PitHero.Services
         // Hero Design
         /// <summary>The hero's display name.</summary>
         public string HeroName;
+
+        /// <summary>The hero's gender (drives which first-name pool the name was drawn from).</summary>
+        public Gender HeroGender;
 
         /// <summary>Skin color of the hero.</summary>
         public Color SkinColor;
@@ -676,6 +681,7 @@ namespace PitHero.Services
 
             // 3. Hero Design
             writer.Write(HeroName ?? string.Empty);
+            writer.Write((int)HeroGender);
             WriteColor(writer, SkinColor);
             WriteColor(writer, HairColor);
             writer.Write(HairstyleIndex);
@@ -823,6 +829,7 @@ namespace PitHero.Services
             {
                 SavedMercenary merc = HiredMercenaries[i];
                 writer.Write(merc.Name ?? string.Empty);
+                writer.Write((int)merc.Gender);
                 writer.Write(merc.JobName ?? string.Empty);
                 writer.Write(merc.Level);
                 writer.Write(merc.Experience);
@@ -1149,6 +1156,7 @@ namespace PitHero.Services
 
             // 3. Hero Design
             HeroName = reader.ReadString();
+            HeroGender = fileVersion >= 31 ? (Gender)reader.ReadInt() : Gender.Male;
             SkinColor = ReadColor(reader);
             HairColor = ReadColor(reader);
             HairstyleIndex = reader.ReadInt();
@@ -1302,6 +1310,7 @@ namespace PitHero.Services
             {
                 SavedMercenary merc;
                 merc.Name = reader.ReadString();
+                merc.Gender = fileVersion >= 31 ? (Gender)reader.ReadInt() : Gender.Male;
                 merc.JobName = reader.ReadString();
                 merc.Level = reader.ReadInt();
                 merc.Experience = reader.ReadInt();

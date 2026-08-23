@@ -326,7 +326,7 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
 
             // Add scroll pane to left side with explicit width to ensure rightmost column is clickable.
-            // The grid never scrolls: it is 824px wide and 248px tall (24 columns x 5 bag rows), which
+            // The grid never scrolls: it is 824px wide and 256px tall (24 columns x 5 bag rows), which
             // fits the window, which spans the full design height (see PositionHeroWindow).
             inventoryContainer.Add(scrollPane).Width(InventoryGrid.ContentWidth + 8f).Expand().Fill().Pad(0f);
 

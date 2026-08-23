@@ -11,6 +11,8 @@ namespace RolePlayingFramework.Mercenaries
     public sealed class Mercenary : ICombatant
     {
         public string Name { get; }
+        /// <summary>Gender this mercenary's name was drawn for; persisted so a reload keeps it.</summary>
+        public Gender Gender { get; }
         public IJob Job { get; }
         public int Level { get; private set; }
         public int Experience { get; internal set; }
@@ -57,9 +59,10 @@ namespace RolePlayingFramework.Mercenaries
         /// <summary>Skills learned by this mercenary, keyed by skill Id.</summary>
         public IReadOnlyDictionary<string, ISkill> LearnedSkills => _learnedSkills;
 
-        public Mercenary(string name, IJob job, int level, in StatBlock baseStats)
+        public Mercenary(string name, IJob job, int level, in StatBlock baseStats, Gender gender = Gender.Male)
         {
             Name = name;
+            Gender = gender;
             Job = job;
             Level = level < 1 ? 1 : level;
             BaseStats = baseStats;

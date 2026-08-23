@@ -63,7 +63,7 @@ namespace PitHero.Services
             float roll = Nez.Random.NextFloat();
             if (roll > joinChance) return null;
 
-            string firstName = Util.NameGenerator.GenerateFirstName();
+            string firstName = Util.NameGenerator.GenerateMonsterName();
             int fishing = Nez.Random.Range(1, 10);
             int cooking = Nez.Random.Range(1, 10);
             int farming = Nez.Random.Range(1, 10);
@@ -122,7 +122,7 @@ namespace PitHero.Services
         {
             if (enemy == null || IsHouseFull(houseUniqueId)) return null;
 
-            string firstName = Util.NameGenerator.GenerateFirstName();
+            string firstName = Util.NameGenerator.GenerateMonsterName();
             int fishing = Nez.Random.Range(1, 10);
             int cooking = Nez.Random.Range(1, 10);
             int farming = Nez.Random.Range(1, 10);

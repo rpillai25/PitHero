@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using Nez.Persistence.Binary;
 using PitHero.Services;
+using RolePlayingFramework;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
@@ -1501,6 +1502,117 @@ namespace PitHero.Tests
                 if (Directory.Exists(tempDir))
                     Directory.Delete(tempDir, true);
             }
+        }
+
+        /// <summary>
+        /// Verifies the v31 gender fields round-trip for both the hero and a hired mercenary.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V31_Gender_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v31_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.HeroName = "GenderedHero";
+                original.HeroGender = Gender.Female;
+                original.HiredMercenaries = new List<SavedMercenary>
+                {
+                    new SavedMercenary
+                    {
+                        Name = "MaleMerc",
+                        Gender = Gender.Male,
+                        JobName = JobTextKey.Job_Knight_Name,
+                        Level = 4,
+                        EquipmentNames = new string[6]
+                    },
+                    new SavedMercenary
+                    {
+                        Name = "FemaleMerc",
+                        Gender = Gender.Female,
+                        JobName = JobTextKey.Job_Mage_Name,
+                        Level = 6,
+                        EquipmentNames = new string[6]
+                    }
+                };
+
+                dataStore.Save("v31_gender.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v31_gender.bin", loaded);
+
+                Assert.AreEqual(Gender.Female, loaded.HeroGender, "Hero gender should round-trip");
+                Assert.AreEqual("GenderedHero", loaded.HeroName, "Hero name should still follow the gender field");
+                Assert.AreEqual(2, loaded.HiredMercenaries.Count);
+                Assert.AreEqual(Gender.Male, loaded.HiredMercenaries[0].Gender, "Merc 0 gender should round-trip");
+                Assert.AreEqual("MaleMerc", loaded.HiredMercenaries[0].Name);
+                Assert.AreEqual(Gender.Female, loaded.HiredMercenaries[1].Gender, "Merc 1 gender should round-trip");
+                Assert.AreEqual(JobTextKey.Job_Mage_Name, loaded.HiredMercenaries[1].JobName,
+                    "Fields after the merc gender must stay aligned");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Backwards compatibility for the v31 gender bump: a v30 file has no gender ints, so the
+        /// hero must load as Male and every field after the gender slot must stay aligned. Built by
+        /// writing a v31 stream with no mercenaries (so only the hero's gender int exists), splicing
+        /// out those 4 bytes, and patching the version header down to 30.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V30_File_LoadsWithMaleGenderDefault()
+        {
+            const string heroName = "OldHero";
+
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                original.HeroName = heroName;
+                original.HeroGender = Gender.Female; // must be dropped along with the bytes
+                original.SkinColor = new Color(11, 22, 33, 255);
+                original.HairstyleIndex = 4;
+                original.JobName = JobTextKey.Job_Knight_Name;
+                original.Level = 9;
+                writer.Write(original);
+            }
+
+            byte[] v31 = ms.ToArray();
+
+            // Layout: version(4) + TotalTimePlayed(4) + InGameTime(4) + length-prefixed HeroName
+            // + HeroGender(4). BinaryWriter writes the 7-bit length prefix in one byte for short names.
+            int genderOffset = 4 + 4 + 4 + 1 + Encoding.UTF8.GetByteCount(heroName);
+
+            var v30 = new byte[v31.Length - 4];
+            Array.Copy(v31, 0, v30, 0, genderOffset);
+            Array.Copy(v31, genderOffset + 4, v30, genderOffset, v31.Length - genderOffset - 4);
+
+            // Patch the version header down to 30 (little-endian int)
+            v30[0] = 30;
+            v30[1] = 0;
+            v30[2] = 0;
+            v30[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v30)))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual(Gender.Male, loaded.HeroGender, "A v30 file has no gender and must default to Male");
+            Assert.AreEqual(heroName, loaded.HeroName, "Hero name must survive the v30 read");
+            Assert.AreEqual(new Color(11, 22, 33, 255), loaded.SkinColor, "Fields after the gender slot must stay aligned");
+            Assert.AreEqual(4, loaded.HairstyleIndex);
+            Assert.AreEqual(JobTextKey.Job_Knight_Name, loaded.JobName);
+            Assert.AreEqual(9, loaded.Level);
         }
     }
 }

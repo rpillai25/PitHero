@@ -18,6 +18,11 @@ namespace PitHero.UI
     /// <summary>UI shell for the Second Chance Shop - provides a button, a vault window, and a separate hero panel for purchasing items and crystals.</summary>
     public class SecondChanceShopUI
     {
+        // The hero panel has no tab strip above the inventory grid, so the equip-slot names would
+        // otherwise sit flush against the top of the window. The Party window gets this breathing
+        // room for free from its tab strip.
+        private const float HERO_PANEL_GRID_TOP_PAD = 8f;
+
         private Stage _stage;
         private HoverableImageButton _shopButton;
 
@@ -211,9 +216,10 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
 
             // Use Expand().Fill() to match HeroUI's PopulateInventoryTab layout so the pane gets an
-            // explicit height. The grid never scrolls — the panel is sized to show all 824x248 of it.
+            // explicit height. The grid never scrolls — the panel is sized to show all 824x256 of it.
             var content = new Table();
-            content.Add(scrollPane).Width(InventoryGrid.ContentWidth + 8f).Expand().Fill().Pad(0f);
+            content.Add(scrollPane).Width(InventoryGrid.ContentWidth + 8f).Expand().Fill()
+                   .Pad(0f).SetPadTop(HERO_PANEL_GRID_TOP_PAD);
 
             _heroInventoryWindow.Add(content).Expand().Fill();
             _heroInventoryWindow.SetVisible(false);

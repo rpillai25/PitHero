@@ -428,7 +428,7 @@ namespace PitHero.ECS.Scenes
             var alliedManager = Core.Services.GetService<AlliedMonsterManager>();
             if (alliedManager != null)
             {
-                var starter = new AlliedMonster(NameGenerator.GenerateFirstName(), MonsterTextKey.Monster_Slime,
+                var starter = new AlliedMonster(NameGenerator.GenerateMonsterName(), MonsterTextKey.Monster_Slime,
                     GameConfig.NewGameStarterSlimeFishingProficiency,
                     GameConfig.NewGameStarterSlimeCookingProficiency,
                     GameConfig.NewGameStarterSlimeFarmingProficiency,

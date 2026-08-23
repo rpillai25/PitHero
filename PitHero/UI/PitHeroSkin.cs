@@ -208,7 +208,8 @@ namespace PitHero.UI
                 Inactive = tabBackgroundInactive,
                 Active = tabBackgroundActive,
                 Hover = tabBackgroundHover,
-                PaddingTop = 4f
+                PaddingTop = 4f,
+                PaddingVertical = GameConfig.TabButtonLabelPaddingVertical
             };
 
             // Tab window style (for TabPane container)

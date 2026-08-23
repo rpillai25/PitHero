@@ -34,7 +34,7 @@ namespace PitHero.UI
         private const int BAG_ROW_COUNT = GRID_HEIGHT - BAG_START_ROW;                  // 5
         private const float ROW_PITCH = SLOT_SIZE + SLOT_PADDING;                       // 33
         private const float X_OFFSET = 32f;                                             // left padding before column 0
-        private const float Y_OFFSET = -16f;                                            // grid sits 16px higher (half the name row)
+        private const float Y_OFFSET = -8f;                                             // grid sits 8px higher (the name row holds two text lines)
 
         /// <summary>Bag columns — also the widest a synergy stencil may be.</summary>
         public const int BagColumns = GRID_WIDTH;                                       // 24
@@ -47,7 +47,10 @@ namespace PitHero.UI
         /// <summary>Width of the whole grid, which a host must give it in full.</summary>
         public const float ContentWidth = GRID_WIDTH * ROW_PITCH + X_OFFSET;            // 824
         /// <summary>Height of the whole grid, which a host must give it in full.</summary>
-        public const float ContentHeight = GRID_HEIGHT * ROW_PITCH + Y_OFFSET;          // 248
+        public const float ContentHeight = GRID_HEIGHT * ROW_PITCH + Y_OFFSET;          // 256
+        /// <summary>Height of the name row above the equip slots. It must fit two lines of the UI
+        /// font, since a character name stacks first name over last name.</summary>
+        public const float NameRowHeight = ROW_PITCH + Y_OFFSET;                        // 25
 
         // Equipment block: mercenary / hero / mercenary, three columns each with a one-column gap,
         // centered over the grid width (11 = 3 + 1 + 3 + 1 + 3).
@@ -702,7 +705,7 @@ namespace PitHero.UI
         private void SetGridSize()
         {
             // Width:  (24 columns * 33px per slot) + 32px left padding = 824px
-            // Height: (8 rows * 33px per slot) - 16px top offset = 248px, the real content extent
+            // Height: (8 rows * 33px per slot) - 8px top offset = 256px, the real content extent
             SetSize(ContentWidth, ContentHeight);
         }
 
@@ -1212,12 +1215,17 @@ namespace PitHero.UI
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
         }
 
-        /// <summary>Draws character names above their equip slot areas.</summary>
+        /// <summary>
+        /// Draws character names above their equip slot areas. A name is stacked over two lines --
+        /// first name on top, last name on the lower line sitting just above the equip slots --
+        /// so a long name no longer runs out past the three columns it labels.
+        /// </summary>
         private void DrawMercenaryNames(Batcher batcher)
         {
             if (_nameFont == null) return;
 
-            const float NAME_Y = 8f; // baseline inside the name row
+            float lastNameY = NameRowHeight - _nameFont.LineHeight;
+            float firstNameY = lastNameY - _nameFont.LineHeight;
             int[] colStarts = { MERC0_COL_START, MERC1_COL_START };
 
             for (int m = 0; m < MAX_MERCENARY_SLOTS; m++)
@@ -1229,29 +1237,46 @@ namespace PitHero.UI
                 float leftX = colStarts[m] * ROW_PITCH + X_OFFSET;
                 float rightX = (colStarts[m] + 3) * ROW_PITCH + X_OFFSET;
                 float centerX = (leftX + rightX) / 2f;
-                float nameY = NAME_Y;
 
-                var nameText = merc.Name;
-                var textSize = _nameFont.MeasureString(nameText);
-                var textX = centerX - textSize.X / 2f;
-
-                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), MercenaryNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                DrawStackedName(batcher, merc.Name, centerX, firstNameY, lastNameY, MercenaryNameFontColor);
             }
 
-            // Draw hero name at the same Y position, centered above the hero equip columns
+            // Draw hero name at the same Y positions, centered above the hero equip columns
             if (_heroComponent?.LinkedHero != null)
             {
                 float heroLeftX = HERO_COL_START * ROW_PITCH + X_OFFSET;
                 float heroRightX = (HERO_COL_START + 3) * ROW_PITCH + X_OFFSET;
                 float heroCenterX = (heroLeftX + heroRightX) / 2f;
-                float heroNameY = NAME_Y;
 
-                var heroNameText = _heroComponent.LinkedHero.Name ?? "Hero";
-                var heroTextSize = _nameFont.MeasureString(heroNameText);
-                var heroTextX = heroCenterX - heroTextSize.X / 2f;
-
-                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), HeroNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                DrawStackedName(batcher, _heroComponent.LinkedHero.Name ?? "Hero", heroCenterX, firstNameY, lastNameY, HeroNameFontColor);
             }
+        }
+
+        /// <summary>
+        /// Draws "First Last" as two centered lines. A name with no space stays on the lower line,
+        /// which is the baseline the equip-slot layout was built around.
+        /// </summary>
+        private void DrawStackedName(Batcher batcher, string name, float centerX, float firstNameY, float lastNameY, Color color)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+
+            int split = name.IndexOf(' ');
+            if (split > 0)
+            {
+                DrawCenteredNameLine(batcher, name.Substring(0, split), centerX, firstNameY, color);
+                DrawCenteredNameLine(batcher, name.Substring(split + 1), centerX, lastNameY, color);
+            }
+            else
+            {
+                DrawCenteredNameLine(batcher, name, centerX, lastNameY, color);
+            }
+        }
+
+        /// <summary>Draws one name line horizontally centered on the given X.</summary>
+        private void DrawCenteredNameLine(Batcher batcher, string text, float centerX, float y, Color color)
+        {
+            var textSize = _nameFont.MeasureString(text);
+            batcher.DrawString(_nameFont, text, new Vector2(centerX - textSize.X / 2f, y), color, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
         }
 
         /// <summary>Draws stencil overlays on the inventory grid.</summary>

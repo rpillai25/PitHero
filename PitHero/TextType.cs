@@ -8,6 +8,7 @@ namespace PitHero
         Skill,
         Job,
         Monster,
-        Dialogue
+        Dialogue,
+        Name
     }
 }

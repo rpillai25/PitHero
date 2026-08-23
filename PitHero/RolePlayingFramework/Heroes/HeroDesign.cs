@@ -23,10 +23,14 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Starting job name (e.g. "Knight", "Mage")</summary>
         public readonly string JobName;
 
+        /// <summary>Hero gender; drives which first-name pool the name was drawn from</summary>
+        public readonly Gender Gender;
+
         /// <summary>Creates a new HeroDesign with the specified appearance and job choices</summary>
-        public HeroDesign(string name, Color skinColor, Color hairColor, int hairstyleIndex, Color shirtColor, string jobName = "Knight")
+        public HeroDesign(string name, Color skinColor, Color hairColor, int hairstyleIndex, Color shirtColor, string jobName = "Knight", Gender gender = Gender.Male)
         {
             Name = name;
+            Gender = gender;
             SkinColor = skinColor;
             HairColor = hairColor;
             HairstyleIndex = hairstyleIndex;
