@@ -6,11 +6,19 @@ using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
 {
-    /// <summary>Context menu for inventory slots with Use/Discard/Cancel options.</summary>
+    /// <summary>
+    /// Context menu for inventory slots with Use/Discard/Cancel options.
+    ///
+    /// Discard sells the item to the Second Chance vault — the same action as dragging it onto the
+    /// shop window — so it confirms through the shared <see cref="ItemSellPrompt"/> and both routes
+    /// show the identical dialog. Those prompts register themselves with
+    /// <see cref="UIPromptRegistry"/>, so drag suppression, hover-card suppression, outside-click
+    /// dismissal, and Escape all see them. The context menu itself is NOT a prompt — it has its own
+    /// dismiss layer and must stay click-through-dismissable.
+    /// </summary>
     public class InventoryContextMenu
     {
         private Window _contextMenuWindow;
-        private Window _confirmDialog;
         private Stage _stage;
         private Skin _skin;
         private IItem _currentItem;
@@ -22,7 +30,10 @@ namespace PitHero.UI
         private TextService _textService;
 
         public event System.Action<IItem, int> OnUseItem;
-        public event System.Action<IItem, int> OnDiscardItem;
+
+        /// <summary>Fired with (item, bagIndex, quantity) once the sell is confirmed. Quantity is
+        /// int.MaxValue for a whole-stack sale.</summary>
+        public event System.Action<IItem, int, int> OnDiscardItem;
         public event System.Action OnHidden;
 
         /// <summary>Initializes context menu windows.</summary>
@@ -32,7 +43,6 @@ namespace PitHero.UI
             _skin = skin;
             _textService = Core.Services.GetService<TextService>();
             CreateContextMenu();
-            CreateConfirmDialog();
         }
 
         /// <summary>Ensures dismiss layer exists.</summary>
@@ -83,34 +93,6 @@ namespace PitHero.UI
             _stage.AddElement(_contextMenuWindow);
         }
 
-        /// <summary>Creates discard confirmation dialog once.</summary>
-        private void CreateConfirmDialog()
-        {
-            var windowStyle = _skin.Get<WindowStyle>();
-            _confirmDialog = new Window(_textService.DisplayText(TextType.UI, UITextKey.DialogReallyDiscard), windowStyle);
-            _confirmDialog.SetSize(250, 120);
-            var table = new Table();
-            table.Pad(10);
-            table.Add(new Label(_textService.DisplayText(TextType.UI, UITextKey.ConfirmDiscardMessage), _skin)).SetPadBottom(10);
-            table.Row();
-            var buttonTable = new Table();
-            var yesButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonYes), _skin);
-            yesButton.OnClicked += (btn) =>
-            {
-                HideDiscardConfirmation();
-                OnDiscardItem?.Invoke(_currentItem, _currentBagIndex);
-            };
-            buttonTable.Add(yesButton).Width(60);
-            var noButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonNo), _skin);
-            noButton.ClickSoundCategory = ButtonClickCategory.Cancel;
-            noButton.OnClicked += (btn) => HideDiscardConfirmation();
-            buttonTable.Add(noButton).Width(60).SetPadLeft(10);
-            table.Add(buttonTable);
-            _confirmDialog.Add(table);
-            _confirmDialog.SetVisible(false);
-            _stage.AddElement(_confirmDialog);
-        }
-
         /// <summary>Shows the menu at stage position.</summary>
         public void Show(IItem item, int bagIndex, Vector2 position)
         {
@@ -153,28 +135,42 @@ namespace PitHero.UI
             OnHidden?.Invoke();
         }
 
-        /// <summary>Shows discard confirmation.</summary>
+        /// <summary>
+        /// Confirms the sell through the shared prompt, so this route and dragging the item onto the
+        /// shop window show the identical dialog. Item and bag index are captured here rather than
+        /// read at confirm time: the menu can be reused for another slot while the prompt is open.
+        /// </summary>
         private void ShowDiscardConfirmation()
         {
-            float centerX = (_stage.GetWidth() - _confirmDialog.GetWidth()) / 2f;
-            float centerY = (_stage.GetHeight() - _confirmDialog.GetHeight()) / 2f;
-            _confirmDialog.SetPosition(centerX, centerY);
-            _confirmDialog.SetVisible(true);
-            _confirmDialog.ToFront();
+            if (_currentItem == null)
+                return;
+
+            var item = _currentItem;
+            var bagIndex = _currentBagIndex;
+
+            ItemSellPrompt.Show(_stage, _skin, item,
+                onSell: (qty) =>
+                {
+                    HideDismissLayer();
+                    OnDiscardItem?.Invoke(item, bagIndex, qty);
+                },
+                onCancelled: HideDismissLayer);
         }
 
-        /// <summary>Hides discard confirmation.</summary>
-        private void HideDiscardConfirmation()
+        /// <summary>Drops the outside-click overlay once the sell confirmation resolves.</summary>
+        private void HideDismissLayer()
         {
-            _confirmDialog.SetVisible(false);
             if (_dismissLayer != null)
                 _dismissLayer.SetVisible(false);
         }
 
-        /// <summary>True if any menu window visible.</summary>
+        /// <summary>
+        /// True if the context menu itself is visible. The sell confirmation it spawns is owned by
+        /// <see cref="UIPromptRegistry"/> — ask <c>ConfirmationDialog.AnyVisible</c> about that.
+        /// </summary>
         public bool IsVisible()
         {
-            return (_contextMenuWindow != null && _contextMenuWindow.IsVisible()) || (_confirmDialog != null && _confirmDialog.IsVisible());
+            return _contextMenuWindow != null && _contextMenuWindow.IsVisible();
         }
 
         /// <summary>Overlay to detect outside clicks.</summary>

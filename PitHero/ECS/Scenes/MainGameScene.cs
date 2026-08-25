@@ -1249,11 +1249,11 @@ namespace PitHero.ECS.Scenes
                 }
             };
 
-            // Crop Storage options (issue #285): sell the building once it is emptied of crops.
-            // (Move/Sell all crops live in the Harvested Crops viewer opened via "Show Crops".)
+            // Sell an empty building (issue #285). The context menu only offers this once the
+            // building holds nothing — no crops in a Crop Storage, no monsters in a Monster House.
             _buildingContextMenu.OnSellBuilding += (pb) =>
             {
-                int gold = Util.BuildingConfig.GetCost(pb.Type) / 2;
+                int gold = Util.BuildingConfig.GetSellPrice(pb.Type);
                 var textSvc = Core.Services.GetService<Services.TextService>();
                 var dialog = new ConfirmationDialog(
                     textSvc?.DisplayText(TextType.UI, UITextKey.ButtonSellBuilding),
@@ -1261,11 +1261,17 @@ namespace PitHero.ECS.Scenes
                     UI.PitHeroSkin.CreateSkin(),
                     onYes: () =>
                     {
+                        // Remove first and pay only if this call is what actually removed it. The
+                        // confirmation dialog is non-modal, so a second sell dialog can be opened
+                        // for the same building before the first is confirmed; paying out
+                        // unconditionally would mint the refund once per dialog.
+                        bool sold = Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb) ?? false;
+                        if (!sold)
+                            return;
+                        pb.WorldEntity?.Destroy();
                         var gameState = Core.Services.GetService<Services.GameStateService>();
                         gameState?.AddFunds(gold, "sell_building");
                         Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(Util.SoundEffectTypes.SoundEffectType.ItemSell);
-                        pb.WorldEntity?.Destroy();
-                        Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb);
                     });
                 dialog.YesButton.SuppressGlobalClick = true;
                 dialog.Show(_uiStage);
@@ -3188,7 +3194,8 @@ namespace PitHero.ECS.Scenes
         /// <summary>
         /// True when placed-building hover/click interactions should be suppressed — while the cursor
         /// is outside the game window, while relocating, during any farm sub-mode, when the context
-        /// menu is already open, or when the pointer is over UI.
+        /// menu is already open, while a confirmation dialog is awaiting an answer, or when the
+        /// pointer is over UI.
         /// </summary>
         private bool BuildingInteractionsBlocked()
         {
@@ -3197,6 +3204,10 @@ namespace PitHero.ECS.Scenes
             if (_buildingModeOverlay?.IsMoving == true)
                 return true;
             if (_buildingContextMenu?.IsVisible == true)
+                return true;
+            // The sell confirmation is non-modal and only covers the middle of the strip, so without
+            // this the player could re-click the same building and stack a second sell dialog on it.
+            if (UI.ConfirmationDialog.AnyVisible)
                 return true;
             if (_settingsUI != null &&
                 (_settingsUI.IsFarmSubMenuOpen || _settingsUI.IsConstructionSubMenuOpen ||

@@ -129,6 +129,10 @@ namespace PitHero.UI
             _hoverCheckFrame++;
             if (_hoverCheckFrame % 5 != 0) return;
 
+            // No hover cards while a crystal is in hand or a buy prompt is up — otherwise this probe
+            // re-shows a card over the dialog every few frames.
+            if (InventoryDragManager.DragBlocked) return;
+
             if (_hoverTooltip != null && _hoverTooltip.GetParent() != null && _hoverTooltip.IsVisible()) return;
 
             for (int i = 0; i < MAX_VISIBLE; i++)
@@ -178,6 +182,9 @@ namespace PitHero.UI
         private void HandleSlotHovered(VaultCrystalSlot slot)
         {
             if (slot.Crystal == null || _hoverTooltip == null || _tooltipStage == null) return;
+            // Suppressed while dragging or while a buy prompt is open — the prompt carries the
+            // crystal's details itself, and a floating card over it just gets in the way.
+            if (InventoryDragManager.DragBlocked) return;
             var crystal = slot.Crystal;
             string skillsText = crystal.IsJobMastered()
                 ? "Mastered"
@@ -211,6 +218,9 @@ namespace PitHero.UI
         private void HandleSlotDragStarted(VaultCrystalSlot slot, Vector2 pos)
         {
             if (slot.Crystal == null) return;
+            // Drop the gesture entirely while a buy confirmation is up — hiding the crystal for a drag
+            // that BeginVaultCrystalDrag will refuse leaves the slot looking empty with nothing in hand.
+            if (InventoryDragManager.DragBlocked) return;
             _hoverTooltip?.SetVisible(false);
             _hoverTooltip?.Remove();
             slot.SetCrystalHidden(true);

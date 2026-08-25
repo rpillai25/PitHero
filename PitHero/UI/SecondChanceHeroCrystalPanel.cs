@@ -155,6 +155,10 @@ namespace PitHero.UI
             _hoverCheckFrame++;
             if (_hoverCheckFrame % 5 != 0) return;
 
+            // No hover cards while a crystal is in hand or a buy prompt is up — otherwise this probe
+            // re-shows a card over the dialog every few frames.
+            if (InventoryDragManager.DragBlocked) return;
+
             if (_hoverTooltip != null && _hoverTooltip.GetParent() != null && _hoverTooltip.IsVisible()) return;
 
             if (_inventorySlots != null)
@@ -330,6 +334,9 @@ namespace PitHero.UI
         private void OnSlotHovered(CrystalSlotElement slot)
         {
             if (slot.Crystal == null || _hoverTooltip == null || _stage == null) return;
+            // Suppressed while dragging or while a buy prompt is open — a floating card over the
+            // prompt just gets in the way.
+            if (InventoryDragManager.DragBlocked) return;
             var crystal = slot.Crystal;
             string skillsText = crystal.IsJobMastered()
                 ? "Mastered"

@@ -238,6 +238,19 @@ namespace PitHero.Tests
             Assert.IsTrue(manager.IsHouseFull(7), "Should be full at capacity");
         }
 
+        /// <summary>IsHouseEmpty gates the Sell Building option, so it must track linked monsters exactly.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void IsHouseEmpty_TrueOnlyWithNoLinkedMonsters()
+        {
+            var manager = new AlliedMonsterManager();
+            Assert.IsTrue(manager.IsHouseEmpty(7), "A house with nothing linked to it is empty");
+
+            manager.AddAlliedMonster(new AlliedMonster("Squatter", "Slime", 5, 5, 5, monsterHouseId: 7));
+            Assert.IsFalse(manager.IsHouseEmpty(7), "A house with one monster is not empty");
+            Assert.IsTrue(manager.IsHouseEmpty(8), "Monsters in house 7 must not make house 8 look occupied");
+        }
+
         /// <summary>AddPurchasedMonster adds a monster with the enemy's type name and target house.</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]

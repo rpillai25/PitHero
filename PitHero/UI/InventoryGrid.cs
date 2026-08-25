@@ -464,7 +464,7 @@ namespace PitHero.UI
             _contextMenu = new InventoryContextMenu();
             _contextMenu.Initialize(stage, skin);
             _contextMenu.OnUseItem += (item, bagIndex) => UseConsumable(item, bagIndex);
-            _contextMenu.OnDiscardItem += (item, bagIndex) => DiscardItem(bagIndex);
+            _contextMenu.OnDiscardItem += (item, bagIndex, quantity) => DiscardItem(bagIndex, quantity);
             _contextMenu.OnHidden += ClearHoverState;
 
             // Add placeholder tooltips to stage
@@ -808,6 +808,10 @@ namespace PitHero.UI
         private void HandleSlotDragStarted(InventorySlot source, Vector2 mousePos)
         {
             if (source.SlotData == null || source.SlotData.Item == null) return;
+            // Drop the gesture entirely while a confirmation is up (e.g. a Second Chance buy/sell,
+            // which leaves its originating drag open until answered) — hiding the sprite for a drag
+            // that BeginDrag will refuse leaves the slot looking empty with nothing in hand.
+            if (InventoryDragManager.DragBlocked) return;
 
             source.SetItemSpriteHidden(true);
             InventoryDragManager.BeginDrag(source, GetStage());
@@ -965,12 +969,18 @@ namespace PitHero.UI
         public void NotifyExternalDropHandled() { _externalDropHandled = true; }
 
         /// <summary>Sells an item from the bag to the Second Chance vault and awards gold.</summary>
-        public void DiscardItem(int bagIndex)
+        public void DiscardItem(int bagIndex) => DiscardItem(bagIndex, int.MaxValue);
+
+        /// <summary>
+        /// Sells <paramref name="quantity"/> units from the bag slot, leaving any remainder.
+        /// int.MaxValue sells the whole stack.
+        /// </summary>
+        public void DiscardItem(int bagIndex, int quantity)
         {
             if (_heroComponent?.Bag == null)
                 return;
 
-            if (PitHero.Services.ItemSellHelper.SellBagItem(_heroComponent.Bag, bagIndex, "manual") > 0)
+            if (PitHero.Services.ItemSellHelper.SellBagItemQuantity(_heroComponent.Bag, bagIndex, quantity, "manual") > 0)
             {
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
                 UpdateItemsFromBag();

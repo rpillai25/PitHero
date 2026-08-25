@@ -31,6 +31,21 @@ namespace PitHero.UI
         public static bool IsDragging => _isDragging;
 
         /// <summary>
+        /// True when a new item/crystal drag must not be started: one is already in flight, or a
+        /// confirmation dialog is awaiting an answer.
+        ///
+        /// The Second Chance Shop leaves the originating drag OPEN while its buy/sell prompt is up
+        /// (the drag is ended by the confirm path and cancelled by the cancel path), and neither
+        /// <see cref="ConfirmationDialog"/> nor <see cref="ItemQuantityDialog"/> — the
+        /// multi-quantity buy/sell prompt — is modal, so without this the player can keep
+        /// dragging underneath the dialog. Those gestures cannot start a real drag — the
+        /// <c>_isDragging</c> guard already blocked that — but they would still hide slot sprites and
+        /// fire drop handlers that then act on the FIRST drag's source, queueing buy/sell operations
+        /// that half-apply. Callers must check this BEFORE hiding a sprite or raising drag events.
+        /// </summary>
+        public static bool DragBlocked => _isDragging || UIPromptRegistry.AnyVisible;
+
+        /// <summary>
         /// Gets the stage the current drag is running on. Drop handlers subscribed to the static
         /// events must ignore drags from a different stage — scene changes leave stale subscribers
         /// whose elements still reference the dead stage (Stage.Dispose never nulls child stages).
@@ -82,7 +97,7 @@ namespace PitHero.UI
         /// <summary>Begins a drag from a Second Chance vault item slot.</summary>
         public static void BeginVaultItemDrag(SecondChanceMerchantVault.StackedItem source, Stage stage)
         {
-            if (_isDragging) return;
+            if (DragBlocked) return;
 
             _sourceVaultStack = source;
             _sourceSlot = null;
@@ -117,7 +132,7 @@ namespace PitHero.UI
         /// <summary>Begins a drag from a Second Chance vault crystal slot.</summary>
         public static void BeginVaultCrystalDrag(HeroCrystal crystal, Stage stage)
         {
-            if (_isDragging) return;
+            if (DragBlocked) return;
 
             _sourceVaultCrystal = crystal;
             _sourceVaultStack = null;
@@ -153,7 +168,7 @@ namespace PitHero.UI
         /// <summary>Begins a drag from a crystal slot.</summary>
         public static void BeginCrystalDrag(CrystalSlotElement source, Stage stage)
         {
-            if (_isDragging) return;
+            if (DragBlocked) return;
 
             _sourceCrystalSlot = source;
             _dragCrystal = source?.Crystal;
@@ -187,7 +202,7 @@ namespace PitHero.UI
         /// <summary>Begins a drag from an inventory slot.</summary>
         public static void BeginDrag(InventorySlot source, Stage stage)
         {
-            if (_isDragging) return;
+            if (DragBlocked) return;
 
             _sourceSlot = source;
             _dragItem = source?.SlotData?.Item;

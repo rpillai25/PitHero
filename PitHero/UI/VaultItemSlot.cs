@@ -144,6 +144,10 @@ namespace PitHero.UI
                 float threshold = GameConfig.DragThresholdPixels;
                 if (distSq >= threshold * threshold)
                 {
+                    // Never enter drag state while a buy/sell confirmation is up. The slot tracks its
+                    // own flag, so without this it would still fire OnDragDropped on release — and
+                    // that drop reads the FIRST drag's source, queueing a second purchase dialog.
+                    if (InventoryDragManager.DragBlocked) return;
                     _isDragging = true;
                     OnDragStarted?.Invoke(this, mousePos);
                 }

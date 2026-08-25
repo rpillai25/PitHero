@@ -75,6 +75,15 @@ namespace PitHero.Services
             }
         }
 
+        /// <summary>Number of placed buildings of the given type. Drives the escalating purchase cost curve.</summary>
+        public int GetCountOfType(BuildingType type)
+        {
+            int count = 0;
+            for (int i = 0; i < _buildings.Count; i++)
+                if (_buildings[i].Type == type) count++;
+            return count;
+        }
+
         public IReadOnlyList<PlacedBuilding> GetAll() => _buildings;
 
         public void AddBuilding(PlacedBuilding b)
@@ -88,13 +97,19 @@ namespace PitHero.Services
         /// workers can retarget) then <see cref="BuildingsChanged"/> (so subscribers like
         /// CropStorageInventoryService prune their per-building state). The caller is responsible for
         /// destroying the building's <see cref="PlacedBuilding.WorldEntity"/>.
+        ///
+        /// Returns true only if this call is the one that actually removed the building, and false
+        /// if it was already gone. Callers that pay a refund MUST gate the payout on that return
+        /// value: two sell confirmations can be opened for the same building, and paying out
+        /// unconditionally would mint gold on every one of them.
         /// </summary>
-        public void RemoveBuilding(PlacedBuilding b)
+        public bool RemoveBuilding(PlacedBuilding b)
         {
             if (b == null || !_buildings.Remove(b))
-                return;
+                return false;
             BuildingRemoved?.Invoke(b);
             BuildingsChanged?.Invoke();
+            return true;
         }
 
         public bool IsTileOccupied(int tileX, int tileY) => IsTileOccupied(tileX, tileY, null);

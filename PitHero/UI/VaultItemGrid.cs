@@ -96,6 +96,10 @@ namespace PitHero.UI
             _hoverCheckFrame++;
             if (_hoverCheckFrame % 5 != 0) return;
 
+            // No hover cards while an item is in hand or a buy/sell prompt is up — otherwise this
+            // probe re-shows a card over the dialog every few frames.
+            if (InventoryDragManager.DragBlocked) return;
+
             if (_tooltip != null && _tooltip.GetContainer().HasParent()) return;
 
             for (int i = 0; i < MAX_VISIBLE; i++)
@@ -115,6 +119,10 @@ namespace PitHero.UI
         private void HandleSlotHovered(VaultItemSlot slot)
         {
             if (slot.Stack?.ItemTemplate == null || _tooltip == null || _tooltipStage == null)
+                return;
+            // Suppressed while dragging or while a buy/sell prompt is open — the prompt carries the
+            // item's details itself, and a floating card over it just gets in the way.
+            if (InventoryDragManager.DragBlocked)
                 return;
 
             _tooltip.ShowItem(slot.Stack.ItemTemplate, showBuyPrice: true);
@@ -140,18 +148,22 @@ namespace PitHero.UI
 
         private void HandleSlotUnhovered(VaultItemSlot slot)
         {
-            if (InventoryDragManager.IsVaultItemDrag) return;
             _tooltip?.GetContainer().Remove();
         }
 
         private void HandleSlotDragStarted(VaultItemSlot slot, Vector2 pos)
         {
             if (slot.Stack == null) return;
+            // Drop the gesture entirely while a buy/sell confirmation is up — hiding the sprite for a
+            // drag that BeginVaultItemDrag will refuse leaves the slot looking empty with nothing in hand.
+            if (InventoryDragManager.DragBlocked) return;
             slot.SetItemSpriteHidden(true);
             var stagePos = slot.LocalToStageCoordinates(pos);
             InventoryDragManager.BeginVaultItemDrag(slot.Stack, _tooltipStage);
             InventoryDragManager.UpdateDrag(stagePos);
-            PositionTooltipAtStagePos(stagePos);
+            // The card no longer rides along with the dragged item: it would still be up when the
+            // buy prompt opens, covering it. The prompt shows the item's details instead.
+            _tooltip?.GetContainer().Remove();
             OnVaultSlotDragStarted?.Invoke(slot);
         }
 
@@ -159,7 +171,6 @@ namespace PitHero.UI
         {
             var stagePos = slot.LocalToStageCoordinates(pos);
             InventoryDragManager.UpdateDrag(stagePos);
-            PositionTooltipAtStagePos(stagePos);
         }
 
         private void HandleSlotDragDropped(VaultItemSlot slot, Vector2 pos)
@@ -170,24 +181,5 @@ namespace PitHero.UI
             OnVaultSlotDragDropped?.Invoke(slot, stagePos);
         }
 
-        /// <summary>Positions the tooltip container near the given stage position (cursor).</summary>
-        private void PositionTooltipAtStagePos(Vector2 stagePos)
-        {
-            if (_tooltip == null || _tooltipStage == null) return;
-            var container = _tooltip.GetContainer();
-            if (container.GetParent() == null)
-                _tooltipStage.AddElement(container);
-            container.Validate();
-            float stageW = _tooltipStage.GetWidth();
-            float stageH = _tooltipStage.GetHeight();
-            float tx = stagePos.X + 12f;
-            float ty = stagePos.Y + 12f;
-            if (ty + container.GetHeight() > stageH)
-                ty = stageH - container.GetHeight();
-            if (ty < 0) ty = 0;
-            if (tx + container.GetWidth() > stageW)
-                tx = stagePos.X - container.GetWidth() - 12f;
-            container.SetPosition(tx, ty);
-        }
     }
 }

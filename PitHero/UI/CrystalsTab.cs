@@ -653,6 +653,9 @@ namespace PitHero.UI
         private void HandleCrystalDragStarted(CrystalSlotElement source, Vector2 mousePos)
         {
             if (source.Crystal == null) return;
+            // Drop the gesture entirely while a confirmation is up — hiding the crystal for a drag
+            // that BeginCrystalDrag will refuse leaves the slot looking empty with nothing in hand.
+            if (InventoryDragManager.DragBlocked) return;
             HideCrystalCard();
             source.SetCrystalHidden(true);
             InventoryDragManager.BeginCrystalDrag(source, _stage);

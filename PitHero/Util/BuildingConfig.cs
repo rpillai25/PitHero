@@ -59,11 +59,57 @@ namespace PitHero.Util
             _                         => "CropStorage",
         };
 
-        public static int GetCost(BuildingType t) => t switch
+        /// <summary>Price of the first building of this type the player actually pays for.</summary>
+        public static int GetBaseCost(BuildingType t) => t switch
         {
-            BuildingType.MonsterHouse => 100,
-            _                         => 50,
+            BuildingType.MonsterHouse => GameConfig.BuildingCostMonsterHouseBase,
+            _                         => GameConfig.BuildingCostCropStorageBase,
         };
+
+        /// <summary>Ceiling the escalating cost curve clamps to, however many are already placed.</summary>
+        public static int GetMaxCost(BuildingType t) => t switch
+        {
+            BuildingType.MonsterHouse => GameConfig.BuildingCostMonsterHouseMax,
+            _                         => GameConfig.BuildingCostCropStorageMax,
+        };
+
+        /// <summary>
+        /// How many buildings of this type are gifted at new-game start and therefore excluded from
+        /// the cost curve. Both the starter Monster House and the starter Crop Storage are free, so
+        /// the first one the player buys is priced at <see cref="GetBaseCost"/>.
+        /// </summary>
+        public static int GetFreeStarterCount(BuildingType t) => GameConfig.BuildingFreeStarterCount;
+
+        /// <summary>
+        /// Purchase price of the NEXT building of this type, given how many of that type are already
+        /// placed. Each paid building multiplies the price by GameConfig.BuildingCostGrowthFactor,
+        /// rounded to the nearest BuildingCostRoundingStep gold and clamped at <see cref="GetMaxCost"/>.
+        /// Selling a building lowers the count and therefore the next price back down, but since the
+        /// refund is half of what was paid, churning buildings is always a net loss.
+        /// </summary>
+        public static int GetCost(BuildingType t, int existingCount)
+        {
+            int paidIndex = existingCount - GetFreeStarterCount(t);
+            if (paidIndex < 0)
+                paidIndex = 0;
+
+            int maxCost = GetMaxCost(t);
+            double raw = GetBaseCost(t) * System.Math.Pow(GameConfig.BuildingCostGrowthFactor, paidIndex);
+            if (raw >= maxCost)
+                return maxCost;
+
+            int step = GameConfig.BuildingCostRoundingStep;
+            int rounded = (int)System.Math.Round(raw / step, System.MidpointRounding.AwayFromZero) * step;
+            return rounded > maxCost ? maxCost : rounded;
+        }
+
+        /// <summary>
+        /// Gold refunded for selling a placed building: always the initial base price, however far up
+        /// the cost curve the player has climbed. Sell the 6th Monster House you paid 760 G for and
+        /// you still get 100 G back — you buy high and sell low, so expanding is a commitment.
+        /// Independent of how many are placed, unlike <see cref="GetCost"/>.
+        /// </summary>
+        public static int GetSellPrice(BuildingType t) => GetBaseCost(t);
 
         /// <summary>Localization key (UI text) for a building's display name. Resolve via TextService.</summary>
         public static string GetDisplayNameKey(BuildingType t) => t switch

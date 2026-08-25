@@ -412,6 +412,19 @@ namespace PitHero
         public const int NewGameCropStorageAnchorTileX = 127;
         public const int NewGameCropStorageAnchorTileY = 2;
 
+        // Building purchase pricing (escalating cost curve). The price of the NEXT building of a
+        // type is its base cost multiplied by BuildingCostGrowthFactor once per already-purchased
+        // building of that type, rounded to the nearest BuildingCostRoundingStep gold and hard
+        // clamped at the max. The free buildings gifted at new-game start do not count toward the
+        // curve, so the first building the player actually buys costs the base price.
+        public const int BuildingCostMonsterHouseBase = 100;
+        public const int BuildingCostMonsterHouseMax = 1000;
+        public const int BuildingCostCropStorageBase = 50;
+        public const int BuildingCostCropStorageMax = 500;
+        public const float BuildingCostGrowthFactor = 1.5f;
+        public const int BuildingCostRoundingStep = 5;
+        public const int BuildingFreeStarterCount = 1; // one of each type is placed free by SetupNewGameFarmContent
+
         // Starter farming Slime housed in the new-game Monster House (proficiencies 1-9)
         public const int NewGameStarterSlimeFarmingProficiency = 7;
         public const int NewGameStarterSlimeFishingProficiency = 3;

@@ -201,6 +201,10 @@ namespace PitHero.UI
                 _openUIWindowCount = 0;
             }
 
+            // Prompts open at the swap keep a dead-stage parent and stay "visible" forever, which
+            // would leave drag-and-drop and hover cards suppressed for the rest of the session.
+            UIPromptRegistry.Clear();
+
             if (_isInitialized)
                 ApplyPersistentWindowSize();
         }

@@ -15,16 +15,34 @@ namespace PitHero.UI
     /// When maxQty == 1 the selector row is hidden and the dialog behaves like a plain
     /// ConfirmationDialog.
     /// </summary>
-    public class VaultBuyQuantityDialog : Window
+    /// <summary>Whether the dialog is priced and worded as a purchase or a sale.</summary>
+    public enum QuantityDialogMode { Buy, Sell }
+
+    public class ItemQuantityDialog : Window, IUIPrompt
     {
         /// <summary>Minimum height (px) for every button in this dialog. Adjust here to retune all at once.</summary>
         private const float ButtonHeight = 16f;
+
+        private readonly QuantityDialogMode _mode;
+
+        private string TotalKey => _mode == QuantityDialogMode.Buy
+            ? UITextKey.SecondChanceBuyTotal
+            : UITextKey.SecondChanceSellTotal;
+
+        bool IUIPrompt.IsPromptVisible => GetParent() != null && IsVisible();
+
+        void IUIPrompt.CancelPrompt()
+        {
+            _onCancel?.Invoke();
+            Remove();
+        }
 
         private int _quantity = 1;
         private readonly int _unitPrice;
         private readonly int _maxQty;
         private readonly bool _canAffordAny;
         private readonly int _plannedCount;
+        private readonly System.Action _onCancel;
         private Label _quantityLabel;
         private Label _totalCostLabel;
         private Label _plannedLabel;
@@ -54,7 +72,7 @@ namespace PitHero.UI
         /// (max(0, plannedCount - quantity)); the label hides once the quantity covers them all.
         /// Pass 0 (default) to omit it; existing call sites are unaffected.
         /// </param>
-        public VaultBuyQuantityDialog(
+        public ItemQuantityDialog(
             string title,
             string itemName,
             int unitPrice,
@@ -64,12 +82,16 @@ namespace PitHero.UI
             System.Action onCancel = null,
             int ownedCount = -1,
             int availableFunds = -1,
-            int plannedCount = 0)
+            int plannedCount = 0,
+            Element detailContent = null,
+            QuantityDialogMode mode = QuantityDialogMode.Buy)
             : base(title, skin)
         {
+            _mode = mode;
             _unitPrice = unitPrice;
             _onConfirm = onConfirm;
             _plannedCount = plannedCount > 0 ? plannedCount : 0;
+            _onCancel = onCancel;
 
             int affordableMax = (availableFunds >= 0 && unitPrice > 0)
                 ? availableFunds / unitPrice
@@ -91,15 +113,27 @@ namespace PitHero.UI
 
             bool showOwned = ownedCount >= 0;
             int extraHeight = showOwned ? 30 : 0;
-            SetSize(380, (maxQty > 1 ? 220 : 180) + extraHeight);
+            // With a detail card the box is no longer a fixed size — it is packed to fit at the end.
+            if (detailContent == null)
+                SetSize(380, (maxQty > 1 ? 220 : 180) + extraHeight);
             SetMovable(false);
 
             var dialogTable = new Table();
             dialogTable.Pad(20);
 
+            // ── Item detail card (buy prompts reached by dragging, where hover cards are off) ────
+            if (detailContent != null)
+            {
+                detailContent.SetTouchable(Touchable.Disabled);
+                dialogTable.Add(detailContent).SetPadBottom(12f);
+                dialogTable.Row();
+            }
+
             // ── Item name prompt row ────────────────────────────────────────────
             string promptText = string.Format(
-                textService.DisplayText(TextType.UI, UITextKey.SecondChanceBuyQtyPrompt),
+                textService.DisplayText(TextType.UI, mode == QuantityDialogMode.Buy
+                    ? UITextKey.SecondChanceBuyQtyPrompt
+                    : UITextKey.SecondChanceSellQtyPrompt),
                 itemName);
             var promptLabel = new Label(promptText, skin);
             promptLabel.SetWrap(true);
@@ -156,7 +190,7 @@ namespace PitHero.UI
 
                 // ── Total cost row ──────────────────────────────────────────────
                 string totalText = string.Format(
-                    textService.DisplayText(TextType.UI, UITextKey.SecondChanceBuyTotal),
+                    textService.DisplayText(TextType.UI, TotalKey),
                     unitPrice);
                 _totalCostLabel = new Label(totalText, skin);
                 dialogTable.Add(_totalCostLabel).Width(330f).SetPadBottom(14);
@@ -164,9 +198,11 @@ namespace PitHero.UI
             }
             else
             {
-                // Single-unit: show static "Buy for X gold?" line
+                // Single-unit: show static "Buy/Sell for X gold?" line
                 string totalText = string.Format(
-                    textService.DisplayText(TextType.UI, UITextKey.SecondChanceBuyPrompt),
+                    textService.DisplayText(TextType.UI, mode == QuantityDialogMode.Buy
+                        ? UITextKey.SecondChanceBuyPrompt
+                        : UITextKey.SecondChanceSellPrompt),
                     unitPrice);
                 var totalLabel = new Label(totalText, skin);
                 dialogTable.Add(totalLabel).Width(330f).SetPadBottom(20);
@@ -201,6 +237,9 @@ namespace PitHero.UI
 
             Add(dialogTable).Expand().Fill();
 
+            if (detailContent != null)
+                Pack();
+
             UpdateArrowStates();
         }
 
@@ -212,6 +251,7 @@ namespace PitHero.UI
             SetPosition((w - GetWidth()) / 2f, UILayout.CenterY(GetHeight(), h, 0f));
             stage.AddElement(this);
             SetVisible(true);
+            UIPromptRegistry.Register(this);
         }
 
         // ─────────────────────────────────────────────────────────────────────────
@@ -219,10 +259,10 @@ namespace PitHero.UI
         private void ChangeQuantity(int delta)
         {
             int next = _quantity + delta;
-            // "<" below 1 wraps around to the purchasable max (stock cap and affordable
-            // funds already folded into _maxQty); ">" clamps at the max as before.
+            // Both arrows wrap: "<" below 1 goes to the max, ">" past the max goes back to 1.
+            // (Stock cap and, when buying, affordable funds are already folded into _maxQty.)
             if (next < 1) next = _maxQty;
-            if (next > _maxQty) next = _maxQty;
+            else if (next > _maxQty) next = 1;
             if (next == _quantity) return;
 
             _quantity = next;
@@ -233,7 +273,7 @@ namespace PitHero.UI
             {
                 var textService = Core.Services.GetService<TextService>();
                 string totalText = string.Format(
-                    textService.DisplayText(TextType.UI, UITextKey.SecondChanceBuyTotal),
+                    textService.DisplayText(TextType.UI, TotalKey),
                     _unitPrice * _quantity);
                 _totalCostLabel.SetText(totalText);
             }
@@ -251,12 +291,16 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Greys out an arrow when it can have no effect. The decrease arrow stays
-        /// enabled at quantity 1 so it can wrap around to the purchasable max.</summary>
+        /// <summary>
+        /// Greys out both arrows only when there is nothing to choose between — a single selectable
+        /// unit, or (when buying) nothing affordable. Neither arrow is disabled at a limit, because
+        /// both wrap around from there.
+        /// </summary>
         private void UpdateArrowStates()
         {
-            _decreaseBtn?.SetDisabled(_maxQty <= 1);
-            _increaseBtn?.SetDisabled(_quantity >= _maxQty || !_canAffordAny);
+            bool nothingToChoose = _maxQty <= 1 || !_canAffordAny;
+            _decreaseBtn?.SetDisabled(nothingToChoose);
+            _increaseBtn?.SetDisabled(nothingToChoose);
         }
     }
 }

@@ -19,6 +19,12 @@ namespace PitHero.UI
         private const float SYNERGY_ICON_SIZE = 20f;
         private const float SYNERGY_ICON_SPACING = 4f;
 
+        // Item icon shown beside the card in the buy/sell prompts. Items.atlas sprites are natively
+        // 32x32, so drawing at 32 keeps them pixel-perfect at every zoom.
+        private const float DETACHED_SPRITE_SIZE = 32f;
+        private const float DETACHED_SPRITE_GAP = 4f;
+        private const float FOOTER_GAP = 8f;
+
         // Brown font color matching PitHeroSkin default
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
         private static readonly Color SynergyCyan = new Color(0, 156, 156);
@@ -26,6 +32,8 @@ namespace PitHero.UI
         private static readonly Color JobsTextColor = new Color(100, 100, 180);
 
         private IItem _item;
+        private Sprite _leadingSprite;
+        private Element _panelFooter;
         private List<ActiveSynergy> _synergies;
         private bool _showBuyPrice;
         private Table _contentTable;
@@ -90,6 +98,101 @@ namespace PitHero.UI
             _container.Pack();
         }
 
+        /// <summary>
+        /// Builds the same card the hover tooltip shows, detached from any tooltip behaviour and with
+        /// the item's sprite inside the card's framed panel on its left edge, for embedding in another
+        /// window (the Second Chance buy/sell prompts). The returned element is a plain,
+        /// non-interactive widget owned by the caller — this instance is a throwaway builder and must
+        /// never be added to a stage as a tooltip.
+        /// </summary>
+        public static Element BuildDetachedCard(IItem item, List<ActiveSynergy> synergies, bool showBuyPrice, Skin skin)
+            => BuildDetachedCard(item, synergies, showBuyPrice, skin, null);
+
+        /// <summary>
+        /// As <see cref="BuildDetachedCard(IItem, List{ActiveSynergy}, bool, Skin)"/>, but places
+        /// <paramref name="footer"/> inside the framed panel below the item text — used by the
+        /// Second Chance buy/sell prompts, which are the card itself with their buttons in it rather
+        /// than a card inside a second window frame.
+        /// </summary>
+        public static Element BuildDetachedCard(IItem item, List<ActiveSynergy> synergies, bool showBuyPrice,
+                                                Skin skin, Element footer)
+        {
+            if (item == null || skin == null)
+                return null;
+
+            // Tooltip's constructor only stores the target element, so a null target is safe here.
+            var builder = new ItemCardTooltip(null, skin);
+            // Compose before ShowItem: the rebuild widens the panel to fit the sprite and footer.
+            builder.ComposePanel(TryLoadItemSprite(item), footer);
+            builder.ShowItem(item, synergies, showBuyPrice);
+
+            var container = builder.GetContainer();
+            var card = container.GetElement();
+            // Detach so the card can be parented by the caller's table.
+            container.SetElement(null);
+            if (card == null)
+                return null;
+            // A footer means the card hosts live buttons, so it must stay hit-testable. Without a
+            // footer it is pure decoration and must never eat clicks meant for what is behind it.
+            if (footer == null)
+                card.SetTouchable(Touchable.Disabled);
+
+            return card;
+        }
+
+        /// <summary>
+        /// Lays the framed panel out as [sprite | item text] with an optional footer row spanning
+        /// beneath, so the sprite sits against the panel's left edge and the buttons sit inside the
+        /// same frame. Must be called BEFORE <see cref="ShowItem"/>: the rebuild widens the panel to
+        /// fit the sprite column and the footer.
+        /// The hover tooltip never calls this, so its layout is untouched.
+        /// </summary>
+        private void ComposePanel(Sprite sprite, Element footer)
+        {
+            if (sprite == null && footer == null)
+                return;
+
+            _leadingSprite = sprite;
+            _panelFooter = footer;
+
+            // Re-parent the text column into a body table, still inside _wrapper so everything sits
+            // within the one framed panel.
+            var body = new Table();
+            body.Left().Top();
+            int columns = 1;
+            if (sprite != null)
+            {
+                var image = new Image(new SpriteDrawable(sprite));
+                image.SetScaling(Scaling.None);
+                body.Add(image).Size(DETACHED_SPRITE_SIZE, DETACHED_SPRITE_SIZE).Top().SetPadRight(DETACHED_SPRITE_GAP);
+                columns = 2;
+            }
+            body.Add(_contentTable).Top().Left();
+
+            if (footer != null)
+            {
+                body.Row();
+                body.Add(footer).SetColspan(columns).SetPadTop(FOOTER_GAP).Expand().Fill();
+            }
+
+            _wrapper.SetElement(body);
+        }
+
+        /// <summary>Loads an item's sprite from the Items atlas, or null if unavailable.</summary>
+        private static Sprite TryLoadItemSprite(IItem item)
+        {
+            if (item?.SpriteName == null || Core.Content == null)
+                return null;
+            try
+            {
+                return Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas").GetSprite(item.SpriteName);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>Invalidates the content cache, forcing a full rebuild on the next ShowItem call.</summary>
         public void InvalidateCache()
         {
@@ -110,11 +213,12 @@ namespace PitHero.UI
             var typeString = ItemDisplayHelper.GetItemTypeString(_item.Kind);
             var rarityString = ItemDisplayHelper.GetRarityString(_item.Rarity);
 
-            // Item Name (with rarity color)
-            var nameLabel = new Label(_item.Name, new LabelStyle { Font = font, FontColor = rarityColor });
+            // Item Name (with rarity color). A stack sale appends its size — "MidHPPotion (16)".
+            var nameText = _item.Name;
+            var nameLabel = new Label(nameText, new LabelStyle { Font = font, FontColor = rarityColor });
             _contentTable.Add(nameLabel).Left().Pad(0, 0, LINE_SPACING, 0);
             _contentTable.Row();
-            maxLineWidth = Max(maxLineWidth, Measure(font, _item.Name));
+            maxLineWidth = Max(maxLineWidth, Measure(font, nameText));
 
             // Rarity and Type (with rarity color)
             var rarityTypeText = $"{rarityString} {typeString}";
@@ -154,6 +258,7 @@ namespace PitHero.UI
                 maxLineWidth = Max(maxLineWidth, Measure(font, jobsText));
             }
 
+            // A stack sale is priced for the whole stack, because that is what the sale takes.
             string priceText;
             if (_showBuyPrice)
                 priceText = $"Buy Price: {_item.Price}G";
@@ -187,6 +292,12 @@ namespace PitHero.UI
 
             // Ensure wrapper width is longest line plus padding on both sides
             var targetMinWidth = maxLineWidth + CARD_PADDING * 2f;
+            // A leading sprite lives inside the card, so the card has to grow by the column it takes.
+            if (_leadingSprite != null)
+                targetMinWidth += DETACHED_SPRITE_SIZE + DETACHED_SPRITE_GAP;
+            // A footer (the buy/sell buttons) can be wider than any text line — don't clip it.
+            if (_panelFooter != null)
+                targetMinWidth = Max(targetMinWidth, _panelFooter.PreferredWidth + CARD_PADDING * 2f);
             _wrapper.SetMinSize(targetMinWidth, 0f);
         }
 
