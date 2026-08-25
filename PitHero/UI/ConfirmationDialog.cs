@@ -5,63 +5,65 @@ using PitHero.Services;
 namespace PitHero.UI
 {
     /// <summary>Simple confirmation dialog for yes/no choices.</summary>
-    public class ConfirmationDialog : Window
+    public class ConfirmationDialog : Window, IUIPrompt
     {
         public TextButton YesButton { get; }
         public TextButton NoButton { get; }
 
         private readonly System.Action _onNo;
 
-        // Shown dialogs, tracked so window-level outside-click/Escape handling can defer to an open
-        // confirmation. Self-pruning: entries removed from the stage drop out on the next query.
-        private static readonly System.Collections.Generic.List<ConfirmationDialog> _shown = new System.Collections.Generic.List<ConfirmationDialog>();
+        /// <summary>
+        /// True while ANY blocking prompt is on a stage and visible — not just confirmation dialogs.
+        /// Kept here because callers across the UI already ask this question through this name.
+        /// </summary>
+        public static bool AnyVisible => UIPromptRegistry.AnyVisible;
 
-        /// <summary>True while any confirmation dialog is on a stage and visible.</summary>
-        public static bool AnyVisible
+        /// <summary>
+        /// Cancels the most recently shown visible prompt as if its Cancel/No button were clicked.
+        /// Returns true if one was cancelled (used by Escape handling).
+        /// </summary>
+        public static bool TryCancelTopMost() => UIPromptRegistry.TryCancelTopMost();
+
+        bool IUIPrompt.IsPromptVisible => GetParent() != null && IsVisible();
+
+        void IUIPrompt.CancelPrompt()
         {
-            get
-            {
-                Prune();
-                return _shown.Count > 0;
-            }
+            _onNo?.Invoke();
+            Remove();
+        }
+
+        public ConfirmationDialog(string title, string message, Skin skin, System.Action onYes, System.Action onNo = null)
+            : this(title, message, skin, onYes, onNo, null)
+        {
         }
 
         /// <summary>
-        /// Cancels the most recently shown visible dialog as if its No button were clicked.
-        /// Returns true if a dialog was cancelled (used by Escape handling).
+        /// Creates a confirmation dialog that also displays <paramref name="detailContent"/> above the
+        /// message — used to show an item's card in the Second Chance buy/sell prompts, so the player
+        /// still sees the item's details now that hover cards are suppressed during a drag.
+        /// When detail content is supplied the dialog sizes itself to fit instead of using the fixed
+        /// 350x180 box.
         /// </summary>
-        public static bool TryCancelTopMost()
-        {
-            Prune();
-            if (_shown.Count == 0) return false;
-            var dialog = _shown[_shown.Count - 1];
-            _shown.RemoveAt(_shown.Count - 1);
-            dialog._onNo?.Invoke();
-            dialog.Remove();
-            return true;
-        }
-
-        private static void Prune()
-        {
-            for (int i = _shown.Count - 1; i >= 0; i--)
-            {
-                var d = _shown[i];
-                if (d.GetParent() == null || !d.IsVisible())
-                    _shown.RemoveAt(i);
-            }
-        }
-
-        public ConfirmationDialog(string title, string message, Skin skin, System.Action onYes, System.Action onNo = null) : base(title, skin)
+        public ConfirmationDialog(string title, string message, Skin skin, System.Action onYes,
+                                  System.Action onNo, Element detailContent) : base(title, skin)
         {
             _onNo = onNo;
             var textService = Core.Services.GetService<TextService>();
-            
-            SetSize(350, 180);
+
+            if (detailContent == null)
+                SetSize(350, 180);
             SetMovable(false);
             // SetModal(true); // Not available in this version of Nez
 
             var dialogTable = new Table();
             dialogTable.Pad(20);
+
+            if (detailContent != null)
+            {
+                detailContent.SetTouchable(Touchable.Disabled);
+                dialogTable.Add(detailContent).SetPadBottom(12f);
+                dialogTable.Row();
+            }
 
             // Message
             var label = new Label(message, skin);
@@ -95,6 +97,10 @@ namespace PitHero.UI
             dialogTable.Add(buttonTable);
 
             Add(dialogTable).Expand().Fill();
+
+            // With detail content the box is no longer a fixed size — fit it to the card.
+            if (detailContent != null)
+                Pack();
         }
 
         /// <summary>Shows the dialog on the specified stage.</summary>
@@ -107,8 +113,7 @@ namespace PitHero.UI
 
             stage.AddElement(this);
             SetVisible(true);
-            if (!_shown.Contains(this))
-                _shown.Add(this);
+            UIPromptRegistry.Register(this);
         }
     }
 }

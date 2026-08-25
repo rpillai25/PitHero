@@ -23,6 +23,28 @@ namespace PitHero.Services
             return gold;
         }
 
+        /// <summary>
+        /// Sells <paramref name="quantity"/> units out of the bag slot, leaving any remainder behind.
+        /// The sold units go to the vault as their own independent stack — never a shared reference to
+        /// the one still in the bag, which would make the two counts move together.
+        /// Non-consumables, and quantities covering the whole stack, fall through to
+        /// <see cref="SellBagItem"/>. Returns gold earned (0 if the slot is empty or quantity &lt; 1).
+        /// </summary>
+        public static int SellBagItemQuantity(ItemBag bag, int bagIndex, int quantity, string source)
+        {
+            var item = bag?.GetSlotItem(bagIndex);
+            if (item == null || quantity <= 0)
+                return 0;
+
+            if (!(item is Consumable consumable) || quantity >= consumable.StackCount)
+                return SellBagItem(bag, bagIndex, source);
+
+            var sold = consumable.CreateFreshInstance();
+            sold.StackCount = quantity;
+            consumable.StackCount -= quantity;
+            return SellItemDirect(sold, source);
+        }
+
         /// <summary>Sells an item that is not in a bag (e.g. an incoming chest item). Returns gold earned.</summary>
         public static int SellItemDirect(IItem item, string source)
         {

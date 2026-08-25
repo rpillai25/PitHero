@@ -271,6 +271,8 @@ SecondChanceBuyQtyPrompt,Buy {0}?
 SecondChanceBuyTotal,Total: {0} gold
 SecondChanceNoGold,Not enough gold!
 SecondChanceSellPrompt,Sell for {0} gold?
+SecondChanceSellQtyPrompt,Sell {0}?
+SecondChanceSellTotal,Total: {0} gold
 SecondChanceOwnedCount,Owned: {0}
 SecondChanceNeedCount,Need: {0}
 
@@ -346,6 +348,7 @@ ButtonSellAllCrops,Sell all crops
 ButtonSellTheseCrops,Sell these crops
 ButtonSellBuilding,Sell building
 ButtonSell,Sell
+ButtonBuy,Buy
 DialogMoveCropsPrompt,Really move and redistribute crops to other storages?
 DialogSellStorageCropsPrompt,Really sell all crops in this storage for {0} gold?
 DialogSellBuildingPrompt,Really sell this building for {0} gold?

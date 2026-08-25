@@ -394,7 +394,7 @@ namespace PitHero.UI
                 : headroom;
             if (maxQty <= 0) return;
 
-            var qtyDialog = new VaultBuyQuantityDialog(
+            var qtyDialog = new ItemQuantityDialog(
                 shopTitle,
                 cropName,
                 unitPrice,
@@ -749,6 +749,15 @@ namespace PitHero.UI
             if (_hoverCheckFrame % 5 != 0) return;
             if (_heroInventoryTooltip == null || _heroInventoryGrid == null) return;
 
+            // No hover cards while an item is in hand or a buy/sell prompt is up — otherwise this
+            // probe re-shows a card over the dialog every frame. Clear any card already up.
+            if (InventoryDragManager.DragBlocked)
+            {
+                if (_heroInventoryTooltip.GetContainer().HasParent())
+                    _heroInventoryTooltip.GetContainer().Remove();
+                return;
+            }
+
             var slot = _heroInventoryGrid.GetSlotAtStagePosition(mousePos);
 
             // A hidden or covered grid keeps its layout, so bounds alone would report phantom hovers
@@ -830,6 +839,9 @@ namespace PitHero.UI
         private void HandleHeroInventoryItemHovered(IItem item, InventorySlot slot)
         {
             if (item == null || _heroInventoryTooltip == null) return;
+            // Suppressed while dragging or while a buy/sell prompt is open — the prompt carries the
+            // item's details itself, and a floating card over it just gets in the way.
+            if (InventoryDragManager.DragBlocked) return;
 
             // Hovering the item acknowledges new gear and stops its sparkle (mirrors HeroUI)
             if (!InventoryDragManager.IsDragging)
@@ -866,6 +878,13 @@ namespace PitHero.UI
             if (_heroInventoryTooltip == null) return;
             var container = _heroInventoryTooltip.GetContainer();
             if (container.GetParent() == null) return;
+            // A card left over from the hover that preceded the drag must go, not follow the cursor
+            // onto the buy/sell prompt.
+            if (InventoryDragManager.DragBlocked)
+            {
+                container.Remove();
+                return;
+            }
 
             var mousePos = _stage.GetMousePosition();
             container.Validate();
@@ -945,12 +964,16 @@ namespace PitHero.UI
 
             if (isEquipSlot || vaultStack.Quantity <= 1)
             {
-                // Equip slot or single-item stack: plain confirm with unit price, always qty=1
-                string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceBuyPrompt), unitPrice);
-                var dialog = new ConfirmationDialog(shopTitle, promptText, _skin,
-                    onYes: () => ExecuteItemPurchase(vaultStack, destSlot, 1, unitPrice, vault, gameState),
-                    onNo:  cancelAction);
-                dialog.YesButton.SuppressGlobalClick = true;
+                // Equip slot or single-item stack: the item's card with Buy/Cancel in it, always qty=1.
+                // The card already shows the buy price, so there is no prompt sentence.
+                var dialog = new ItemActionDialog(vaultStack.ItemTemplate,
+                    GetText(TextType.UI, UITextKey.ButtonBuy),
+                    GetText(TextType.UI, UITextKey.ButtonCancel),
+                    _skin,
+                    showBuyPrice: true,
+                    onConfirm: () => ExecuteItemPurchase(vaultStack, destSlot, 1, unitPrice, vault, gameState),
+                    onCancel:  cancelAction);
+                dialog.ConfirmButton.SuppressGlobalClick = true;
                 dialog.Show(_stage);
             }
             else
@@ -959,10 +982,12 @@ namespace PitHero.UI
                 var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
                 int maxQty = ComputeMaxQtyForInventorySlot(vaultStack, heroComp);
                 string itemName = vaultStack.ItemTemplate?.Name ?? "";
-                var qtyDialog = new VaultBuyQuantityDialog(shopTitle, itemName, unitPrice, maxQty, _skin,
+                var qtyDialog = new ItemQuantityDialog(shopTitle, itemName, unitPrice, maxQty, _skin,
                     onConfirm: (qty) => ExecuteItemPurchase(vaultStack, destSlot, qty, unitPrice, vault, gameState),
                     onCancel:  cancelAction,
-                    availableFunds: gameState.Funds);
+                    availableFunds: gameState.Funds,
+                    detailContent: ItemCardTooltip.BuildDetachedCard(vaultStack.ItemTemplate, null,
+                                                                     showBuyPrice: true, skin: _skin));
                 qtyDialog.Show(_stage);
             }
         }
@@ -1016,6 +1041,27 @@ namespace PitHero.UI
                 return;
             }
 
+            // Claim the units out of the vault BEFORE charging or granting. The confirmation is
+            // non-modal, so two purchase dialogs can be opened for the same vault stack; claiming
+            // last would let each one grant a copy of stock the vault holds only once.
+            bool isEquipDest = (destSlot.SlotData.SlotType == InventorySlotType.MercenaryEquipment ||
+                                destSlot.SlotData.SlotType == InventorySlotType.Equipment)
+                               && destSlot.SlotData.EquipmentSlot.HasValue;
+            bool isBagDest = destSlot.SlotData.SlotType == InventorySlotType.Inventory
+                             && destSlot.SlotData.BagIndex.HasValue;
+            if (!isEquipDest && !isBagDest)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+                return;
+            }
+            if (!vault.RemoveQuantity(vaultStack, isEquipDest ? 1 : qty))
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+                return;
+            }
+
             gameState.Funds -= totalPrice;
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
 
@@ -1026,7 +1072,6 @@ namespace PitHero.UI
                 var equipMerc = destSlot.SlotData.MercenaryRef;
                 if (equipMerc != null && equipMerc.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item))
                     Services.Analytics.AnalyticsService.LogGearEquipped(equipMerc, destSlot.SlotData.EquipmentSlot.Value, item);
-                vault.RemoveQuantity(vaultStack, 1);
             }
             else if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
             {
@@ -1034,7 +1079,6 @@ namespace PitHero.UI
                 var equipHero = heroComp.LinkedHero;
                 if (equipHero != null && equipHero.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item))
                     Services.Analytics.AnalyticsService.LogGearEquipped(equipHero, destSlot.SlotData.EquipmentSlot.Value, item);
-                vault.RemoveQuantity(vaultStack, 1);
             }
             else if (destSlot.SlotData.SlotType == InventorySlotType.Inventory && destSlot.SlotData.BagIndex.HasValue)
             {
@@ -1066,7 +1110,6 @@ namespace PitHero.UI
                     for (int i = 1; i < qty; i++)
                         heroComp.Bag?.TryAdd(item);
                 }
-                vault.RemoveQuantity(vaultStack, qty);
             }
 
             RefreshVaultItemsView();
@@ -1093,25 +1136,15 @@ namespace PitHero.UI
             if (item == null || !sourceSlot.SlotData.BagIndex.HasValue) return;
             int bagIndex = sourceSlot.SlotData.BagIndex.Value;
 
-            int qty = (item is RolePlayingFramework.Equipment.Consumable c) ? c.StackCount : 1;
-            int sellGold = item.GetSellPrice() * qty;
-
             _heroInventoryGrid.NotifyExternalDropHandled();
 
-            string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceSellPrompt), sellGold);
-            var dialog = new ConfirmationDialog(
-                GetText(TextType.UI, UITextKey.DialogReallyDiscard),
-                promptText,
-                _skin,
-                onYes: () =>
+            ItemSellPrompt.Show(_stage, _skin, item,
+                onSell: (qty) =>
                 {
-                    _heroInventoryGrid.DiscardItem(bagIndex);
+                    _heroInventoryGrid.DiscardItem(bagIndex, qty);
                     InventoryDragManager.EndDrag();
                 },
-                onNo: () => InventoryDragManager.CancelDrag()
-            );
-            dialog.YesButton.SuppressGlobalClick = true;
-            dialog.Show(_stage);
+                onCancelled: () => InventoryDragManager.CancelDrag());
         }
 
         /// <summary>Returns true if the given stage position falls within the shop window bounds.</summary>
@@ -1255,13 +1288,24 @@ namespace PitHero.UI
                 return;
             }
 
+            // Claim the crystal out of the vault BEFORE charging or granting. The confirmation is
+            // non-modal, so two purchase dialogs can be opened for the same vault crystal; claiming
+            // last would let each one grant a copy of a crystal the vault holds only once.
+            if (!vault.RemoveCrystal(crystal))
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultCrystalGrid?.ShowAllCrystalSprites();
+                return;
+            }
+
             gameState.Funds -= price;
 
             bool placed = crystalService.TryAddToInventory(crystal);
             if (!placed)
             {
-                // Inventory full — refund gold
+                // Inventory full — refund the gold and put the claimed crystal back
                 gameState.AddFunds(price, "refund");
+                vault.AddCrystal(crystal);
                 InventoryDragManager.CancelDrag();
                 _vaultCrystalGrid?.ShowAllCrystalSprites();
                 return;
@@ -1269,7 +1313,6 @@ namespace PitHero.UI
 
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
 
-            vault.RemoveCrystal(crystal);
             RefreshVaultCrystalsView();
             _heroCrystalPanel?.RefreshAll();
             InventoryDragManager.EndDrag();

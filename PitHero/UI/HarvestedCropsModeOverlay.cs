@@ -239,10 +239,14 @@ namespace PitHero.UI
                 PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
-                    var gameState = Core.Services.GetService<GameStateService>();
-                    gameState?.AddFunds(totalGold, "sell_crops");
-                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-                    SellAvailableInBuilding(storage, buildingId);
+                    // Sell first, then pay exactly what was realized — the quoted totalGold is a
+                    // snapshot from before the dialog opened and may no longer be there.
+                    int realized = SellAvailableInBuilding(storage, buildingId);
+                    if (realized > 0)
+                    {
+                        Core.Services.GetService<GameStateService>()?.AddFunds(realized, "sell_crops");
+                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                    }
                     _descWindow?.SetVisible(false);
                     RefreshViewer();
                 });
@@ -254,19 +258,29 @@ namespace PitHero.UI
         /// Sells every AVAILABLE crop unit in the building — units held for transfer by a
         /// carrying runner stay in their slots. Re-reads live display counts (auto-sell may have
         /// emptied slots while a confirm dialog was open) and logs one crop_sold line per stack.
+        ///
+        /// Returns the gold actually realized. Callers MUST pay out this figure rather than a total
+        /// priced before the dialog opened: the storage can empty under an open confirmation (auto-sell,
+        /// or a second sell dialog stacked on the same storage), and paying the stale snapshot would
+        /// mint gold for crops that no longer exist.
         /// </summary>
-        private void SellAvailableInBuilding(CropStorageInventoryService storage, int buildingId)
+        private int SellAvailableInBuilding(CropStorageInventoryService storage, int buildingId)
         {
             storage.CopyDisplaySlots(buildingId, _displaySlots);
+            int realized = 0;
             for (int s = 0; s < _displaySlots.Length; s++)
             {
                 if (_displaySlots[s].IsEmpty)
                     continue;
                 int sold = storage.TakeFromSlot(buildingId, s, _displaySlots[s].Count);
                 if (sold > 0)
-                    AnalyticsService.LogCropSold(_displaySlots[s].Type.ToString(), sold,
-                        CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, sold), "manual");
+                {
+                    int stackGold = CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, sold);
+                    realized += stackGold;
+                    AnalyticsService.LogCropSold(_displaySlots[s].Type.ToString(), sold, stackGold, "manual");
+                }
             }
+            return realized;
         }
 
         /// <summary>Sells every harvested crop across all Crop Storage buildings (with confirmation).</summary>
@@ -295,12 +309,17 @@ namespace PitHero.UI
                 PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
-                    var gameState = Core.Services.GetService<GameStateService>();
-                    gameState?.AddFunds(totalGold, "sell_crops");
-                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                    // Sell first, then pay exactly what was realized across every storage — the
+                    // quoted totalGold is a pre-dialog snapshot and may no longer be there.
+                    int realized = 0;
                     for (int b = 0; b < all.Count; b++)
                         if (all[b].Type == BuildingType.CropStorage)
-                            SellAvailableInBuilding(storage, all[b].UniqueId);
+                            realized += SellAvailableInBuilding(storage, all[b].UniqueId);
+                    if (realized > 0)
+                    {
+                        Core.Services.GetService<GameStateService>()?.AddFunds(realized, "sell_crops");
+                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                    }
                     _descWindow?.SetVisible(false);
                     RefreshViewer();
                 });

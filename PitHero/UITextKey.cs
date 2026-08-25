@@ -17,6 +17,7 @@ namespace PitHero
         public const string ButtonSellTheseCrops = "ButtonSellTheseCrops";
         public const string ButtonSellBuilding = "ButtonSellBuilding";
         public const string ButtonSell = "ButtonSell";
+        public const string ButtonBuy = "ButtonBuy";
         public const string ButtonSave = "ButtonSave";
         public const string ButtonLoad = "ButtonLoad";
         public const string ButtonNew = "ButtonNew";
@@ -286,6 +287,8 @@ namespace PitHero
         public const string SecondChanceBuyTotal = "SecondChanceBuyTotal";
         public const string SecondChanceNoGold = "SecondChanceNoGold";
         public const string SecondChanceSellPrompt = "SecondChanceSellPrompt";
+        public const string SecondChanceSellQtyPrompt = "SecondChanceSellQtyPrompt";
+        public const string SecondChanceSellTotal = "SecondChanceSellTotal";
         public const string ConsoleAttack = "ConsoleAttack";
         public const string ConsoleSkillAttack = "ConsoleSkillAttack";
         public const string ConsoleBattleHealConsumable = "ConsoleBattleHealConsumable";

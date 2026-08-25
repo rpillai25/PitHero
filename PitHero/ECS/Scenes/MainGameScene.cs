@@ -92,17 +92,29 @@ namespace PitHero.ECS.Scenes
         private enum HudMode { Normal, Half }
         private HudMode _currentHudMode = HudMode.Normal;
 
-        // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
-        private const float PitLabelBaseX = 10f; // X position for Pit Lv label (bottom-left)
+        // Cached base positions for corner-anchored UI (so offsets are relative and centralized).
+        // The hero/mercenary HUD panels sit bottom-left and the Pit Lv / Gold labels top-left; those
+        // two swapped places, so the HUD's Y is now derived from the stage height and must be
+        // re-applied whenever the stage resizes.
+        private const float PitLabelBaseX = 10f; // X position for Pit Lv label (top-left)
+        private const float PitLabelBaseY = 10f; // Y position for the Pit Lv / Gold labels (top-left)
         private const float FundsLabelGapX = 16f; // Gap between the measured Pit Lv label text and the Funds label
         private const float ClockLabelRightPadding = 32f; // Pixels from right edge for clock label
         private const float ClockLabelBaseY = 16f; // Y position for clock label (top area, offset to avoid cutoff)
         private const float GraphicalHudBaseX = 10f; // Base X position for graphical HUD (shifted left to fill space)
-        private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
+        private const float GraphicalHudHeight = 32f; // Height of the HUD template sprite (UI.atlas HudTemplate)
+        private const float GraphicalHudBottomMargin = 8f; // Gap between the HUD panels and the stage bottom
         private const float GraphicalHudHalfModeXOffset = 0f; // No additional X offset needed since Pit Lv is at bottom
         private const float GraphicalHudSpacing = 170f; // Spacing between HUD elements (hero to merc1, merc1 to merc2)
-        private const float HudHeadXOffset = 64f; // X offset to center viz over the HUD head sprite
-        private const float HudHeadYOffset = 30f; // Y offset for viz start position (32px below HUD head top)
+        // Anchor for the battle action visualization, relative to a HUD panel's top-left. This is the
+        // HUD head sprite, which GraphicalHUD draws at (LEVEL_TEXT_X_OFFSET - 7, LEVEL_TEXT_Y_OFFSET
+        // - 15) = (64, -2). The ACTIVE action shows here and rises out of it.
+        private const float HudQueueXOffset = 64f;
+        private const float HudQueueYOffset = -2f;
+        // The WAITING queue is shifted left from that anchor to sit over the HP bar, so it never
+        // covers the active action rising off the head. Lands a 32px sprite centred on the 51px bar
+        // (HP_UNIT_X_OFFSET 3 + (51 - 32) / 2 = 12, i.e. 12 - 64 from the head).
+        private const float HudQueuedActionXOffset = -52f;
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -1249,11 +1261,11 @@ namespace PitHero.ECS.Scenes
                 }
             };
 
-            // Crop Storage options (issue #285): sell the building once it is emptied of crops.
-            // (Move/Sell all crops live in the Harvested Crops viewer opened via "Show Crops".)
+            // Sell an empty building (issue #285). The context menu only offers this once the
+            // building holds nothing — no crops in a Crop Storage, no monsters in a Monster House.
             _buildingContextMenu.OnSellBuilding += (pb) =>
             {
-                int gold = Util.BuildingConfig.GetCost(pb.Type) / 2;
+                int gold = Util.BuildingConfig.GetSellPrice(pb.Type);
                 var textSvc = Core.Services.GetService<Services.TextService>();
                 var dialog = new ConfirmationDialog(
                     textSvc?.DisplayText(TextType.UI, UITextKey.ButtonSellBuilding),
@@ -1261,11 +1273,17 @@ namespace PitHero.ECS.Scenes
                     UI.PitHeroSkin.CreateSkin(),
                     onYes: () =>
                     {
+                        // Remove first and pay only if this call is what actually removed it. The
+                        // confirmation dialog is non-modal, so a second sell dialog can be opened
+                        // for the same building before the first is confirmed; paying out
+                        // unconditionally would mint the refund once per dialog.
+                        bool sold = Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb) ?? false;
+                        if (!sold)
+                            return;
+                        pb.WorldEntity?.Destroy();
                         var gameState = Core.Services.GetService<Services.GameStateService>();
                         gameState?.AddFunds(gold, "sell_building");
                         Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(Util.SoundEffectTypes.SoundEffectType.ItemSell);
-                        pb.WorldEntity?.Destroy();
-                        Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb);
                     });
                 dialog.YesButton.SuppressGlobalClick = true;
                 dialog.Show(_uiStage);
@@ -1994,7 +2012,7 @@ namespace PitHero.ECS.Scenes
             // Pit level label (bottom-left, always visible, no scaling)
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-            _pitLevelLabel.SetPosition(PitLabelBaseX, HudBottomLabelY());
+            _pitLevelLabel.SetPosition(PitLabelBaseX, HudLabelY());
 
             // Funds label (bottom-left next to Pit Lv, always visible, no scaling)
             _fundsLabel = uiCanvas.Stage.AddElement(new Label("Gold: 0", _hudFontNormal));
@@ -2025,40 +2043,44 @@ namespace PitHero.ECS.Scenes
 
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
-            hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudBaseY);
+            hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudY());
             _graphicalHUD = hudEntity.AddComponent(new GraphicalHUD());
             _graphicalHUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD); // Use screen space renderer
 
             // Create mercenary #1 HUD entity
             var merc1HudEntity = CreateEntity("mercenary1-hud");
-            merc1HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing, GraphicalHudBaseY);
+            merc1HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing, GraphicalHudY());
             _mercenary1HUD = merc1HudEntity.AddComponent(new GraphicalHUD());
             _mercenary1HUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
             _mercenary1HUD.SetEnabled(false); // Initially hidden until mercenary is hired
 
             // Create mercenary #2 HUD entity
             var merc2HudEntity = CreateEntity("mercenary2-hud");
-            merc2HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing * 2, GraphicalHudBaseY);
+            merc2HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing * 2, GraphicalHudY());
             _mercenary2HUD = merc2HudEntity.AddComponent(new GraphicalHUD());
             _mercenary2HUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
             _mercenary2HUD.SetEnabled(false); // Initially hidden until mercenary is hired
 
-            // Create screen-space action queue visualization entities positioned over HUD heads
+            // Create screen-space action visualization entities anchored on the HUD heads (active action);
+            // their waiting queues are offset left onto the HP bar so they never cover it.
             var heroVizEntity = CreateEntity("hero-action-queue-viz");
-            heroVizEntity.SetPosition(GraphicalHudBaseX + HudHeadXOffset, GraphicalHudBaseY + HudHeadYOffset);
+            heroVizEntity.SetPosition(GraphicalHudBaseX + HudQueueXOffset, GraphicalHudY() + HudQueueYOffset);
             _heroActionQueueViz = heroVizEntity.AddComponent(new ActionQueueVisualizationComponent());
             _heroActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
+            _heroActionQueueViz.QueuedActionXOffset = HudQueuedActionXOffset;
 
             var merc1VizEntity = CreateEntity("merc1-action-queue-viz");
-            merc1VizEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing + HudHeadXOffset, GraphicalHudBaseY + HudHeadYOffset);
+            merc1VizEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing + HudQueueXOffset, GraphicalHudY() + HudQueueYOffset);
             _merc1ActionQueueViz = merc1VizEntity.AddComponent(new ActionQueueVisualizationComponent());
             _merc1ActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
+            _merc1ActionQueueViz.QueuedActionXOffset = HudQueuedActionXOffset;
             _merc1ActionQueueViz.SetEnabled(false);
 
             var merc2VizEntity = CreateEntity("merc2-action-queue-viz");
-            merc2VizEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing * 2 + HudHeadXOffset, GraphicalHudBaseY + HudHeadYOffset);
+            merc2VizEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing * 2 + HudQueueXOffset, GraphicalHudY() + HudQueueYOffset);
             _merc2ActionQueueViz = merc2VizEntity.AddComponent(new ActionQueueVisualizationComponent());
             _merc2ActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
+            _merc2ActionQueueViz.QueuedActionXOffset = HudQueuedActionXOffset;
             _merc2ActionQueueViz.SetEnabled(false);
 
             // Shortcut bar at bottom center
@@ -2163,19 +2185,25 @@ namespace PitHero.ECS.Scenes
         /// Y for the bottom-left HUD labels, derived from the live stage height so they follow the
         /// configured design height (GameConfig.VirtualHeight) and every window/dock mode.
         /// </summary>
-        private float HudBottomLabelY()
+        private float HudLabelY() => PitLabelBaseY;
+
+        /// <summary>
+        /// Y for the hero/mercenary HUD panels. Bottom-anchored, so unlike the old fixed top position
+        /// it has to be recomputed whenever the stage height changes.
+        /// </summary>
+        private float GraphicalHudY()
         {
             float stageH = _uiStage != null ? _uiStage.GetHeight() : GameConfig.VirtualHeight;
-            return stageH - GameConfig.HudBottomLabelOffsetY;
+            return stageH - GraphicalHudHeight - GraphicalHudBottomMargin;
         }
 
         /// <summary>
-        /// Re-anchor the bottom-left HUD labels (Pit Lv / Gold) after a stage size change
+        /// Re-anchor the top-left HUD labels (Pit Lv / Gold) after a stage size change
         /// </summary>
-        private void RepositionBottomLabels()
+        private void RepositionHudLabels()
         {
             if (_pitLevelLabel != null)
-                _pitLevelLabel.SetPosition(PitLabelBaseX, HudBottomLabelY());
+                _pitLevelLabel.SetPosition(PitLabelBaseX, HudLabelY());
             RepositionFundsLabel();
         }
 
@@ -2188,7 +2216,7 @@ namespace PitHero.ECS.Scenes
                 return;
 
             float pitLabelWidth = _hudFontNormal.MeasureString(_pitLevelLabel.GetText()).X;
-            _fundsLabel.SetPosition(PitLabelBaseX + pitLabelWidth + FundsLabelGapX, HudBottomLabelY());
+            _fundsLabel.SetPosition(PitLabelBaseX + pitLabelWidth + FundsLabelGapX, HudLabelY());
         }
 
         /// <summary>
@@ -2467,11 +2495,12 @@ namespace PitHero.ECS.Scenes
                 PositionEventConsolePanel();
             }
 
-            // Pit level label and Funds label stay at bottom-left with no scaling or offset changes
+            // Pit level label and Funds label stay at top-left with no scaling or offset changes
             // (They are always at their base positions)
 
-            // Update graphical HUD position based on mode (no scaling needed - it's in screen space)
-            // Apply vertical offset for normal/half mode
+            // Update graphical HUD position based on mode (no scaling needed - it's in screen space).
+            // The offset nudges the HUD away from the edge it is anchored to; the HUD is bottom
+            // anchored, so it is SUBTRACTED here (the constant is named for its original top anchor).
             int yOffset = 0;
 
             switch (_currentHudMode)
@@ -2485,42 +2514,36 @@ namespace PitHero.ECS.Scenes
                     break;
             }
 
-            if (_graphicalHUD != null)
+            RepositionGraphicalHud(yOffset);
+        }
+
+        /// <summary>
+        /// Re-anchors the three HUD panels and the action-queue visualizations that sit over their
+        /// heads. Called on HUD mode changes and on stage resize — the panels are bottom-anchored, so
+        /// their Y moves with the stage height.
+        /// </summary>
+        private void RepositionGraphicalHud(int yOffset)
+        {
+            float hudY = GraphicalHudY() - yOffset;
+            float vizY = hudY + HudQueueYOffset;
+
+            var huds = new[] { _graphicalHUD, _mercenary1HUD, _mercenary2HUD };
+            var vizzes = new[] { _heroActionQueueViz, _merc1ActionQueueViz, _merc2ActionQueueViz };
+
+            for (int i = 0; i < huds.Length; i++)
             {
-                var hudEntity = _graphicalHUD.Entity;
-                if (hudEntity != null)
-                {
-                    float hudTargetY = GraphicalHudBaseY + yOffset;
-                    float hudTargetX = GraphicalHudBaseX; // No extra offset needed
-
-                    hudEntity.SetPosition(hudTargetX, hudTargetY);
-                }
+                float slotX = GraphicalHudBaseX + GraphicalHudSpacing * i;
+                huds[i]?.Entity?.SetPosition(slotX, hudY);
+                vizzes[i]?.Entity?.SetPosition(slotX + HudQueueXOffset, vizY);
             }
+        }
 
-            // Update mercenary HUD positions based on mode
-            if (_mercenary1HUD != null)
-            {
-                var merc1Entity = _mercenary1HUD.Entity;
-                if (merc1Entity != null)
-                {
-                    float hudTargetY = GraphicalHudBaseY + yOffset;
-                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing; // No extra offset needed
-
-                    merc1Entity.SetPosition(hudTargetX, hudTargetY);
-                }
-            }
-
-            if (_mercenary2HUD != null)
-            {
-                var merc2Entity = _mercenary2HUD.Entity;
-                if (merc2Entity != null)
-                {
-                    float hudTargetY = GraphicalHudBaseY + yOffset;
-                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing * 2; // No extra offset needed
-
-                    merc2Entity.SetPosition(hudTargetX, hudTargetY);
-                }
-            }
+        /// <summary>Re-anchors the HUD panels using the offset for the current HUD mode.</summary>
+        private void RepositionGraphicalHud()
+        {
+            RepositionGraphicalHud(_currentHudMode == HudMode.Half
+                ? GameConfig.TopUiYOffsetHalf
+                : GameConfig.TopUiYOffsetNormal);
         }
 
         /// <summary>
@@ -2708,7 +2731,8 @@ namespace PitHero.ECS.Scenes
                     _lastStageWidth = stageW;
                     _lastStageHeight = stageH;
                     PositionShortcutBar();
-                    RepositionBottomLabels();
+                    RepositionHudLabels();
+                    RepositionGraphicalHud();
                     PositionEventConsolePanel();
                     if (_pauseOverlayRenderer != null)
                     {
@@ -3188,7 +3212,8 @@ namespace PitHero.ECS.Scenes
         /// <summary>
         /// True when placed-building hover/click interactions should be suppressed — while the cursor
         /// is outside the game window, while relocating, during any farm sub-mode, when the context
-        /// menu is already open, or when the pointer is over UI.
+        /// menu is already open, while a confirmation dialog is awaiting an answer, or when the
+        /// pointer is over UI.
         /// </summary>
         private bool BuildingInteractionsBlocked()
         {
@@ -3197,6 +3222,10 @@ namespace PitHero.ECS.Scenes
             if (_buildingModeOverlay?.IsMoving == true)
                 return true;
             if (_buildingContextMenu?.IsVisible == true)
+                return true;
+            // The sell confirmation is non-modal and only covers the middle of the strip, so without
+            // this the player could re-click the same building and stack a second sell dialog on it.
+            if (UI.ConfirmationDialog.AnyVisible)
                 return true;
             if (_settingsUI != null &&
                 (_settingsUI.IsFarmSubMenuOpen || _settingsUI.IsConstructionSubMenuOpen ||

@@ -113,6 +113,15 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// True if no allied monster is linked to the given Monster House. Gates the Sell Building
+        /// option so selling can never orphan a housed monster.
+        /// </summary>
+        public bool IsHouseEmpty(int houseUniqueId)
+        {
+            return GetLinkedMonsterCount(houseUniqueId) == 0;
+        }
+
+        /// <summary>
         /// Manually adds a monster to a house in exchange for gold (issue #283). Bypasses the join
         /// roll but produces the same shape as a natural recruit (random name + 1–9 proficiencies,
         /// Job=None). Returns the new monster, or null if the house is full. Gold is handled by the

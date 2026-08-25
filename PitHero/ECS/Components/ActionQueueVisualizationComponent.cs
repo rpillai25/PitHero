@@ -25,7 +25,9 @@ namespace PitHero.ECS.Components
     }
 
     /// <summary>
-    /// Renders the action queue as sprites displayed over the HUD head during battle.
+    /// Renders battle actions over the HUD. The ACTIVE action appears at the entity position (the HUD
+    /// head) and rises out of it as it completes; the WAITING queue is drawn <see cref="QueuedActionXOffset"/>
+    /// to the side and stacks upward, so it never obscures the rising active action.
     /// Monitors the hero's or a mercenary's BattleActionQueue: shows up to 5 queued actions
     /// and animates completed ones floating up. ShowAction() triggers a one-off animation
     /// for actions that never pass through the monitored queue (e.g. mercenary AI actions).
@@ -48,6 +50,13 @@ namespace PitHero.ECS.Components
 
         public override float Width => SpriteSize;
         public override float Height => SpriteSize * ActionQueue.MaxQueueSize + SpriteSpacing * (ActionQueue.MaxQueueSize - 1);
+
+        /// <summary>
+        /// X offset applied to QUEUED actions only, relative to the entity position (which anchors the
+        /// ACTIVE action over the HUD head). Shifts the waiting queue clear of the head so it never
+        /// obscures the active action rising out of it. Set by the scene, which owns HUD geometry.
+        /// </summary>
+        public float QueuedActionXOffset { get; set; }
 
         /// <summary>The action queue this component monitors and renders (hero's or mercenary's).</summary>
         private ActionQueue MonitoredQueue =>
@@ -168,7 +177,7 @@ namespace PitHero.ECS.Components
             dynamic itemsAtlas = _itemsAtlas;
             dynamic skillsAtlas = _skillsAtlas;
 
-            // Entity position is the head position on the HUD (screen space)
+            // Entity position is the HUD head, where the active action shows and rises from (screen space)
             var pos = Entity.Transform.Position;
             float startX = pos.X;
             float startY = pos.Y;
@@ -187,10 +196,14 @@ namespace PitHero.ECS.Components
                 var actions = monitoredQueue.GetAll();
                 if (actions != null && actions.Length > 0)
                 {
+                    // Waiting actions sit to the side of the head so they never cover the active one
+                    // rising out of it, and stack UPWARD — the HUD is at the bottom of the screen, so
+                    // a downward queue would run straight off it.
+                    float queueX = startX + QueuedActionXOffset;
                     for (int i = 0; i < actions.Length; i++)
                     {
-                        float yOffset = i * (SpriteSize + SpriteSpacing);
-                        RenderAction(actions[i], batcher, itemsAtlas, skillsAtlas, startX, startY, yOffset, -1f);
+                        float yOffset = -i * (SpriteSize + SpriteSpacing);
+                        RenderAction(actions[i], batcher, itemsAtlas, skillsAtlas, queueX, startY, yOffset, -1f);
                     }
                 }
             }

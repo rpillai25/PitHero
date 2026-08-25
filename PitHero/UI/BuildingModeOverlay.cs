@@ -330,7 +330,10 @@ namespace PitHero.UI
 
         private void PopulateAndShowDescriptionWindow(BuildingType type, int funds)
         {
-            _pendingCost = BuildingConfig.GetCost(type);
+            // Escalating cost: the price shown is for the next building of this type, based on how
+            // many are already placed. Re-read on every open so it tracks placements and sales.
+            int placed = Core.Services.GetService<BuildingService>()?.GetCountOfType(type) ?? 0;
+            _pendingCost = BuildingConfig.GetCost(type, placed);
 
             _descNameLabel.SetText(GetText(BuildingConfig.GetDisplayNameKey(type)));
             _descDescLabel.SetText(GetText(BuildingConfig.GetDescriptionKey(type)));

@@ -34,7 +34,7 @@ namespace PitHero.UI
         /// <summary>Fired when the player chooses Add Monsters for a Monster House.</summary>
         public event System.Action<PlacedBuilding> OnAddMonsters;
 
-        /// <summary>Fired when the player chooses Sell building for an (empty) Crop Storage.</summary>
+        /// <summary>Fired when the player chooses Sell building for an empty Crop Storage or Monster House.</summary>
         public event System.Action<PlacedBuilding> OnSellBuilding;
 
         /// <summary>Whether the context menu is currently visible.</summary>
@@ -103,9 +103,13 @@ namespace PitHero.UI
                 _content.Row();
             }
 
-            // Crop-Storage-only option: sell the building once it is empty of crops. (Move/Sell all
-            // crops live in the Harvested Crops viewer, opened via "Show Crops".)
-            if (!isMonsterHouse && IsStorageEmpty(building.UniqueId))
+            // Sell is offered only for an empty building, so a sale can never destroy stored crops
+            // or orphan a housed monster. A Crop Storage is emptied via the Harvested Crops viewer
+            // ("Show Crops"); a Monster House is emptied by rehousing its monsters ("Show Monsters").
+            bool canSell = isMonsterHouse
+                ? IsHouseEmpty(building.UniqueId)
+                : IsStorageEmpty(building.UniqueId);
+            if (canSell)
             {
                 _content.Add(_sellBuildingButton).Width(140f).SetPadBottom(4f);
                 _content.Row();
@@ -148,6 +152,12 @@ namespace PitHero.UI
         {
             var allied = Core.Services?.GetService<AlliedMonsterManager>();
             return allied != null && allied.IsHouseFull(uniqueId);
+        }
+
+        private bool IsHouseEmpty(int uniqueId)
+        {
+            var allied = Core.Services?.GetService<AlliedMonsterManager>();
+            return allied == null || allied.IsHouseEmpty(uniqueId);
         }
 
         private bool IsStorageEmpty(int uniqueId)
