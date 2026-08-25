@@ -116,6 +116,16 @@ namespace PitHero.ECS.Scenes
         // (HP_UNIT_X_OFFSET 3 + (51 - 32) / 2 = 12, i.e. 12 - 64 from the head).
         private const float HudQueuedActionXOffset = -52f;
 
+        // Party-visibility auto-hide. The panels describe the party, so they only hold screen space
+        // while somebody in the party is on camera; otherwise they slide down out of the bottom edge
+        // and slide back up when the party returns to view.
+        private const float HudAutoHideDuration = 0.18f;  // seconds for a full hide or show sweep
+        private const float HudAutoHideMargin = 16f;      // world-pixel hysteresis band on the camera edge
+        private const float HudAutoHideClearance = 4f;    // extra travel so the panels fully clear the edge
+        private float _hudSlideT;                         // 0 = fully up, 1 = fully parked off the bottom
+        private float _appliedHudSlideT = -1f;            // last value pushed into the entity positions
+        private bool _hudPartyVisible = true;             // hysteresis state for IsPartyInCameraView
+
         public BitmapFont HudFont; // legacy reference (normal)
 
         public BitmapFont GetHudFontForCurrentMode()
@@ -2520,11 +2530,18 @@ namespace PitHero.ECS.Scenes
         /// <summary>
         /// Re-anchors the three HUD panels and the action-queue visualizations that sit over their
         /// heads. Called on HUD mode changes and on stage resize — the panels are bottom-anchored, so
-        /// their Y moves with the stage height.
+        /// their Y moves with the stage height. Also applies the party-visibility auto-hide slide.
         /// </summary>
         private void RepositionGraphicalHud(int yOffset)
         {
-            float hudY = GraphicalHudY() - yOffset;
+            float baseY = GraphicalHudY() - yOffset;
+
+            // Park position for the auto-hide: far enough down that the whole panel clears the stage
+            // bottom, measured off the live stage height so it holds in every window/dock mode.
+            float stageH = _uiStage != null ? _uiStage.GetHeight() : GameConfig.VirtualHeight;
+            float parkTravel = (stageH - baseY) + GraphicalHudHeight + HudAutoHideClearance;
+
+            float hudY = baseY + parkTravel * SmoothStep(_hudSlideT);
             float vizY = hudY + HudQueueYOffset;
 
             var huds = new[] { _graphicalHUD, _mercenary1HUD, _mercenary2HUD };
@@ -2544,6 +2561,83 @@ namespace PitHero.ECS.Scenes
             RepositionGraphicalHud(_currentHudMode == HudMode.Half
                 ? GameConfig.TopUiYOffsetHalf
                 : GameConfig.TopUiYOffsetNormal);
+        }
+
+        /// <summary>Ease for the HUD auto-hide slide so it starts and lands softly.</summary>
+        private static float SmoothStep(float t)
+        {
+            t = Mathf.Clamp01(t);
+            return t * t * (3f - 2f * t);
+        }
+
+        /// <summary>
+        /// Drives the party-visibility auto-hide. The panels slide down out of the bottom edge while
+        /// nobody in the party is on camera and slide back up when they return. The action-queue
+        /// visualizations are suppressed for the whole slide: they render upwards out of the HUD
+        /// heads, so sliding with the panels would leave them hanging in mid-air.
+        /// </summary>
+        private void UpdateHudAutoHide()
+        {
+            _hudPartyVisible = IsPartyInCameraView();
+
+            float target = _hudPartyVisible ? 0f : 1f;
+            _hudSlideT = Mathf.Approach(_hudSlideT, target, Time.UnscaledDeltaTime / HudAutoHideDuration);
+
+            if (_hudSlideT != _appliedHudSlideT)
+            {
+                _appliedHudSlideT = _hudSlideT;
+                RepositionGraphicalHud();
+            }
+
+            if (_hudSlideT > 0f)
+            {
+                _heroActionQueueViz?.SetEnabled(false);
+                _merc1ActionQueueViz?.SetEnabled(false);
+                _merc2ActionQueueViz?.SetEnabled(false);
+            }
+        }
+
+        /// <summary>
+        /// True while the living hero or any hired mercenary overlaps the camera viewport. The test
+        /// band is inflated while the HUD is up and deflated while it is down, so a party member
+        /// walking the screen edge can't make the HUD chatter.
+        /// </summary>
+        private bool IsPartyInCameraView()
+        {
+            var camera = Camera;
+            if (camera == null)
+                return true;
+
+            float inset = _hudPartyVisible ? -HudAutoHideMargin : HudAutoHideMargin;
+            var b = camera.Bounds;
+            var view = new RectangleF(b.X + inset, b.Y + inset, b.Width - inset * 2f, b.Height - inset * 2f);
+
+            var hero = FindEntity("hero");
+            if (hero != null && !hero.HasComponent<HeroDeathComponent>() && IsActorInView(hero, view))
+                return true;
+
+            var hiredMercenaries = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
+            if (hiredMercenaries != null)
+            {
+                for (int i = 0; i < hiredMercenaries.Count; i++)
+                {
+                    if (IsActorInView(hiredMercenaries[i], view))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>True when an enabled actor's tile-sized footprint overlaps the given view rect.</summary>
+        private static bool IsActorInView(Entity actor, RectangleF view)
+        {
+            if (actor == null || !actor.Enabled)
+                return false;
+
+            const float half = GameConfig.TileSize * 0.5f;
+            var p = actor.Transform.Position;
+            return view.Intersects(new RectangleF(p.X - half, p.Y - half, GameConfig.TileSize, GameConfig.TileSize));
         }
 
         /// <summary>
@@ -2881,6 +2975,8 @@ namespace PitHero.ECS.Scenes
             if (!IsIntroActive)
                 UpdateHeroHUD();
             UpdateHudFontMode();
+            if (!IsIntroActive)
+                UpdateHudAutoHide();
 
             // Update shortcut bar position (handles offset when inventory open)
             PositionShortcutBar();
