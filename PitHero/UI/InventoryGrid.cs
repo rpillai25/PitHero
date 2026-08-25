@@ -25,7 +25,6 @@ namespace PitHero.UI
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
         private const float HOVER_OFFSET_Y = -16f; // Offset in pixels when hovering over a slot while another is selected
-        private const float SWAP_TWEEN_DURATION = 0.2f; // Duration in seconds for swap animation
 
         // Pixel geometry of the grid. It is deliberately wide and short — 24 columns x 5 bag rows is
         // the same 120 bag slots the old 20 x 6 layout had, but one row shorter so the whole grid
@@ -84,18 +83,6 @@ namespace PitHero.UI
         // Mercenary references for equip slot groups
         private readonly Mercenary[] _mercenaryRefs = new Mercenary[MAX_MERCENARY_SLOTS];
         private BitmapFont _nameFont; // Font for drawing mercenary/hero names above equip slots
-
-        // Swap animation entities (scene-space approach retained but unused currently)
-        private Entity _swapEntity1;
-        private Entity _swapEntity2;
-        private SpriteRenderer _swapRenderer1;
-        private SpriteRenderer _swapRenderer2;
-
-        // UI-based swap animation state (legacy, kept disabled when using overlay)
-        private bool _uiSwapActive;
-        private float _uiSwapElapsed;
-        private InventorySlot _uiSwapSlotA;
-        private InventorySlot _uiSwapSlotB;
 
         // Public events for item card display
         public event System.Action<IItem, InventorySlot> OnItemHovered;
@@ -339,7 +326,6 @@ namespace PitHero.UI
                 UpdateBagCapacity(_heroComponent.Bag.Capacity);
                 UpdateItemsFromBag();
             }
-            InitializeSwapEntities();
 
             // Unsubscribe before re-subscribing to prevent duplicate handlers (idempotent)
             InventorySelectionManager.OnInventoryChanged -= UpdateItemsFromBag;
@@ -494,24 +480,6 @@ namespace PitHero.UI
                     _stage.AddElement(tooltip);
                 }
             }
-        }
-
-        /// <summary>Initializes scene entities for swap animation (unused currently).</summary>
-        private void InitializeSwapEntities()
-        {
-            if (_swapEntity1 != null) return;
-            var scene = GetStage()?.Entity?.Scene;
-            if (scene == null) return;
-            _swapEntity1 = scene.CreateEntity("SwapAnimEntity1");
-            _swapEntity1.Position = new Vector2(-1000, -1000);
-            _swapRenderer1 = _swapEntity1.AddComponent(new SpriteRenderer());
-            _swapRenderer1.RenderLayer = GameConfig.RenderLayerUI - 1;
-            _swapRenderer1.Enabled = false;
-            _swapEntity2 = scene.CreateEntity("SwapAnimEntity2");
-            _swapEntity2.Position = new Vector2(-1000, -1000);
-            _swapRenderer2 = _swapEntity2.AddComponent(new SpriteRenderer());
-            _swapRenderer2.RenderLayer = GameConfig.RenderLayerUI - 1;
-            _swapRenderer2.Enabled = false;
         }
 
         /// <summary>Refreshes items from hero state.</summary>
@@ -1018,8 +986,6 @@ namespace PitHero.UI
             // Try unified stack absorption first (source=a -> target=b)
             if (InventorySelectionManager.CanAbsorbStacks(a, b, out var toAbsorb))
             {
-                // Animate transfer then absorb and persist
-                AnimateSwap(a, b);
                 InventorySelectionManager.PerformAbsorbStacks(a, b, toAbsorb);
                 PersistBagOrdering();
 
@@ -1031,10 +997,8 @@ namespace PitHero.UI
                 return;
             }
 
-            // Visual animation first (captures pre-swap sprites) via unified manager
-            AnimateSwap(a, b);
-
-            // Perform logical swap immediately; hidden sprites prevent flicker until overlay completes
+            // Swap outright — the items simply appear in their new slots. No tween: a ghost copy
+            // flying from the old slot to the new one read as a drag after-effect.
             var tmp = a.SlotData.Item;
             a.SlotData.Item = b.SlotData.Item;
             b.SlotData.Item = tmp;
@@ -1180,21 +1144,6 @@ namespace PitHero.UI
         }
 
         /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
-        private void AnimateSwap(InventorySlot a, InventorySlot b)
-        {
-            // Cancel any legacy UI tween
-            if (_uiSwapActive)
-            {
-                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
-                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
-                _uiSwapActive = false;
-            }
-
-            // Delegate to manager. It will hide sprites, animate, then unhide on completion.
-            InventorySelectionManager.TryAnimateSwap(a, b, SWAP_TWEEN_DURATION);
-        }
-
-        /// <summary>Draw override also advances swap animation so we do not rely on a non-existent Act override.</summary>
         public override void Draw(Batcher batcher, float parentAlpha)
         {
             // Draw children (slots) first so animated sprites render on top
@@ -1208,21 +1157,6 @@ namespace PitHero.UI
 
             // Sparkle overlay on newly acquired gear the player has not viewed yet
             DrawUnviewedGearSparkles(batcher);
-
-            // Legacy UI tween disabled when using manager overlay
-            if (!_uiSwapActive) return;
-
-            _uiSwapElapsed += Time.DeltaTime;
-            if (_uiSwapElapsed >= SWAP_TWEEN_DURATION)
-            {
-                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
-                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
-                _uiSwapActive = false;
-                return;
-            }
-            float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
-            if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
-            float ease = 1f - (1f - t) * (1f - t); // QuadOut
         }
 
         /// <summary>

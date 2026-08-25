@@ -17,7 +17,6 @@ namespace PitHero.UI
         private const int QUEUE_SLOTS = 5;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PAD = 1f;
-        private const float SWAP_TWEEN_DURATION = 0.2f;
 
         // Pre-allocated queue slot number strings to avoid dynamic allocation (AOT compliance)
         private static readonly string[] QueueSlotNumbers = { "1", "2", "3", "4", "5" };
@@ -43,8 +42,6 @@ namespace PitHero.UI
         private Window _hoverTooltipWindow;
         private Label _hoverLabel;
 
-        // Swap animation overlay (reused SwapAnimationOverlay from inventory)
-        private SwapAnimationOverlay _swapOverlay;
 
         // Drag-and-drop hover tracking
         private CrystalSlotElement _dragHoveredSlot;
@@ -65,10 +62,6 @@ namespace PitHero.UI
             _crystalCard = new HeroCrystalCard(skin, stage);
             stage.AddElement(_crystalCard);
 
-            // ── Swap overlay (shares stage with inventory overlay) ───────────────
-            _swapOverlay = new SwapAnimationOverlay();
-            stage.AddElement(_swapOverlay);
-            _swapOverlay.SetVisible(false);
 
             // ── Hover tooltip (shared across all slots) ───────────────────────
             _hoverTooltipWindow = new Window("", skin);
@@ -284,79 +277,6 @@ namespace PitHero.UI
         private void OnSlotUnhovered(CrystalSlotElement slot)
         {
             HideHoverTooltip();
-        }
-
-        // ── Swap animation ────────────────────────────────────────────────────────
-
-        /// <summary>Plays a tween swap animation between two CrystalSlotElements, then calls onCompleted.</summary>
-        private void AnimateCrystalSwap(CrystalSlotElement slotA, CrystalSlotElement slotB, System.Action onCompleted)
-        {
-            if (_swapOverlay == null || slotA == null || slotB == null)
-            {
-                onCompleted?.Invoke();
-                return;
-            }
-
-            var crystalA = slotA.Crystal;
-            var crystalB = slotB.Crystal;
-
-            if (crystalA == null && crystalB == null)
-            {
-                onCompleted?.Invoke();
-                return;
-            }
-
-            if (Core.Content == null)
-            {
-                onCompleted?.Invoke();
-                return;
-            }
-
-            SpriteDrawable drawableA = null;
-            SpriteDrawable drawableB = null;
-            try
-            {
-                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                var baseSprite = itemsAtlas.GetSprite("HeroCrystal");
-                if (crystalA != null && baseSprite != null)
-                    drawableA = new SpriteDrawable(baseSprite);
-                if (crystalB != null && baseSprite != null)
-                    drawableB = new SpriteDrawable(baseSprite);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.Log("[CrystalsTab] AnimateCrystalSwap: atlas load failed — " + ex.Message);
-                onCompleted?.Invoke();
-                return;
-            }
-
-            var stageA = slotA.GetStage();
-            if (stageA == null)
-            {
-                onCompleted?.Invoke();
-                return;
-            }
-
-            var startA = slotA.LocalToStageCoordinates(Vector2.Zero);
-            var startB = slotB.LocalToStageCoordinates(Vector2.Zero);
-
-            var colorA = crystalA?.Color ?? Color.White;
-            var colorB = crystalB?.Color ?? Color.White;
-
-            if (crystalA != null) slotA.SetCrystalHidden(true);
-            if (crystalB != null) slotB.SetCrystalHidden(true);
-
-            _swapOverlay.ToFront();
-            _swapOverlay.Begin(
-                drawableA, colorA, startA, startB,
-                drawableB, colorB, startB, startA,
-                SWAP_TWEEN_DURATION,
-                () =>
-                {
-                    slotA.SetCrystalHidden(false);
-                    slotB.SetCrystalHidden(false);
-                    onCompleted?.Invoke();
-                });
         }
 
         // ── Slot click handlers — info card display only, no movement ───────────
@@ -723,8 +643,9 @@ namespace PitHero.UI
 
             InventoryDragManager.EndDrag();
             svc.SwapSlots(srcType, srcIdx, dstType, dstIdx);
+            // Swap outright — no tween. A ghost copy flying from the old slot to the new one read as
+            // a drag after-effect.
             RefreshAll();
-            AnimateCrystalSwap(source, target, null);
         }
 
         /// <summary>Full-screen transparent element that invokes an action when clicked (consuming the click).</summary>
