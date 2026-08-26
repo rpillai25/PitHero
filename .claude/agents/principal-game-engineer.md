@@ -1,7 +1,7 @@
 ---
 name: principal-game-engineer
 description: Expert at implementing code in the PitHero codebase with efficiency and elegance. Use when a feature plan exists and code needs to be written — monsters, equipment, game logic, UI, AI, systems. Always receives context to implement; never designs from scratch.
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 tools:
   - Read
   - Edit
