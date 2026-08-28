@@ -99,7 +99,7 @@ namespace PitHero.Tests
             var offsets = new List<Point> { new Point(0, 0) };
             var kinds = new List<ItemKind> { ItemKind.WeaponSword };
             var effects = new List<ISynergyEffect>();
-            var skill = new LightArmorPassive(); // Use an actual skill
+            var skill = new HeavyArmorPassive(); // Use an actual skill
             
             var pattern = new SynergyPattern("test", "Test", "Test", offsets, kinds, effects, 100, skill);
             var anchor = new Point(0, 0);

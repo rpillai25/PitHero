@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class HealSkill : BaseSkill
     {
-        public HealSkill() : base("priest.heal", SkillTextKey.Skill_Priest_Heal_Name, SkillTextKey.Skill_Priest_Heal_Desc, SkillKind.Active, SkillTargetType.SingleAlly, 3, 100, ElementType.Light, battleOnly: false, hpRestoreAmount: 25, mpRestoreAmount: 0) { }
+        public HealSkill() : base("priest.heal", SkillTextKey.Skill_Priest_Heal_Name, SkillTextKey.Skill_Priest_Heal_Desc, SkillKind.Active, SkillTargetType.SingleAlly, 3, 100, ElementType.Light, battleOnly: false, hpRestoreAmount: 25, mpRestoreAmount: 0) { ThreatValue = 30; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             caster.RestoreHP(SkillHealCalculator.GetAmount(this, caster));
@@ -26,6 +26,7 @@ namespace RolePlayingFramework.Skills
     {
         public DefenseUpSkill() : base("priest.defup", SkillTextKey.Skill_Priest_DefenseUp_Name, SkillTextKey.Skill_Priest_DefenseUp_Desc, SkillKind.Active, SkillTargetType.SingleAlly, 4, 160, ElementType.Neutral)
         {
+            ThreatValue = 30;
             GrantedBuffs = new SkillBuff[]
             {
                 new SkillBuff(BuffType.DefenseUp, magnitude: 3, durationTurns: 3, maxStacks: 1)

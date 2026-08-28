@@ -15,8 +15,8 @@ namespace PitHero
         public const string Skill_Knight_HeavyArmor_Desc = "Skill_Knight_HeavyArmor_Desc";
         public const string Skill_Knight_HeavyStrike_Name = "Skill_Knight_HeavyStrike_Name";
         public const string Skill_Knight_HeavyStrike_Desc = "Skill_Knight_HeavyStrike_Desc";
-        public const string Skill_Knight_LightArmor_Name = "Skill_Knight_LightArmor_Name";
-        public const string Skill_Knight_LightArmor_Desc = "Skill_Knight_LightArmor_Desc";
+        public const string Skill_Knight_Provoke_Name = "Skill_Knight_Provoke_Name";
+        public const string Skill_Knight_Provoke_Desc = "Skill_Knight_Provoke_Desc";
         public const string Skill_Knight_SpinSlash_Name = "Skill_Knight_SpinSlash_Name";
         public const string Skill_Knight_SpinSlash_Desc = "Skill_Knight_SpinSlash_Desc";
         public const string Skill_Mage_Economist_Name = "Skill_Mage_Economist_Name";

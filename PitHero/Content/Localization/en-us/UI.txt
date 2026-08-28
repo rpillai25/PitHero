@@ -461,3 +461,8 @@ MonsterInfoTotalNighttime,Total Nighttime Monsters:
 MonsterInfoFarmWorkers,Current Farm Workers:
 MonsterInfoKitchenWorkers,Current Kitchen Workers:
 MonsterInfoIdleWorkers,Current Idle Workers:
+
+# Threat system
+ConsoleThreatTarget,{0} has the monsters' attention!
+ConsoleBattleProvoke,{0} provokes the enemy to protect {1}!
+ConsoleBattleProvokeSolo,{0} provokes the enemy!

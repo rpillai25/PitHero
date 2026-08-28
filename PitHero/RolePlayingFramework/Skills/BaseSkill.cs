@@ -44,6 +44,12 @@ namespace RolePlayingFramework.Skills
         /// <inheritdoc/>
         public bool CleansesDebuffs { get; protected set; }
 
+        /// <inheritdoc/>
+        public int ThreatValue { get; protected set; } = -1;
+
+        /// <inheritdoc/>
+        public bool ReactionOnly { get; protected set; }
+
         protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost, ElementType element = ElementType.Neutral, bool battleOnly = true)
             : this(id, name, "", kind, targetType, mpCost, jpCost, element, battleOnly, 0, 0)
         {

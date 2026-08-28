@@ -260,7 +260,9 @@ namespace PitHero.Tests
             // Test higher pit level (should potentially have higher levels)
             component.InitializeForPitLevel(100);
             Assert.IsTrue(component.Level >= 1 && component.Level <= 5);
-            Assert.IsNotNull(component.ContainedItem);
+            // A level-2 roll may become a seed chest (ContainedItem null, seeds instead) — global-RNG dependent
+            Assert.IsTrue(component.ContainedItem != null || component.ContainedSeedCount > 0,
+                "Chest must contain either an item or seeds");
         }
 
         [TestMethod]

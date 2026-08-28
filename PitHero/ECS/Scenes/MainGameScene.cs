@@ -2367,6 +2367,7 @@ namespace PitHero.ECS.Scenes
             // Hero is alive - show and update HUD
             _graphicalHUD.SetEnabled(true);
             _graphicalHUD.SetHeroEntity(hero);
+            _graphicalHUD.SetThreatTarget(ReferenceEquals(linkedHero, HeroStateMachine.CurrentThreatTarget));
             _graphicalHUD.UpdateValues(
                 linkedHero.CurrentHP,
                 linkedHero.MaxHP,
@@ -2414,6 +2415,7 @@ namespace PitHero.ECS.Scenes
                 {
                     _mercenary1HUD.SetEnabled(true);
                     _mercenary1HUD.SetHeroEntity(merc1Entity);
+                    _mercenary1HUD.SetThreatTarget(ReferenceEquals(merc1Component.LinkedMercenary, HeroStateMachine.CurrentThreatTarget));
                     _mercenary1HUD.UpdateValues(
                         merc1Component.LinkedMercenary.CurrentHP,
                         merc1Component.LinkedMercenary.MaxHP,
@@ -2454,6 +2456,7 @@ namespace PitHero.ECS.Scenes
                 {
                     _mercenary2HUD.SetEnabled(true);
                     _mercenary2HUD.SetHeroEntity(merc2Entity);
+                    _mercenary2HUD.SetThreatTarget(ReferenceEquals(merc2Component.LinkedMercenary, HeroStateMachine.CurrentThreatTarget));
                     _mercenary2HUD.UpdateValues(
                         merc2Component.LinkedMercenary.CurrentHP,
                         merc2Component.LinkedMercenary.MaxHP,

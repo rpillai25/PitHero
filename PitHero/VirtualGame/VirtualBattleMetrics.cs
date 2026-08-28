@@ -45,5 +45,14 @@ namespace PitHero.VirtualGame
 
         /// <summary>Total gold yielded by all defeated monsters this battle.</summary>
         public int GoldEarned;
+
+        /// <summary>Number of monster attack resolutions (hits and misses) this battle.</summary>
+        public int MonsterAttacks;
+
+        /// <summary>Monster attacks that landed on whoever was the threat target at the time (ThreatSystem.md).</summary>
+        public int AttacksOnThreatTarget;
+
+        /// <summary>Provoke casts (reaction or queued) this battle (ThreatSystem.md).</summary>
+        public int Provokes;
     }
 }

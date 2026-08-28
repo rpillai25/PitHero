@@ -131,6 +131,27 @@ namespace PitHero.Combat
         /// </summary>
         void OnBuffApplied(in BattleBuffEvent evt);
 
+        /// <summary>
+        /// Called every time an ally gains threat (damage, skill, heal, evasion).
+        /// Live sink forwards to AnalyticsService.LogThreat; virtual sink may aggregate.
+        /// </summary>
+        void OnThreatGenerated(in BattleThreatEvent evt);
+
+        /// <summary>
+        /// Called when the threat target changes (evaluated at each monster turn).
+        /// <paramref name="target"/> is null when nobody currently holds threat.
+        /// Live sink tints the HUD and prints a console line; virtual sink tracks it for metrics.
+        /// </summary>
+        void OnThreatTargetChanged(IBattleAlly target);
+
+        /// <summary>
+        /// Called when a Knight-flagged ally casts Provoke (ThreatSystem.md), either as an out-of-turn
+        /// reaction to a wounded ally or from the player's shortcut queue. Threat itself has already
+        /// been logged through <see cref="OnThreatGenerated"/>. Live sink: speech bubble, floating
+        /// label, console line, analytics; virtual sink counts it. Return null when nothing to wait for.
+        /// </summary>
+        IEnumerator OnProvoke(IBattleAlly tank, in BattleProvokeEvent evt);
+
         /// <summary>Called after a consumable item is used from the bag.</summary>
         void OnItemConsumed();
 

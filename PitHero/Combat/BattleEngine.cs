@@ -35,6 +35,182 @@ namespace PitHero.Combat
         private int _currentRound;
         private bool _criticalReachedThisBattle;
 
+        /// <summary>Last threat target announced to the sink (null = none); reset per battle.</summary>
+        private IBattleAlly _lastThreatTarget;
+
+        /// <summary>Allies who have cast Provoke this battle (once per battle); reset per battle.</summary>
+        private readonly List<ICombatant> _provokedThisBattle = new List<ICombatant>(4);
+
+        /// <summary>Provoke's guaranteed pull: the next monster attack targets this ally (if still valid), then clears.</summary>
+        private IBattleAlly _forcedThreatTarget;
+
+        /// <summary>Ally hit (and still alive) by the most recent monster attack — the Provoke reaction's "in danger" candidate.</summary>
+        private IBattleAlly _lastMonsterVictim;
+
+        // ── Threat helpers (ThreatSystem.md) — pure ledger writes, never consume RNG ──
+
+        /// <summary>Adds job-scaled threat for an ally action and notifies the sink.</summary>
+        private void AddThreat(BattleContext battleContext, ICombatant actor, string actorType,
+            string source, float rawAmount)
+        {
+            if (actor == null || rawAmount <= 0f) return;
+            float added = battleContext.Threat.AddScaled(actor, rawAmount, out float total);
+            var evt = new BattleThreatEvent(actor.Name, actorType, source, added, total);
+            _sink.OnThreatGenerated(in evt);
+        }
+
+        /// <summary>
+        /// The battle context for the round in progress, so the hero decision path (which runs from
+        /// CalculateAllTurnValues / turn-start re-evaluation without a context parameter) can read threat.
+        /// </summary>
+        private BattleContext _roundBattleContext;
+
+        /// <summary>Rebuilds _tempLivingAllies (present + alive) — the monster-targeting candidate set.</summary>
+        private void BuildLivingAllyList()
+        {
+            _tempLivingAllies.Clear();
+            if (_hero.IsPresent && _hero.Combatant.CurrentHP > 0)
+                _tempLivingAllies.Add(_hero);
+            for (int i = 0; i < _mercenaries.Count; i++)
+            {
+                var ally = _mercenaries[i];
+                if (ally.IsPresent && ally.Combatant.CurrentHP > 0)
+                    _tempLivingAllies.Add(ally);
+            }
+        }
+
+        /// <summary>Combatant currently holding the most threat among living allies (null = nobody), for AI rescue decisions.</summary>
+        private ICombatant CurrentThreatTargetCombatant(BattleContext battleContext)
+        {
+            if (battleContext == null) return null;
+            BuildLivingAllyList();
+            return battleContext.Threat.HighestAmong(_tempLivingAllies)?.Combatant;
+        }
+
+        /// <summary>
+        /// Threat view for a deciding ally: the current target, the decider's own threat, and the
+        /// highest threat among the other living allies (hold-aggro maintain margin).
+        /// </summary>
+        private ICombatant ThreatViewFor(BattleContext battleContext, ICombatant self,
+            out float selfThreat, out float rivalThreat)
+        {
+            selfThreat = 0f;
+            rivalThreat = 0f;
+            var target = CurrentThreatTargetCombatant(battleContext);   // also rebuilds _tempLivingAllies
+            if (battleContext == null) return null;
+            selfThreat = battleContext.Threat.Get(self);
+            rivalThreat = battleContext.Threat.HighestThreatExcluding(_tempLivingAllies, self);
+            return target;
+        }
+
+        // ── Provoke (ThreatSystem.md) — out-of-turn tank reaction, never consumes RNG ──
+
+        /// <summary>True for Knight-flagged combatants (pure Knight or any composite containing Knight).</summary>
+        private static bool IsTank(ICombatant c) => ThreatTable.JobThreatMultiplier(c) > 1f;
+
+        /// <summary>The combatant's learned Provoke skill, or null.</summary>
+        private static ISkill FindProvokeSkill(ICombatant c)
+        {
+            IReadOnlyDictionary<string, ISkill> skills = null;
+            if (c is Hero hero) skills = hero.LearnedSkills;
+            else if (c is Mercenary merc) skills = merc.LearnedSkills;
+            if (skills == null) return null;
+            return skills.TryGetValue(ProvokeSkill.SkillId, out var skill) && skill.ReactionOnly ? skill : null;
+        }
+
+        /// <summary>Can this ally cast Provoke right now (alive, present, tank, learned, unused this battle, affordable)?</summary>
+        private bool CanProvoke(IBattleAlly ally, out ISkill skill)
+        {
+            skill = null;
+            if (ally == null || !ally.IsPresent) return false;
+            var c = ally.Combatant;
+            if (c == null || c.CurrentHP <= 0 || !IsTank(c)) return false;
+            if (_provokedThisBattle.Contains(c)) return false;
+            skill = FindProvokeSkill(c);
+            if (skill == null) return false;
+            return c.CurrentMP >= c.GetEffectiveMPCost(skill.MPCost);
+        }
+
+        /// <summary>
+        /// After a monster attack: if the victim is a non-tank ally now at or below
+        /// <see cref="GameConfig.ThreatRescueHpPercent"/>, the first tank (hero, then party order)
+        /// able to Provoke leaps in immediately. Pure list reads/writes — no RNG.
+        /// </summary>
+        private IEnumerator TryProvokeReaction(BattleContext battleContext)
+        {
+            var victim = _lastMonsterVictim;
+            _lastMonsterVictim = null;
+            if (victim == null || !victim.IsPresent) yield break;
+            var vc = victim.Combatant;
+            if (vc == null || vc.CurrentHP <= 0 || IsTank(vc)) yield break;
+            if (vc.CurrentHP > vc.MaxHP * GameConfig.ThreatRescueHpPercent) yield break;
+            if (!HasLivingMonsters()) yield break;
+
+            IBattleAlly tank = null;
+            if (CanProvoke(_hero, out _)) tank = _hero;
+            else
+            {
+                for (int i = 0; i < _mercenaries.Count; i++)
+                {
+                    if (CanProvoke(_mercenaries[i], out _)) { tank = _mercenaries[i]; break; }
+                }
+            }
+            if (tank == null) yield break;
+
+            yield return ExecuteProvoke(tank, victim, battleContext, reaction: true);
+        }
+
+        /// <summary>
+        /// Casts Provoke: spends MP, marks the once-per-battle use, adds the skill's flat threat
+        /// (Knight-scaled), forces the next monster attack onto the tank, announces the new threat
+        /// target immediately (HUD tint), and lets the sink show the bubble/label/console line.
+        /// A queued cast by an ally who already provoked this battle is skipped without cost.
+        /// </summary>
+        private IEnumerator ExecuteProvoke(IBattleAlly tank, IBattleAlly protectedAlly,
+            BattleContext battleContext, bool reaction)
+        {
+            if (!CanProvoke(tank, out var skill))
+            {
+                Debug.Log($"[BattleEngine] {tank?.Combatant?.Name} cannot Provoke (already used, unlearned, or no MP)");
+                yield break;
+            }
+
+            var c = tank.Combatant;
+            int mpBefore = c.CurrentMP;
+            bool spent = c is Hero h ? h.SpendMP(skill.MPCost) : ((Mercenary)c).SpendMP(skill.MPCost);
+            if (!spent) yield break;
+            _provokedThisBattle.Add(c);
+
+            string tankType = tank.IsHero ? "hero" : "merc";
+            AddThreat(battleContext, c, tankType, skill.Id, ThreatTable.SkillFlatThreat(skill));
+            _forcedThreatTarget = tank;
+
+            // Announce the target now so the HUD turns red before the monster swings
+            BuildLivingAllyList();
+            var newTarget = battleContext.Threat.HighestAmong(_tempLivingAllies);
+            if (!ReferenceEquals(newTarget, _lastThreatTarget))
+            {
+                _lastThreatTarget = newTarget;
+                _sink.OnThreatTargetChanged(newTarget);
+            }
+
+            Debug.Log($"[BattleEngine] {c.Name} provokes" +
+                      (protectedAlly != null ? $" to protect {protectedAlly.Combatant.Name}" : "") +
+                      (reaction ? " (reaction)" : " (queued)"));
+
+            var evt = new BattleProvokeEvent(c.Name, tankType, protectedAlly?.Combatant?.Name, reaction,
+                mpBefore - c.CurrentMP, battleContext.Threat.Get(c));
+            var r = _sink.OnProvoke(tank, in evt);
+            if (r != null) yield return r;
+        }
+
+        /// <summary>Forwards threat added by a skill's Execute (via IBattleContext.AddThreat) to the sink.</summary>
+        private void OnContextThreatAdded(ICombatant actor, float added, float total, string source)
+        {
+            var evt = new BattleThreatEvent(actor.Name, actor is Hero ? "hero" : "merc", source, added, total);
+            _sink.OnThreatGenerated(in evt);
+        }
+
         // Pre-allocated temp buffers — reused across rounds (no per-round heap alloc)
         private readonly List<Participant> _participants = new List<Participant>(16);
         private readonly List<IEnemy>      _tempLivingEnemies = new List<IEnemy>(8);
@@ -111,8 +287,14 @@ namespace PitHero.Combat
             _heroActionQueue = heroActionQueue;
             _currentRound    = 0;
             _criticalReachedThisBattle = false;
+            _lastThreatTarget = null;
+            _provokedThisBattle.Clear();
+            _forcedThreatTarget = null;
+            _lastMonsterVictim = null;
 
             var battleContext = new BattleContext();
+            battleContext.ThreatAdded = OnContextThreatAdded;
+            _roundBattleContext = battleContext;
 
             // Clear any leaked buff state from a previous battle
             hero.Combatant.ClearBattleState();
@@ -216,6 +398,10 @@ namespace PitHero.Combat
                         else
                         {
                             yield return ExecuteMonsterTurn(p.Enemy, battleContext);
+
+                            // Provoke reaction (ThreatSystem.md): a tank may leap in out of turn
+                            // when that attack left a non-tank ally in danger. Consumes no RNG.
+                            yield return TryProvokeReaction(battleContext);
                         }
 
                         r = _sink.TurnDelay();
@@ -245,6 +431,9 @@ namespace PitHero.Combat
                     }
                     yield return TickDoTsAndHandleDeaths(battleContext);
 
+                    // Threat decays every round; a fresh skill re-takes the lead (ThreatSystem.md)
+                    battleContext.Threat.DecayRound();
+
                     r = _sink.TurnDelay();
                     if (r != null) yield return r;
                 }
@@ -259,6 +448,15 @@ namespace PitHero.Combat
             }
             finally
             {
+                // Threat is battle-scoped: announce "no target" so the HUD tint clears
+                battleContext.Threat.Clear();
+                _roundBattleContext = null;
+                if (_lastThreatTarget != null)
+                {
+                    _lastThreatTarget = null;
+                    _sink.OnThreatTargetChanged(null);
+                }
+
                 // Clear all battle buffs so they never leak out of battle
                 if (_hero?.Combatant != null) _hero.Combatant.ClearBattleState();
                 if (_mercenaries != null)
@@ -410,7 +608,9 @@ namespace PitHero.Combat
             if (_heroActionQueue.HasActions()) return;
 
             LatchBattleCritical();
-            var decision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle);
+            var qTarget = ThreatViewFor(_roundBattleContext, _partyView.Hero, out float qSelf, out float qRival);
+            var decision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle,
+                qTarget, qSelf, qRival);
             switch (decision.Kind)
             {
                 case BattleAction.ActionKind.UseAttackSkill:
@@ -445,7 +645,21 @@ namespace PitHero.Combat
             if (!isQueuedOffensiveAction) return queuedAction;
 
             LatchBattleCritical();
-            var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle);
+            var rTarget = ThreatViewFor(_roundBattleContext, _partyView.Hero, out float rSelf, out float rRival);
+            var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle,
+                rTarget, rSelf, rRival);
+
+            // Threat (ThreatSystem.md): the ledger moves between round start and the hero's turn, so a
+            // tank whose queued basic attack is now a hold-aggro/rescue skill pick upgrades it here.
+            // Scoped to Knight-flagged heroes and physical→attack-skill only, so non-tank behaviour is untouched.
+            if (queuedAction.ActionType == QueuedActionType.Attack &&
+                reEvaluatedDecision.Kind == BattleAction.ActionKind.UseAttackSkill &&
+                reEvaluatedDecision.Skill != null &&
+                ThreatTable.JobThreatMultiplier(_partyView.Hero) > 1f)
+            {
+                Debug.Log($"[BattleEngine] Hero re-evaluated: tank upgrades queued attack to {reEvaluatedDecision.Skill.Id} for threat");
+                return new QueuedAction(reEvaluatedDecision.Skill);
+            }
 
             if (reEvaluatedDecision.Kind == BattleAction.ActionKind.UseHealingSkill ||
                 reEvaluatedDecision.Kind == BattleAction.ActionKind.UseConsumable)
@@ -506,7 +720,12 @@ namespace PitHero.Combat
             else if (queuedAction.ActionType == QueuedActionType.UseSkill)
             {
                 var skill = queuedAction.Skill;
-                if (hero.CurrentMP >= hero.GetEffectiveMPCost(skill.MPCost))
+                if (skill.ReactionOnly)
+                {
+                    // Player-queued Provoke: cast now, protecting nobody in particular
+                    yield return ExecuteProvoke(_hero, null, battleContext, reaction: false);
+                }
+                else if (hero.CurrentMP >= hero.GetEffectiveMPCost(skill.MPCost))
                 {
                     bool isHealingSkill = skill.HPRestoreAmount > 0 || skill.MPRestoreAmount > 0 ||
                         skill.GrantedBuffs.Count > 0 ||
@@ -523,7 +742,7 @@ namespace PitHero.Combat
                         var healTarget = queuedAction.Target ?? SelectPlayerQueuedSupportTarget(skill, hero);
                         bool targetIsHero = queuedAction.TargetsHero || healTarget == (object)hero;
                         var targetAlly = FindAllyForTarget(healTarget, targetIsHero);
-                        yield return ApplyHealingSkillEffectsAndDisplay(skill, hero, healTarget, targetAlly, hero.Name);
+                        yield return ApplyHealingSkillEffectsAndDisplay(skill, hero, healTarget, targetAlly, hero.Name, battleContext);
                         Debug.Log($"[BattleEngine] Hero used healing skill {skill.Name}");
                     }
                     else
@@ -588,6 +807,8 @@ namespace PitHero.Combat
                 int finalDamage = isCrit ? heroAttackResult.Damage * 2 : heroAttackResult.Damage;
                 bool enemyDied = targetEnemy.TakeDamage(finalDamage);
                 Debug.Log($"[BattleEngine] Hero deals {finalDamage} to {targetEnemy.Name}. HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+                AddThreat(battleContext, hero, "hero", "physical",
+                    ThreatTable.DamageThreat(finalDamage, targetEnemy.MaxHP));
 
                 string physAction = isCrit ? "physical.crit" : "physical";
                 var evt = new BattleAttackEvent(hero.Name, "hero", physAction,
@@ -645,6 +866,12 @@ namespace PitHero.Combat
                 if (queuedAction != null && queuedAction.ActionType == QueuedActionType.UseSkill && queuedAction.Skill != null)
                 {
                     var playerSkill = queuedAction.Skill;
+                    if (playerSkill.ReactionOnly)
+                    {
+                        _sink.OnMercenaryActionShown(mercAlly, queuedAction);
+                        yield return ExecuteProvoke(mercAlly, null, battleContext, reaction: false);
+                        yield break;
+                    }
                     if (mercenary.CurrentMP >= mercenary.GetEffectiveMPCost(playerSkill.MPCost))
                     {
                         bool isHealingSkill = playerSkill.HPRestoreAmount > 0 || playerSkill.MPRestoreAmount > 0 ||
@@ -663,7 +890,7 @@ namespace PitHero.Combat
                             bool targetIsHero = queuedAction.TargetsHero || healTarget == (object)_partyView.Hero;
                             var targetAlly = FindAllyForTarget(healTarget, targetIsHero);
                             yield return ApplyHealingSkillEffectsAndDisplay(playerSkill, mercenary, healTarget,
-                                targetAlly, mercenary.Name);
+                                targetAlly, mercenary.Name, battleContext);
                             Debug.Log($"[BattleEngine] {mercenary.Name} used player-queued skill {playerSkill.Name}");
                         }
                         else
@@ -690,8 +917,10 @@ namespace PitHero.Combat
 
             BuildMercList();
             LatchBattleCritical();
+            var mTarget = ThreatViewFor(battleContext, mercenary, out float mSelf, out float mRival);
             var mercDecision = BattleTacticDecisionEngine.DecideMercenaryAction(
-                mercenary, _partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle);
+                mercenary, _partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle,
+                mTarget, mSelf, mRival);
 
             switch (mercDecision.Kind)
             {
@@ -707,7 +936,7 @@ namespace PitHero.Combat
                         bool targetIsHero = mercDecision.TargetsHero || healTarget == (object)_partyView.Hero;
                         var targetAlly = FindAllyForTarget(healTarget, targetIsHero);
                         yield return ApplyHealingSkillEffectsAndDisplay(healSkill, mercenary, healTarget,
-                            targetAlly, mercenary.Name);
+                            targetAlly, mercenary.Name, battleContext);
                         Debug.Log($"[BattleEngine] {mercenary.Name} used {healSkill.Name}");
                     }
                     break;
@@ -801,6 +1030,8 @@ namespace PitHero.Combat
                 int finalDamage = isCrit ? mercAttackResult.Damage * 2 : mercAttackResult.Damage;
                 bool enemyDied = paTarget.TakeDamage(finalDamage);
                 Debug.Log($"[BattleEngine] {mercenary.Name} deals {finalDamage} to {paTarget.Name}. HP: {paTarget.CurrentHP}/{paTarget.MaxHP}");
+                AddThreat(battleContext, mercenary, "merc", "physical",
+                    ThreatTable.DamageThreat(finalDamage, paTarget.MaxHP));
 
                 string mercPhysAction = isCrit ? "physical.crit" : "physical";
                 var evt = new BattleAttackEvent(mercenary.Name, "merc", mercPhysAction,
@@ -899,6 +1130,16 @@ namespace PitHero.Combat
             var rproj = _sink.ShowSkillEffectOnMonsters(caster, skill, primaryTarget, _surroundingTargets);
             if (rproj != null) yield return rproj;
 
+            // Threat: flat skill value once, plus per-target damage threat (post-crit pass so crits count)
+            float skillThreat = ThreatTable.SkillFlatThreat(skill);
+            for (int ti = 0; ti < _tempLivingEnemies.Count; ti++)
+            {
+                var te = _tempLivingEnemies[ti];
+                if (_monsterHPBefore.TryGetValue(te, out int thb))
+                    skillThreat += ThreatTable.DamageThreat(thb - te.CurrentHP, te.MaxHP);
+            }
+            AddThreat(battleContext, caster, actorType, skill.Id, skillThreat);
+
             // Display damage and handle deaths for all affected monsters
             bool critTextShown = false;
             for (int i = _tempLivingEnemies.Count - 1; i >= 0; i--)
@@ -976,15 +1217,7 @@ namespace PitHero.Combat
             if (enemy.CurrentHP <= 0) yield break;
 
             // Build list of valid targets (present + alive)
-            _tempLivingAllies.Clear();
-            if (_hero.IsPresent && _hero.Combatant.CurrentHP > 0)
-                _tempLivingAllies.Add(_hero);
-            for (int i = 0; i < _mercenaries.Count; i++)
-            {
-                var ally = _mercenaries[i];
-                if (ally.IsPresent && ally.Combatant.CurrentHP > 0)
-                    _tempLivingAllies.Add(ally);
-            }
+            BuildLivingAllyList();
 
             if (_tempLivingAllies.Count == 0)
             {
@@ -1012,13 +1245,41 @@ namespace PitHero.Combat
                 }
             }
 
-            var targetAlly = _tempLivingAllies[Random.Range(0, _tempLivingAllies.Count)];
+            // Threat targeting (ThreatSystem.md): the single highest-threat candidate draws the attack
+            // with ThreatTargetHitChance; otherwise a uniform random living ally. Exactly ONE RNG draw,
+            // consumed unconditionally, in the same sequence position as the original target pick.
+            var threatTarget = battleContext.Threat.HighestAmong(_tempLivingAllies);
+            if (!ReferenceEquals(threatTarget, _lastThreatTarget))
+            {
+                _lastThreatTarget = threatTarget;
+                _sink.OnThreatTargetChanged(threatTarget);
+            }
+
+            float targetRoll = Random.NextFloat();
+            IBattleAlly targetAlly;
+            var forced = _forcedThreatTarget;
+            _forcedThreatTarget = null; // one swing only, whether or not it applies
+            if (forced != null && _tempLivingAllies.Contains(forced))
+            {
+                // Provoke's guaranteed pull — the roll is still consumed to keep the RNG contract
+                targetAlly = forced;
+            }
+            else if (threatTarget != null && targetRoll < GameConfig.ThreatTargetHitChance)
+            {
+                targetAlly = threatTarget;
+            }
+            else
+            {
+                int idx = (int)(targetRoll * _tempLivingAllies.Count);
+                if (idx >= _tempLivingAllies.Count) idx = _tempLivingAllies.Count - 1;
+                targetAlly = _tempLivingAllies[idx];
+            }
 
             // Sink handles monster facing + attack animation
             var r = _sink.OnMonsterWindup(enemy, targetAlly);
             if (r != null) yield return r;
 
-            yield return ExecuteMonsterAttackAlly(enemy, targetAlly);
+            yield return ExecuteMonsterAttackAlly(enemy, targetAlly, battleContext);
         }
 
         /// <summary>
@@ -1026,11 +1287,12 @@ namespace PitHero.Combat
         /// and ExecuteMonsterAttackMercenary).  Differences (burst registration, death handling,
         /// analytics target type) are parameterised via <see cref="IBattleAlly.IsHero"/>.
         /// </summary>
-        private IEnumerator ExecuteMonsterAttackAlly(IEnemy enemy, IBattleAlly targetAlly)
+        private IEnumerator ExecuteMonsterAttackAlly(IEnemy enemy, IBattleAlly targetAlly, BattleContext battleContext)
         {
             var target = targetAlly.Combatant;
             var enemyBattleStats = BattleStats.CalculateForMonster(enemy);
             var targetBattleStats = target.GetBattleStats();
+            _lastMonsterVictim = null;
 
             Debug.Log($"[BattleEngine] {enemy.Name} attacking {target.Name}");
 
@@ -1073,6 +1335,7 @@ namespace PitHero.Combat
                 {
                     Debug.Log($"[BattleEngine] {target.Name} died in battle.");
                     _criticalReachedThisBattle = true; // a death definitely marks the battle as dangerous
+                    battleContext.Threat.Remove(target);
                     _sink.OnAllyKilled(targetAlly, enemy);
 
                     // Dead mercenaries leave the roster (original: validMercenaries.Remove on death)
@@ -1083,7 +1346,12 @@ namespace PitHero.Combat
                     var rsd = _sink.ShowAllyDeath(targetAlly, enemy);
                     if (rsd != null) yield return rsd;
                 }
-                else if (BattleReactionHelper.ShouldCounter(target))
+                else
+                {
+                    _lastMonsterVictim = targetAlly;
+                }
+
+                if (!targetDied && BattleReactionHelper.ShouldCounter(target))
                 {
                     // Phase 3: counter-attack
                     Debug.Log($"[BattleEngine] {target.Name} counters {enemy.Name}!");
@@ -1137,6 +1405,12 @@ namespace PitHero.Combat
                     0, target.CurrentHP, target.CurrentHP, false,
                     missed: true);
                 _sink.OnAttackResolved(in missEvt);
+
+                // Evasion threat escalates with every dodge this battle (evasion tanks)
+                float evadeThreat = battleContext.Threat.RegisterEvasion(target, out float evadeTotal);
+                var threatEvt = new BattleThreatEvent(target.Name, targetAlly.IsHero ? "hero" : "merc",
+                    "evasion", evadeThreat, evadeTotal);
+                _sink.OnThreatGenerated(in threatEvt);
                 var rm = _sink.ShowMissOnAlly(targetAlly);
                 if (rm != null) yield return rm;
             }
@@ -1149,17 +1423,25 @@ namespace PitHero.Combat
         /// then fires display and analytics callbacks.
         /// </summary>
         private IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, ICombatant caster,
-            object healTarget, IBattleAlly targetAlly, string casterName)
+            object healTarget, IBattleAlly targetAlly, string casterName, BattleContext battleContext)
         {
+            // Threat: flat skill value plus percent-of-max-HP actually restored (computed below)
+            float healThreat = ThreatTable.SkillFlatThreat(skill);
+
             if (skill.HPRestoreAmount > 0)
             {
                 int healAmount = SkillHealCalculator.GetAmount(skill, caster);
 
                 bool healed = false;
+                var healCombatant = healTarget as ICombatant;
+                int hpBeforeHeal = healCombatant?.CurrentHP ?? 0;
                 if (healTarget is RolePlayingFramework.Heroes.Hero hpHero)
                     healed = hpHero.RestoreHP(healAmount);
                 else if (healTarget is Mercenary hpMerc)
                     healed = hpMerc.RestoreHP(healAmount);
+
+                if (healed && healCombatant != null)
+                    healThreat += ThreatTable.HealThreat(healCombatant.CurrentHP - hpBeforeHeal, healCombatant.MaxHP);
 
                 if (healed)
                 {
@@ -1191,6 +1473,9 @@ namespace PitHero.Combat
                 else if (healTarget is Mercenary mpMerc)
                     mpMerc.RestoreMP(skill.MPRestoreAmount);
             }
+
+            AddThreat(battleContext, caster, caster is RolePlayingFramework.Heroes.Hero ? "hero" : "merc",
+                skill.Id, healThreat);
 
             // Phase 3: apply GrantedBuffs
             var combatantTarget = healTarget as ICombatant;

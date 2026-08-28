@@ -42,6 +42,23 @@ namespace PitHero.AI
         private readonly List<ICombatant> _actedCombatants = new List<ICombatant>(8);
         private readonly List<DoTTickResult> _tickResults = new List<DoTTickResult>(8);
 
+        /// <summary>Per-battle threat ledger (see <see cref="PitHero.Combat.ThreatTable"/>).</summary>
+        public PitHero.Combat.ThreatTable Threat { get; } = new PitHero.Combat.ThreatTable();
+
+        /// <summary>
+        /// Raised when threat is added through <see cref="AddThreat"/> (skill Execute path) so the
+        /// engine can forward it to the sink. Engine-driven additions bypass this and call the sink directly.
+        /// </summary>
+        public System.Action<ICombatant, float, float, string> ThreatAdded;
+
+        /// <inheritdoc/>
+        public void AddThreat(ICombatant actor, float rawAmount, string source)
+        {
+            if (actor == null || rawAmount <= 0f) return;
+            float added = Threat.AddScaled(actor, rawAmount, out float total);
+            ThreatAdded?.Invoke(actor, added, total, source);
+        }
+
         // ── IBattleContext ────────────────────────────────────────────────────────────
 
         /// <inheritdoc/>

@@ -58,8 +58,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void Smart_FullOrder_Knight()
         {
-            // Smart ranks: spin_slash(0,120), light_armor(1,50), heavy_armor(2,100), heavy_strike(3,180)
-            string[] expected = { "knight.spin_slash", "knight.light_armor", "knight.heavy_armor", "knight.heavy_strike" };
+            // Smart ranks: spin_slash(0,120), provoke(1,50), heavy_armor(2,100), heavy_strike(3,180)
+            string[] expected = { "knight.spin_slash", "knight.provoke", "knight.heavy_armor", "knight.heavy_strike" };
             VerifySmartOrder(new Knight(), expected);
         }
 
@@ -144,10 +144,10 @@ namespace PitHero.Tests
         public void Active_Mode_Knight_Order()
         {
             // Active → actives cheapest-first, then passives cheapest-first
-            // Knight actives: SpinSlash(120,idx 2), HeavyStrike(180,idx 3)
-            // Knight passives: LightArmor(50,idx 0), HeavyArmor(100,idx 1)
-            // Expected: spin_slash → heavy_strike → light_armor → heavy_armor
-            string[] expected = { "knight.spin_slash", "knight.heavy_strike", "knight.light_armor", "knight.heavy_armor" };
+            // Knight actives: Provoke(50,idx 0), SpinSlash(120,idx 2), HeavyStrike(180,idx 3)
+            // Knight passives: HeavyArmor(100,idx 1)
+            // Expected: provoke → spin_slash → heavy_strike → heavy_armor
+            string[] expected = { "knight.provoke", "knight.spin_slash", "knight.heavy_strike", "knight.heavy_armor" };
             VerifyModeOrder(new Knight(), AutoLearnMode.Active, expected);
         }
 
@@ -157,10 +157,10 @@ namespace PitHero.Tests
         public void Passive_Mode_Knight_Order()
         {
             // Passive → passives cheapest-first, then actives cheapest-first
-            // Knight passives: LightArmor(50,idx 0), HeavyArmor(100,idx 1)
-            // Knight actives: SpinSlash(120,idx 2), HeavyStrike(180,idx 3)
-            // Expected: light_armor → heavy_armor → spin_slash → heavy_strike
-            string[] expected = { "knight.light_armor", "knight.heavy_armor", "knight.spin_slash", "knight.heavy_strike" };
+            // Knight passives: HeavyArmor(100,idx 1)
+            // Knight actives: Provoke(50,idx 0), SpinSlash(120,idx 2), HeavyStrike(180,idx 3)
+            // Expected: heavy_armor → provoke → spin_slash → heavy_strike
+            string[] expected = { "knight.heavy_armor", "knight.provoke", "knight.spin_slash", "knight.heavy_strike" };
             VerifyModeOrder(new Knight(), AutoLearnMode.Passive, expected);
         }
 
@@ -215,14 +215,14 @@ namespace PitHero.Tests
         [TestMethod]
         public void TryLearnPass_MultiLearn_OnePass()
         {
-            // Knight Smart order: spin_slash(120), light_armor(50), heavy_armor(100), heavy_strike(180)
+            // Knight Smart order: spin_slash(120), provoke(50), heavy_armor(100), heavy_strike(180)
             // With 400 JP: 120+50+100=270 spent → 130 left; heavy_strike costs 180 → stops.
             // Expects 3 skills learned.
             var hero = MakeHero("Arn", new Knight(), jp: 400);
             var svc  = new AutoLearnSkillsService { Enabled = true, Mode = AutoLearnMode.Smart };
 
             int learned = svc.TryLearnPass(hero);
-            Assert.AreEqual(3, learned, "Should learn spin_slash + light_armor + heavy_armor before running short");
+            Assert.AreEqual(3, learned, "Should learn spin_slash + provoke + heavy_armor before running short");
         }
 
         [TestMethod]

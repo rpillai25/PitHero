@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class SneakAttackSkill : BaseSkill
     {
-        public SneakAttackSkill() : base("thief.sneak_attack", SkillTextKey.Skill_Thief_SneakAttack_Name, SkillTextKey.Skill_Thief_SneakAttack_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 3, 130, ElementType.Dark) { }
+        public SneakAttackSkill() : base("thief.sneak_attack", SkillTextKey.Skill_Thief_SneakAttack_Name, SkillTextKey.Skill_Thief_SneakAttack_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 3, 130, ElementType.Dark) { ThreatValue = 10; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "SneakAttack";
@@ -31,6 +31,7 @@ namespace RolePlayingFramework.Skills
     {
         public VanishSkill() : base("thief.vanish", SkillTextKey.Skill_Thief_Vanish_Name, SkillTextKey.Skill_Thief_Vanish_Desc, SkillKind.Active, SkillTargetType.Self, 6, 180, ElementType.Dark)
         {
+            ThreatValue = 0; // Vanish hides; the Thief's threat comes from evasions instead
             GrantedBuffs = new SkillBuff[]
             {
                 // durationTurns:2 — end-of-round tick consumes one turn in the cast round,

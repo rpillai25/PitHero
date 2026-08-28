@@ -200,6 +200,7 @@ namespace PitHero.AI
                 _turnIndicator = _turnIndicatorEntity.AddComponent(new BattleTurnIndicatorComponent());
 
             HeroStateMachine.IsBattleInProgress = true;
+            HeroStateMachine.CurrentThreatTarget = null;
 
             Debug.Log($"[LiveBattleAdapter] Battle started. HeroStateMachine.IsBattleInProgress=true");
             return null;
@@ -611,6 +612,57 @@ namespace PitHero.AI
         }
 
         /// <inheritdoc/>
+        /// <remarks>Analytics only — per-action threat lines would flood the console.</remarks>
+        public void OnThreatGenerated(in BattleThreatEvent evt)
+        {
+            PitHero.Services.Analytics.AnalyticsService.LogThreat(
+                evt.ActorName, evt.ActorType, evt.Source, evt.Amount, evt.Total);
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Publishes the target for the HUD tint (polled by MainGameScene.UpdateHeroHUD) and
+        /// prints one console line per change. Null clears the tint silently.
+        /// </remarks>
+        public void OnThreatTargetChanged(IBattleAlly target)
+        {
+            HeroStateMachine.CurrentThreatTarget = target?.Combatant;
+            if (target?.Combatant == null) return;
+
+            var evtSvc = Core.Services.GetService<GameEventService>();
+            evtSvc?.EmitLocalized(UITextKey.ConsoleThreatTarget,
+                (target.Combatant.Name, GameConfig.ConsoleColorHeroName));
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Speech bubble ("Over here!"), floating "Provoke!" label, one console line, and the
+        /// <c>provoke</c> analytics row. The threat gain itself already went through OnThreatGenerated.
+        /// </remarks>
+        public IEnumerator OnProvoke(IBattleAlly tank, in BattleProvokeEvent evt)
+        {
+            PitHero.Services.Analytics.AnalyticsService.LogProvoke(
+                evt.TankName, evt.TankType, evt.ProtectedName, evt.Reaction, evt.MpSpent, evt.ThreatTotal);
+
+            var evtSvc = Core.Services.GetService<GameEventService>();
+            if (evtSvc != null)
+            {
+                if (evt.ProtectedName != null)
+                    evtSvc.EmitLocalized(UITextKey.ConsoleBattleProvoke,
+                        (evt.TankName, GameConfig.ConsoleColorHeroName),
+                        (evt.ProtectedName, GameConfig.ConsoleColorHeroName));
+                else
+                    evtSvc.EmitLocalized(UITextKey.ConsoleBattleProvokeSolo,
+                        (evt.TankName, GameConfig.ConsoleColorHeroName));
+            }
+
+            var entity = GetEntityForAlly(tank);
+            if (entity == null) return null;
+            SpeechBubbleDialogue.SayProvoke(entity);
+            return ShowTextOnEntity(entity, "Provoke!", GameConfig.ThreatTargetHudTint);
+        }
+
+        /// <inheritdoc/>
         public void OnConsumableHealApplied(RolePlayingFramework.Equipment.Consumable consumable, in BattleHealEvent evt)
         {
             // ConsoleBattleHealConsumable with the item name in its rarity colour (original :919-925)
@@ -823,6 +875,7 @@ namespace PitHero.AI
         public void CleanupBattleUI(List<IBattleAlly> mercAllies)
         {
             HeroStateMachine.IsBattleInProgress = false;
+            HeroStateMachine.CurrentThreatTarget = null;
 
             if (_turnIndicatorEntity != null)
                 _turnIndicatorEntity.Destroy();

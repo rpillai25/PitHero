@@ -1784,6 +1784,7 @@ namespace PitHero.UI
                 Time.TimeScale = 1f;
                 Core.GetGlobalManager<CoroutineManager>().StopAllCoroutines();
                 AI.HeroStateMachine.IsBattleInProgress = false;
+                AI.HeroStateMachine.CurrentThreatTarget = null;
                 Core.Services.GetService<TileStateService>()?.Clear();
                 Core.Scene = new TitleScreenScene();
             };

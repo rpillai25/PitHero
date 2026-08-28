@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class FireSkill : BaseSkill
     {
-        public FireSkill() : base("mage.fire", SkillTextKey.Skill_Mage_Fire_Name, SkillTextKey.Skill_Mage_Fire_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 3, 120, ElementType.Fire) { }
+        public FireSkill() : base("mage.fire", SkillTextKey.Skill_Mage_Fire_Name, SkillTextKey.Skill_Mage_Fire_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 3, 120, ElementType.Fire) { ThreatValue = 45; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "Fire";
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class FireStormSkill : BaseSkill
     {
-        public FireStormSkill() : base("mage.firestorm", SkillTextKey.Skill_Mage_Firestorm_Name, SkillTextKey.Skill_Mage_Firestorm_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 200, ElementType.Fire) { }
+        public FireStormSkill() : base("mage.firestorm", SkillTextKey.Skill_Mage_Firestorm_Name, SkillTextKey.Skill_Mage_Firestorm_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 200, ElementType.Fire) { ThreatValue = 45; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             var stats = caster.GetSkillStats();

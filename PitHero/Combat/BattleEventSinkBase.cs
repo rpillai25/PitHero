@@ -88,6 +88,15 @@ namespace PitHero.Combat
         public virtual void OnBuffApplied(in BattleBuffEvent evt) { }
 
         /// <inheritdoc/>
+        public virtual void OnThreatGenerated(in BattleThreatEvent evt) { }
+
+        /// <inheritdoc/>
+        public virtual void OnThreatTargetChanged(IBattleAlly target) { }
+
+        /// <inheritdoc/>
+        public virtual IEnumerator OnProvoke(IBattleAlly tank, in BattleProvokeEvent evt) => null;
+
+        /// <inheritdoc/>
         public virtual void OnItemConsumed() { }
 
         /// <inheritdoc/>

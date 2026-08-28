@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class RoundhouseSkill : BaseSkill
     {
-        public RoundhouseSkill() : base("monk.roundhouse", SkillTextKey.Skill_Monk_Roundhouse_Name, SkillTextKey.Skill_Monk_Roundhouse_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 4, 120, ElementType.Neutral) { }
+        public RoundhouseSkill() : base("monk.roundhouse", SkillTextKey.Skill_Monk_Roundhouse_Name, SkillTextKey.Skill_Monk_Roundhouse_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 4, 120, ElementType.Neutral) { ThreatValue = 20; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             // Hit primary target first (AoE fix: primary was previously excluded)
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class FlamingFistSkill : BaseSkill
     {
-        public FlamingFistSkill() : base("monk.flaming_fist", SkillTextKey.Skill_Monk_FlamingFist_Name, SkillTextKey.Skill_Monk_FlamingFist_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 5, 170, ElementType.Fire) { }
+        public FlamingFistSkill() : base("monk.flaming_fist", SkillTextKey.Skill_Monk_FlamingFist_Name, SkillTextKey.Skill_Monk_FlamingFist_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 5, 170, ElementType.Fire) { ThreatValue = 20; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "FlamingFist";

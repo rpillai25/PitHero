@@ -42,6 +42,15 @@ namespace PitHero.UI
         private const int LEVEL_TEXT_X_OFFSET = 71;
         private const int LEVEL_TEXT_Y_OFFSET = 13;
 
+        /// <summary>Panel background tint; red while this character is the battle threat target.</summary>
+        private Color _panelTint = Color.White;
+
+        /// <summary>Marks/unmarks this panel as the threat target (background tint only; bars/text stay white).</summary>
+        public void SetThreatTarget(bool isThreatTarget)
+        {
+            _panelTint = isThreatTarget ? GameConfig.ThreatTargetHudTint : Color.White;
+        }
+
         // Current values for rendering
         private int _currentHp;
         private int _maxHp;
@@ -134,7 +143,7 @@ namespace PitHero.UI
             var position = Entity.Transform.Position;
 
             // Render HUD template background with origin at top-left (0,0) instead of center
-            batcher.Draw(ActiveHudTemplate, position, Color.White, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
+            batcher.Draw(ActiveHudTemplate, position, _panelTint, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
 
             // Use constant offsets without scaling
             int hpUnitXOffset = HP_UNIT_X_OFFSET;

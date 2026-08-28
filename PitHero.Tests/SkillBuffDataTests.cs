@@ -252,6 +252,7 @@ namespace PitHero.Tests
 
             public bool IsFirstOffensiveAction(ICombatant c) => true;
             public void MarkActed(ICombatant c) { }
+            public void AddThreat(ICombatant actor, float rawAmount, string source) { }
         }
 
         private sealed class SimpleEnemy : IEnemy

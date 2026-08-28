@@ -89,5 +89,9 @@ namespace PitHero
         public const string HeroDinnerServing             = "HeroDinnerServing";
         public const string HeroLunchSkipped              = "HeroLunchSkipped";
         public const string HeroDinnerSkipped             = "HeroDinnerSkipped";
+
+        // Knight Provoke shout (ThreatSystem.md)
+        public const string KnightProvokeOverHere         = "KnightProvokeOverHere";
+        public const string KnightProvokeFocusOnMe        = "KnightProvokeFocusOnMe";
     }
 }
