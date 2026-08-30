@@ -109,7 +109,7 @@ namespace PitHero.Tests
             var paladin = new Hero("Cecil", combinedCrystal.Job, combinedCrystal.Level, combinedCrystal.BaseStats, combinedCrystal);
             
             // Should have skills from both jobs
-            Assert.IsTrue(paladin.LearnedSkills.ContainsKey("knight.light_armor"), "Should have Knight skills");
+            Assert.IsTrue(paladin.LearnedSkills.ContainsKey("knight.provoke"), "Should have Knight skills");
             Assert.IsTrue(paladin.LearnedSkills.ContainsKey("mage.fire"), "Should have Mage skills");
             
             // Should have combined JP

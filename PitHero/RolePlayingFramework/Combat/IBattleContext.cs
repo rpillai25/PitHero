@@ -29,5 +29,11 @@ namespace RolePlayingFramework.Combat
 
         /// <summary>Records that the combatant has performed an offensive action.</summary>
         void MarkActed(ICombatant c);
+
+        /// <summary>
+        /// Adds raw threat (percent-of-max-HP units, job multiplier applied inside) to an ally.
+        /// Lets a skill's Execute add extra threat beyond the engine's damage/flat accounting.
+        /// </summary>
+        void AddThreat(ICombatant actor, float rawAmount, string source);
     }
 }

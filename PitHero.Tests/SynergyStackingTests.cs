@@ -496,7 +496,7 @@ namespace PitHero.Tests
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             
             // Create pattern with unlockable skill
-            var skill = new LightArmorPassive();
+            var skill = new HeavyArmorPassive();
             var pattern = CreateTestPatternWithSkill("test_pattern", skill, 100);
             var group = new ActiveSynergyGroup(pattern);
             
@@ -533,7 +533,7 @@ namespace PitHero.Tests
             var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             
-            var skill = new LightArmorPassive();
+            var skill = new HeavyArmorPassive();
             var pattern = CreateTestPatternWithSkill("test_pattern", skill, 50);
             var group = new ActiveSynergyGroup(pattern);
             
@@ -562,7 +562,7 @@ namespace PitHero.Tests
             var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             
-            var skill = new LightArmorPassive();
+            var skill = new HeavyArmorPassive();
             var pattern = CreateTestPatternWithSkill("test_pattern", skill, 50);
             var group = new ActiveSynergyGroup(pattern);
             

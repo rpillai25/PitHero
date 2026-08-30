@@ -76,7 +76,8 @@ namespace PitHero.AI
             List<IEnemy> livingMonsters,
             List<Mercenary> livingMercenaries,
             int roundNumber,
-            bool battleCriticalReached)
+            bool battleCriticalReached,
+            ICombatant threatTarget = null, float selfThreat = 0f, float rivalThreat = 0f)
         {
             var hero = party.Hero;
             if (hero == null || livingMonsters == null || livingMonsters.Count == 0)
@@ -85,14 +86,14 @@ namespace PitHero.AI
             switch (party.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideBlitz(party, hero, livingMonsters, livingMercenaries, roundNumber);
+                    return DecideBlitz(party, hero, livingMonsters, livingMercenaries, roundNumber, threatTarget, selfThreat, rivalThreat);
 
                 case BattleTactic.Defensive:
-                    return DecideDefensive(party, hero, livingMonsters, livingMercenaries);
+                    return DecideDefensive(party, hero, livingMonsters, livingMercenaries, threatTarget, selfThreat, rivalThreat);
 
                 case BattleTactic.Strategic:
                 default:
-                    return DecideStrategic(party, hero, livingMonsters, livingMercenaries, battleCriticalReached);
+                    return DecideStrategic(party, hero, livingMonsters, livingMercenaries, battleCriticalReached, threatTarget, selfThreat, rivalThreat);
             }
         }
 
@@ -109,7 +110,8 @@ namespace PitHero.AI
             List<IEnemy> livingMonsters,
             List<Mercenary> livingMercenaries,
             int roundNumber,
-            bool battleCriticalReached)
+            bool battleCriticalReached,
+            ICombatant threatTarget = null, float selfThreat = 0f, float rivalThreat = 0f)
         {
             if (merc == null || livingMonsters == null || livingMonsters.Count == 0)
                 return CreatePhysicalAttack(null);
@@ -117,15 +119,89 @@ namespace PitHero.AI
             switch (party.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideMercBlitz(merc, party, livingMonsters, livingMercenaries, roundNumber);
+                    return DecideMercBlitz(merc, party, livingMonsters, livingMercenaries, roundNumber, threatTarget, selfThreat, rivalThreat);
 
                 case BattleTactic.Defensive:
-                    return DecideMercDefensive(merc, party, livingMonsters, livingMercenaries);
+                    return DecideMercDefensive(merc, party, livingMonsters, livingMercenaries, threatTarget, selfThreat, rivalThreat);
 
                 case BattleTactic.Strategic:
                 default:
-                    return DecideMercStrategic(merc, party, livingMonsters, livingMercenaries, battleCriticalReached);
+                    return DecideMercStrategic(merc, party, livingMonsters, livingMercenaries, battleCriticalReached, threatTarget, selfThreat, rivalThreat);
             }
+        }
+
+        // ====================================================================
+        // THREAT RESCUE (ThreatSystem.md)
+        // ====================================================================
+
+        /// <summary>
+        /// Tank aggro control for Knight-flagged combatants (pure Knight or any composite containing
+        /// Knight, hero or merc). Two tiers, same action:
+        /// <list type="bullet">
+        /// <item><b>Hold aggro</b> — whenever the tank is not the current threat target and no other
+        /// tank holds it (including the empty ledger at round 1), it prefers its highest-threat affordable
+        /// attack skill over buffs/openers/MP-efficiency. Tanks want the monsters' attention by default.</item>
+        /// <item><b>Rescue</b> — the same, but the trigger is a non-tank target at or below
+        /// <see cref="GameConfig.ThreatRescueHpPercent"/> HP; kept as a named tunable so the eager
+        /// hold-aggro tier can be disabled (<see cref="GameConfig.ThreatTankHoldAggro"/>) while
+        /// rescue still fires.</item>
+        /// </list>
+        /// Runs after the heal check (healing always wins) and before any buff/opener logic.
+        /// Never consumes RNG.
+        /// </summary>
+        private static bool TryThreatRescue(ICombatant self, ICombatant threatTarget,
+            float selfThreat, float rivalThreat,
+            List<ISkill> attackSkills, int currentMP, float mpCostReduction,
+            List<IEnemy> livingMonsters, out BattleAction action)
+        {
+            action = default;
+            if (ThreatTable.JobThreatMultiplier(self) <= 1f) return false;          // only tanks
+
+            if (ReferenceEquals(threatTarget, self))
+            {
+                // Maintain tier: already the target, but a rival is close enough that steady caster
+                // output + round decay would overtake us — re-assert before that happens.
+                if (!GameConfig.ThreatTankHoldAggro) return false;
+                if (rivalThreat <= 0f || selfThreat >= rivalThreat * GameConfig.ThreatHoldMargin) return false;
+            }
+            else
+            {
+                if (threatTarget != null && ThreatTable.JobThreatMultiplier(threatTarget) > 1f)
+                    return false;                                                   // another tank has it — fine
+
+                bool wounded = threatTarget != null && threatTarget.MaxHP > 0 &&
+                               threatTarget.CurrentHP <= threatTarget.MaxHP * GameConfig.ThreatRescueHpPercent;
+                if (!GameConfig.ThreatTankHoldAggro && !wounded) return false;
+            }
+
+            ISkill best = null;
+            IEnemy bestTarget = null;
+            int bestThreat = -1;
+            for (int i = 0; i < attackSkills.Count; i++)
+            {
+                var skill = attackSkills[i];
+                if (skill.Kind != SkillKind.Active) continue;
+                if (skill.TargetType != SkillTargetType.SingleEnemy &&
+                    skill.TargetType != SkillTargetType.SurroundingEnemies) continue;
+                if (EffectiveMPCost(skill.MPCost, mpCostReduction) > currentMP) continue;
+
+                int threat = ThreatTable.SkillFlatThreat(skill);
+                // Tie-break: AoE generates extra damage threat across targets when several monsters live
+                if (threat < bestThreat) continue;
+                if (threat == bestThreat &&
+                    !(skill.TargetType == SkillTargetType.SurroundingEnemies && livingMonsters.Count > 1))
+                    continue;
+
+                var target = FindBestMonsterTarget(livingMonsters, skill.Element);
+                if (target == null) continue;
+                best = skill;
+                bestTarget = target;
+                bestThreat = threat;
+            }
+
+            if (best == null) return false;
+            action = CreateAttackSkillAction(best, bestTarget);
+            return true;
         }
 
         // ====================================================================
@@ -136,7 +212,7 @@ namespace PitHero.AI
         /// Round 1 only: one self-buff opener cast, then pure aggression (issue #294).</summary>
         private static BattleAction DecideBlitz(
             IBattlePartyView party, Hero hero, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
-            int roundNumber)
+            int roundNumber, ICombatant threatTarget, float selfThreat, float rivalThreat)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -145,6 +221,10 @@ namespace PitHero.AI
             if (TryHeroHealAction(party, hero, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // Threat rescue (tanks pull aggro off a wounded non-tank) — after heal, before buffs
+            if (TryThreatRescue(hero, threatTarget, selfThreat, rivalThreat, _attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, out var rescue))
+                return rescue;
 
             // 2. Round-1 opener: one buff cast, then pure aggression
             if (roundNumber <= 1)
@@ -175,7 +255,7 @@ namespace PitHero.AI
         private static BattleAction DecideStrategic(
             IBattlePartyView party, Hero hero,
             List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
-            bool battleCriticalReached)
+            bool battleCriticalReached, ICombatant threatTarget, float selfThreat, float rivalThreat)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -184,6 +264,10 @@ namespace PitHero.AI
             if (TryHeroHealAction(party, hero, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // Threat rescue (tanks pull aggro off a wounded non-tank) — after heal, before buffs
+            if (TryThreatRescue(hero, threatTarget, selfThreat, rivalThreat, _attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, out var rescue))
+                return rescue;
 
             // 2. Reactive buffs (issue #294): once any ally has hit critical HP this battle the
             //    fight has proven dangerous — spend free turns spreading ally-targetable buffs.
@@ -213,7 +297,7 @@ namespace PitHero.AI
         /// <summary>Defensive: heal at 60%, restore MP at 30%, buff, then attack only when safe.</summary>
         private static BattleAction DecideDefensive(
             IBattlePartyView party, Hero hero,
-            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries, ICombatant threatTarget, float selfThreat, float rivalThreat)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -222,6 +306,10 @@ namespace PitHero.AI
             if (TryHeroHealAction(party, hero, livingMercenaries,
                     DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // Threat rescue (tanks pull aggro off a wounded non-tank) — after heal, before buffs
+            if (TryThreatRescue(hero, threatTarget, selfThreat, rivalThreat, _attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, out var rescue))
+                return rescue;
 
             // 2. Apply buff if available
             {
@@ -252,7 +340,7 @@ namespace PitHero.AI
         /// Round 1 only: one self-buff opener cast, then pure aggression (issue #294).</summary>
         private static BattleAction DecideMercBlitz(
             Mercenary merc, IBattlePartyView party, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
-            int roundNumber)
+            int roundNumber, ICombatant threatTarget, float selfThreat, float rivalThreat)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -261,6 +349,10 @@ namespace PitHero.AI
             if (TryMercHealAction(merc, party, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // Threat rescue (tanks pull aggro off a wounded non-tank) — after heal, before buffs
+            if (TryThreatRescue(merc, threatTarget, selfThreat, rivalThreat, _attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters, out var rescue))
+                return rescue;
 
             // 2. Round-1 opener: one buff cast, then pure aggression
             if (roundNumber <= 1)
@@ -288,7 +380,7 @@ namespace PitHero.AI
         private static BattleAction DecideMercStrategic(
             Mercenary merc, IBattlePartyView party,
             List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
-            bool battleCriticalReached)
+            bool battleCriticalReached, ICombatant threatTarget, float selfThreat, float rivalThreat)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -297,6 +389,10 @@ namespace PitHero.AI
             if (TryMercHealAction(merc, party, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // Threat rescue (tanks pull aggro off a wounded non-tank) — after heal, before buffs
+            if (TryThreatRescue(merc, threatTarget, selfThreat, rivalThreat, _attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters, out var rescue))
+                return rescue;
 
             // 2. Reactive buffs (issue #294): ally-targetable buffs once the battle-critical flag
             //    is latched; strictly-self buffs only when this merc themself is critical.
@@ -316,7 +412,7 @@ namespace PitHero.AI
         /// <summary>Defensive tactic for mercenary: heal at 60%, buff, then attack.</summary>
         private static BattleAction DecideMercDefensive(
             Mercenary merc, IBattlePartyView party,
-            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries, ICombatant threatTarget, float selfThreat, float rivalThreat)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -325,6 +421,10 @@ namespace PitHero.AI
             if (TryMercHealAction(merc, party, livingMercenaries,
                     DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // Threat rescue (tanks pull aggro off a wounded non-tank) — after heal, before buffs
+            if (TryThreatRescue(merc, threatTarget, selfThreat, rivalThreat, _attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters, out var rescue))
+                return rescue;
 
             // 2. Buff
             {
@@ -915,6 +1015,9 @@ namespace PitHero.AI
             List<ISkill> buffSkills)
         {
             if (skill.Kind != SkillKind.Active) return;
+
+            // Reaction skills (Provoke) are fired by the engine out of turn, never as a turn action
+            if (skill.ReactionOnly) return;
 
             // Healing skill: restores HP (may also grant buffs — those apply in BattleEngine healing path)
             if (skill.HPRestoreAmount > 0)

@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Jobs.Primary
 
         protected override void DefineSkills(List<ISkill> list)
         {
-            list.Add(new LightArmorPassive());
+            list.Add(new ProvokeSkill());
             list.Add(new HeavyArmorPassive());
             list.Add(new SpinSlashSkill());
             list.Add(new HeavyStrikeSkill());

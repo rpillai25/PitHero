@@ -10,8 +10,8 @@ Skill_Knight_HeavyArmor_Name,Heavy Armor
 Skill_Knight_HeavyArmor_Desc,Provides +2 passive defense bonus when wearing heavy armor.
 Skill_Knight_HeavyStrike_Name,Heavy Strike
 Skill_Knight_HeavyStrike_Desc,A powerful overhead strike that deals bonus damage based on Strength.
-Skill_Knight_LightArmor_Name,Light Armor
-Skill_Knight_LightArmor_Desc,Allows equipping robes in addition to heavy armor.
+Skill_Knight_Provoke_Name,Provoke
+Skill_Knight_Provoke_Desc,Once per battle: leaps in to draw the monsters onto the Knight when an ally is in danger. Costs 5 MP.
 Skill_Knight_SpinSlash_Name,Spin Slash
 Skill_Knight_SpinSlash_Desc,Attack all surrounding enemies with a spinning blade strike dealing 80% damage.
 Skill_Mage_Economist_Name,Economist

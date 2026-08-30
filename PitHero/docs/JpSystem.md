@@ -46,7 +46,7 @@ The `Hero` class now supports JP mechanics through its bound crystal:
 - **Base Stats**: STR 4, AGI 0, VIT 3, MAG 0
 - **Growth/Level**: STR +2, AGI +0, VIT +2, MAG +0
 - **Skills**:
-  1. Light Armor (Passive, JP: 50, Level: 1) - Can equip robes
+  1. Provoke (Active, JP: 50, Level: 1) - MP: 5, once per battle; reacts out of turn to draw monsters onto the Knight when an ally is in danger (see ThreatSystem.md)
   2. Heavy Armor (Passive, JP: 100, Level: 2) - +2 passive defense
   3. Spin Slash (Active, JP: 120, Level: 2) - AP: 4, 80% damage to surrounding enemies
   4. Heavy Strike (Active, JP: 180, Level: 3) - AP: 5, bonus STR damage
@@ -120,7 +120,7 @@ Three modes are selectable via a `<`/`>` cycler:
 
 | Job | Rank 0 (first) | Rank 1 | Rank 2 | Rank 3 (last) |
 |---|---|---|---|---|
-| Knight | knight.spin_slash (120 JP) | knight.light_armor (50 JP) | knight.heavy_armor (100 JP) | knight.heavy_strike (180 JP) |
+| Knight | knight.spin_slash (120 JP) | knight.provoke (50 JP) | knight.heavy_armor (100 JP) | knight.heavy_strike (180 JP) |
 | Mage | mage.fire (120 JP) | mage.heart_fire (60 JP) | mage.economist (80 JP) | mage.firestorm (200 JP) |
 | Priest | priest.heal (100 JP) | priest.calm_spirit (50 JP) | priest.mender (80 JP) | priest.defup (160 JP) |
 | Monk | monk.roundhouse (120 JP) | monk.counter (70 JP) | monk.deflect (90 JP) | monk.flaming_fist (170 JP) |

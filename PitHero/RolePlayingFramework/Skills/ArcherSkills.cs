@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class PowerShotSkill : BaseSkill
     {
-        public PowerShotSkill() : base("archer.power_shot", SkillTextKey.Skill_Archer_PowerShot_Name, SkillTextKey.Skill_Archer_PowerShot_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 4, 130, ElementType.Neutral) { }
+        public PowerShotSkill() : base("archer.power_shot", SkillTextKey.Skill_Archer_PowerShot_Name, SkillTextKey.Skill_Archer_PowerShot_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 4, 130, ElementType.Neutral) { ThreatValue = 20; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "PowerShot";
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class VolleySkill : BaseSkill
     {
-        public VolleySkill() : base("archer.volley", SkillTextKey.Skill_Archer_Volley_Name, SkillTextKey.Skill_Archer_Volley_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 200, ElementType.Neutral) { }
+        public VolleySkill() : base("archer.volley", SkillTextKey.Skill_Archer_Volley_Name, SkillTextKey.Skill_Archer_Volley_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 200, ElementType.Neutral) { ThreatValue = 20; }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             // Hit primary target first (AoE fix: primary was previously excluded)

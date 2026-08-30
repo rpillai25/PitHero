@@ -456,5 +456,8 @@ namespace PitHero
         public const string FridgePreStockStackSize = "FridgePreStockStackSize";
         public const string FridgePreStockStackSizeTooltip = "FridgePreStockStackSizeTooltip";
         public const string ButtonSendToCropStorage = "ButtonSendToCropStorage";
+        public const string ConsoleThreatTarget = "ConsoleThreatTarget";
+        public const string ConsoleBattleProvoke = "ConsoleBattleProvoke";
+        public const string ConsoleBattleProvokeSolo = "ConsoleBattleProvokeSolo";
     }
 }

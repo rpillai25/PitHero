@@ -233,6 +233,7 @@ namespace PitHero.Tests
             public bool IsFirstOffensiveAction(ICombatant c) => AlwaysFirst;
             public void MarkActed(ICombatant c) { }
             public void RegisterDoT(IEnemy target, int damagePerTurn, int turns, string sourceSkillId, ICombatant actor) { }
+            public void AddThreat(ICombatant actor, float rawAmount, string source) { }
         }
 
         /// <summary>IEnemy stub that accumulates total damage received.</summary>

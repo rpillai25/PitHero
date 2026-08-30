@@ -193,6 +193,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/AutoJobAssignmentSystem.md` — Automated monster job assignment: demand evaluators, pure solver, day/night shifts, reassess cadence, and the step-by-step recipe for adding a new job (e.g. fishing)
 - `PitHero/docs/AutomationSystem.md` — The Settings → Automation tab as a whole: which service owns each toggle, ticked vs call-driven automations, the shared Gold Buffer, append-only save sections, the two-phase load sync, the grayed-control recipe, and how to add a new Automation option
 - `PitHero/docs/SpeechBubbleSystem.md` — Speech-bubble dialogue: SpeechBubbleComponent + SpeechBubbleDialogue option/gate tables, Dialogue.txt localization rules, full event catalog, the System.Random-not-Nez.Random rule, and the recipe for adding a new dialogue event or speaker
+- `PitHero/docs/ThreatSystem.md` — Battle threat/aggro: percent-of-max-HP threat units, per-skill `ThreatValue`, Knight ×2, evasion escalation, round decay, one-`NextFloat` monster target pick, red HUD tint plumbing, tank AI tiers (hold/maintain/rescue), and the out-of-turn Knight Provoke reaction
 - `PitHero/docs/ShuffleBagSystem.md` — Shuffle-bag ("marble bag") controlled randomness: ShuffleBag<T>/NextFromRoll, the two-floats-per-ally-attack battle RNG contract, CritBagSet persistence, LootBagSet compositions + LiveBags null fallback, boss epic chest rules, tavern dish bag, and the recipe for adding a new bag-driven drop
 
 **Per-feature docs:**

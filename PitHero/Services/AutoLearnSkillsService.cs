@@ -35,7 +35,7 @@ namespace PitHero.Services
 
             // Knight
             _smartRankTable["knight.spin_slash"]   = 0;
-            _smartRankTable["knight.light_armor"]  = 1;
+            _smartRankTable["knight.provoke"]      = 1;
             _smartRankTable["knight.heavy_armor"]  = 2;
             _smartRankTable["knight.heavy_strike"] = 3;
 

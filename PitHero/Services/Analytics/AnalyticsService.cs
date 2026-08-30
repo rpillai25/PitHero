@@ -320,6 +320,33 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>
+        /// Logs a Replenish button press: the hero's HP/MP at the moment of the click, the configured
+        /// thresholds, how many party members were flagged for HP/MP replenish, and whether any override
+        /// was set (i.e. whether the GOAP planner was actually asked to go heal).
+        /// </summary>
+        [Conditional("DEBUG")]
+        public static void LogReplenish(int heroHP, int heroMaxHP, int heroMP, int heroMaxMP,
+            float hpThreshold, float mpThreshold, int hpFlagged, int mpFlagged, bool triggered)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("replenish"))
+                return;
+            _json.Field("heroHP", heroHP);
+            _json.Field("heroMaxHP", heroMaxHP);
+            _json.Field("heroMP", heroMP);
+            _json.Field("heroMaxMP", heroMaxMP);
+            _json.Field("hpThreshold", hpThreshold);
+            _json.Field("mpThreshold", mpThreshold);
+            _json.Field("hpFlagged", hpFlagged);
+            _json.Field("mpFlagged", mpFlagged);
+            _json.Field("triggered", triggered);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs a new mercenary arriving at the tavern, with stats and hire cost.</summary>
         [Conditional("DEBUG")]
         public static void LogMercArrived(Mercenary merc, int hireCost)
@@ -607,6 +634,43 @@ namespace PitHero.Services.Analytics
             _json.Field("buffType", buffType);
             _json.Field("magnitude", magnitude);
             _json.Field("durationTurns", durationTurns);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs an ally gaining battle threat (one row per damage/skill/heal/evasion event).</summary>
+        [Conditional("DEBUG")]
+        public static void LogThreat(string actor, string actorType, string source, float amount, float total)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("threat"))
+                return;
+            _json.Field("actor", actor);
+            _json.Field("actorType", actorType);
+            _json.Field("source", source);
+            _json.Field("amount", (int)amount);
+            _json.Field("total", (int)total);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a Provoke cast (ThreatSystem.md): reaction or player-queued, whom it protected, MP and resulting threat.</summary>
+        [Conditional("DEBUG")]
+        public static void LogProvoke(string actor, string actorType, string protectedName, bool reaction, int mpSpent, float threatTotal)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("provoke"))
+                return;
+            _json.Field("actor", actor);
+            _json.Field("actorType", actorType);
+            _json.Field("protected", protectedName ?? "");
+            _json.Field("reaction", reaction);
+            _json.Field("mp", mpSpent);
+            _json.Field("threatTotal", (int)threatTotal);
             EndEvent();
 #endif
         }

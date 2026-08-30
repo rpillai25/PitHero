@@ -66,3 +66,5 @@ HeroDinnerTime,Should be time for dinner
 HeroDinnerServing,They should be serving dinner now
 HeroLunchSkipped,Looks like we'll have to skip lunch
 HeroDinnerSkipped,Looks like we'll have to skip dinner
+KnightProvokeOverHere,Over here!
+KnightProvokeFocusOnMe,Focus on me!

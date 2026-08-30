@@ -90,7 +90,7 @@ namespace RolePlayingFramework.Heroes
         {
             if (!string.IsNullOrEmpty(skillId))
             {
-                _learnedSkillIds.Add(skillId);
+                _learnedSkillIds.Add(Skills.SkillIdMigration.Resolve(skillId));
                 _mastered = IsJobMastered();
             }
         }

@@ -391,6 +391,7 @@ namespace PitHero.ECS.Components
                 return;
 
             bool anyOverrideSet = false;
+            int hpFlagged = 0, mpFlagged = 0; // analytics: party members below each threshold
 
             // Check hero HP (threshold of 0 effectively disables)
             float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
@@ -398,6 +399,7 @@ namespace PitHero.ECS.Components
             {
                 _replenishHPOverrideHero = true;
                 anyOverrideSet = true;
+                hpFlagged++;
             }
 
             // Check hero MP (threshold of 0 effectively disables)
@@ -408,6 +410,7 @@ namespace PitHero.ECS.Components
                 {
                     _replenishMPOverrideHero = true;
                     anyOverrideSet = true;
+                    mpFlagged++;
                 }
             }
 
@@ -427,6 +430,7 @@ namespace PitHero.ECS.Components
                         {
                             _replenishHPOverrideMercEntityIds.Add(merc.Id);
                             anyOverrideSet = true;
+                            hpFlagged++;
                         }
 
                         if (mercComp.LinkedMercenary.MaxMP > 0)
@@ -436,6 +440,7 @@ namespace PitHero.ECS.Components
                             {
                                 _replenishMPOverrideMercEntityIds.Add(merc.Id);
                                 anyOverrideSet = true;
+                                mpFlagged++;
                             }
                         }
                     }
@@ -450,6 +455,10 @@ namespace PitHero.ECS.Components
             // Signal state machine to interrupt current plan and re-plan immediately
             if (anyOverrideSet)
                 ReplenishPending = true;
+
+            Services.Analytics.AnalyticsService.LogReplenish(
+                LinkedHero.CurrentHP, LinkedHero.MaxHP, LinkedHero.CurrentMP, LinkedHero.MaxMP,
+                ReplenishHPThreshold, ReplenishMPThreshold, hpFlagged, mpFlagged, anyOverrideSet);
         }
 
         /// <summary>

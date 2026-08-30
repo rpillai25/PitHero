@@ -68,6 +68,13 @@ namespace PitHero.AI
         public static bool IsBattleInProgress { get; set; } = false;
 
         /// <summary>
+        /// The ally currently holding the monsters' attention (ThreatSystem.md), or null.
+        /// Set by LiveBattleAdapter on every threat-target change and cleared at battle end;
+        /// polled per frame by MainGameScene to tint exactly one party HUD panel red.
+        /// </summary>
+        public static RolePlayingFramework.Combat.ICombatant CurrentThreatTarget { get; set; }
+
+        /// <summary>
         /// Gets whether this component should respect the global pause state
         /// </summary>
         public bool ShouldPause => true;

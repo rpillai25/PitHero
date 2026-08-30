@@ -125,7 +125,9 @@ evasion/variance) changes live gameplay outcomes. Since issue #382 every ally at
 followed by a quickdraw-bag roll — both always consumed even when the attacker cannot crit,
 mirroring how `RollDodge` always rolls at 0 dodge chance. The crit *decision* comes from
 per-combatant `CritBagSet` shuffle bags on `Hero`/`Mercenary` (persist across battles; fed by
-those two floats, never drawing RNG themselves). Preserved quirks that must not be
+those two floats, never drawing RNG themselves). The monster target pick is exactly **one**
+`NextFloat` (threat system — `ThreatSystem.md`): the same float decides the threat-target pull
+and the uniform fallback index; threat ledger writes never touch RNG. Preserved quirks that must not be
 "fixed" casually: a hero who dies mid-round still takes their queued turn that round
 (hero turn-skip is pit-presence only); mercenary heals use `UseMP` while the hero uses
 `SpendMP`; merc kills award rewards with `heroKill=false` (no `InnExhausted` reset);

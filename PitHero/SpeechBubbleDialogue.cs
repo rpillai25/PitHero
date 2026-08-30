@@ -242,7 +242,20 @@ namespace PitHero
             new Option(DialogueTextKey.SecondChanceMissSomething),
         });
 
+        // Knight Provoke (ThreatSystem.md) — two variants, no silent: the bubble IS the feedback
+        private static readonly OptionBag ProvokeOptions = new OptionBag(new Option[]
+        {
+            new Option(DialogueTextKey.KnightProvokeOverHere),
+            new Option(DialogueTextKey.KnightProvokeFocusOnMe),
+        });
+
         // ── Public API ───────────────────────────────────────────────────────────
+
+        /// <summary>Shows the Provoke shout over the provoking Knight (hero or mercenary entity).</summary>
+        public static void SayProvoke(Entity entity)
+        {
+            SayFromOptions(entity, ProvokeOptions);
+        }
 
         /// <summary>Shows a randomly-picked breakfast bubble.</summary>
         public static void SayBreakfast(Entity entity)

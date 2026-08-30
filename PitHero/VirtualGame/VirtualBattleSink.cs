@@ -67,12 +67,39 @@ namespace PitHero.VirtualGame
         /// </remarks>
         public override void OnAttackResolved(in BattleAttackEvent evt)
         {
-            if (_current == null || evt.Damage <= 0) return;
+            if (_current == null) return;
+
+            // Tank-share metrics: count every monster→ally attack, hit or miss
+            if (evt.ActorType == "monster")
+            {
+                _current.MonsterAttacks++;
+                if (_threatTargetName != null && evt.TargetName == _threatTargetName)
+                    _current.AttacksOnThreatTarget++;
+            }
+
+            if (evt.Damage <= 0) return;
 
             if (evt.TargetType == "monster")
                 _current.DamageDealt += evt.Damage;
             else if (evt.ActorType == "monster")
                 _current.DamageTaken += evt.Damage;
+        }
+
+        private string _threatTargetName;
+
+        /// <inheritdoc/>
+        /// <remarks>Tracks the current threat target's name for <see cref="VirtualBattleMetrics.AttacksOnThreatTarget"/>.</remarks>
+        public override void OnThreatTargetChanged(IBattleAlly target)
+        {
+            _threatTargetName = target?.Combatant?.Name;
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>Counts Provoke casts into <see cref="VirtualBattleMetrics.Provokes"/>.</remarks>
+        public override IEnumerator OnProvoke(IBattleAlly tank, in BattleProvokeEvent evt)
+        {
+            if (_current != null) _current.Provokes++;
+            return null;
         }
 
         /// <inheritdoc/>

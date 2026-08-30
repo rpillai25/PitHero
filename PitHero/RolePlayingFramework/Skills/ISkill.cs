@@ -39,6 +39,19 @@ namespace RolePlayingFramework.Skills
         /// </summary>
         bool CleansesDebuffs { get; }
 
+        /// <summary>
+        /// Flat threat (percent-of-max-HP units) the caster gains when this skill is used in battle,
+        /// on top of any damage/heal-derived threat. Negative means "unset" — the engine falls back
+        /// to <c>GameConfig.ThreatSkillAttackDefault</c> / <c>ThreatSkillSupportDefault</c>.
+        /// </summary>
+        int ThreatValue { get; }
+
+        /// <summary>
+        /// True for skills the battle engine fires <b>out of turn</b> as a reaction (Knight Provoke).
+        /// AI turn decisions never pick a reaction skill; a player-queued cast is honoured on the caster's turn.
+        /// </summary>
+        bool ReactionOnly { get; }
+
         /// <summary>Applies passive modifiers to the combatant at aggregation time (no side effects).</summary>
         void ApplyPassive(ICombatant c);
 

@@ -311,34 +311,35 @@ namespace PitHero.Tests
 
         #endregion
 
-        #region LightArmor Extra Equip Permission Tests
+        #region Knight Provoke (replaced Light Armor)
 
         [TestMethod]
-        public void KnightMerc_WithLightArmorSkill_CanEquipRobe()
+        public void Knight_JobSkills_ContainProvoke_NotLightArmor()
         {
             var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
+            merc.LearnAllJobSkills();
+
+            Assert.IsTrue(merc.LearnedSkills.ContainsKey(ProvokeSkill.SkillId), "Knight should learn Provoke");
+            Assert.IsFalse(merc.LearnedSkills.ContainsKey("knight.light_armor"), "Light Armor is retired");
+            var provoke = merc.LearnedSkills[ProvokeSkill.SkillId];
+            Assert.AreEqual(SkillKind.Active, provoke.Kind);
+            Assert.AreEqual(SkillTargetType.Self, provoke.TargetType);
+            Assert.IsTrue(provoke.ReactionOnly, "Provoke is engine-fired, never an AI turn action");
+            Assert.AreEqual(ProvokeSkill.ProvokeMPCost, provoke.MPCost);
+            Assert.AreEqual(ProvokeSkill.ProvokeThreat, provoke.ThreatValue);
+
             var robe = new Gear("TestRobe", ItemKind.ArmorRobe, ItemRarity.Normal, "Test", 100, new StatBlock(0, 0, 0, 0));
-
-            // Without skill: ArmorRobe defaults to Mage|Priest only, Knight cannot equip
-            Assert.IsFalse(merc.CanEquipItem(robe), "Knight without light_armor should not be able to equip a robe");
-
-            merc.LearnSkill(new LightArmorPassive());
-
-            Assert.IsTrue(merc.CanEquipItem(robe), "Knight with light_armor should be able to equip a robe via extra permission");
+            Assert.IsFalse(merc.CanEquipItem(robe), "Without Light Armor a Knight can no longer equip robes");
         }
 
         [TestMethod]
-        public void KnightMerc_ForgetLightArmorSkill_CanNoLongerEquipRobe()
+        public void HeroCrystal_OldLightArmorId_MigratesToProvoke()
         {
-            var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
-            merc.LearnSkill(new LightArmorPassive());
-            var robe = new Gear("TestRobe", ItemKind.ArmorRobe, ItemRarity.Normal, "Test", 100, new StatBlock(0, 0, 0, 0));
+            var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(5, 5, 5, 5));
+            crystal.AddLearnedSkill("knight.light_armor");
 
-            Assert.IsTrue(merc.CanEquipItem(robe), "Knight with light_armor should be able to equip a robe");
-
-            merc.ForgetSkill("knight.light_armor");
-
-            Assert.IsFalse(merc.CanEquipItem(robe), "After forgetting light_armor, knight should no longer be able to equip a robe");
+            Assert.IsTrue(crystal.HasSkill(ProvokeSkill.SkillId), "Old saves keep their learned slot as Provoke");
+            Assert.IsFalse(crystal.HasSkill("knight.light_armor"));
         }
 
         #endregion
@@ -436,14 +437,14 @@ namespace PitHero.Tests
         [TestMethod]
         public void Merc_HeavyArmor_WithRobeArmor_DoesNotAddDefenseBonus()
         {
-            // Knight with light_armor can equip robes; heavy armor bonus should NOT apply to robes
+            // Grant the robe permission directly (Light Armor is retired); heavy armor bonus should NOT apply to robes
             var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
             merc.LearnSkill(new HeavyArmorPassive());
-            merc.LearnSkill(new LightArmorPassive());
+            merc.AddExtraEquipPermission(ItemKind.ArmorRobe);
 
             var robe = new Gear("TestRobe", ItemKind.ArmorRobe, ItemRarity.Normal, "Test", 100, new StatBlock(0, 0, 0, 0), def: 0);
             bool equipped = merc.Equip(robe);
-            Assert.IsTrue(equipped, "Knight with light_armor should equip a robe");
+            Assert.IsTrue(equipped, "Knight with an explicit robe permission should equip a robe");
 
             int def = merc.GetBattleStats().Defense;
             var stats = merc.GetTotalStats();
