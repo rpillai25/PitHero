@@ -75,6 +75,8 @@ namespace PitHero.ECS.Scenes
         private bool _fridgeRestoreHalfZoom;
         private bool _wasInHarvestedCropsMode;
         private BuildingContextMenu _buildingContextMenu; // Popup shown when a placed building is clicked
+        private bool _wasBuildingMenuVisible;
+        private bool _buildingMenuRestoreHalfZoom;
         private AddMonsterDialog _addMonsterDialog; // Dialog for manually adding monsters to a house (issue #283)
         private Services.PlacedBuilding _hoveredBuilding; // Building currently under the cursor (hover outline)
         private Entity _buildingHoverOutlineEntity; // Entity rendering the white hover outline
@@ -3074,6 +3076,7 @@ namespace PitHero.ECS.Scenes
             HandleFridgeClicks();
             _refrigeratorDialog?.Update();
             UpdateFridgeDialogGate();
+            UpdateBuildingMenuGate();
         }
 
         /// <summary>
@@ -3113,8 +3116,47 @@ namespace PitHero.ECS.Scenes
             // open, exactly like SettingsUI's own windows — otherwise the bar can slide away at
             // Normal-window scale and come back parked half off-screen after the half restore.
             if (_settingsUI != null)
-                _settingsUI.ExternalUIWindowOpen = fridgeDialogVisible;
+                _settingsUI.ExternalUIWindowOpen = fridgeDialogVisible || (_buildingContextMenu?.IsVisible ?? false);
             _wasFridgeDialogVisible = fridgeDialogVisible;
+        }
+
+        /// <summary>
+        /// Mirrors the Refrigerator window treatment for the building context menu (shown when
+        /// a placed Monster House / Crop Storage is clicked): while it is open, a half-size
+        /// window temporarily restores to normal so the menu items are readable. Watching the
+        /// visibility edge here covers every close path - Cancel and each action button alike.
+        /// Pause is not handled here: the menu pauses/unpauses itself in Show/Hide.
+        /// </summary>
+        private void UpdateBuildingMenuGate()
+        {
+            bool menuVisible = _buildingContextMenu?.IsVisible ?? false;
+            if (menuVisible == _wasBuildingMenuVisible)
+                return;
+
+            if (menuVisible)
+            {
+                bool wasHalfSize = WindowManager.IsHalfHeightMode();
+                _buildingMenuRestoreHalfZoom = wasHalfSize;
+                UI.UIWindowManager.OnUIWindowOpening();
+                if (wasHalfSize)
+                    _cameraController?.ResetZoomToDefault();
+            }
+            else
+            {
+                UI.UIWindowManager.OnUIWindowClosing();
+                // Restore the half-window default zoom that was reset when the menu opened
+                // (skip if the persistent size changed to Normal while it was open).
+                if (_buildingMenuRestoreHalfZoom
+                    && UI.UIWindowManager.PersistentWindowSize == UI.UIWindowManager.WindowSizeMode.Half)
+                    _cameraController?.ApplyHalfWindowZoom();
+                _buildingMenuRestoreHalfZoom = false;
+            }
+            // Keep the top bar shown while the menu is open, exactly like the Refrigerator window.
+            // Both gates share ExternalUIWindowOpen, so each sets the OR of both windows'
+            // visibility to keep one gate closing edge from clearing the other open window.
+            if (_settingsUI != null)
+                _settingsUI.ExternalUIWindowOpen = menuVisible || (_refrigeratorDialog?.IsVisible() ?? false);
+            _wasBuildingMenuVisible = menuVisible;
         }
 
         /// <summary>
