@@ -58,6 +58,13 @@ namespace PitHero.ECS.Components
         /// </summary>
         public float QueuedActionXOffset { get; set; }
 
+        /// <summary>
+        /// Y offset applied to QUEUED actions only, relative to the entity position. Raises the
+        /// waiting stack above the HUD panel so it never obscures the HP bar/text drawn on it.
+        /// Set by the scene, which owns HUD geometry.
+        /// </summary>
+        public float QueuedActionYOffset { get; set; }
+
         /// <summary>The action queue this component monitors and renders (hero's or mercenary's).</summary>
         private ActionQueue MonitoredQueue =>
             _heroComponent != null ? _heroComponent.BattleActionQueue : _mercenaryComponent?.BattleActionQueue;
@@ -196,14 +203,16 @@ namespace PitHero.ECS.Components
                 var actions = monitoredQueue.GetAll();
                 if (actions != null && actions.Length > 0)
                 {
-                    // Waiting actions sit to the side of the head so they never cover the active one
-                    // rising out of it, and stack UPWARD — the HUD is at the bottom of the screen, so
+                    // Waiting actions sit to the side of the head and raised above the HUD panel so
+                    // they cover neither the active action rising off the head nor the HP display,
+                    // and stack UPWARD — the HUD is at the bottom of the screen, so
                     // a downward queue would run straight off it.
                     float queueX = startX + QueuedActionXOffset;
+                    float queueY = startY + QueuedActionYOffset;
                     for (int i = 0; i < actions.Length; i++)
                     {
                         float yOffset = -i * (SpriteSize + SpriteSpacing);
-                        RenderAction(actions[i], batcher, itemsAtlas, skillsAtlas, queueX, startY, yOffset, -1f);
+                        RenderAction(actions[i], batcher, itemsAtlas, skillsAtlas, queueX, queueY, yOffset, -1f);
                     }
                 }
             }

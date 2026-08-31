@@ -117,6 +117,10 @@ namespace PitHero.ECS.Scenes
         // covers the active action rising off the head. Lands a 32px sprite centred on the 51px bar
         // (HP_UNIT_X_OFFSET 3 + (51 - 32) / 2 = 12, i.e. 12 - 64 from the head).
         private const float HudQueuedActionXOffset = -52f;
+        // ...and raised a full sprite height so the waiting stack sits just ABOVE the panel
+        // instead of on top of it — the first queued sprite's bottom lands 2px over the panel top,
+        // leaving the HP bar and HP text fully readable during battle.
+        private const float HudQueuedActionYOffset = -32f;
 
         // Party-visibility auto-hide. The panels describe the party, so they only hold screen space
         // while somebody in the party is on camera; otherwise they slide down out of the bottom edge
@@ -2074,18 +2078,21 @@ namespace PitHero.ECS.Scenes
             _mercenary2HUD.SetEnabled(false); // Initially hidden until mercenary is hired
 
             // Create screen-space action visualization entities anchored on the HUD heads (active action);
-            // their waiting queues are offset left onto the HP bar so they never cover it.
+            // their waiting queues are offset left over the HP bar and raised above the panel so
+            // they never cover the HP display.
             var heroVizEntity = CreateEntity("hero-action-queue-viz");
             heroVizEntity.SetPosition(GraphicalHudBaseX + HudQueueXOffset, GraphicalHudY() + HudQueueYOffset);
             _heroActionQueueViz = heroVizEntity.AddComponent(new ActionQueueVisualizationComponent());
             _heroActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
             _heroActionQueueViz.QueuedActionXOffset = HudQueuedActionXOffset;
+            _heroActionQueueViz.QueuedActionYOffset = HudQueuedActionYOffset;
 
             var merc1VizEntity = CreateEntity("merc1-action-queue-viz");
             merc1VizEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing + HudQueueXOffset, GraphicalHudY() + HudQueueYOffset);
             _merc1ActionQueueViz = merc1VizEntity.AddComponent(new ActionQueueVisualizationComponent());
             _merc1ActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
             _merc1ActionQueueViz.QueuedActionXOffset = HudQueuedActionXOffset;
+            _merc1ActionQueueViz.QueuedActionYOffset = HudQueuedActionYOffset;
             _merc1ActionQueueViz.SetEnabled(false);
 
             var merc2VizEntity = CreateEntity("merc2-action-queue-viz");
@@ -2093,6 +2100,7 @@ namespace PitHero.ECS.Scenes
             _merc2ActionQueueViz = merc2VizEntity.AddComponent(new ActionQueueVisualizationComponent());
             _merc2ActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
             _merc2ActionQueueViz.QueuedActionXOffset = HudQueuedActionXOffset;
+            _merc2ActionQueueViz.QueuedActionYOffset = HudQueuedActionYOffset;
             _merc2ActionQueueViz.SetEnabled(false);
 
             // Shortcut bar at bottom center
