@@ -247,5 +247,25 @@ namespace RolePlayingFramework.Equipment
             item = null;
             return false;
         }
+
+        /// <summary>
+        /// Returns true when the name matches a registered item, including tier-scaled
+        /// "BaseName+N" (N &gt; 1) gear names. Never instantiates an item.
+        /// </summary>
+        public static bool IsKnownItemName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return false;
+            if (Registry.ContainsKey(name))
+                return true;
+
+            int plusIdx = name.LastIndexOf('+');
+            if (plusIdx > 0
+                && int.TryParse(name.Substring(plusIdx + 1), out int tier) && tier > 1
+                && Registry.ContainsKey(name.Substring(0, plusIdx)))
+                return true;
+
+            return false;
+        }
     }
 }

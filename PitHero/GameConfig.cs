@@ -644,6 +644,9 @@ namespace PitHero
         public static readonly Color ConsoleColorHeroName = new Color(100, 180, 255);  // Light blue — heroes and mercenaries
         public static readonly Color ConsoleColorEnemyName = new Color(220, 80, 80);   // Red — enemy names
 
+        /// <summary>Seconds without player scrolling before the event console resumes auto-scrolling to the latest entry.</summary>
+        public const float ConsoleAutoScrollQuietSeconds = 10f;
+
         //Hero Paperdoll Colors
         public static readonly Color SKIN_SHADE_1 = new Color(251, 200, 178); //Applies to body and hands
         public static readonly Color SKIN_SHADE_2 = new Color(140, 91, 62);

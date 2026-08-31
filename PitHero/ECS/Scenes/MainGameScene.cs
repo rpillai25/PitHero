@@ -2850,6 +2850,7 @@ namespace PitHero.ECS.Scenes
             }
 
             _settingsUI?.Update();
+            _eventConsolePanel?.Update();
             // Remove duplicate HeroUI update since SettingsUI handles it
 
             // Update pause overlay visibility based on pause state. During free-move mode the

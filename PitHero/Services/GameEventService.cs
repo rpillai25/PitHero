@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using PitHero;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.Services
 {
@@ -18,11 +19,18 @@ namespace PitHero.Services
     {
         public readonly string Text;
         public readonly Color Color;
+        /// <summary>Non-null when this segment is a registered item's display name (enables hover tooltips in the console).</summary>
+        public readonly string ItemName;
 
-        public ConsoleSegment(string text, Color color)
+        public ConsoleSegment(string text, Color color) : this(text, color, null)
+        {
+        }
+
+        public ConsoleSegment(string text, Color color, string itemName)
         {
             Text = text;
             Color = color;
+            ItemName = itemName;
         }
 
         /// <summary>
@@ -47,7 +55,11 @@ namespace PitHero.Services
                 int close = format.IndexOf('}', open + 1);
                 if (close < 0) break;
                 if (int.TryParse(format.Substring(open + 1, close - open - 1), out int idx) && (uint)idx < (uint)args.Length)
-                    result.Add(new ConsoleSegment(args[idx].text, args[idx].color));
+                {
+                    // Auto-tag args whose text is a registered item display name so the console can show item tooltips.
+                    string itemName = ItemRegistry.IsKnownItemName(args[idx].text) ? args[idx].text : null;
+                    result.Add(new ConsoleSegment(args[idx].text, args[idx].color, itemName));
+                }
                 pos = close + 1;
             }
             return result.ToArray();
