@@ -55,6 +55,7 @@ namespace PitHero.ECS.Scenes
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
+        private Rendering.CloudOverlayController _cloudOverlay;
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
         private Label _restoringGrassLabel;
@@ -247,6 +248,8 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Rendering.ColorGradingController));
             _colorGrading?.Dispose();
             _colorGrading = null;
+            _cloudOverlay?.Dispose();
+            _cloudOverlay = null;
             _eventConsolePanel?.Dispose();
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
             Core.Services.RemoveService(typeof(Services.GameEventService));
@@ -1207,6 +1210,15 @@ namespace PitHero.ECS.Scenes
             topLayerRenderer.SetMaterial(_colorGrading.Material);
 
             SpawnTreeBands();
+
+            // Volumetric scrolling cloud overlay (front-most world-space layer, drawn over terrain,
+            // actors, fog-of-war, tree bands, and buildings; screen-space UI still renders over it).
+            // Not registered as a service — nothing else consumes it.
+            _cloudOverlay = new Rendering.CloudOverlayController();
+            var cloudEntity = CreateEntity("cloud-overlay");
+            var cloudComponent = cloudEntity.AddComponent(new CloudOverlayComponent(_cloudOverlay));
+            cloudComponent.SetRenderLayer(GameConfig.RenderLayerCloudOverlay);
+            cloudComponent.SetMaterial(_cloudOverlay.Material);
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
 
@@ -2867,6 +2879,7 @@ namespace PitHero.ECS.Scenes
             UpdateFundsLabel();
             Core.Services.GetService<InGameTimeService>()?.Update();
             _colorGrading?.UpdateTimeOfDay();
+            _cloudOverlay?.Update();
             UpdateClockLabel();
             UpdateTillingLabel();
             UpdateRestoringGrassLabel();

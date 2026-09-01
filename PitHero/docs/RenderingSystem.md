@@ -14,6 +14,7 @@ Higher number = drawn first = further back.  Lower number = drawn later = in fro
 
 | Constant | Value | What lives here |
 |---|---|---|
+| `RenderLayerCloudOverlay` | -10 | Volumetric scrolling cloud overlay — front-most world-space layer, covers everything below |
 | `RenderLayerTop` | 2 | Tilemap "Top" layer (tree-tops, overhangs) — covers everything |
 | `RenderLayerActors` | 60 | Heroes, mercenaries, monsters, **placed buildings** (all Y-sorted via `LayerDepth`) |
 | `RenderLayerSingleTileObject` | 61 | Static 32×32 world objects: treasure chests, walls/obstacles (Y-sorted) |
@@ -51,6 +52,20 @@ map, so rows anchor by **trunk base** and the render texture clips those trunks 
 band's trees grow upward toward the map, so rows anchor by **canopy top**, holding the first row's
 crowns `TreeBandCanopyPeekPx` over the map's bottom tile row instead of burying it; that texture is
 sized to contain whole trees so no canopy is ever cut.
+
+`RenderLayerCloudOverlay` holds a single `CloudOverlayComponent` (`ECS/Components/CloudOverlayComponent.cs`)
+drawing one quad covering `camera.Bounds` per frame, textured with a small code-generated tileable
+noise texture (`CloudNoiseGenerator`) and shaded by a custom pixel shader (`CloudOverlay.fx` /
+`CloudOverlayEffect` / `CloudOverlayController`, all in `PitHero.Rendering`). Because `RenderableComparer`
+sorts by descending `RenderLayer`, the negative value places it after every other world-space renderable
+(terrain, actors, fog-of-war, tree bands, buildings) — clouds cover all of them. It sits strictly below
+the screen-space UI group (996–1000), which renders in Nez's separate `ScreenSpaceRenderer` pass
+afterward, so HUD/windows/speech bubbles are never occluded. The shader reconstructs per-pixel world
+position from `CameraTopLeft`/`CameraSize` uniforms set each `Render()` call, so clouds stay
+world-anchored under any pan/zoom without needing a giant fixed-size quad. Drift, weather (coverage
+threshold), shape morph, and day/night tint are all driven once per frame from `CloudOverlayController.Update()`
+(called from `MainGameScene.Update`), off `InGameTimeService.AccumulatedSeconds` — freezing with the
+rest of the world when paused.
 
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
 `RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999),
