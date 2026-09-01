@@ -79,6 +79,9 @@ namespace PitHero.Rendering
             _effect.ScrollOffset3 = WrappedOffset(dir, t,
                 GameConfig.CloudDriftSpeedPx * GameConfig.CloudOctave3SpeedMult,
                 GameConfig.CloudNoiseWorldScale * GameConfig.CloudOctave3Mult);
+            _effect.ScrollOffsetMacro = WrappedOffset(dir, t,
+                GameConfig.CloudDriftSpeedPx * GameConfig.CloudMacroSpeedMult,
+                GameConfig.CloudNoiseWorldScale * GameConfig.CloudMacroMult);
         }
 
         /// <summary>

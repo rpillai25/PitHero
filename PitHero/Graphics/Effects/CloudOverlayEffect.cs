@@ -92,6 +92,19 @@ namespace PitHero.Rendering
             }
         }
 
+        public Vector2 ScrollOffsetMacro
+        {
+            get => _scrollOffsetMacro;
+            set
+            {
+                if (_scrollOffsetMacro != value)
+                {
+                    _scrollOffsetMacro = value;
+                    _scrollOffsetMacroParam.SetValue(_scrollOffsetMacro);
+                }
+            }
+        }
+
         public float MorphFactor
         {
             get => _morphFactor;
@@ -150,6 +163,7 @@ namespace PitHero.Rendering
         Vector2 _scrollOffset1;
         Vector2 _scrollOffset2;
         Vector2 _scrollOffset3;
+        Vector2 _scrollOffsetMacro;
         float _morphFactor;
         float _coverageThreshold;
         float _coverageSoftness;
@@ -164,6 +178,10 @@ namespace PitHero.Rendering
         EffectParameter _scrollOffset1Param;
         EffectParameter _scrollOffset2Param;
         EffectParameter _scrollOffset3Param;
+        EffectParameter _scrollOffsetMacroParam;
+        EffectParameter _macroMultParam;
+        EffectParameter _macroThresholdParam;
+        EffectParameter _macroBoostParam;
         EffectParameter _morphFactorParam;
         EffectParameter _coverageThresholdParam;
         EffectParameter _coverageSoftnessParam;
@@ -182,6 +200,10 @@ namespace PitHero.Rendering
             _scrollOffset1Param     = Parameters["ScrollOffset1"];
             _scrollOffset2Param     = Parameters["ScrollOffset2"];
             _scrollOffset3Param     = Parameters["ScrollOffset3"];
+            _scrollOffsetMacroParam = Parameters["ScrollOffsetMacro"];
+            _macroMultParam         = Parameters["MacroMult"];
+            _macroThresholdParam    = Parameters["MacroThreshold"];
+            _macroBoostParam        = Parameters["MacroBoost"];
             _morphFactorParam       = Parameters["MorphFactor"];
             _coverageThresholdParam = Parameters["CoverageThreshold"];
             _coverageSoftnessParam  = Parameters["CoverageSoftness"];
@@ -192,6 +214,9 @@ namespace PitHero.Rendering
             _noiseWorldScaleParam.SetValue(GameConfig.CloudNoiseWorldScale);
             _octave2MultParam.SetValue(GameConfig.CloudOctave2Mult);
             _octave3MultParam.SetValue(GameConfig.CloudOctave3Mult);
+            _macroMultParam.SetValue(GameConfig.CloudMacroMult);
+            _macroThresholdParam.SetValue(GameConfig.CloudMacroThreshold);
+            _macroBoostParam.SetValue(GameConfig.CloudMacroBoost);
 
             _cloudColorParam.SetValue(_cloudColor);
         }

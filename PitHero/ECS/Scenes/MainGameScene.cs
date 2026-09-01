@@ -56,6 +56,7 @@ namespace PitHero.ECS.Scenes
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
         private Rendering.CloudOverlayController _cloudOverlay;
+        private Entity _cloudOverlayEntity;
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
         private Label _restoringGrassLabel;
@@ -1215,8 +1216,8 @@ namespace PitHero.ECS.Scenes
             // actors, fog-of-war, tree bands, and buildings; screen-space UI still renders over it).
             // Not registered as a service — nothing else consumes it.
             _cloudOverlay = new Rendering.CloudOverlayController();
-            var cloudEntity = CreateEntity("cloud-overlay");
-            var cloudComponent = cloudEntity.AddComponent(new CloudOverlayComponent(_cloudOverlay));
+            _cloudOverlayEntity = CreateEntity("cloud-overlay");
+            var cloudComponent = _cloudOverlayEntity.AddComponent(new CloudOverlayComponent(_cloudOverlay));
             cloudComponent.SetRenderLayer(GameConfig.RenderLayerCloudOverlay);
             cloudComponent.SetMaterial(_cloudOverlay.Material);
 
@@ -2880,6 +2881,10 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<InGameTimeService>()?.Update();
             _colorGrading?.UpdateTimeOfDay();
             _cloudOverlay?.Update();
+            // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
+            // are open so they never obscure the tiles being edited; polling covers every enter/exit
+            // path (button toggle, outside-click dismiss, cross-UI mutual exclusion).
+            _cloudOverlayEntity?.SetEnabled(!(_settingsUI?.IsFarmOrConstructionModeActive ?? false));
             UpdateClockLabel();
             UpdateTillingLabel();
             UpdateRestoringGrassLabel();

@@ -563,6 +563,10 @@ namespace PitHero
         public const float CloudThresholdOvercast  = 0.38f; // reserved for future rainy-day weather, not reached in normal oscillation
         public const float CloudCoverageSoftness   = 0.18f;
         public const float CloudMorphPeriodSeconds = 480f;   // R<->G noise-field crossfade; real clouds reshape slowly
+        public const float CloudMacroMult          = 0.31f;  // macro field features ~3x larger than the base octave
+        public const float CloudMacroSpeedMult     = 0.85f;  // big cloud masses lumber slightly slower than the puffs
+        public const float CloudMacroThreshold     = 0.66f;  // macro field level where the boost starts ramping in
+        public const float CloudMacroBoost         = 0.20f;  // max extra density at a macro crest (merges puffs into one big cloud)
 
         // Speech bubbles
         public const int SpeechBubbleWidth = 128;          // screen px (design units)

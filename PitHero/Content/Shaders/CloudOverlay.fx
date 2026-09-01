@@ -30,12 +30,16 @@ float2 CameraSize;       // world px, per frame
 float  NoiseWorldScale;  // set once
 float  Octave2Mult;      // set once
 float  Octave3Mult;      // set once
+float  MacroMult;        // set once; < 1 so the macro field's features are much larger
 float2 ScrollOffset1;    // pre-wrapped [0,1)
 float2 ScrollOffset2;    // pre-wrapped [0,1)
 float2 ScrollOffset3;    // pre-wrapped [0,1)
+float2 ScrollOffsetMacro;// pre-wrapped [0,1)
 float  MorphFactor;      // 0..1 crossfade between R and G noise fields
 float  CoverageThreshold;
 float  CoverageSoftness;
+float  MacroThreshold;   // macro field level above which the density boost ramps in
+float  MacroBoost;       // max density added where the macro field crests
 float4 CloudColor;       // rgb = time-of-day tint, a = max opacity
 
 struct PSInput
@@ -63,6 +67,12 @@ float4 PSCloudOverlay(PSInput input) : COLOR0
     float n3 = SampleField(uv3);
 
     float density = 0.5 * n1 + 0.35 * n2 + 0.15 * n3;
+
+    // Occasional large cloud masses: a much larger, slower macro field boosts density only where it
+    // crests, merging the small puffs there into one big cloud while leaving the rest of the sky as-is.
+    float2 uvM = wp * (NoiseWorldScale * MacroMult) + ScrollOffsetMacro;
+    float nM = SampleField(uvM);
+    density += MacroBoost * smoothstep(MacroThreshold, 1.0, nM);
 
     float a = smoothstep(CoverageThreshold, CoverageThreshold + CoverageSoftness, density) * CloudColor.a;
 
