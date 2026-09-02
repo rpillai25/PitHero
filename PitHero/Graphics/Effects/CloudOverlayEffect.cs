@@ -105,6 +105,19 @@ namespace PitHero.Rendering
             }
         }
 
+        public Vector2 ScrollOffsetGiant
+        {
+            get => _scrollOffsetGiant;
+            set
+            {
+                if (_scrollOffsetGiant != value)
+                {
+                    _scrollOffsetGiant = value;
+                    _scrollOffsetGiantParam.SetValue(_scrollOffsetGiant);
+                }
+            }
+        }
+
         public float MorphFactor
         {
             get => _morphFactor;
@@ -114,6 +127,19 @@ namespace PitHero.Rendering
                 {
                     _morphFactor = value;
                     _morphFactorParam.SetValue(_morphFactor);
+                }
+            }
+        }
+
+        public float MorphGain
+        {
+            get => _morphGain;
+            set
+            {
+                if (_morphGain != value)
+                {
+                    _morphGain = value;
+                    _morphGainParam.SetValue(_morphGain);
                 }
             }
         }
@@ -164,7 +190,9 @@ namespace PitHero.Rendering
         Vector2 _scrollOffset2;
         Vector2 _scrollOffset3;
         Vector2 _scrollOffsetMacro;
+        Vector2 _scrollOffsetGiant;
         float _morphFactor;
+        float _morphGain = 1f;
         float _coverageThreshold;
         float _coverageSoftness;
         Vector4 _cloudColor = Vector4.One;
@@ -179,10 +207,15 @@ namespace PitHero.Rendering
         EffectParameter _scrollOffset2Param;
         EffectParameter _scrollOffset3Param;
         EffectParameter _scrollOffsetMacroParam;
+        EffectParameter _scrollOffsetGiantParam;
         EffectParameter _macroMultParam;
         EffectParameter _macroThresholdParam;
         EffectParameter _macroBoostParam;
+        EffectParameter _giantMultParam;
+        EffectParameter _giantThresholdParam;
+        EffectParameter _giantBoostParam;
         EffectParameter _morphFactorParam;
+        EffectParameter _morphGainParam;
         EffectParameter _coverageThresholdParam;
         EffectParameter _coverageSoftnessParam;
         EffectParameter _cloudColorParam;
@@ -201,10 +234,15 @@ namespace PitHero.Rendering
             _scrollOffset2Param     = Parameters["ScrollOffset2"];
             _scrollOffset3Param     = Parameters["ScrollOffset3"];
             _scrollOffsetMacroParam = Parameters["ScrollOffsetMacro"];
+            _scrollOffsetGiantParam = Parameters["ScrollOffsetGiant"];
             _macroMultParam         = Parameters["MacroMult"];
             _macroThresholdParam    = Parameters["MacroThreshold"];
             _macroBoostParam        = Parameters["MacroBoost"];
+            _giantMultParam         = Parameters["GiantMult"];
+            _giantThresholdParam    = Parameters["GiantThreshold"];
+            _giantBoostParam        = Parameters["GiantBoost"];
             _morphFactorParam       = Parameters["MorphFactor"];
+            _morphGainParam         = Parameters["MorphGain"];
             _coverageThresholdParam = Parameters["CoverageThreshold"];
             _coverageSoftnessParam  = Parameters["CoverageSoftness"];
             _cloudColorParam        = Parameters["CloudColor"];
@@ -217,7 +255,11 @@ namespace PitHero.Rendering
             _macroMultParam.SetValue(GameConfig.CloudMacroMult);
             _macroThresholdParam.SetValue(GameConfig.CloudMacroThreshold);
             _macroBoostParam.SetValue(GameConfig.CloudMacroBoost);
+            _giantMultParam.SetValue(GameConfig.CloudGiantMult);
+            _giantThresholdParam.SetValue(GameConfig.CloudGiantThreshold);
+            _giantBoostParam.SetValue(GameConfig.CloudGiantBoost);
 
+            _morphGainParam.SetValue(_morphGain);
             _cloudColorParam.SetValue(_cloudColor);
         }
 

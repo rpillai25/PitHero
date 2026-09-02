@@ -31,15 +31,21 @@ float  NoiseWorldScale;  // set once
 float  Octave2Mult;      // set once
 float  Octave3Mult;      // set once
 float  MacroMult;        // set once; < 1 so the macro field's features are much larger
+float  GiantMult;        // set once; << 1 so the giant field's features are larger still
 float2 ScrollOffset1;    // pre-wrapped [0,1)
 float2 ScrollOffset2;    // pre-wrapped [0,1)
 float2 ScrollOffset3;    // pre-wrapped [0,1)
 float2 ScrollOffsetMacro;// pre-wrapped [0,1)
+float2 ScrollOffsetGiant;// pre-wrapped [0,1)
 float  MorphFactor;      // 0..1 crossfade between R and G noise fields
+float  MorphGain;        // contrast renormalization: 1/sqrt((1-m)^2 + m^2); averaging two independent
+                         // fields squashes values toward the mean, which would pulse cloud cover
 float  CoverageThreshold;
 float  CoverageSoftness;
 float  MacroThreshold;   // macro field level above which the density boost ramps in
 float  MacroBoost;       // max density added where the macro field crests
+float  GiantThreshold;   // giant field gate; set high so giant crests are rare
+float  GiantBoost;       // max density added where the giant field crests
 float4 CloudColor;       // rgb = time-of-day tint, a = max opacity
 
 struct PSInput
@@ -51,7 +57,7 @@ struct PSInput
 float SampleField(float2 uv)
 {
     float4 n = tex2D(NoiseSampler, uv);
-    return lerp(n.r, n.g, MorphFactor);
+    return 0.5 + (lerp(n.r, n.g, MorphFactor) - 0.5) * MorphGain;
 }
 
 float4 PSCloudOverlay(PSInput input) : COLOR0
@@ -73,6 +79,12 @@ float4 PSCloudOverlay(PSInput input) : COLOR0
     float2 uvM = wp * (NoiseWorldScale * MacroMult) + ScrollOffsetMacro;
     float nM = SampleField(uvM);
     density += MacroBoost * smoothstep(MacroThreshold, 1.0, nM);
+
+    // Rare very large clouds: an even larger, slower field with a high gate, so most of the time it
+    // contributes nothing and only occasionally a giant mass drifts through.
+    float2 uvG = wp * (NoiseWorldScale * GiantMult) + ScrollOffsetGiant + float2(0.19, 0.53);
+    float nG = SampleField(uvG);
+    density += GiantBoost * smoothstep(GiantThreshold, 1.0, nG);
 
     float a = smoothstep(CoverageThreshold, CoverageThreshold + CoverageSoftness, density) * CloudColor.a;
 

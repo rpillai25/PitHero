@@ -82,6 +82,9 @@ namespace PitHero.Rendering
             _effect.ScrollOffsetMacro = WrappedOffset(dir, t,
                 GameConfig.CloudDriftSpeedPx * GameConfig.CloudMacroSpeedMult,
                 GameConfig.CloudNoiseWorldScale * GameConfig.CloudMacroMult);
+            _effect.ScrollOffsetGiant = WrappedOffset(dir, t,
+                GameConfig.CloudDriftSpeedPx * GameConfig.CloudGiantSpeedMult,
+                GameConfig.CloudNoiseWorldScale * GameConfig.CloudGiantMult);
         }
 
         /// <summary>
@@ -104,15 +107,19 @@ namespace PitHero.Rendering
                 + 0.15f * MathF.Sin(2f * MathF.PI * t / GameConfig.CloudCoveragePeriod2Seconds + 1.7f);
             coverage = MathHelper.Clamp(coverage, 0f, 1f);
 
-            // Normal weather only ranges nearly-clear -> scattered; CloudThresholdOvercast is
-            // reserved for a future rainy-day weather state.
+            // Normal weather wobbles inside a narrow sparse band so distribution stays uniform across
+            // the day/night cycle; CloudThresholdOvercast is reserved for a future rainy-day state.
             _effect.CoverageThreshold = MathHelper.Lerp(GameConfig.CloudThresholdClear, GameConfig.CloudThresholdPartly, coverage);
             _effect.CoverageSoftness = GameConfig.CloudCoverageSoftness;
         }
 
         void UpdateMorph(float t)
         {
-            _effect.MorphFactor = 0.5f + 0.5f * MathF.Sin(2f * MathF.PI * t / GameConfig.CloudMorphPeriodSeconds);
+            var m = 0.5f + 0.5f * MathF.Sin(2f * MathF.PI * t / GameConfig.CloudMorphPeriodSeconds);
+            _effect.MorphFactor = m;
+            // Renormalize contrast: averaging two independent fields squashes values toward the mean
+            // (worst at m=0.5), which would pulse cloud cover with the morph cycle.
+            _effect.MorphGain = 1f / MathF.Sqrt((1f - m) * (1f - m) + m * m);
         }
 
         void UpdateTint(float t)
