@@ -2427,6 +2427,16 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>
+        /// True while the Farm or Construction sub-bar (or any of their ground-editing sub-modes) is
+        /// open. The scene hides the cloud overlay during these modes so clouds never obscure the
+        /// tiles being edited.
+        /// </summary>
+        public bool IsFarmOrConstructionModeActive =>
+            (_farmUI != null && (_farmUI.AreSubButtonsVisible || _farmUI.IsInTillMode || _farmUI.IsInSeedMode
+                || _farmUI.IsInRemoveCropsMode || _farmUI.IsInHarvestedCropsMode || _farmUI.IsInRestoreGrassMode))
+            || (_constructionUI != null && (_constructionUI.AreSubButtonsVisible || _constructionUI.IsInBuildingMode));
+
         // ── Free-move window mode (issue #364) ───────────────────────────────────
 
         /// <summary>Returns true while the player is in free window move mode</summary>

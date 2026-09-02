@@ -505,6 +505,11 @@ namespace PitHero
         // fringe that spills over the map edge covers terrain, but behind fog and actors. Deliberately not
         // 60/61 so YSortManager ignores it — the bands are static and never sort.
         public const int RenderLayerTreeBand = 80;
+        // Volumetric scrolling cloud overlay — front-most world-space layer (negative sorts ahead of
+        // everything else via RenderableComparer's descending renderLayer sort), so clouds cover terrain,
+        // actors, fog-of-war, tree bands, and buildings. Screen-space UI (996-1000) renders in its own
+        // pass afterward and stays clean.
+        public const int RenderLayerCloudOverlay = -10;
         public const int RenderLayerDetail = 90; // Detail tilemap layer (tilled soil, etc.) — above base, below actors
         public const int RenderLayerBase = 100; // Background layer
 
@@ -536,6 +541,45 @@ namespace PitHero
         public const int TreeBandRowXOffsetPx = 20;     // +/- per-row horizontal stagger so rows do not line up
         public const float TreeBandTree2Chance = 0.45f; // probability a tree uses the taller Tree2 sprite
         public const float TreeBandFlipChance = 0.5f;   // probability a tree is mirrored horizontally
+
+        // Volumetric scrolling cloud overlay — code-generated tileable noise driven by a custom pixel
+        // shader (CloudOverlay.fx). Clouds drift bottom-left -> upper-right, slowly morph, and their
+        // coverage/tint oscillate over long periods so weather feels alive without hand-drawn art.
+        public const int   CloudNoiseTextureSize   = 256;
+        public const int   CloudNoiseLatticeCells  = 8;
+        public const int   CloudNoiseSeed          = 20260831; // deterministic clouds
+        public const float CloudNoiseWorldScale    = 1f / 640f; // one noise tile = 640 world px
+        public const float CloudOctave2Mult        = 2.13f;  // non-integer -> octaves never phase-lock
+        public const float CloudOctave3Mult        = 4.29f;
+        public const float CloudDriftSpeedPx       = 10f;    // world px per in-game second (octave 1)
+        public const float CloudOctave2SpeedMult   = 1.15f;  // higher octaves drift only slightly faster;
+        public const float CloudOctave3SpeedMult   = 1.3f;   // large deltas make clouds churn like smoke
+        public const float CloudDriftDirX          = 0.7071f;  // bottom-left -> upper-right
+        public const float CloudDriftDirY          = -0.7071f; // (y-down world: up = -y)
+        public const float CloudCoveragePeriod1Seconds = 600f; // ~10 in-game hours
+        public const float CloudCoveragePeriod2Seconds = 233f; // incommensurate second sine
+        public const float CloudThresholdClear     = 0.79f; // density threshold at coverage=0 (fewest clouds)
+        public const float CloudThresholdPartly    = 0.73f; // density threshold at coverage=1 (most clouds)
+        // Playability > realism: keep this band high so only the strongest crests become clouds —
+        // isolated small-to-large puffs with big clear gaps, most of the map visible.
+        // Cloud size vs count: lowering these thresholds fattens every cloud in place (same count,
+        // bigger blobs); scaling CloudNoiseWorldScale instead enlarges clouds AND gaps (fewer on screen).
+        // The Clear->Partly band is deliberately narrow: cloud density stays uniformly sparse (isolated
+        // clouds with big clear gaps) all day and night, with only a gentle wobble — wide swings read as
+        // "cloudy mornings clearing by evening" against the 1440s in-game day.
+        public const float CloudThresholdOvercast  = 0.38f; // reserved for future rainy-day weather, not reached in normal oscillation
+        public const float CloudCoverageSoftness   = 0.18f;
+        public const float CloudMorphPeriodSeconds = 487f;   // R<->G noise-field crossfade; real clouds reshape slowly.
+        // Must NOT divide the 1440s in-game day evenly (480 did, 3x) or morph extremes phase-lock to
+        // the same clock times every day and any residual morph-cycle variation reads as daily weather.
+        public const float CloudMacroMult          = 0.31f;  // macro field features ~3x larger than the base octave
+        public const float CloudMacroSpeedMult     = 0.85f;  // big cloud masses lumber slightly slower than the puffs
+        public const float CloudMacroThreshold     = 0.66f;  // macro field level where the boost starts ramping in
+        public const float CloudMacroBoost         = 0.20f;  // max extra density at a macro crest (merges puffs into one big cloud)
+        public const float CloudGiantMult          = 0.12f;  // giant field features ~8x larger than the base octave
+        public const float CloudGiantSpeedMult     = 0.7f;   // giant masses lumber slowest of all
+        public const float CloudGiantThreshold     = 0.80f;  // high gate -> giant crests are rare
+        public const float CloudGiantBoost         = 0.24f;  // max extra density at a giant crest
 
         // Speech bubbles
         public const int SpeechBubbleWidth = 128;          // screen px (design units)
