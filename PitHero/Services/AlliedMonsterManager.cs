@@ -88,6 +88,12 @@ namespace PitHero.Services
             return _pendingNotifications.Count > 0 ? _pendingNotifications.Dequeue() : null;
         }
 
+        /// <summary>Drops every pending notification (replay playback: the recruits already happened once).</summary>
+        public void ClearNotifications()
+        {
+            _pendingNotifications.Clear();
+        }
+
         /// <summary>Directly adds a pre-constructed allied monster (used when restoring saved state).</summary>
         public void AddAlliedMonster(AlliedMonster ally)
         {

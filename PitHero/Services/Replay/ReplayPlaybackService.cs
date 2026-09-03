@@ -208,6 +208,9 @@ namespace PitHero.Services.Replay
         /// <summary>Applies the current state to the engine clock. Called every rendered frame by the scene.</summary>
         public void Update()
         {
+            // Recruits re-happen during playback; their popups must not pile up for after the exit
+            Core.Services.GetService<AlliedMonsterManager>()?.ClearNotifications();
+
             switch (State)
             {
                 case ReplayPlaybackState.Playing:

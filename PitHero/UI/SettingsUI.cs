@@ -2744,6 +2744,7 @@ namespace PitHero.UI
             _secondChanceShopUI?.ForceCloseWindow();
             _farmUI?.DismissSubButtons();
             _constructionUI?.DismissSubButtons();
+            _recruitmentNotificationUI?.HideNow();
             _isReplayModeActive = true;
             SnapHudHiddenForIntro();
         }
