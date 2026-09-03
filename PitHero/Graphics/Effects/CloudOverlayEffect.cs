@@ -277,9 +277,31 @@ namespace PitHero.Rendering
         }
 
         /// <summary>
+        /// Rightmost tile column (inclusive) of the pit dead zone. The controller sets this from
+        /// <c>PitWidthManager.CurrentPitRightEdge</c> each frame; the uniform is only re-pushed on change.
+        /// No-op while dead zones are disabled.
+        /// </summary>
+        public int PitDeadZoneMaxTileX
+        {
+            get => _pitDeadZoneMaxTileX;
+            set
+            {
+                if (_pitDeadZoneMaxTileX == value || !GameConfig.CloudDeadZoneEnabled)
+                    return;
+                _pitDeadZoneMaxTileX = value;
+                SetTileRect(_deadZone2MinParam, _deadZone2MaxParam,
+                    GameConfig.CloudDeadZonePitMinTileX, GameConfig.CloudDeadZonePitMinTileY,
+                    value, GameConfig.CloudDeadZonePitMaxTileY);
+            }
+        }
+
+        int _pitDeadZoneMaxTileX = int.MinValue;
+
+        /// <summary>
         /// Pushes the cloud dead zones (world-px rects where clouds never render: tavern and pit) from
         /// GameConfig. Disabled = empty rects pushed far off-world, so every pixel is "outside" and the
-        /// shader's mask is 1 everywhere.
+        /// shader's mask is 1 everywhere. The pit rect starts at the default pit width and then follows
+        /// <see cref="PitDeadZoneMaxTileX"/>.
         /// </summary>
         void ApplyDeadZone()
         {
@@ -297,9 +319,7 @@ namespace PitHero.Rendering
             SetTileRect(_deadZoneMinParam, _deadZoneMaxParam,
                 GameConfig.CloudDeadZoneMinTileX, GameConfig.CloudDeadZoneMinTileY,
                 GameConfig.CloudDeadZoneMaxTileX, GameConfig.CloudDeadZoneMaxTileY);
-            SetTileRect(_deadZone2MinParam, _deadZone2MaxParam,
-                GameConfig.CloudDeadZone2MinTileX, GameConfig.CloudDeadZone2MinTileY,
-                GameConfig.CloudDeadZone2MaxTileX, GameConfig.CloudDeadZone2MaxTileY);
+            PitDeadZoneMaxTileX = GameConfig.PitRectX + GameConfig.PitRectWidth + GameConfig.CloudDeadZonePitEdgeMarginTiles;
 
             // smoothstep(0, 0, d) divides by zero in HLSL when edge0 == edge1; keep a tiny feather floor.
             _deadZoneFeatherParam.SetValue(MathF.Max(GameConfig.CloudDeadZoneFeatherPx, 0.001f));

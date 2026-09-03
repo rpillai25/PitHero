@@ -66,6 +66,21 @@ namespace PitHero.Rendering
             UpdateWeather(t);
             UpdateMorph(t);
             UpdateTint(t);
+            UpdatePitDeadZone();
+        }
+
+        /// <summary>
+        /// Keeps the pit cloud dead zone's right edge in step with the live pit width. Polled per frame
+        /// (the manager has no change event and widening/shrinking happens on level transitions); the
+        /// effect setter de-dupes so the uniform is only re-pushed when the edge actually moves.
+        /// </summary>
+        void UpdatePitDeadZone()
+        {
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager == null || pitWidthManager.CurrentPitRightEdge <= 0)
+                return;
+
+            _effect.PitDeadZoneMaxTileX = pitWidthManager.CurrentPitRightEdge + GameConfig.CloudDeadZonePitEdgeMarginTiles;
         }
 
         void UpdateScrollOffsets(float t)

@@ -584,15 +584,17 @@ namespace PitHero
         // so the tavern interior and the pit stay readable. Both cover the map's 12 tile rows only
         // (tree bands above and below still get clouds). Clouds feather back in over
         // CloudDeadZoneFeatherPx outside the nearest rect; corners are rounded by distance-to-rect.
+        // The tavern rect is static; the pit rect's right edge tracks PitWidthManager.CurrentPitRightEdge
+        // live (re-pushed by CloudOverlayController whenever the pit widens or shrinks).
         public const bool  CloudDeadZoneEnabled    = true;
         public const int   CloudDeadZoneMinTileX   = 63;   // tavern left edge
         public const int   CloudDeadZoneMaxTileX   = 106;  // tavern right edge (inclusive)
         public const int   CloudDeadZoneMinTileY   = 0;    // top map row
         public const int   CloudDeadZoneMaxTileY   = 11;   // bottom map row (inclusive)
-        public const int   CloudDeadZone2MinTileX  = 0;    // pit area at its maximum extent
-        public const int   CloudDeadZone2MaxTileX  = 32;   // (inclusive)
-        public const int   CloudDeadZone2MinTileY  = 0;
-        public const int   CloudDeadZone2MaxTileY  = 11;
+        public const int   CloudDeadZonePitMinTileX = 0;   // pit rect left edge (map's first column)
+        public const int   CloudDeadZonePitMinTileY = 0;
+        public const int   CloudDeadZonePitMaxTileY = 11;
+        public const int   CloudDeadZonePitEdgeMarginTiles = 0; // extra columns past the live pit right edge
         public const float CloudDeadZoneFeatherPx  = 64f;
 
         // Speech bubbles
