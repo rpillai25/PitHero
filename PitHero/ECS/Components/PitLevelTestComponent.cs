@@ -64,7 +64,15 @@ namespace PitHero.ECS.Components
                 newLevel = number * 10; // 1 = level 10, 2 = level 20, etc.
             }
 
-            Debug.Log($"[PitLevelTest] Queuing pit level {newLevel} (key {number} pressed)");
+            // Debug input is still player input: route through the command queue so a debug session replays
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.DebugQueuePitLevel, newLevel));
+        }
+
+        /// <summary>Queues the given pit level and flips the wizard-orb GOAP flags. Command handler entry point.</summary>
+        public static void ApplyPitLevel(int newLevel)
+        {
+            Debug.Log($"[PitLevelTest] Queuing pit level {newLevel}");
 
             // Use the new queuing functionality from ActivateWizardOrbAction
             PitHero.AI.ActivateWizardOrbAction.QueuePitLevel(newLevel);

@@ -244,6 +244,13 @@ namespace PitHero.UI
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
 
+
+        /// <summary>The Replenish top-bar control.</summary>
+        public ReplenishUI ReplenishUI => _replenishUI;
+
+        /// <summary>The fast-forward top-bar control (replay playback forces it off).</summary>
+        public FastFUI FastFUI => _fastFUI;
+
         /// <summary>Returns true when the player is currently in till mode.</summary>
         public bool IsTillModeActive => _farmUI?.IsInTillMode ?? false;
 
@@ -312,6 +319,9 @@ namespace PitHero.UI
 
         /// <summary>Opens the monster roster filtered to a single Monster House (by UniqueId).</summary>
         public void ShowMonstersForHouse(int houseId) => _monsterUI?.ShowForHouse(houseId);
+
+        /// <summary>The monster roster window (command handlers refresh it after job changes).</summary>
+        public MonsterUI MonsterUI => _monsterUI;
 
         /// <summary>Opens the Harvested Crops viewer programmatically (used by Crop Storage context menu).</summary>
         public void EnterHarvestedCropsMode() => _farmUI?.EnterHarvestedCropsMode();
@@ -879,8 +889,9 @@ namespace PitHero.UI
             };
             _replenishHPSlider.OnValueCommitted += (value) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.ReplenishHPThreshold = (int)value / 100f;
+                // -1 = leave the other threshold untouched (replay command)
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetReplenishThresholds, (int)value, -1));
             };
             hpSliderTable.Add(_replenishHPSlider).Width(180);
             buttonsTable.Add(hpSliderTable).Left().SetPadBottom(8);
@@ -898,8 +909,8 @@ namespace PitHero.UI
             };
             _replenishMPSlider.OnValueCommitted += (value) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.ReplenishMPThreshold = (int)value / 100f;
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetReplenishThresholds, -1, (int)value));
             };
             mpSliderTable.Add(_replenishMPSlider).Width(180);
             buttonsTable.Add(mpSliderTable).Left();
@@ -957,13 +968,7 @@ namespace PitHero.UI
             _automateMonsterJobsCheckBox.IsChecked = false;
             _automateMonsterJobsCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoJobAssignmentService>();
-                if (svc != null)
-                {
-                    svc.Enabled = isChecked;
-                    if (isChecked)
-                        svc.ReassessNow();
-                }
+                DispatchAutomation(Services.Replay.AutomationKind.MonsterJobs, isChecked);
             };
             autoShopTable.Add(_automateMonsterJobsCheckBox).Left().SetPadBottom(15f);
             autoShopTable.Row();
@@ -985,8 +990,8 @@ namespace PitHero.UI
             };
             _goldBufferSlider.OnValueCommitted += (value) =>
             {
-                var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
-                if (svc != null) svc.GoldBuffer = (int)value;
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetGoldBuffer, (int)value));
             };
             autoShopTable.Add(_goldBufferSlider).Width(240).Left().SetPadBottom(15f);
             autoShopTable.Row();
@@ -1000,8 +1005,7 @@ namespace PitHero.UI
             _automateSeedsCheckBox.IsChecked = false;
             _automateSeedsCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
-                if (svc != null) svc.Enabled = isChecked;
+                DispatchAutomation(Services.Replay.AutomationKind.SeedPurchase, isChecked);
             };
             autoShopTable.Add(_automateSeedsCheckBox).Left().SetPadBottom(15f);
             autoShopTable.Row();
@@ -1015,8 +1019,7 @@ namespace PitHero.UI
             _autoSellCropsCheckBox.IsChecked = false;
             _autoSellCropsCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoCropSellService>();
-                if (svc != null) svc.Enabled = isChecked;
+                DispatchAutomation(Services.Replay.AutomationKind.CropSell, isChecked);
                 SetDesignateCropsActive(isChecked);
                 if (!isChecked)
                     _autoSellCropTypesDialog?.Hide();
@@ -1044,8 +1047,7 @@ namespace PitHero.UI
             _autoSellExcessCheckBox.IsChecked = true;
             _autoSellExcessCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
-                if (svc != null) svc.Enabled = isChecked;
+                DispatchAutomation(Services.Replay.AutomationKind.SellExcess, isChecked);
                 SetExcessItemControlsActive(isChecked);
                 if (!isChecked)
                 {
@@ -1128,8 +1130,7 @@ namespace PitHero.UI
             _autoPurchaseItemsCheckBox.IsChecked = false;
             _autoPurchaseItemsCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-                if (svc != null) svc.Enabled = isChecked;
+                DispatchAutomation(Services.Replay.AutomationKind.ItemPurchase, isChecked);
                 SetItemPurchaseControlsActive(isChecked);
                 if (!isChecked)
                 {
@@ -1164,8 +1165,7 @@ namespace PitHero.UI
             _autoPurchaseMercGearCheckBox.IsChecked = false;
             _autoPurchaseMercGearCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-                if (svc != null) svc.PurchaseMercenaryGear = isChecked;
+                DispatchAutomation(Services.Replay.AutomationKind.PurchaseMercGear, isChecked);
             };
             autoShopTable.Add(_autoPurchaseMercGearCheckBox).Left().SetPadBottom(8f);
             autoShopTable.Row();
@@ -1213,8 +1213,8 @@ namespace PitHero.UI
             _autoEquipHeroCheckBox.IsChecked = true;
             _autoEquipHeroCheckBox.OnChanged += (isChecked) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.AutoEquipHero = isChecked;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.Flag(
+                    Services.Replay.PlayerCommandType.SetAutoEquipHero, isChecked));
             };
             autoShopTable.Add(_autoEquipHeroCheckBox).Left().SetPadBottom(8f);
             autoShopTable.Row();
@@ -1223,8 +1223,8 @@ namespace PitHero.UI
             _autoEquipMercsCheckBox.IsChecked = true;
             _autoEquipMercsCheckBox.OnChanged += (isChecked) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.AutoEquipMercenaries = isChecked;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.Flag(
+                    Services.Replay.PlayerCommandType.SetAutoEquipMercs, isChecked));
             };
             autoShopTable.Add(_autoEquipMercsCheckBox).Left();
             autoShopTable.Row();
@@ -1257,8 +1257,7 @@ namespace PitHero.UI
             _autoHireMercsCheckBox.IsChecked = false;
             _autoHireMercsCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoHireMercenaryService>();
-                if (svc != null) svc.Enabled = isChecked;
+                DispatchAutomation(Services.Replay.AutomationKind.HireMercs, isChecked);
                 SetAutoHireControlsActive(isChecked);
             };
             autoShopTable.Add(_autoHireMercsCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
@@ -1288,13 +1287,7 @@ namespace PitHero.UI
             _autoLearnSkillsCheckBox.IsChecked = false;
             _autoLearnSkillsCheckBox.OnChanged += (isChecked) =>
             {
-                var svc = Core.Services?.GetService<AutoLearnSkillsService>();
-                if (svc != null)
-                {
-                    svc.Enabled = isChecked;
-                    if (isChecked)
-                        svc.TryLearnNow();
-                }
+                DispatchAutomation(Services.Replay.AutomationKind.LearnSkills, isChecked);
                 SetAutoLearnControlsActive(isChecked);
             };
             autoShopTable.Add(_autoLearnSkillsCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
@@ -1336,13 +1329,23 @@ namespace PitHero.UI
                 _autoLearnModeIndex = 0;
 
             var mode = AutoLearnSkillsService.SanitizeMode(_autoLearnModeIndex);
-            var svc  = Core.Services?.GetService<AutoLearnSkillsService>();
-            if (svc != null)
-            {
-                svc.Mode = mode;
-                if (svc.Enabled) svc.TryLearnNow();
-            }
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetAutoLearnMode, (int)mode));
             _autoLearnModeValueLabel?.SetText(GetAutoLearnModeDisplayName(mode));
+        }
+
+        /// <summary>Routes an auto-hire job slot change through the player command queue (replay system).</summary>
+        private static void DispatchAutoHireJob(int slot, JobType job)
+        {
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetAutoHireJobSlot, slot, (int)job));
+        }
+
+        /// <summary>Routes an automation toggle through the player command queue (replay system).</summary>
+        private static void DispatchAutomation(Services.Replay.AutomationKind kind, bool enabled)
+        {
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetAutomation, (int)kind, enabled ? 1 : 0));
         }
 
         /// <summary>Activates or deactivates the auto-learn mode cycler controls.</summary>
@@ -1414,13 +1417,13 @@ namespace PitHero.UI
                     _autoHireMerc1Index = 0;
 
                 var job = AutoHireJobOptions[_autoHireMerc1Index];
-                if (svc != null) svc.Merc1Job = job;
+                DispatchAutoHireJob(1, job);
                 _autoHireMerc1ValueLabel?.SetText(GetAutoHireJobDisplayName(job));
 
                 if (job == JobType.None && _autoHireMerc2Index != 0)
                 {
                     _autoHireMerc2Index = 0;
-                    if (svc != null) svc.Merc2Job = JobType.None;
+                    DispatchAutoHireJob(2, JobType.None);
                     _autoHireMerc2ValueLabel?.SetText(GetAutoHireJobDisplayName(JobType.None));
                 }
             }
@@ -1433,7 +1436,7 @@ namespace PitHero.UI
                     _autoHireMerc2Index = 0;
 
                 var job = AutoHireJobOptions[_autoHireMerc2Index];
-                if (svc != null) svc.Merc2Job = job;
+                DispatchAutoHireJob(2, job);
                 _autoHireMerc2ValueLabel?.SetText(GetAutoHireJobDisplayName(job));
             }
 

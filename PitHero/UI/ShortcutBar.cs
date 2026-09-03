@@ -1094,35 +1094,50 @@ namespace PitHero.UI
                 var key = (Keys)((int)Keys.D1 + keyOffset);
                 if (!Input.IsKeyPressed(key)) continue;
 
-                var shortcutData = _shortcutSlots[keyOffset];
-
-                // Handle item shortcuts
-                if (shortcutData.SlotType == ShortcutSlotType.Item)
-                {
-                    var referencedSlot = shortcutData.ReferencedSlot;
-                    if (referencedSlot?.SlotData?.Item != null && referencedSlot.SlotData.BagIndex.HasValue)
-                    {
-                        Debug.Log($"[ShortcutBar] Activated shortcut slot {keyOffset + 1} with item: {referencedSlot.SlotData.Item.Name}");
-
-                        // Use the consumable if it's a consumable
-                        if (referencedSlot.SlotData.Item is Consumable)
-                        {
-                            UseConsumable(referencedSlot.SlotData.Item, referencedSlot.SlotData.BagIndex.Value);
-                        }
-                    }
-                }
-                // Handle skill shortcuts
-                else if (shortcutData.SlotType == ShortcutSlotType.Skill)
-                {
-                    var skill = shortcutData.ReferencedSkill;
-                    if (skill != null)
-                    {
-                        Debug.Log($"[ShortcutBar] Activated shortcut slot {keyOffset + 1} with skill: {skill.Name}");
-                        UseSkill(shortcutData, keyOffset);
-                    }
-                }
-
+                // Player input lands on the simulation through the command queue (replay system)
+                Services.Replay.PlayerCommandService.Dispatch(
+                    new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.UseShortcut, keyOffset));
                 break;
+            }
+        }
+
+        /// <summary>
+        /// Activates the shortcut at <paramref name="shortcutIndex"/> (item or skill) against the
+        /// current bar contents. Command handler entry point; no-ops when the slot is empty.
+        /// </summary>
+        public void ApplyUseShortcut(int shortcutIndex)
+        {
+            if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
+                return;
+
+            var shortcutData = _shortcutSlots[shortcutIndex];
+            if (shortcutData == null)
+                return;
+
+            // Handle item shortcuts
+            if (shortcutData.SlotType == ShortcutSlotType.Item)
+            {
+                var referencedSlot = shortcutData.ReferencedSlot;
+                if (referencedSlot?.SlotData?.Item != null && referencedSlot.SlotData.BagIndex.HasValue)
+                {
+                    Debug.Log($"[ShortcutBar] Activated shortcut slot {shortcutIndex + 1} with item: {referencedSlot.SlotData.Item.Name}");
+
+                    // Use the consumable if it's a consumable
+                    if (referencedSlot.SlotData.Item is Consumable)
+                    {
+                        UseConsumable(referencedSlot.SlotData.Item, referencedSlot.SlotData.BagIndex.Value);
+                    }
+                }
+            }
+            // Handle skill shortcuts
+            else if (shortcutData.SlotType == ShortcutSlotType.Skill)
+            {
+                var skill = shortcutData.ReferencedSkill;
+                if (skill != null)
+                {
+                    Debug.Log($"[ShortcutBar] Activated shortcut slot {shortcutIndex + 1} with skill: {skill.Name}");
+                    UseSkill(shortcutData, shortcutIndex);
+                }
             }
         }
     }

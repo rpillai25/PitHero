@@ -111,13 +111,22 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Toggle between Stop and Continue Adventuring
+        /// Toggle between Stop and Continue Adventuring. Player input: routed through the command
+        /// queue so it lands on a deterministic simulation tick (replay system).
         /// </summary>
-        public void TriggerToggle() => SetStopped(!_isStoppedAdventuring);
+        public void TriggerToggle()
+        {
+            bool target = !_isStoppedAdventuring;
+            if (Services.Replay.PlayerCommandService.ShouldApplyDirectly)
+                SetStopped(target);
+            else
+                Services.Replay.PlayerCommandService.TryEnqueue(
+                    Services.Replay.PlayerCommand.Flag(Services.Replay.PlayerCommandType.SetStoppedAdventure, target));
+        }
 
         /// <summary>
-        /// Sets Stop mode directly (idempotent). Used by the toggle button and by
-        /// PartyDiningService for auto-dine trips and auto-resume after breakfast.
+        /// Sets Stop mode directly (idempotent). Used by the command handler and by
+        /// PartyDiningService for auto-dine trips and auto-resume after breakfast (simulation-side).
         /// </summary>
         public void SetStopped(bool stopped)
         {

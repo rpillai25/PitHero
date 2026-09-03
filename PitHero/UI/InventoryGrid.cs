@@ -449,7 +449,8 @@ namespace PitHero.UI
             _stage = stage;
             _contextMenu = new InventoryContextMenu();
             _contextMenu.Initialize(stage, skin);
-            _contextMenu.OnUseItem += (item, bagIndex) => UseConsumable(item, bagIndex);
+            _contextMenu.OnUseItem += (item, bagIndex) => Services.Replay.PlayerCommandService.Dispatch(
+                new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.UseBagConsumable, bagIndex));
             _contextMenu.OnDiscardItem += (item, bagIndex, quantity) => DiscardItem(bagIndex, quantity);
             _contextMenu.OnHidden += ClearHoverState;
 
@@ -646,10 +647,11 @@ namespace PitHero.UI
                     {
                         Debug.Log($"Activated shortcut slot {data.ShortcutKey} with item: {data.Item.Name}");
 
-                        // Use the consumable if it's a consumable
+                        // Use the consumable if it's a consumable (via the command queue, replay system)
                         if (data.Item is Consumable && data.BagIndex.HasValue)
                         {
-                            UseConsumable(data.Item, data.BagIndex.Value);
+                            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                                Services.Replay.PlayerCommandType.UseBagConsumable, data.BagIndex.Value));
                         }
                         break;
                     }
@@ -889,6 +891,21 @@ namespace PitHero.UI
                 var desiredPos = new Vector2(stageTopLeft.X + slot.GetWidth() + 4f, stageTopLeft.Y);
                 _contextMenu.Show(slot.SlotData.Item, slot.SlotData.BagIndex.Value, desiredPos);
             }
+        }
+
+        /// <summary>
+        /// Uses the consumable currently at <paramref name="bagIndex"/> in the hero's bag. Command
+        /// handler entry point; no-ops when the slot is empty or not a consumable.
+        /// </summary>
+        public void ApplyUseConsumable(int bagIndex)
+        {
+            var bag = _heroComponent?.Bag;
+            if (bag == null || bagIndex < 0 || bagIndex >= bag.Capacity)
+                return;
+            var item = bag.GetSlotItem(bagIndex);
+            if (item == null)
+                return;
+            UseConsumable(item, bagIndex);
         }
 
         /// <summary>Uses a consumable item.</summary>

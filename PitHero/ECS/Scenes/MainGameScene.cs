@@ -53,6 +53,7 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
         private SimulationClock _simulationClock; // Session tick counter; advanced last in every Update (replay system)
+        private Services.Replay.PlayerCommandService _playerCommands; // Player input -> simulation doorway (replay system)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
@@ -290,6 +291,10 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(SettingsUI));
             _simulationClock?.Detach();
             Core.Services.RemoveService(typeof(SimulationClock));
+            _playerCommands?.Detach();
+            Core.Services.RemoveService(typeof(Services.Replay.PlayerCommandService));
+            // A new scene always starts unpaused; pending pause commands die with this scene
+            Core.Services.GetService<PauseService>()?.ResetImmediate();
         }
 
         public override void Begin()
@@ -312,6 +317,8 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<Services.LootShuffleService>()?.SetEpicRng(GameRandom.Loot);
             _simulationClock = new SimulationClock();
             Core.Services.AddService(_simulationClock);
+            _playerCommands = new Services.Replay.PlayerCommandService();
+            Core.Services.AddService(_playerCommands);
             Debug.Log($"[MainGameScene] Session master seed {masterSeed}");
 
             LoadMap();
@@ -2929,6 +2936,9 @@ namespace PitHero.ECS.Scenes
 
             // Check if a living hero who respawned without a crystal has arrived at the statue
             _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
+
+            // Player commands land here, at the same point of every tick, live or replayed
+            _playerCommands?.Drain(_simulationClock != null ? _simulationClock.Tick : 0L);
 
             // Always last: this step is complete
             _simulationClock?.Advance();

@@ -242,17 +242,15 @@ namespace PitHero.UI
             if (_mercenaryEntity == null) return;
             if (_hireButton.GetDisabled()) return;
 
+            // Player input lands on a deterministic tick via the command queue; the handler resolves the
+            // tavern entity by index + name and re-checks affordability (replay system)
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
             {
-                if (mercenaryManager.HireMercenary(_mercenaryEntity))
-                {
-                    Debug.Log("[MercenaryHireDialog] Successfully hired mercenary");
-                }
-                else
-                {
-                    Debug.Warn("[MercenaryHireDialog] Failed to hire mercenary");
-                }
+                int tavernIndex = mercenaryManager.GetUnhiredMercenaries().IndexOf(_mercenaryEntity);
+                string name = _mercenaryEntity.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                    Services.Replay.PlayerCommandType.HireMercenary, name, tavernIndex));
             }
 
             Hide();
@@ -266,8 +264,10 @@ namespace PitHero.UI
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
             {
-                mercenaryManager.DismissTavernMercenary(_mercenaryEntity);
-                Debug.Log("[MercenaryHireDialog] Dismissed tavern mercenary");
+                int tavernIndex = mercenaryManager.GetUnhiredMercenaries().IndexOf(_mercenaryEntity);
+                string name = _mercenaryEntity.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                    Services.Replay.PlayerCommandType.DismissTavernMercenary, name, tavernIndex));
             }
 
             Hide();

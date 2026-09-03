@@ -602,18 +602,11 @@ namespace PitHero.UI
                 return;
             }
 
-            var hero = _heroComponent.LinkedHero;
-            if (hero.TryPurchaseSkill(_pendingSkillPurchase))
-            {
-                Debug.Log($"[HeroCrystalTab] Successfully purchased skill: {_pendingSkillPurchase.Name}");
-
-                // Refresh the display
-                UpdateWithHero(_heroComponent);
-            }
-            else
-            {
-                Debug.Log($"[HeroCrystalTab] Failed to purchase skill: {_pendingSkillPurchase.Name}");
-            }
+            // Purchase lands on a deterministic tick via the command queue; the handler re-validates
+            // JP/ownership and refreshes this tab through HeroUI.RefreshAfterSkillPurchase (replay system)
+            Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                Services.Replay.PlayerCommandType.PurchaseSkill, _pendingSkillPurchase.Name));
+            Debug.Log($"[HeroCrystalTab] Requested skill purchase: {_pendingSkillPurchase.Name}");
 
             _pendingSkillPurchase = null;
             _confirmDialog?.Hide();

@@ -654,29 +654,24 @@ namespace PitHero.UI
             _strategicButton.IsChecked = true;
 
             // Wire up battle tactic events
+            // Player input lands on the simulation through the command queue (replay system)
             _blitzButton.OnChanged += (isChecked) =>
             {
                 if (isChecked)
-                {
-                    var heroComp = GetHeroComponent();
-                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Blitz;
-                }
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetBattleTactic, (int)BattleTactic.Blitz));
             };
             _strategicButton.OnChanged += (isChecked) =>
             {
                 if (isChecked)
-                {
-                    var heroComp = GetHeroComponent();
-                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Strategic;
-                }
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetBattleTactic, (int)BattleTactic.Strategic));
             };
             _defensiveButton.OnChanged += (isChecked) =>
             {
                 if (isChecked)
-                {
-                    var heroComp = GetHeroComponent();
-                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Defensive;
-                }
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetBattleTactic, (int)BattleTactic.Defensive));
             };
 
             // Consumable Options section
@@ -688,8 +683,8 @@ namespace PitHero.UI
             _useConsumablesOnMercsCheckBox.IsChecked = true;
             _useConsumablesOnMercsCheckBox.OnChanged += (isChecked) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.UseConsumablesOnMercenaries = isChecked;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.Flag(
+                    Services.Replay.PlayerCommandType.SetUseConsumablesOnMercs, isChecked));
             };
             container.Add(_useConsumablesOnMercsCheckBox).Left().SetPadBottom(8);
             container.Row();
@@ -698,8 +693,8 @@ namespace PitHero.UI
             _mercsCanUseConsumablesCheckBox.IsChecked = true;
             _mercsCanUseConsumablesCheckBox.OnChanged += (isChecked) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.MercenariesCanUseConsumables = isChecked;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.Flag(
+                    Services.Replay.PlayerCommandType.SetMercsCanUseConsumables, isChecked));
             };
             container.Add(_mercsCanUseConsumablesCheckBox).Left().SetPadBottom(15);
             container.Row();
@@ -810,8 +805,11 @@ namespace PitHero.UI
                 }
             }
 
-            hero.SetHealPrioritiesInOrder(healPriorities);
-            Debug.Log($"[HeroUI] Updated heal priorities: {healPriorities[0]}, {healPriorities[1]}, {healPriorities[2]}");
+            // Applied on a deterministic tick via the command queue (handler also refreshes heal action costs)
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetHealPriorities,
+                (int)healPriorities[0], (int)healPriorities[1], (int)healPriorities[2]));
+            Debug.Log($"[HeroUI] Requested heal priorities: {healPriorities[0]}, {healPriorities[1]}, {healPriorities[2]}");
         }
 
         private void UpdateHealActionCosts()
@@ -1042,12 +1040,12 @@ namespace PitHero.UI
 
             var dialog = new ConfirmationDialog(title, message, skin, onYes: () =>
             {
+                // Applied on a deterministic tick via the command queue; the handler dismisses and
+                // then calls RefreshAfterPartyChange (replay system)
                 var mercManager = Core.Services?.GetService<MercenaryManager>();
-                mercManager?.DismissPartyMercenary(mercEntity);
-                RefreshMercenariesTab();
-                RefreshMercenaryEquipSlots();
-                // Notify inventory grid that items were added to the bag so they appear immediately
-                InventorySelectionManager.OnInventoryChanged?.Invoke();
+                int hiredIndex = mercManager != null ? mercManager.GetHiredMercenaries().IndexOf(mercEntity) : -1;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                    Services.Replay.PlayerCommandType.DismissPartyMercenary, mc?.LinkedMercenary?.Name, hiredIndex));
             });
 
             dialog.Show(_stage);
@@ -1087,8 +1085,11 @@ namespace PitHero.UI
             {
                 if (System.Enum.TryParse(_priorityItems[i], out HeroPitPriority priority)) newPriorities[i] = priority; else { Debug.Log($"Failed to parse priority: {_priorityItems[i]}"); return; }
             }
-            hero.SetPrioritiesInOrder(newPriorities);
-            Debug.Log($"Updated hero priorities: {newPriorities[0]}, {newPriorities[1]}, {newPriorities[2]}");
+            // Applied on a deterministic tick via the command queue (replay system)
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetPitPriorities,
+                (int)newPriorities[0], (int)newPriorities[1], (int)newPriorities[2]));
+            Debug.Log($"Requested hero priorities: {newPriorities[0]}, {newPriorities[1]}, {newPriorities[2]}");
         }
 
         /// <summary>Update button style based on shrink mode</summary>
@@ -1273,6 +1274,23 @@ namespace PitHero.UI
 
         /// <summary>Gets the hero crystal tab reference for UI reconnection.</summary>
         public HeroCrystalTab GetCrystalTab() => _heroCrystalTab;
+
+        /// <summary>Refreshes the mercenaries tab, merc equip slots and the inventory grid after a party change applied by a command.</summary>
+        public void RefreshAfterPartyChange()
+        {
+            RefreshMercenariesTab();
+            RefreshMercenaryEquipSlots();
+            // Notify inventory grid that items were added to the bag so they appear immediately
+            InventorySelectionManager.OnInventoryChanged?.Invoke();
+        }
+
+        /// <summary>Re-reads the hero's skills/JP into the Hero Info tab after a command-applied skill purchase.</summary>
+        public void RefreshAfterSkillPurchase()
+        {
+            var heroComponent = GetHeroComponent();
+            if (heroComponent != null)
+                _heroCrystalTab?.UpdateWithHero(heroComponent);
+        }
 
         /// <summary>Re-reads the crystal collection into the Crystals tab slots. Called on hero
         /// reconnection so a crystal consumed by the ceremony leaves the queue and the outgoing
