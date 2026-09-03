@@ -115,6 +115,7 @@ namespace PitHero.Services.Replay
         /// <summary>Tears the current scene down and rebuilds it from the recording's start state, then seeks to <paramref name="startAtTick"/>.</summary>
         private void RestartScene(long startAtTick)
         {
+            Debug.QuietMode = false; // scene rebuild logs are worth keeping; the seek that follows re-arms quiet mode
             _startAtTick = startAtTick;
             _commandCursor = 0;
             _decisionCursor = 0;
@@ -295,10 +296,13 @@ namespace PitHero.Services.Replay
             _seekStartedAtTick = CurrentTick;
             State = ReplayPlaybackState.Seeking;
             Core.SimulationSuspended = true;
+            // Thousands of simulated steps per second: keep Debug.WriteLine off the hot path
+            Debug.QuietMode = true;
         }
 
         private void FinishSeek()
         {
+            Debug.QuietMode = false;
             var after = _afterSeek;
             _afterSeek = null;
             if (after != null)
@@ -339,6 +343,7 @@ namespace PitHero.Services.Replay
         {
             State = ReplayPlaybackState.Idle;
             Data = null;
+            Debug.QuietMode = false;
 
             Core.SimulationSuspended = false;
             Core.SimulationSpeed = 1f;
