@@ -41,9 +41,10 @@ namespace PitHero.ECS.Scenes
             _titleMenuUI.InitializeUI(uiCanvas.Stage);
         }
 
-        public override void Update()
+        /// <summary>Menu UI is presentation-only: it runs once per rendered frame, never inside a simulation step.</summary>
+        public override void PresentationUpdate()
         {
-            base.Update();
+            base.PresentationUpdate();
             _titleMenuUI?.Update();
         }
     }

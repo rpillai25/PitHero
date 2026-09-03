@@ -21,6 +21,12 @@ namespace PitHero
         {
             base.Initialize();
 
+            // Deterministic simulation: the world advances only in fixed 1/60 s steps (replay system).
+            // UI, camera and HUD run once per rendered frame via Scene.PresentationUpdate.
+            Core.UseFixedTimeStep = true;
+            Core.FixedStepSeconds = GameConfig.SimulationFixedStepSeconds;
+            Core.MaxStepsPerFrame = GameConfig.SimulationMaxStepsPerFrame;
+
             // Synchronize ItemRegistry tier stride with the biome loop length so that
             // tier-scaled gear names ("Item+2", "Item+3", …) resolve correctly on load.
             ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel;

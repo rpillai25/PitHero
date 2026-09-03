@@ -76,7 +76,16 @@ namespace PitHero.ECS.Components
             }
         }
 
+        /// <summary>
+        /// No-op: the camera is view-only and polls input, so it runs from
+        /// <see cref="PresentationUpdate"/> once per rendered frame instead of inside a simulation step.
+        /// </summary>
         public void Update()
+        {
+        }
+
+        /// <summary>Per-rendered-frame camera control (zoom, pan, quadrant jumps, hero following). Called by the scene's presentation pass.</summary>
+        public void PresentationUpdate()
         {
             if (_camera == null)
                 return;

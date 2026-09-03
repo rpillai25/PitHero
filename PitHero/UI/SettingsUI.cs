@@ -1782,6 +1782,9 @@ namespace PitHero.UI
                 if (pauseService != null)
                     pauseService.Unpause();
                 Time.TimeScale = 1f;
+                Core.SimulationSpeed = 1f;
+                Core.SimulationSuspended = false;
+                Core.PendingExtraSteps = 0;
                 Core.GetGlobalManager<CoroutineManager>().StopAllCoroutines();
                 AI.HeroStateMachine.IsBattleInProgress = false;
                 AI.HeroStateMachine.CurrentThreatTarget = null;

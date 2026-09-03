@@ -643,6 +643,24 @@ namespace PitHero
         public const float UIBarHideOffset = 54f;     // Stage pixels the bar slides up when hidden
         public const float UIBarProximityY = 48f;     // Mouse Y <= this (stage coords) triggers proximity-unhide
 
+        // Simulation clock (deterministic fixed step — see docs on the replay system)
+        public const float SimulationFixedStepSeconds = 1f / 60f; // Length of one simulation step; every sim accumulator advances by exactly this
+        public const int SimulationMaxStepsPerFrame = 6;         // Catch-up cap per rendered frame (occluded window / hitch); backlog is dropped
+        public const float SimulationFastForwardSpeed = 2.5f;    // Fast-forward button multiplier: extra steps per frame, same per-step delta
+
+        // Replay playback
+        public const int ReplayMaxStepsPerFrame = 16;            // Accumulator cap while a replay plays at high speed
+        public const float ReplaySeekWallBudgetSeconds = 0.030f; // Wall time per frame spent running seek steps so the scrubber stays responsive
+        public const int ReplayHashIntervalTicks = 60;           // Simulation ticks between divergence-tripwire state hashes (1 per sim second)
+        public static readonly float[] ReplaySpeedSteps = { 1f, 2.5f, 4f, 8f }; // Speed button cycle during playback
+        public const float ReplayScrubberWidth = 720f;           // Stage pixels; clamped to the stage width minus margins
+        public const float ReplayScrubberHeight = 28f;           // Stage pixels
+        public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge
+        public const string ReplayDirectoryName = "replays";     // Under the persistent data folder
+        public const string ReplayFilePrefix = "replay_";
+        public const string ReplayFileExtension = ".bin";
+        public const int ReplaySpeechSeedSalt = 0x5BEEC4;        // XOR'd with the master seed for the cosmetic speech-bubble RNG
+
         // Second Chance Shop layout positions
         // Composed for a 1920x360 stage; SecondChanceShopUI centers the whole composition on
         // wider stages by shifting all X positions right by (stageWidth - VirtualWidth) / 2, and fits

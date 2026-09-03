@@ -2836,9 +2836,95 @@ namespace PitHero.ECS.Scenes
             Debug.Log("[MainGameScene] Reconnected all UI to new hero");
         }
 
+        /// <summary>
+        /// One fixed simulation step. Only simulation state advances here (entities, coroutines via
+        /// Core, in-game clock, coordinators, automation). Nothing in this method may read input or
+        /// depend on the wall clock — see <see cref="PresentationUpdate"/> for UI/camera work.
+        /// </summary>
         public override void Update()
         {
             base.Update();
+
+            Core.Services.GetService<InGameTimeService>()?.Update();
+
+            // Update mercenary manager
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            mercenaryManager?.Update();
+
+            // Sync farming / kitchen workers with job assignments. Held during the new-game intro so
+            // the starter Slime stays inside its house until the hero has arrived (issue #396).
+            if (!IsIntroActive)
+            {
+                Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
+                Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
+            }
+
+            // Tick party dining (eat timers, auto-resume, reload restart)
+            Core.Services.GetService<Services.PartyDiningService>()?.Update();
+
+            // Hour-edge triggers: 6 AM (morning reset), 12 PM (lunch), 6 PM (dinner)
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService != null)
+            {
+                int currentHour = timeService.Hour;
+                if (_lastInGameHour != -1)
+                {
+                    if (currentHour == 6 && _lastInGameHour != 6)
+                    {
+                        // Morning reset: clear wet tiles, re-populate watering queue
+                        Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
+                        Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
+                        // Belt-and-braces ClearAll (last dinner ~9:59 PM expires ~3:59 AM naturally)
+                        Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
+                        // Reset so breakfast trip can fire (breakfast itself is wake-driven from SleepInBedAction)
+                        Core.Services.GetService<Services.PartyDiningService>()?.ResetForNewMealPeriod();
+                    }
+                    else if (currentHour == 12 && _lastInGameHour != 12)
+                    {
+                        // Lunch (issue #392)
+                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
+                        partyDining?.ResetForNewMealPeriod();
+                        partyDining?.BeginAutoDine(MealPeriod.Lunch);
+                    }
+                    else if (currentHour == 18 && _lastInGameHour != 18)
+                    {
+                        // Dinner (issue #392)
+                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
+                        partyDining?.ResetForNewMealPeriod();
+                        partyDining?.BeginAutoDine(MealPeriod.Dinner);
+                    }
+                }
+                _lastInGameHour = currentHour;
+            }
+
+            // Advance crop growth when not paused
+            var pauseService = Core.Services.GetService<PauseService>();
+            bool isPaused = pauseService?.IsPaused ?? false;
+            if (!isPaused)
+            {
+                var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+                Core.Services.GetService<Services.CropGrowthService>()?.Update(
+                    Core.Services.GetService<TileStateService>(), cropsAtlas);
+                Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
+                Core.Services.GetService<Services.AutoCropSellService>()?.Update();
+                Core.Services.GetService<Services.AutoJobAssignmentService>()?.Update();
+                Core.Services.GetService<Services.AutoLearnSkillsService>()?.Update();
+            }
+
+            // Check if a living hero who respawned without a crystal has arrived at the statue
+            _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
+        }
+
+        /// <summary>
+        /// Once per rendered frame, after all simulation steps: UI stages, camera, HUD, labels, mode
+        /// overlays and world hover/click handling. Anything here that changes simulation state must
+        /// go through a player command so it lands on a deterministic tick.
+        /// </summary>
+        public override void PresentationUpdate()
+        {
+            // Camera before the UI stages, matching the entity-order the camera component used to update in
+            _cameraController?.PresentationUpdate();
+            base.PresentationUpdate();
 
             // Re-anchor stage-space HUD when the render target size changes (window shrink/restore,
             // dock, monitor swap). Clock/tilling/planting labels already reposition every frame.
@@ -2878,7 +2964,6 @@ namespace PitHero.ECS.Scenes
             // Keep pit level label up to date
             UpdatePitLevelLabel();
             UpdateFundsLabel();
-            Core.Services.GetService<InGameTimeService>()?.Update();
             _colorGrading?.UpdateTimeOfDay();
             _cloudOverlay?.Update();
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
@@ -3019,72 +3104,6 @@ namespace PitHero.ECS.Scenes
             // Handle keyboard shortcuts via shortcut bar (suspended during the new-game intro)
             if (!IsIntroActive)
                 _shortcutBar?.HandleKeyboardShortcuts();
-
-            // Update mercenary manager
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
-            mercenaryManager?.Update();
-
-            // Sync farming / kitchen workers with job assignments. Held during the new-game intro so
-            // the starter Slime stays inside its house until the hero has arrived (issue #396).
-            if (!IsIntroActive)
-            {
-                Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
-                Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
-            }
-
-            // Tick party dining (eat timers, auto-resume, reload restart)
-            Core.Services.GetService<Services.PartyDiningService>()?.Update();
-
-            // Hour-edge triggers: 6 AM (morning reset), 12 PM (lunch), 6 PM (dinner)
-            var timeService = Core.Services.GetService<InGameTimeService>();
-            if (timeService != null)
-            {
-                int currentHour = timeService.Hour;
-                if (_lastInGameHour != -1)
-                {
-                    if (currentHour == 6 && _lastInGameHour != 6)
-                    {
-                        // Morning reset: clear wet tiles, re-populate watering queue
-                        Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
-                        Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
-                        // Belt-and-braces ClearAll (last dinner ~9:59 PM expires ~3:59 AM naturally)
-                        Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
-                        // Reset so breakfast trip can fire (breakfast itself is wake-driven from SleepInBedAction)
-                        Core.Services.GetService<Services.PartyDiningService>()?.ResetForNewMealPeriod();
-                    }
-                    else if (currentHour == 12 && _lastInGameHour != 12)
-                    {
-                        // Lunch (issue #392)
-                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
-                        partyDining?.ResetForNewMealPeriod();
-                        partyDining?.BeginAutoDine(MealPeriod.Lunch);
-                    }
-                    else if (currentHour == 18 && _lastInGameHour != 18)
-                    {
-                        // Dinner (issue #392)
-                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
-                        partyDining?.ResetForNewMealPeriod();
-                        partyDining?.BeginAutoDine(MealPeriod.Dinner);
-                    }
-                }
-                _lastInGameHour = currentHour;
-            }
-
-            // Advance crop growth when not paused
-            bool isPaused = pauseService?.IsPaused ?? false;
-            if (!isPaused)
-            {
-                var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-                Core.Services.GetService<Services.CropGrowthService>()?.Update(
-                    Core.Services.GetService<TileStateService>(), cropsAtlas);
-                Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
-                Core.Services.GetService<Services.AutoCropSellService>()?.Update();
-                Core.Services.GetService<Services.AutoJobAssignmentService>()?.Update();
-                Core.Services.GetService<Services.AutoLearnSkillsService>()?.Update();
-            }
-
-            // Check if a living hero who respawned without a crystal has arrived at the statue
-            _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
 
             // Handle mercenary hover and click detection
             HandleMercenaryHover();

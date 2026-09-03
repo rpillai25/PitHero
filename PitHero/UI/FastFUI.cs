@@ -114,22 +114,23 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Toggles game speed between normal and 2.5x fast forward
+        /// Toggles game speed between normal and fast forward. Fast forward runs more fixed simulation
+        /// steps per rendered frame (Core.SimulationSpeed) rather than scaling Time.DeltaTime, so the
+        /// simulation follows the exact same trajectory at either speed (replay determinism).
         /// </summary>
         public void TriggerToggle()
         {
-            if (_isSpeedUp)
-            {
-                // Set back to normal speed
-                Time.TimeScale = 1f;
-                _isSpeedUp = false;
-            }
-            else
-            {
-                // Speed up to 2x
-                Time.TimeScale = 2.5f;
-                _isSpeedUp = true;
-            }
+            SetSpeedUp(!_isSpeedUp);
+        }
+
+        /// <summary>True while fast forward is engaged.</summary>
+        public bool IsSpeedUp => _isSpeedUp;
+
+        /// <summary>Sets fast forward on or off explicitly (replay playback forces it off).</summary>
+        public void SetSpeedUp(bool speedUp)
+        {
+            _isSpeedUp = speedUp;
+            Core.SimulationSpeed = speedUp ? GameConfig.SimulationFastForwardSpeed : 1f;
         }
 
         /// <summary>
