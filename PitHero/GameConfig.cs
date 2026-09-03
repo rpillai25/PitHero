@@ -580,6 +580,16 @@ namespace PitHero
         public const float CloudGiantSpeedMult     = 0.7f;   // giant masses lumber slowest of all
         public const float CloudGiantThreshold     = 0.80f;  // high gate -> giant crests are rare
         public const float CloudGiantBoost         = 0.24f;  // max extra density at a giant crest
+        // Cloud dead zone: a world-space tile rect (inclusive on both ends) where clouds never render,
+        // so the tavern interior stays readable. Covers the map's 12 tile rows only (tree bands above
+        // and below still get clouds). Clouds feather back in over CloudDeadZoneFeatherPx outside the
+        // rect; corners are rounded by distance-to-rect.
+        public const bool  CloudDeadZoneEnabled    = true;
+        public const int   CloudDeadZoneMinTileX   = 63;   // tavern left edge
+        public const int   CloudDeadZoneMaxTileX   = 106;  // tavern right edge (inclusive)
+        public const int   CloudDeadZoneMinTileY   = 0;    // top map row
+        public const int   CloudDeadZoneMaxTileY   = 11;   // bottom map row (inclusive)
+        public const float CloudDeadZoneFeatherPx  = 64f;
 
         // Speech bubbles
         public const int SpeechBubbleWidth = 128;          // screen px (design units)

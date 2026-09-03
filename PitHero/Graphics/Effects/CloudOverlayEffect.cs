@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -219,6 +220,9 @@ namespace PitHero.Rendering
         EffectParameter _coverageThresholdParam;
         EffectParameter _coverageSoftnessParam;
         EffectParameter _cloudColorParam;
+        EffectParameter _deadZoneMinParam;
+        EffectParameter _deadZoneMaxParam;
+        EffectParameter _deadZoneFeatherParam;
 
         static byte[] _shaderBytes;
 
@@ -246,6 +250,9 @@ namespace PitHero.Rendering
             _coverageThresholdParam = Parameters["CoverageThreshold"];
             _coverageSoftnessParam  = Parameters["CoverageSoftness"];
             _cloudColorParam        = Parameters["CloudColor"];
+            _deadZoneMinParam       = Parameters["DeadZoneMin"];
+            _deadZoneMaxParam       = Parameters["DeadZoneMax"];
+            _deadZoneFeatherParam   = Parameters["DeadZoneFeather"];
 
             // One-shot: set from GameConfig so the C# scroll-offset math and the shader's own scale
             // factors can never drift apart.
@@ -261,6 +268,37 @@ namespace PitHero.Rendering
 
             _morphGainParam.SetValue(_morphGain);
             _cloudColorParam.SetValue(_cloudColor);
+
+            ApplyDeadZone();
+        }
+
+        /// <summary>
+        /// Pushes the cloud dead zone (world-px rect where clouds never render, e.g. the tavern) from
+        /// GameConfig. Disabled = an empty rect pushed far off-world, so every pixel is "outside" and
+        /// the shader's mask is 1 everywhere.
+        /// </summary>
+        void ApplyDeadZone()
+        {
+            if (!GameConfig.CloudDeadZoneEnabled)
+            {
+                _deadZoneMinParam.SetValue(new Vector2(-1e9f, -1e9f));
+                _deadZoneMaxParam.SetValue(new Vector2(-1e9f, -1e9f));
+                _deadZoneFeatherParam.SetValue(1f);
+                return;
+            }
+
+            var min = new Vector2(
+                GameConfig.CloudDeadZoneMinTileX * GameConfig.TileSize,
+                GameConfig.CloudDeadZoneMinTileY * GameConfig.TileSize);
+            // Max tiles are inclusive: the zone's far edge is the far side of that tile.
+            var max = new Vector2(
+                (GameConfig.CloudDeadZoneMaxTileX + 1) * GameConfig.TileSize,
+                (GameConfig.CloudDeadZoneMaxTileY + 1) * GameConfig.TileSize);
+
+            _deadZoneMinParam.SetValue(min);
+            _deadZoneMaxParam.SetValue(max);
+            // smoothstep(0, 0, d) divides by zero in HLSL when edge0 == edge1; keep a tiny feather floor.
+            _deadZoneFeatherParam.SetValue(MathF.Max(GameConfig.CloudDeadZoneFeatherPx, 0.001f));
         }
 
         static byte[] LoadShaderBytes()
