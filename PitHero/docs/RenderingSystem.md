@@ -65,10 +65,10 @@ position from `CameraTopLeft`/`CameraSize` uniforms set each `Render()` call, so
 world-anchored under any pan/zoom without needing a giant fixed-size quad. Drift, weather (coverage
 threshold), shape morph, and day/night tint are all driven once per frame from `CloudOverlayController.Update()`
 (called from `MainGameScene.Update`), off `InGameTimeService.AccumulatedSeconds` — freezing with the
-rest of the world when paused. A **cloud dead zone** (`GameConfig.CloudDeadZone*`, a world-space tile
-rect covering the tavern, x 63–106, y 0–11) is pushed to the shader once as `DeadZoneMin`/`DeadZoneMax`/
+rest of the world when paused. Two **cloud dead zones** (`GameConfig.CloudDeadZone*`, world-space tile
+rects: the tavern, x 63–106, and the pit, x 0–32, both y 0–11) are pushed to the shader once as `DeadZoneMin`/`DeadZoneMax`, `DeadZone2Min`/`DeadZone2Max`, and
 `DeadZoneFeather`; cloud alpha is multiplied by a distance-to-rect mask so clouds never render inside
-it and feather back in over `CloudDeadZoneFeatherPx` outside. Set `CloudDeadZoneEnabled = false` to
+them and feather back in over `CloudDeadZoneFeatherPx` outside. Set `CloudDeadZoneEnabled = false` to
 switch it off. Editing `CloudOverlay.fx` requires recompiling `CloudOverlay.fxb` via
 `Content/Shaders/compileShadersFNA.bat`.
 

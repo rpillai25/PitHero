@@ -49,7 +49,9 @@ float  GiantBoost;       // max density added where the giant field crests
 float4 CloudColor;       // rgb = time-of-day tint, a = max opacity
 float2 DeadZoneMin;      // world px, set once; clouds never render inside [DeadZoneMin, DeadZoneMax]
 float2 DeadZoneMax;      // world px, set once
-float  DeadZoneFeather;  // world px over which clouds fade back in outside the dead zone
+float2 DeadZone2Min;     // second dead-zone rect (pit area); same semantics
+float2 DeadZone2Max;
+float  DeadZoneFeather;  // world px over which clouds fade back in outside either dead zone
 
 struct PSInput
 {
@@ -61,6 +63,13 @@ float SampleField(float2 uv)
 {
     float4 n = tex2D(NoiseSampler, uv);
     return 0.5 + (lerp(n.r, n.g, MorphFactor) - 0.5) * MorphGain;
+}
+
+// Distance from wp to the nearest edge of an axis-aligned rect; 0 inside, so corners stay rounded.
+float RectDistance(float2 wp, float2 rectMin, float2 rectMax)
+{
+    float2 outside = max(rectMin - wp, wp - rectMax);
+    return length(max(outside, 0.0));
 }
 
 float4 PSCloudOverlay(PSInput input) : COLOR0
@@ -91,10 +100,10 @@ float4 PSCloudOverlay(PSInput input) : COLOR0
 
     float a = smoothstep(CoverageThreshold, CoverageThreshold + CoverageSoftness, density) * CloudColor.a;
 
-    // Cloud dead zone: fully clear inside the rect (e.g. the tavern), feathering back to full cloud
-    // cover over DeadZoneFeather px outside it. Distance-to-rect keeps the corners rounded.
-    float2 outside = max(DeadZoneMin - wp, wp - DeadZoneMax);
-    float deadDist = length(max(outside, 0.0));
+    // Cloud dead zones: fully clear inside either rect (tavern, pit), feathering back to full cloud
+    // cover over DeadZoneFeather px outside the nearest one.
+    float deadDist = min(RectDistance(wp, DeadZoneMin, DeadZoneMax),
+                         RectDistance(wp, DeadZone2Min, DeadZone2Max));
     a *= smoothstep(0.0, DeadZoneFeather, deadDist);
 
     // Darken dense cores for a volumetric look — wispy edges stay bright, cores read heavier.
