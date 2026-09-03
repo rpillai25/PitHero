@@ -322,11 +322,13 @@ namespace PitHero.UI
                 return;
 
             var job  = Jobs[_currentJobIndex];
+            // UI stream: the roll happens on a wall-clock click, so it must not consume the seeded
+            // simulation stream. The rolled stats travel with the player command (replay determinism).
             var stats = new StatBlock(
-                Nez.Random.Range(2, 6),
-                Nez.Random.Range(2, 6),
-                Nez.Random.Range(2, 6),
-                Nez.Random.Range(2, 6)
+                GameRandom.UiRange(2, 6),
+                GameRandom.UiRange(2, 6),
+                GameRandom.UiRange(2, 6),
+                GameRandom.UiRange(2, 6)
             );
             var crystal = new HeroCrystal(JobNames[_currentJobIndex], job, 1, stats);
             if (_crystalService != null && _crystalService.TryAddToInventory(crystal))

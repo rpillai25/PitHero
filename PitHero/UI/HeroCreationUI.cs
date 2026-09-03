@@ -92,13 +92,13 @@ namespace PitHero.UI
             _previewEntity = previewEntity;
             _textService = Core.Services.GetService<TextService>();
 
-            // Randomize initial selections
-            _currentName = NameGenerator.GenerateRandomName(_currentGender);
-            _currentJobIndex = Nez.Random.Range(0, PrimaryJobNames.Length);
-            _currentSkinIndex = Nez.Random.Range(0, GameConfig.SkinColors.Count);
-            _currentHairColorIndex = Nez.Random.Range(0, GameConfig.HairColors.Count);
-            _currentHairstyleIndex = Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1);
-            _currentShirtIndex = Nez.Random.Range(0, GameConfig.ShirtColors.Count);
+            // Randomize initial selections (UI stream: these rolls happen at wall-clock time, outside the sim)
+            _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
+            _currentJobIndex = GameRandom.UiRange(0, PrimaryJobNames.Length);
+            _currentSkinIndex = GameRandom.UiRange(0, GameConfig.SkinColors.Count);
+            _currentHairColorIndex = GameRandom.UiRange(0, GameConfig.HairColors.Count);
+            _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.MaleHeroHairstyleCount + 1);
+            _currentShirtIndex = GameRandom.UiRange(0, GameConfig.ShirtColors.Count);
 
             _skin = PitHeroSkin.CreateSkin();
 
@@ -155,12 +155,12 @@ namespace PitHero.UI
             var rerollButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonReroll), skin);
             rerollButton.OnClicked += (btn) =>
             {
-                _currentName = NameGenerator.GenerateRandomName(_currentGender);
-                _currentJobIndex = Nez.Random.Range(0, PrimaryJobNames.Length);
-                _currentSkinIndex = Nez.Random.Range(0, GameConfig.SkinColors.Count);
-                _currentHairColorIndex = Nez.Random.Range(0, GameConfig.HairColors.Count);
-                _currentHairstyleIndex = Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1);
-                _currentShirtIndex = Nez.Random.Range(0, GameConfig.ShirtColors.Count);
+                _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
+                _currentJobIndex = GameRandom.UiRange(0, PrimaryJobNames.Length);
+                _currentSkinIndex = GameRandom.UiRange(0, GameConfig.SkinColors.Count);
+                _currentHairColorIndex = GameRandom.UiRange(0, GameConfig.HairColors.Count);
+                _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.MaleHeroHairstyleCount + 1);
+                _currentShirtIndex = GameRandom.UiRange(0, GameConfig.ShirtColors.Count);
                 _nameLabel.SetText(_currentName);
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));

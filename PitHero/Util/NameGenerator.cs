@@ -62,6 +62,18 @@ namespace PitHero.Util
             return $"{GenerateFirstName(gender)} {lastNames[Random.Range(0, lastNames.Length)]}";
         }
 
+        /// <summary>
+        /// Generates a random first-last name drawing from the supplied stream instead of Nez.Random.
+        /// UI-time callers (hero creation) use this so they never touch the seeded simulation stream.
+        /// </summary>
+        public static string GenerateRandomName(Gender gender, System.Random rng)
+        {
+            if (rng == null)
+                return GenerateRandomName(gender);
+            var lastNames = GetPool(ref _lastNames, NameTextKey.LastNames, FallbackLastNames);
+            return $"{GenerateFirstName(gender, rng)} {lastNames[rng.Next(0, lastNames.Length)]}";
+        }
+
         /// <summary>Generates a random first name only for the given gender using Nez.Random</summary>
         public static string GenerateFirstName(Gender gender = Gender.Male)
         {
@@ -69,6 +81,17 @@ namespace PitHero.Util
                 ? GetPool(ref _femaleFirstNames, NameTextKey.FemaleFirstNames, FallbackFemaleFirstNames)
                 : GetPool(ref _maleFirstNames, NameTextKey.MaleFirstNames, FallbackMaleFirstNames);
             return pool[Random.Range(0, pool.Length)];
+        }
+
+        /// <summary>Generates a random first name only, drawing from the supplied stream.</summary>
+        public static string GenerateFirstName(Gender gender, System.Random rng)
+        {
+            if (rng == null)
+                return GenerateFirstName(gender);
+            var pool = gender == Gender.Female
+                ? GetPool(ref _femaleFirstNames, NameTextKey.FemaleFirstNames, FallbackFemaleFirstNames)
+                : GetPool(ref _maleFirstNames, NameTextKey.MaleFirstNames, FallbackMaleFirstNames);
+            return pool[rng.Next(0, pool.Length)];
         }
 
         /// <summary>

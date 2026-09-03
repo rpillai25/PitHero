@@ -22,8 +22,9 @@ namespace PitHero.Util.SoundEffectTypes
         {
             if (!disposed)
             {
-                //Play random sound in group once
-                int rand = Nez.Random.Range(0, soundEffectGroup.Length * 500) / 500;
+                //Play random sound in group once. Audio stream, never Nez.Random: sounds fire from UI
+                //clicks at wall-clock times and must not perturb the seeded simulation stream.
+                int rand = PitHero.Services.GameRandom.AudioRange(0, soundEffectGroup.Length);
                 soundEffectGroup[rand].Play(volume);
             }
         }
@@ -32,8 +33,9 @@ namespace PitHero.Util.SoundEffectTypes
         {
             if (!disposed)
             {
-                //Play random sound in group once
-                int rand = Nez.Random.Range(0, soundEffectGroup.Length * 500) / 500;
+                //Play random sound in group once. Audio stream, never Nez.Random: sounds fire from UI
+                //clicks at wall-clock times and must not perturb the seeded simulation stream.
+                int rand = PitHero.Services.GameRandom.AudioRange(0, soundEffectGroup.Length);
                 soundEffectGroup[rand].Play(volume, pitch, pan);
             }
         }

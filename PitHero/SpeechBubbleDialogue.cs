@@ -20,7 +20,16 @@ namespace PitHero
         // mid-battle would break BattleEngineTests and virtual/live run parity.
         // The number of _rng draws per bubble event is variable (bounded draw-and-skip),
         // which is fine — _rng is private to dialogue and not contract-bound.
-        private static readonly System.Random _rng = new System.Random();
+        private static System.Random _rng = new System.Random();
+
+        /// <summary>
+        /// Reseeds the dialogue stream. Called at session start with a value derived from the master
+        /// seed so a replay shows the same bubble variants (cosmetic, but nice to reproduce).
+        /// </summary>
+        public static void Reseed(int seed)
+        {
+            _rng = new System.Random(seed);
+        }
 
         // ── Gate ─────────────────────────────────────────────────────────────────
 

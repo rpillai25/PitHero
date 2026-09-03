@@ -40,6 +40,16 @@ namespace PitHero.Services
             return _hairstyleQueue.Dequeue();
         }
 
+        /// <summary>
+        /// Discards the queue and refills it from the current Nez.Random stream. Called at session start
+        /// after seeding so hairstyle order never depends on how many draws earlier sessions consumed.
+        /// </summary>
+        public void ResetAndRefill()
+        {
+            _hairstyleQueue.Clear();
+            RefillQueue();
+        }
+
         /// <summary>Refills the queue with all hairstyle indices in shuffled order.</summary>
         private void RefillQueue()
         {

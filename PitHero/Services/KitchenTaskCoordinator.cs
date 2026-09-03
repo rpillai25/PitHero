@@ -41,7 +41,7 @@ namespace PitHero.Services
         {
             public Entity DishEntity;  // plate entity on the table to be bussed
             public Vector2 WorldPos;   // where to pick it up from
-            public float EnqueuedTime; // Time.TotalTime when queued — drives anti-starvation priority
+            public float EnqueuedTime; // SimulationClock.Now when queued — drives anti-starvation priority
         }
 
         private struct OrphanDish
@@ -1045,7 +1045,7 @@ namespace PitHero.Services
             var ticket = new KitchenTicket
             {
                 TicketId = ++_nextTicketId,
-                CreatedTime = Time.TotalTime,
+                CreatedTime = SimulationClock.Now,
                 Dish = dish,
                 IsPartyTicket = isParty,
                 PartySlot = partySlot,
@@ -1090,7 +1090,7 @@ namespace PitHero.Services
             var ticket = new KitchenTicket
             {
                 TicketId = ++_nextTicketId,
-                CreatedTime = Time.TotalTime,
+                CreatedTime = SimulationClock.Now,
                 Dish = dish,
                 IsPartyTicket = true,
                 PartySlot = partySlot,
@@ -1163,7 +1163,7 @@ namespace PitHero.Services
                 {
                     DishEntity = t.PlatedDishEntity,
                     WorldPos = t.PlatedDishEntity.Transform.Position,
-                    EnqueuedTime = Time.TotalTime,
+                    EnqueuedTime = SimulationClock.Now,
                 });
                 t.PlatedDishEntity = null;
             }
@@ -1317,7 +1317,7 @@ namespace PitHero.Services
                     {
                         DishEntity = emptyPlate,
                         WorldPos = platePos,
-                        EnqueuedTime = Time.TotalTime,
+                        EnqueuedTime = SimulationClock.Now,
                     });
                 }
             }
@@ -1573,7 +1573,7 @@ namespace PitHero.Services
             float oldestTime = float.MaxValue;
             for (int i = 0; i < _busJobs.Count; i++)
             {
-                if (Time.TotalTime - _busJobs[i].EnqueuedTime < minAgeSeconds)
+                if (SimulationClock.Now - _busJobs[i].EnqueuedTime < minAgeSeconds)
                     continue;
                 if (_busJobs[i].EnqueuedTime < oldestTime)
                 {

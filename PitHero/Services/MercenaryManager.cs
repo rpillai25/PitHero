@@ -301,7 +301,7 @@ namespace PitHero.Services
                 IsHired = false,
                 IsWaitingInTavern = false,
                 TavernPosition = tavernPosition,
-                SpawnTime = Time.TotalTime,
+                SpawnTime = SimulationClock.Now,
                 SpawnId = _nextSpawnId, // Assign unique spawn ID
                 LastTilePosition = SpawnPosition,
                 SkinColor = bodyColor,
@@ -1211,7 +1211,7 @@ namespace PitHero.Services
                 IsHired = true,
                 IsWaitingInTavern = false,
                 TavernPosition = Point.Zero,
-                SpawnTime = Time.TotalTime,
+                SpawnTime = SimulationClock.Now,
                 SpawnId = _nextSpawnId,
                 LastTilePosition = currentTile,
                 InsidePit = spawnInsidePit,

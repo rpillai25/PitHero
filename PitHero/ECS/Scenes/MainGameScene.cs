@@ -52,6 +52,7 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
+        private SimulationClock _simulationClock; // Session tick counter; advanced last in every Update (replay system)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
@@ -287,6 +288,8 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(PitWidthManager));
             Core.Services.RemoveService(typeof(ShortcutBarService));
             Core.Services.RemoveService(typeof(SettingsUI));
+            _simulationClock?.Detach();
+            Core.Services.RemoveService(typeof(SimulationClock));
         }
 
         public override void Begin()
@@ -297,6 +300,19 @@ namespace PitHero.ECS.Scenes
 
             // Captured up front: ApplyPendingLoadData() below clears PendingLoadData
             bool isNewGame = SaveLoadService.PendingLoadData == null;
+
+            // ── Deterministic session seed (replay system) ───────────────────────────────
+            // Must run before ANY world content is generated (SpawnPit/SetPitLevel draw RNG).
+            // A replay bootstrap supplies the recorded seed; otherwise a fresh one is generated.
+            var replayBootstrap = Services.Replay.ReplaySessionBootstrap.Consume();
+            int masterSeed = replayBootstrap != null ? replayBootstrap.MasterSeed : GameRandom.GenerateMasterSeed();
+            GameRandom.InitializeSession(masterSeed);
+            Core.Services.GetService<HairstyleQueueService>()?.ResetAndRefill();
+            SpeechBubbleDialogue.Reseed(masterSeed ^ GameConfig.ReplaySpeechSeedSalt);
+            Core.Services.GetService<Services.LootShuffleService>()?.SetEpicRng(GameRandom.Loot);
+            _simulationClock = new SimulationClock();
+            Core.Services.AddService(_simulationClock);
+            Debug.Log($"[MainGameScene] Session master seed {masterSeed}");
 
             LoadMap();
             SpawnPit();
@@ -2913,6 +2929,9 @@ namespace PitHero.ECS.Scenes
 
             // Check if a living hero who respawned without a crystal has arrived at the statue
             _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
+
+            // Always last: this step is complete
+            _simulationClock?.Advance();
         }
 
         /// <summary>
