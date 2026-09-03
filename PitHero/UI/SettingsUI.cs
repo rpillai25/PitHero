@@ -2048,7 +2048,7 @@ namespace PitHero.UI
             // Closing settings sweeps the tavern so mercs seated before auto-hire was configured
             // are considered (TryHirePass no-ops while the option is disabled)
             if (!_isVisible)
-                Core.Services.GetService<AutoHireMercenaryService>()?.TryHirePass();
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.AutoHirePass)); // deterministic tick (replay system)
         }
 
         /// <summary>True while any Automation tab option dialog is visible.</summary>
@@ -2089,7 +2089,7 @@ namespace PitHero.UI
                 if (pauseService != null)
                     pauseService.IsPaused = false;
                 LayoutUI();
-                Core.Services.GetService<AutoHireMercenaryService>()?.TryHirePass();
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.AutoHirePass)); // deterministic tick (replay system)
                 Debug.Log("[SettingsUI] Settings force closed by single window policy");
             }
         }

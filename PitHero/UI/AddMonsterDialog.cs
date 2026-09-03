@@ -222,24 +222,40 @@ namespace PitHero.UI
 
         private void TryPurchase(IEnemy enemy, int cost)
         {
+            // Lands on a deterministic tick via the command queue; ApplyPurchase re-checks room and
+            // gold and refreshes this dialog (replay system)
+            Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                Services.Replay.PlayerCommandType.PurchaseMonster, enemy.EnemyId.ToString(), _houseId, cost));
+        }
+
+        /// <summary>Purchases a monster of the given type into a house if room and gold still allow. Command handler entry point.</summary>
+        public void ApplyPurchase(int houseId, string enemyIdName, int cost)
+        {
             var alliedManager = Core.Services?.GetService<AlliedMonsterManager>();
             var gameState = Core.Services?.GetService<GameStateService>();
             if (alliedManager == null || gameState == null) return;
+            if (!Enum.TryParse<EnemyId>(enemyIdName, out var enemyId)) return;
 
             // Re-check room and gold at confirm time (state may have changed).
-            if (alliedManager.IsHouseFull(_houseId)) return;
+            if (alliedManager.IsHouseFull(houseId)) return;
             if (gameState.Funds < cost) return;
 
-            var added = alliedManager.AddPurchasedMonster(enemy, _houseId);
+            var enemy = EnemyFactory.Create(enemyId);
+            if (enemy == null || !enemy.IsRecruitable) return;
+
+            var added = alliedManager.AddPurchasedMonster(enemy, houseId);
             if (added == null) return;
 
             gameState.Funds -= cost;
 
-            // Close if the house just filled up; otherwise refresh the remaining-space display.
-            if (alliedManager.IsHouseFull(_houseId))
-                Close();
-            else
-                Rebuild();
+            // Keep an open dialog for this house in sync: close if it just filled up, else refresh.
+            if (_houseId == houseId && IsVisible)
+            {
+                if (alliedManager.IsHouseFull(houseId))
+                    Close();
+                else
+                    Rebuild();
+            }
         }
 
         private Nez.Sprites.SpriteAtlas TryLoadActorsAtlas()

@@ -451,7 +451,8 @@ namespace PitHero.UI
             _contextMenu.Initialize(stage, skin);
             _contextMenu.OnUseItem += (item, bagIndex) => Services.Replay.PlayerCommandService.Dispatch(
                 new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.UseBagConsumable, bagIndex));
-            _contextMenu.OnDiscardItem += (item, bagIndex, quantity) => DiscardItem(bagIndex, quantity);
+            _contextMenu.OnDiscardItem += (item, bagIndex, quantity) => Services.Replay.PlayerCommandService.Dispatch(
+                new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.SellBagItem, bagIndex, quantity, CommandGridId));
             _contextMenu.OnHidden += ClearHoverState;
 
             // Add placeholder tooltips to stage
@@ -858,7 +859,8 @@ namespace PitHero.UI
             if (target != null && target != source)
             {
                 source.SetItemSpriteHidden(false);
-                SwapSlotItems(source, target);
+                // The swap lands on a deterministic tick via the command queue (replay system)
+                Services.Replay.PlayerCommandService.Dispatch(BuildSwapCommand(source, target));
                 InventoryDragManager.EndDrag();
             }
             else if (target == source)
@@ -992,6 +994,49 @@ namespace PitHero.UI
                 return _stencilManager.FindStencilAtPosition(gridPos) != null;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Which grid a command targets: 0 = the Party window grid, 1 = the Second Chance shop grid.
+        /// Both are bound to the hero's bag; the handler applies on the grid the player dragged on.
+        /// </summary>
+        public int CommandGridId { get; set; }
+
+        /// <summary>Finds the slot at the given grid coordinates with the given type, or null.</summary>
+        public InventorySlot FindSlot(InventorySlotType type, int x, int y)
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null)
+                    continue;
+                var data = slot.SlotData;
+                if (data.SlotType == type && data.X == x && data.Y == y)
+                    return slot;
+            }
+            return null;
+        }
+
+        /// <summary>Builds the SwapSlots command for a drag from <paramref name="source"/> onto <paramref name="target"/>.</summary>
+        public Services.Replay.PlayerCommand BuildSwapCommand(InventorySlot source, InventorySlot target)
+        {
+            var cmd = new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.SwapSlots,
+                Services.Replay.SlotRefCodec.Pack((int)source.SlotData.SlotType, source.SlotData.X, source.SlotData.Y),
+                Services.Replay.SlotRefCodec.Pack((int)target.SlotData.SlotType, target.SlotData.X, target.SlotData.Y));
+            cmd.L = CommandGridId;
+            return cmd;
+        }
+
+        /// <summary>Applies a SwapSlots command: resolves both cells on this grid and swaps them if legal.</summary>
+        public void ApplySwapCommand(int packedSource, int packedTarget)
+        {
+            Services.Replay.SlotRefCodec.Unpack(packedSource, out int ta, out int xa, out int ya);
+            Services.Replay.SlotRefCodec.Unpack(packedTarget, out int tb, out int xb, out int yb);
+            var a = FindSlot((InventorySlotType)ta, xa, ya);
+            var b = FindSlot((InventorySlotType)tb, xb, yb);
+            if (a == null || b == null || a == b)
+                return;
+            SwapSlotItems(a, b);
         }
 
         /// <summary>Swaps two slot items (if legal) and persists bag ordering.</summary>

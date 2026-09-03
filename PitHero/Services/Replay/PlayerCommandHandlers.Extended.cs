@@ -104,10 +104,160 @@ namespace PitHero.Services.Replay
                 case PlayerCommandType.SetMonsterJob:
                     ApplySetMonsterJob(in cmd);
                     return true;
+                case PlayerCommandType.PurchaseMonster:
+                    MainScene?.AddMonsterDialog?.ApplyPurchase(cmd.A, cmd.S, cmd.B);
+                    return true;
+
+                // ── Inventory / shop ─────────────────────────────────────────────────
+                case PlayerCommandType.SwapSlots:
+                    GetGrid((int)cmd.L)?.ApplySwapCommand(cmd.A, cmd.B);
+                    return true;
+                case PlayerCommandType.SellBagItem:
+                    GetGrid(cmd.C)?.DiscardItem(cmd.A, cmd.B <= 0 ? int.MaxValue : cmd.B);
+                    return true;
+                case PlayerCommandType.BuyVaultItem:
+                    GetSettingsUI()?.SecondChanceShopUI?.ApplyItemPurchase(cmd.A, cmd.S, cmd.B, cmd.C);
+                    return true;
+                case PlayerCommandType.BuyVaultCrystal:
+                    GetSettingsUI()?.SecondChanceShopUI?.ApplyCrystalPurchase(cmd.A, cmd.S, cmd.B, cmd.C);
+                    return true;
+                case PlayerCommandType.BuySeeds:
+                    ApplyBuySeeds((PitHero.Farming.CropType)cmd.A, cmd.B);
+                    return true;
+
+                // ── Farm / construction / storage ────────────────────────────────────
+                case PlayerCommandType.PlaceBuilding:
+                    MainScene?.BuildingModeOverlay?.ApplyPlacement((PitHero.Util.BuildingType)cmd.A, cmd.B, cmd.C, cmd.D);
+                    return true;
+                case PlayerCommandType.MoveBuilding:
+                    MainScene?.BuildingModeOverlay?.ApplyMove(cmd.A, cmd.B, cmd.C);
+                    return true;
+                case PlayerCommandType.RemoveBuilding:
+                    ApplyRemoveBuilding(cmd.A);
+                    return true;
+                case PlayerCommandType.TillTile:
+                    MainScene?.TillModeOverlay?.ApplyMarkTill(cmd.A, cmd.B);
+                    return true;
+                case PlayerCommandType.UnmarkTillTile:
+                    MainScene?.TillModeOverlay?.ApplyUnmarkTill(cmd.A, cmd.B);
+                    return true;
+                case PlayerCommandType.RestoreGrassTile:
+                {
+                    var tile = new Microsoft.Xna.Framework.Point(cmd.A, cmd.B);
+                    Services?.GetService<WetTileService>()?.ClearWet(tile);
+                    Services?.GetService<TilledTileService>()?.RestoreGrassTile(tile);
+                    return true;
+                }
+                case PlayerCommandType.AddCropPlan:
+                    MainScene?.SeedModeOverlay?.ApplyPlaceCrop((PitHero.Farming.CropType)cmd.A, cmd.B, cmd.C);
+                    return true;
+                case PlayerCommandType.RemoveCropPlan:
+                    if (Services != null)
+                        PitHero.UI.SeedPlantingModeOverlay.ApplyRemovePlan(cmd.A, cmd.B);
+                    return true;
+                case PlayerCommandType.SellAllStorageCrops:
+                    MainScene?.HarvestedCropsOverlay?.ApplySellAll();
+                    return true;
+                case PlayerCommandType.SellStorageCrops:
+                    MainScene?.HarvestedCropsOverlay?.ApplySellStorage(cmd.A);
+                    return true;
+                case PlayerCommandType.MoveAllCropsToOtherStorages:
+                    MainScene?.HarvestedCropsOverlay?.ApplyMoveAll(cmd.A);
+                    return true;
+                case PlayerCommandType.FridgeReturnSlot:
+                    MainScene?.RefrigeratorDialog?.ApplyReturnSlot(cmd.A, (PitHero.Farming.CropType)cmd.B);
+                    return true;
+                case PlayerCommandType.FridgeSellSlot:
+                    MainScene?.RefrigeratorDialog?.ApplySellSlot(cmd.A, (PitHero.Farming.CropType)cmd.B);
+                    return true;
+                case PlayerCommandType.FarmRescan:
+                    Services?.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
+                    return true;
+                case PlayerCommandType.AutoHirePass:
+                    Services?.GetService<AutoHireMercenaryService>()?.TryHirePass();
+                    return true;
+
+                // ── Crystals ─────────────────────────────────────────────────────────
+                case PlayerCommandType.CreateCrystal:
+                {
+                    if (Services == null)
+                        return true;
+                    var stats = new RolePlayingFramework.Stats.StatBlock(cmd.B, cmd.C, cmd.D, (int)cmd.L);
+                    if (PitHero.UI.CrystalCreationDialog.ApplyCreate(cmd.A, stats))
+                        GetSettingsUI()?.HeroUI?.RefreshCrystalsTab();
+                    return true;
+                }
+                case PlayerCommandType.ForgeCrystals:
+                    GetSettingsUI()?.HeroUI?.GetCrystalsTabComponent()?.ApplyForge(cmd.A);
+                    return true;
+                case PlayerCommandType.SwapCrystalSlots:
+                    GetSettingsUI()?.HeroUI?.GetCrystalsTabComponent()?.ApplyCrystalSlotSwap(cmd.A, cmd.B, cmd.C, cmd.D);
+                    return true;
 
                 default:
                     return false;
             }
+        }
+
+        /// <summary>The main game scene, or null.</summary>
+        private static PitHero.ECS.Scenes.MainGameScene MainScene => CurrentScene as PitHero.ECS.Scenes.MainGameScene;
+
+        /// <summary>Resolves the inventory grid a command targets: 0 = Party window, 1 = Second Chance shop.</summary>
+        private static PitHero.UI.InventoryGrid GetGrid(int gridId)
+        {
+            var settings = GetSettingsUI();
+            if (settings == null)
+                return null;
+            if (gridId == 1)
+                return settings.SecondChanceShopUI?.GetHeroInventoryGrid();
+            return settings.HeroUI?.GetInventoryGrid();
+        }
+
+        private static void ApplyBuySeeds(PitHero.Farming.CropType crop, int qty)
+        {
+            var services = Services;
+            if (services == null || qty <= 0)
+                return;
+            var gameState = services.GetService<GameStateService>();
+            var cropPlantingService = services.GetService<CropPlantingService>();
+            if (gameState == null || cropPlantingService == null)
+                return;
+            int unitPrice = PitHero.Util.CropConfig.GetSeedPrice(crop);
+            int totalPrice = unitPrice * qty;
+            if (gameState.Funds < totalPrice)
+                return;
+            gameState.Funds -= totalPrice;
+            cropPlantingService.AddSeeds(crop, qty);
+            Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
+            AnalyticsService.LogSeedPurchased(crop.ToString(), qty, totalPrice, "manual", gameState.Funds);
+            services.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
+        }
+
+        private static void ApplyRemoveBuilding(int uniqueId)
+        {
+            var services = Services;
+            if (services == null)
+                return;
+            var buildingService = services.GetService<BuildingService>();
+            if (buildingService == null)
+                return;
+            PlacedBuilding pb = null;
+            var all = buildingService.GetAll();
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i].UniqueId == uniqueId) { pb = all[i]; break; }
+            }
+            if (pb == null)
+                return;
+
+            // Remove first and pay only if this call is what actually removed it (non-modal dialogs
+            // can stack two sell confirmations for the same building).
+            int gold = PitHero.Util.BuildingConfig.GetSellPrice(pb.Type);
+            if (!buildingService.RemoveBuilding(pb))
+                return;
+            pb.WorldEntity?.Destroy();
+            services.GetService<GameStateService>()?.AddFunds(gold, "sell_building");
+            Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemSell);
         }
 
         private static void ApplyAutomation(AutomationKind kind, bool enabled)

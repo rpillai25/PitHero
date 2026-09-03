@@ -211,20 +211,46 @@ namespace PitHero.UI
             var moved = _movingBuilding;
             if (moved != null)
             {
-                AnalyticsService.LogBuildingMoved(moved.Type.ToString(), moved.TileX, moved.TileY, tileX, tileY);
-                moved.TileX = tileX;
-                moved.TileY = tileY;
-                if (moved.WorldEntity != null)
-                {
-                    moved.WorldEntity.SetPosition(finalPos.X, finalPos.Y);
-                    moved.WorldEntity.SetEnabled(true);
-                }
-
-                // Notify in-flight workers (e.g. a monster carrying a crop here) to retarget.
-                Core.Services.GetService<BuildingService>()?.NotifyBuildingMoved(moved);
+                // Lands on a deterministic tick via the command queue (replay system)
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.MoveBuilding, moved.UniqueId, tileX, tileY));
             }
 
             EndMove();
+        }
+
+        /// <summary>Relocates the building with the given id if the target tile is still valid. Command handler entry point.</summary>
+        public void ApplyMove(int uniqueId, int tileX, int tileY)
+        {
+            var buildingService = Core.Services.GetService<BuildingService>();
+            if (buildingService == null)
+                return;
+            PlacedBuilding moved = null;
+            var all = buildingService.GetAll();
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i].UniqueId == uniqueId) { moved = all[i]; break; }
+            }
+            if (moved == null)
+                return;
+            if (!IsValidPlacement(tileX, tileY, moved.Type, moved))
+            {
+                Debug.Log($"[BuildingModeOverlay] MoveBuilding rejected: tile {tileX},{tileY} no longer valid");
+                return;
+            }
+
+            var finalPos = BuildingConfig.GetWorldPos(tileX, tileY, moved.Type);
+            AnalyticsService.LogBuildingMoved(moved.Type.ToString(), moved.TileX, moved.TileY, tileX, tileY);
+            moved.TileX = tileX;
+            moved.TileY = tileY;
+            if (moved.WorldEntity != null)
+            {
+                moved.WorldEntity.SetPosition(finalPos.X, finalPos.Y);
+                moved.WorldEntity.SetEnabled(true);
+            }
+
+            // Notify in-flight workers (e.g. a monster carrying a crop here) to retarget.
+            buildingService.NotifyBuildingMoved(moved);
         }
 
         private void CancelMove()
@@ -534,12 +560,35 @@ namespace PitHero.UI
 
         private void ConfirmPlacement(int tileX, int tileY, BuildingType type, Vector2 finalPos)
         {
-            // Deduct gold
-            var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState != null)
-                gameState.Funds -= _pendingCost;
+            // The purchase lands on a deterministic tick via the command queue (replay system)
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.PlaceBuilding, (int)type, tileX, tileY, _pendingCost));
 
             DestroyGhost();
+
+            // Return to Choosing so the player can place more
+            ShowInventoryWindow();
+            _state = PlacementState.Choosing;
+        }
+
+        /// <summary>
+        /// Places a building now: re-validates the tile and funds, charges the quoted cost, spawns the
+        /// falling entity and registers it. Command handler entry point.
+        /// </summary>
+        public void ApplyPlacement(BuildingType type, int tileX, int tileY, int cost)
+        {
+            if (!IsValidPlacement(tileX, tileY, type, null))
+            {
+                Debug.Log($"[BuildingModeOverlay] PlaceBuilding rejected: tile {tileX},{tileY} no longer valid");
+                return;
+            }
+
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (gameState == null || gameState.Funds < cost)
+                return;
+            gameState.Funds -= cost;
+
+            var finalPos = BuildingConfig.GetWorldPos(tileX, tileY, type);
 
             // Create permanent entity above screen; BuildingFallAnimator moves it into position
             var sprite = _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(type));
@@ -564,11 +613,7 @@ namespace PitHero.UI
                 UniqueId    = newId,
                 WorldEntity = entity
             });
-            AnalyticsService.LogBuildingCreated(type.ToString(), tileX, tileY, _pendingCost);
-
-            // Return to Choosing so the player can place more
-            ShowInventoryWindow();
-            _state = PlacementState.Choosing;
+            AnalyticsService.LogBuildingCreated(type.ToString(), tileX, tileY, cost);
         }
 
         // ── BuildingSlotButton ────────────────────────────────────────────────────

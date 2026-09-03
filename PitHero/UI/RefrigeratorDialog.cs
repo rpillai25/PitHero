@@ -305,17 +305,28 @@ namespace PitHero.UI
         /// </summary>
         private void OnSendToStorageClicked()
         {
+            // Lands on a deterministic tick via the command queue (replay system)
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.FridgeReturnSlot, _descSlotIndex, (int)_descCropType));
+            _descWindow.SetVisible(false);
+        }
+
+        /// <summary>Moves the given fridge slot's stack into crop storage if it still holds that crop. Command handler entry point.</summary>
+        public void ApplyReturnSlot(int slotIndex, CropType expectedType)
+        {
             var fridge = Core.Services?.GetService<FridgeInventoryService>();
             var storage = Core.Services?.GetService<CropStorageInventoryService>();
             var buildingService = Core.Services?.GetService<BuildingService>();
             if (fridge == null || storage == null || buildingService == null)
                 return;
+            var slots = fridge.GetSlots();
+            if (slotIndex < 0 || slotIndex >= slots.Count)
+                return;
 
             // Re-read the live slot: runners/cooks may have changed it while the dialog was open
-            var liveSlot = fridge.GetSlots()[_descSlotIndex];
-            if (liveSlot.IsEmpty || liveSlot.Type != _descCropType)
+            var liveSlot = slots[slotIndex];
+            if (liveSlot.IsEmpty || liveSlot.Type != expectedType)
             {
-                _descWindow.SetVisible(false);
                 RebuildSlots();
                 return;
             }
@@ -333,14 +344,36 @@ namespace PitHero.UI
             if (moved > 0)
             {
                 // Take the moved units out of this slot (whole stack when everything fit)
-                fridge.ClearSlot(_descSlotIndex);
+                fridge.ClearSlot(slotIndex);
                 if (remaining > 0)
                     fridge.Deposit(liveSlot.Type, remaining);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.StoreCrop);
                 AnalyticsService.LogCropFridgeReturned(liveSlot.Type.ToString(), moved);
             }
 
-            _descWindow.SetVisible(false);
+            RebuildSlots();
+        }
+
+        /// <summary>Sells the given fridge slot's stack if it still holds that crop. Command handler entry point.</summary>
+        public void ApplySellSlot(int slotIndex, CropType expectedType)
+        {
+            var liveFridge = Core.Services?.GetService<FridgeInventoryService>();
+            var gameState = Core.Services?.GetService<GameStateService>();
+            if (liveFridge == null)
+                return;
+            var slots = liveFridge.GetSlots();
+            if (slotIndex < 0 || slotIndex >= slots.Count)
+                return;
+            // Re-read the slot: the kitchen may have consumed it while the dialog was open.
+            var liveSlot = slots[slotIndex];
+            if (!liveSlot.IsEmpty && liveSlot.Type == expectedType)
+            {
+                int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, liveSlot.Count);
+                gameState?.AddFunds(liveGold, "sell_crops");
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                AnalyticsService.LogCropSold(liveSlot.Type.ToString(), liveSlot.Count, liveGold, "manual");
+                liveFridge.ClearSlot(slotIndex);
+            }
             RebuildSlots();
         }
 
@@ -363,20 +396,10 @@ namespace PitHero.UI
                 PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
-                    var liveFridge = Core.Services?.GetService<FridgeInventoryService>();
-                    var gameState = Core.Services?.GetService<GameStateService>();
-                    // Re-read the slot: the kitchen may have consumed it while the dialog was open.
-                    var liveSlot = liveFridge != null ? liveFridge.GetSlots()[slotIndex] : default;
-                    if (!liveSlot.IsEmpty && liveSlot.Type == _descCropType)
-                    {
-                        int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, liveSlot.Count);
-                        gameState?.AddFunds(liveGold, "sell_crops");
-                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-                        AnalyticsService.LogCropSold(liveSlot.Type.ToString(), liveSlot.Count, liveGold, "manual");
-                        liveFridge.ClearSlot(slotIndex);
-                    }
+                    // Lands on a deterministic tick via the command queue; ApplySellSlot re-reads the slot (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.FridgeSellSlot, slotIndex, (int)_descCropType));
                     _descWindow.SetVisible(false);
-                    RebuildSlots();
                 });
             dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);

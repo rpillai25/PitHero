@@ -193,6 +193,7 @@ namespace PitHero.UI
             _heroInventoryWindow.SetSize(GameConfig.SecondChanceHeroPanelWidth, GameConfig.SecondChanceHeroPanelHeight);
 
             _heroInventoryGrid = new InventoryGrid();
+            _heroInventoryGrid.CommandGridId = 1; // replay commands from this grid apply on this grid
             _heroInventoryGrid.ShowUnviewedGearSparkles = true;
             _heroInventoryGrid.SyncStencilsToGameState = true;
             _heroInventoryGrid.InitializeContextMenu(_stage, skin);
@@ -402,13 +403,9 @@ namespace PitHero.UI
                 _skin,
                 onConfirm: (qty) =>
                 {
-                    int totalPrice = unitPrice * qty;
-                    if (gameState.Funds < totalPrice) return;
-                    gameState.Funds -= totalPrice;
-                    cropPlantingService.AddSeeds(crop, qty);
-                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
-                    AnalyticsService.LogSeedPurchased(crop.ToString(), qty, totalPrice, "manual", gameState.Funds);
-                    Core.Services?.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
+                    // Lands on a deterministic tick via the command queue (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.BuySeeds, (int)crop, qty));
                 },
                 onCancel: null,
                 ownedCount: ownedCount,
@@ -971,7 +968,7 @@ namespace PitHero.UI
                     GetText(TextType.UI, UITextKey.ButtonCancel),
                     _skin,
                     showBuyPrice: true,
-                    onConfirm: () => ExecuteItemPurchase(vaultStack, destSlot, 1, unitPrice, vault, gameState),
+                    onConfirm: () => DispatchItemPurchase(vaultStack, destSlot, 1),
                     onCancel:  cancelAction);
                 dialog.ConfirmButton.SuppressGlobalClick = true;
                 dialog.Show(_stage);
@@ -983,7 +980,7 @@ namespace PitHero.UI
                 int maxQty = ComputeMaxQtyForInventorySlot(vaultStack, heroComp);
                 string itemName = vaultStack.ItemTemplate?.Name ?? "";
                 var qtyDialog = new ItemQuantityDialog(shopTitle, itemName, unitPrice, maxQty, _skin,
-                    onConfirm: (qty) => ExecuteItemPurchase(vaultStack, destSlot, qty, unitPrice, vault, gameState),
+                    onConfirm: (qty) => DispatchItemPurchase(vaultStack, destSlot, qty),
                     onCancel:  cancelAction,
                     availableFunds: gameState.Funds,
                     detailContent: ItemCardTooltip.BuildDetachedCard(vaultStack.ItemTemplate, null,
@@ -1011,6 +1008,64 @@ namespace PitHero.UI
             int bagFree = (heroComp?.Bag != null) ? (heroComp.Bag.Capacity - heroComp.Bag.Count) : 1;
             int gearMax = System.Math.Min(vaultQty, bagFree);
             return gearMax > 0 ? gearMax : 1;
+        }
+
+        /// <summary>The shop-side hero inventory grid (command handlers apply grid 1 swaps/sales through it).</summary>
+        public InventoryGrid GetHeroInventoryGrid() => _heroInventoryGrid;
+
+        /// <summary>
+        /// Queues a vault item purchase as a player command (replay system). The handler resolves the
+        /// stack by index + name and the destination cell by grid coordinates, then re-validates.
+        /// </summary>
+        private void DispatchItemPurchase(SecondChanceMerchantVault.StackedItem vaultStack, InventorySlot destSlot, int qty)
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            int stackIndex = -1;
+            if (vault != null)
+            {
+                var stacks = vault.Stacks;
+                for (int i = 0; i < stacks.Count; i++)
+                {
+                    if (ReferenceEquals(stacks[i], vaultStack)) { stackIndex = i; break; }
+                }
+            }
+            var cmd = Services.Replay.PlayerCommand.WithString(Services.Replay.PlayerCommandType.BuyVaultItem,
+                vaultStack.ItemTemplate?.Name, stackIndex, qty,
+                Services.Replay.SlotRefCodec.Pack((int)destSlot.SlotData.SlotType, destSlot.SlotData.X, destSlot.SlotData.Y));
+            Services.Replay.PlayerCommandService.Dispatch(cmd);
+        }
+
+        /// <summary>Applies a BuyVaultItem command against live vault/bag state. Command handler entry point.</summary>
+        public void ApplyItemPurchase(int stackIndex, string itemName, int qty, int packedDest)
+        {
+            var vault     = Core.Services?.GetService<SecondChanceMerchantVault>();
+            var gameState = Core.Services?.GetService<GameStateService>();
+            if (vault == null || gameState == null || qty <= 0)
+                return;
+
+            var stacks = vault.Stacks;
+            SecondChanceMerchantVault.StackedItem stack = null;
+            if (stackIndex >= 0 && stackIndex < stacks.Count && (itemName == null || stacks[stackIndex].ItemTemplate?.Name == itemName))
+                stack = stacks[stackIndex];
+            else
+            {
+                for (int i = 0; i < stacks.Count; i++)
+                {
+                    if (stacks[i].ItemTemplate?.Name == itemName) { stack = stacks[i]; break; }
+                }
+            }
+            if (stack == null)
+            {
+                Debug.Log($"[SecondChanceShopUI] BuyVaultItem: {itemName} no longer in the vault");
+                return;
+            }
+
+            Services.Replay.SlotRefCodec.Unpack(packedDest, out int slotType, out int x, out int y);
+            var destSlot = _heroInventoryGrid?.FindSlot((InventorySlotType)slotType, x, y);
+            if (destSlot == null || destSlot.SlotData.Item != null)
+                return;
+
+            ExecuteItemPurchase(stack, destSlot, qty, stack.ItemTemplate?.Price ?? 0, vault, gameState);
         }
 
         /// <summary>
@@ -1141,7 +1196,8 @@ namespace PitHero.UI
             ItemSellPrompt.Show(_stage, _skin, item,
                 onSell: (qty) =>
                 {
-                    _heroInventoryGrid.DiscardItem(bagIndex, qty);
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SellBagItem, bagIndex, qty, _heroInventoryGrid.CommandGridId));
                     InventoryDragManager.EndDrag();
                 },
                 onCancelled: () => InventoryDragManager.CancelDrag());
@@ -1260,7 +1316,7 @@ namespace PitHero.UI
                 GetText(TextType.UI, UITextKey.WindowSecondChanceShop),
                 promptText,
                 _skin,
-                onYes: () => ExecuteCrystalPurchase(crystal, destSlotType, destSlotIdx, price, vault, gameState, crystalService),
+                onYes: () => DispatchCrystalPurchase(crystal, destSlotType, destSlotIdx),
                 onNo:  () =>
                 {
                     InventoryDragManager.CancelDrag();
@@ -1269,6 +1325,53 @@ namespace PitHero.UI
             );
             dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
+        }
+
+        /// <summary>Queues a vault crystal purchase as a player command (replay system).</summary>
+        private void DispatchCrystalPurchase(HeroCrystal crystal, CrystalSlotType destSlotType, int destSlotIdx)
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            int index = -1;
+            if (vault != null)
+            {
+                var list = vault.LostCrystals;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (ReferenceEquals(list[i], crystal)) { index = i; break; }
+                }
+            }
+            Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                Services.Replay.PlayerCommandType.BuyVaultCrystal, crystal.Name, index, (int)destSlotType, destSlotIdx));
+        }
+
+        /// <summary>Applies a BuyVaultCrystal command against live vault state. Command handler entry point.</summary>
+        public void ApplyCrystalPurchase(int vaultIndex, string crystalName, int destSlotType, int destSlotIdx)
+        {
+            var vault          = Core.Services?.GetService<SecondChanceMerchantVault>();
+            var gameState      = Core.Services?.GetService<GameStateService>();
+            var crystalService = Core.Services?.GetService<CrystalCollectionService>();
+            if (vault == null || gameState == null || crystalService == null)
+                return;
+
+            var list = vault.LostCrystals;
+            HeroCrystal crystal = null;
+            if (vaultIndex >= 0 && vaultIndex < list.Count && (crystalName == null || list[vaultIndex].Name == crystalName))
+                crystal = list[vaultIndex];
+            else
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i].Name == crystalName) { crystal = list[i]; break; }
+                }
+            }
+            if (crystal == null)
+            {
+                Debug.Log($"[SecondChanceShopUI] BuyVaultCrystal: {crystalName} no longer in the vault");
+                return;
+            }
+
+            ExecuteCrystalPurchase(crystal, (CrystalSlotType)destSlotType, destSlotIdx,
+                crystal.CalculateBuyBackPrice(), vault, gameState, crystalService);
         }
 
         /// <summary>Executes the crystal purchase: deducts gold, places crystal, removes from vault, refreshes panels.</summary>

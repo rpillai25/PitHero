@@ -211,10 +211,9 @@ namespace PitHero.UI
                 GetText(UITextKey.DialogMoveCropsPrompt), PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
-                    Core.Services.GetService<CropStorageInventoryService>()
-                        ?.MoveAllCropsToOtherStorages(buildingId);
-                    _descWindow?.SetVisible(false);
-                    RefreshViewer();
+                    // Lands on a deterministic tick via the command queue (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.MoveAllCropsToOtherStorages, buildingId));
                 });
             dialog.Show(_stage);
         }
@@ -239,16 +238,10 @@ namespace PitHero.UI
                 PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
-                    // Sell first, then pay exactly what was realized — the quoted totalGold is a
-                    // snapshot from before the dialog opened and may no longer be there.
-                    int realized = SellAvailableInBuilding(storage, buildingId);
-                    if (realized > 0)
-                    {
-                        Core.Services.GetService<GameStateService>()?.AddFunds(realized, "sell_crops");
-                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-                    }
-                    _descWindow?.SetVisible(false);
-                    RefreshViewer();
+                    // Lands on a deterministic tick via the command queue; ApplySellStorage sells
+                    // first and pays exactly what was realized (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SellStorageCrops, buildingId));
                 });
             dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
@@ -309,22 +302,57 @@ namespace PitHero.UI
                 PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
-                    // Sell first, then pay exactly what was realized across every storage — the
-                    // quoted totalGold is a pre-dialog snapshot and may no longer be there.
-                    int realized = 0;
-                    for (int b = 0; b < all.Count; b++)
-                        if (all[b].Type == BuildingType.CropStorage)
-                            realized += SellAvailableInBuilding(storage, all[b].UniqueId);
-                    if (realized > 0)
-                    {
-                        Core.Services.GetService<GameStateService>()?.AddFunds(realized, "sell_crops");
-                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-                    }
-                    _descWindow?.SetVisible(false);
-                    RefreshViewer();
+                    // Lands on a deterministic tick via the command queue (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(
+                        new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.SellAllStorageCrops));
                 });
             dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
+        }
+
+        /// <summary>Moves every crop in a storage into the other storages. Command handler entry point.</summary>
+        public void ApplyMoveAll(int buildingId)
+        {
+            Core.Services.GetService<CropStorageInventoryService>()?.MoveAllCropsToOtherStorages(buildingId);
+            _descWindow?.SetVisible(false);
+            RefreshViewer();
+        }
+
+        /// <summary>Sells every available crop in one storage, paying what was realized. Command handler entry point.</summary>
+        public void ApplySellStorage(int buildingId)
+        {
+            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            if (storage == null || buildingId < 0)
+                return;
+            int realized = SellAvailableInBuilding(storage, buildingId);
+            if (realized > 0)
+            {
+                Core.Services.GetService<GameStateService>()?.AddFunds(realized, "sell_crops");
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+            }
+            _descWindow?.SetVisible(false);
+            RefreshViewer();
+        }
+
+        /// <summary>Sells every available crop across all storages, paying what was realized. Command handler entry point.</summary>
+        public void ApplySellAll()
+        {
+            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            var buildingService = Core.Services.GetService<BuildingService>();
+            if (storage == null || buildingService == null)
+                return;
+            var all = buildingService.GetAll();
+            int realized = 0;
+            for (int b = 0; b < all.Count; b++)
+                if (all[b].Type == BuildingType.CropStorage)
+                    realized += SellAvailableInBuilding(storage, all[b].UniqueId);
+            if (realized > 0)
+            {
+                Core.Services.GetService<GameStateService>()?.AddFunds(realized, "sell_crops");
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+            }
+            _descWindow?.SetVisible(false);
+            RefreshViewer();
         }
 
         /// <summary>Called when the player exits harvested-crops mode; hides the windows.</summary>

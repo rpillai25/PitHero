@@ -1297,6 +1297,9 @@ namespace PitHero.UI
         /// crystal appears in the inventory without needing a tab switch.</summary>
         public void RefreshCrystalsTab() => _crystalsTabComponent?.RefreshAll();
 
+        /// <summary>The Crystals tab component (command handlers apply forge/slot moves through it).</summary>
+        public CrystalsTab GetCrystalsTabComponent() => _crystalsTabComponent;
+
         /// <summary>Force close window</summary>
         public void ForceCloseWindow()
         {

@@ -66,8 +66,11 @@ namespace PitHero.Services.Replay
         SellAllStorageCrops = 78,
         SellStorageCrops = 79,       // A = building id
         MoveAllCropsToOtherStorages = 80, // A = building id
-        FridgeReturnSlot = 81,       // A = slot
-        FridgeSellSlot = 82,         // A = slot
+        FridgeReturnSlot = 81,       // A = slot, B = CropType shown when the player clicked
+        FridgeSellSlot = 82,         // A = slot, B = CropType shown when the player clicked
+        UnmarkTillTile = 83,         // A = x, B = y (clears a ReadyToTill mark)
+        FarmRescan = 84,             // farm menu closed: coordinator rescans plans
+        AutoHirePass = 85,           // settings closed with auto-hire on: immediate hire pass
 
         // Shop
         BuyVaultItem = 90,           // A = vault stack index, B = quantity, C,D = packed dest SlotRef, S = item name
@@ -84,6 +87,28 @@ namespace PitHero.Services.Replay
 
         // Debug
         DebugQueuePitLevel = 200,    // A = level
+    }
+
+    /// <summary>
+    /// Packs an inventory-grid slot identity (slot type + grid x/y) into one int so a command can
+    /// name the exact cell the player dragged from/to. Grid coordinates are stable across sessions
+    /// (the grid layout is fixed), unlike slot object references.
+    /// </summary>
+    public static class SlotRefCodec
+    {
+        /// <summary>Packs (type, x, y) into an int: type in bits 0-7, x in bits 8-19, y in bits 20-31.</summary>
+        public static int Pack(int slotType, int x, int y)
+        {
+            return (slotType & 0xFF) | ((x & 0xFFF) << 8) | ((y & 0xFFF) << 20);
+        }
+
+        /// <summary>Unpacks an int produced by <see cref="Pack"/>.</summary>
+        public static void Unpack(int packed, out int slotType, out int x, out int y)
+        {
+            slotType = packed & 0xFF;
+            x = (packed >> 8) & 0xFFF;
+            y = (packed >> 20) & 0xFFF;
+        }
     }
 
     /// <summary>

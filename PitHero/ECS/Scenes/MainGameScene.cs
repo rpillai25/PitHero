@@ -53,6 +53,19 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
         private SimulationClock _simulationClock; // Session tick counter; advanced last in every Update (replay system)
+
+        /// <summary>Building placement overlay (player command handlers apply placements/moves through it).</summary>
+        public BuildingModeOverlay BuildingModeOverlay => _buildingModeOverlay;
+        /// <summary>Seed planting overlay (command handlers apply crop plans through it).</summary>
+        public SeedPlantingModeOverlay SeedModeOverlay => _seedModeOverlay;
+        /// <summary>Till overlay (command handlers apply till marks through it).</summary>
+        public TillModeOverlay TillModeOverlay => _tillModeOverlay;
+        /// <summary>Harvested-crops storage viewer (command handlers apply storage sales/moves through it).</summary>
+        public HarvestedCropsModeOverlay HarvestedCropsOverlay => _harvestedCropsModeOverlay;
+        /// <summary>Refrigerator window (command handlers apply fridge returns/sales through it).</summary>
+        public RefrigeratorDialog RefrigeratorDialog => _refrigeratorDialog;
+        /// <summary>Add-monster dialog (command handlers apply monster purchases through it).</summary>
+        public AddMonsterDialog AddMonsterDialog => _addMonsterDialog;
         private Services.Replay.PlayerCommandService _playerCommands; // Player input -> simulation doorway (replay system)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
@@ -1325,17 +1338,10 @@ namespace PitHero.ECS.Scenes
                     UI.PitHeroSkin.CreateSkin(),
                     onYes: () =>
                     {
-                        // Remove first and pay only if this call is what actually removed it. The
-                        // confirmation dialog is non-modal, so a second sell dialog can be opened
-                        // for the same building before the first is confirmed; paying out
-                        // unconditionally would mint the refund once per dialog.
-                        bool sold = Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb) ?? false;
-                        if (!sold)
-                            return;
-                        pb.WorldEntity?.Destroy();
-                        var gameState = Core.Services.GetService<Services.GameStateService>();
-                        gameState?.AddFunds(gold, "sell_building");
-                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(Util.SoundEffectTypes.SoundEffectType.ItemSell);
+                        // Lands on a deterministic tick via the command queue; the handler removes
+                        // first and pays only if this call is what actually removed it (replay system)
+                        Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                            Services.Replay.PlayerCommandType.RemoveBuilding, pb.UniqueId));
                     });
                 dialog.YesButton.SuppressGlobalClick = true;
                 dialog.Show(_uiStage);
@@ -3101,7 +3107,9 @@ namespace PitHero.ECS.Scenes
                     _farmModeRestoreHalfZoom = false;
                     pauseService?.SetFarmModePause(false);
                     Core.Services.GetService<Services.CropGrowthService>()?.SetCropsVisible(true);
-                    Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
+                    // Rescan on a deterministic tick, after the unpause command above (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(
+                        new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.FarmRescan));
                     UIWindowManager.SetAutoScrollToHero(_savedFarmAutoScroll);
                     if (!inTillMode)
                         _tillModeOverlay?.HideTilledOverlays();

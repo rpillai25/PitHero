@@ -330,14 +330,35 @@ namespace PitHero.UI
                 GameRandom.UiRange(2, 6),
                 GameRandom.UiRange(2, 6)
             );
-            var crystal = new HeroCrystal(JobNames[_currentJobIndex], job, 1, stats);
-            if (_crystalService != null && _crystalService.TryAddToInventory(crystal))
-            {
-                // Deduct only after the crystal actually landed in the inventory
-                gameState.Funds -= GameConfig.CrystalCreationFee;
-                OnCrystalCreated?.Invoke(crystal);
-                Close();
-            }
+            // Lands on a deterministic tick via the command queue (replay system); the handler
+            // re-checks funds/space and refreshes the Crystals tab
+            var cmd = new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.CreateCrystal,
+                _currentJobIndex, stats.Strength, stats.Agility, stats.Vitality);
+            cmd.L = stats.Magic;
+            Services.Replay.PlayerCommandService.Dispatch(cmd);
+            Close();
+        }
+
+        /// <summary>
+        /// Creates a level-1 crystal of the given job with the given rolled stats, charging the
+        /// creation fee only if it lands in the inventory. Command handler entry point.
+        /// </summary>
+        public static bool ApplyCreate(int jobIndex, StatBlock stats)
+        {
+            if (jobIndex < 0 || jobIndex >= Jobs.Length)
+                return false;
+            var crystalService = Core.Services?.GetService<CrystalCollectionService>();
+            var gameState = Core.Services?.GetService<GameStateService>();
+            if (crystalService == null || gameState == null || gameState.Funds < GameConfig.CrystalCreationFee)
+                return false;
+
+            var crystal = new HeroCrystal(JobNames[jobIndex], Jobs[jobIndex], 1, stats);
+            if (!crystalService.TryAddToInventory(crystal))
+                return false;
+
+            // Deduct only after the crystal actually landed in the inventory
+            gameState.Funds -= GameConfig.CrystalCreationFee;
+            return true;
         }
 
         // ── Private inner class: skill button with hover support ──────────────────
