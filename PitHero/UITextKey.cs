@@ -128,6 +128,35 @@ namespace PitHero
         public const string TabWindow = "TabWindow";
         public const string TabSession = "TabSession";
         public const string TabButtons = "TabButtons";
+
+        // Replay system
+        public const string TabReplay = "TabReplay";
+        public const string ButtonReplayPlay = "ButtonReplayPlay";
+        public const string ButtonReplayPause = "ButtonReplayPause";
+        public const string ButtonReplayExit = "ButtonReplayExit";
+        public const string ButtonReplayDelete = "ButtonReplayDelete";
+        public const string ButtonReplaySaveSession = "ButtonReplaySaveSession";
+        public const string ButtonReplayCurrentSession = "ButtonReplayCurrentSession";
+        public const string ButtonReplayPlaySelected = "ButtonReplayPlaySelected";
+        public const string ReplayListEmpty = "ReplayListEmpty";
+        public const string ReplayRowTitleFormat = "ReplayRowTitleFormat";
+        public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";
+        public const string ReplaySelectedNone = "ReplaySelectedNone";
+        public const string ReplaySelectedFormat = "ReplaySelectedFormat";
+        public const string ReplaySpeedFormat = "ReplaySpeedFormat";
+        public const string ReplayTimeFormat = "ReplayTimeFormat";
+        public const string ReplaySeekingFormat = "ReplaySeekingFormat";
+        public const string ReplayStarting = "ReplayStarting";
+        public const string ReplayDivergenceAt = "ReplayDivergenceAt";
+        public const string ReplayNoDivergence = "ReplayNoDivergence";
+        public const string ReplayEndReached = "ReplayEndReached";
+        public const string DialogConfirmReplay = "DialogConfirmReplay";
+        public const string ConfirmReplayInterruptMessage = "ConfirmReplayInterruptMessage";
+        public const string DialogConfirmDeleteReplay = "DialogConfirmDeleteReplay";
+        public const string ConfirmDeleteReplayMessage = "ConfirmDeleteReplayMessage";
+        public const string DialogReplaySaved = "DialogReplaySaved";
+        public const string ReplaySavedMessage = "ReplaySavedMessage";
+        public const string ReplaySaveFailedMessage = "ReplaySaveFailedMessage";
         public const string SettingsAlwaysOnTop = "SettingsAlwaysOnTop";
         public const string SettingsAlwaysOnTopTooltip = "SettingsAlwaysOnTopTooltip";
         public const string SettingsAutoScrollToHero = "SettingsAutoScrollToHero";

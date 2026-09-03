@@ -329,10 +329,7 @@ namespace PitHero.UI
                 if (data != null)
                 {
                     SaveLoadService.ApplyLoadedState(data);
-                    var mainGameScene = new MainGameScene("Content/Tilemaps/PitHero.tmx");
-                    mainGameScene.ClearColor = new Color(71, 114, 56);
-                    mainGameScene.LetterboxColor = new Color(71, 114, 56);
-                    Core.Scene = mainGameScene;
+                    Core.Scene = MainGameScene.CreateForGameplay(MainGameScene.DefaultMapPath);
                     Debug.Log("SaveLoadUI: Loaded from slot " + slotIndex);
                 }
             }

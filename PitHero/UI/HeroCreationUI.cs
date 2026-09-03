@@ -583,11 +583,7 @@ namespace PitHero.UI
             var designService = Core.Services.GetService<HeroDesignService>();
             designService.SetDesign(design);
 
-            var mainGameScene = new MainGameScene(_mapPath);
-            Color grassColor = new Color(71, 114, 56);
-            mainGameScene.ClearColor = grassColor;
-            mainGameScene.LetterboxColor = grassColor;
-            Core.Scene = mainGameScene;
+            Core.Scene = MainGameScene.CreateForGameplay(_mapPath);
         }
 
         /// <summary>Cancels hero creation and returns to the title screen</summary>

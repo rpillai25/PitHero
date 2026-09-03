@@ -68,6 +68,7 @@ namespace PitHero.ECS.Scenes
         public AddMonsterDialog AddMonsterDialog => _addMonsterDialog;
         private Services.Replay.PlayerCommandService _playerCommands; // Player input -> simulation doorway (replay system)
         private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
+        private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
@@ -502,6 +503,24 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0);
 
             _isInitializationComplete = true;
+
+            // A scene started from a replay hands control to the playback service last, once every
+            // service and UI element exists
+            if (replayBootstrap?.Data != null)
+                Services.Replay.ReplayPlaybackService.Current?.OnSceneStarted(this);
+        }
+
+        /// <summary>The gameplay map every session uses.</summary>
+        public const string DefaultMapPath = "Content/Tilemaps/PitHero.tmx";
+
+        /// <summary>Creates the gameplay scene with its grass clear/letterbox colors set (new game, load and replay all start here).</summary>
+        public static MainGameScene CreateForGameplay(string mapPath)
+        {
+            var scene = new MainGameScene(mapPath);
+            var grassColor = new Color(71, 114, 56);
+            scene.ClearColor = grassColor;
+            scene.LetterboxColor = grassColor;
+            return scene;
         }
 
         /// <summary>
@@ -2255,6 +2274,11 @@ namespace PitHero.ECS.Scenes
             shortcutBarService.SetShortcutBar(_shortcutBar);
             Core.Services.AddService(shortcutBarService);
 
+            // Replay transport (hidden until a replay plays)
+            _replayScrubber = new ReplayScrubberPanel(PitHeroSkin.CreateSkin());
+            uiCanvas.Stage.AddElement(_replayScrubber);
+            PositionReplayScrubber();
+
             // Let SettingsUI manage the shortcut bar hide/show animation
             _settingsUI?.SetShortcutBar(_shortcutBar);
 
@@ -2797,6 +2821,21 @@ namespace PitHero.ECS.Scenes
         /// <summary>
         /// Positions the shortcut bar at bottom center of screen based on current window mode
         /// </summary>
+        /// <summary>Bottom-center placement of the replay transport in stage space (re-run on stage resize and on show).</summary>
+        private void PositionReplayScrubber()
+        {
+            if (_replayScrubber == null || _uiStage == null)
+                return;
+            float stageW = _uiStage.GetWidth();
+            float stageH = _uiStage.GetHeight();
+            float width = GameConfig.ReplayScrubberWidth;
+            float maxWidth = stageW - 2f * GameConfig.UIStageMargin;
+            if (width > maxWidth)
+                width = maxWidth;
+            _replayScrubber.SetSize(width, GameConfig.ReplayScrubberHeight);
+            _replayScrubber.SetPosition((stageW - width) / 2f, stageH - GameConfig.ReplayScrubberHeight - GameConfig.ReplayScrubberBottomMargin);
+        }
+
         private void PositionShortcutBar()
         {
             if (_shortcutBar == null)
@@ -3044,6 +3083,9 @@ namespace PitHero.ECS.Scenes
 
             // Player commands land here, at the same point of every tick, live or replayed
             long tick = _simulationClock != null ? _simulationClock.Tick : 0L;
+            var playback = Services.Replay.ReplayPlaybackService.Current;
+            if (playback != null && playback.IsActive)
+                playback.InjectDue(tick, _playerCommands);
             _playerCommands?.Drain(tick);
 
             // Divergence tripwire: periodic fingerprint of the simulation
@@ -3061,6 +3103,27 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         public override void PresentationUpdate()
         {
+            // Replay playback drives the engine clock from the presentation side (play/pause/seek)
+            var replayPlayback = Services.Replay.ReplayPlaybackService.Current;
+            bool replayActive = replayPlayback != null && replayPlayback.IsActive;
+            if (replayActive)
+                replayPlayback.Update();
+            if (_replayScrubber != null)
+            {
+                if (_replayScrubber.IsVisible() != replayActive)
+                {
+                    _replayScrubber.SetVisible(replayActive);
+                    if (replayActive)
+                    {
+                        _replayScrubber.ResetDisplayCache();
+                        PositionReplayScrubber();
+                        _replayScrubber.ToFront();
+                    }
+                }
+                if (replayActive)
+                    _replayScrubber.Update();
+            }
+
             // Camera before the UI stages, matching the entity-order the camera component used to update in
             _cameraController?.PresentationUpdate();
             base.PresentationUpdate();
@@ -3079,6 +3142,7 @@ namespace PitHero.ECS.Scenes
                     RepositionHudLabels();
                     RepositionGraphicalHud();
                     PositionEventConsolePanel();
+                    PositionReplayScrubber();
                     if (_pauseOverlayRenderer != null)
                     {
                         _pauseOverlayRenderer.SetWidth(stageW * 2f);
@@ -3097,7 +3161,8 @@ namespace PitHero.ECS.Scenes
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService != null && _pauseOverlayEntity != null)
             {
-                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused && !(_settingsUI?.IsFreeMoveModeActive ?? false));
+                // Recorded pauses replay the simulation freeze but must not dim a replay's screen
+                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused && !(_settingsUI?.IsFreeMoveModeActive ?? false) && !replayActive);
             }
 
             // Keep pit level label up to date
@@ -3242,25 +3307,29 @@ namespace PitHero.ECS.Scenes
             // Refresh shortcut bar to keep it in sync with inventory
             _shortcutBar?.RefreshItems();
 
-            // Handle keyboard shortcuts via shortcut bar (suspended during the new-game intro)
-            if (!IsIntroActive)
+            // Handle keyboard shortcuts via shortcut bar (suspended during the new-game intro and replays)
+            if (!IsIntroActive && !replayActive)
                 _shortcutBar?.HandleKeyboardShortcuts();
 
-            // Handle mercenary hover and click detection
+            // Handle mercenary hover and click detection (world clicks are view-only during a replay)
             HandleMercenaryHover();
-            HandleMercenaryClicks();
+            if (!replayActive)
+                HandleMercenaryClicks();
 
             // Handle placed-building hover outline and click-to-open context menu
             HandleBuildingHover();
-            HandleBuildingClicks();
+            if (!replayActive)
+                HandleBuildingClicks();
 
             // Handle hero-statue hover outline and click-to-open job change dialog
             HandleStatueHover();
-            HandleStatueClicks();
+            if (!replayActive)
+                HandleStatueClicks();
 
             // Handle kitchen-fridge hover outline and click-to-open refrigerator window
             HandleFridgeHover();
-            HandleFridgeClicks();
+            if (!replayActive)
+                HandleFridgeClicks();
             _refrigeratorDialog?.Update();
             UpdateFridgeDialogGate();
             UpdateBuildingMenuGate();

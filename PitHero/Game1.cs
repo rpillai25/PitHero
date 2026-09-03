@@ -47,6 +47,7 @@ namespace PitHero
 
             // Replay system: replay files + playback survive scene swaps, so they are global
             Services.AddService(new PitHero.Services.Replay.ReplayFileService());
+            Services.AddService(new PitHero.Services.Replay.ReplayPlaybackService());
 
             // Register persistence services
             var fileDataStore = new FileDataStore(null);

@@ -106,8 +106,9 @@ namespace PitHero.ECS.Components
 
             // Only the manual (menu) pause freezes the camera; the farm-mode pause keeps camera
             // controls live so the player can right-mouse pan while planning crops.
+            // A replay re-applies the recorded pauses to the simulation; the viewer keeps the camera.
             var pauseService = Core.Services.GetService<PauseService>();
-            if (pauseService?.IsManuallyPaused == true && ShouldPause)
+            if (pauseService?.IsManuallyPaused == true && ShouldPause && !Services.Replay.ReplayPlaybackService.IsPlaybackActive)
                 return;
 
             // Cache hero entity reference if not already cached, or clear if hero is destroyed/dead

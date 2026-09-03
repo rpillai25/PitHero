@@ -19,7 +19,12 @@ namespace PitHero.UI
         private Stage _stage;
         private Table _mainTable;
         private HoverableImageButton _gearButton;
-        private const float SettingsWindowWidth = 450f;
+        private const float SettingsWindowWidthDesign = 450f;
+        private const float TabStripMargin = 24f; // breathing room beside the tab button strip
+        private float _minTabStripWidth; // measured from the real tab buttons in CreateSettingsWindow
+        private float SettingsWindowWidth => _minTabStripWidth > SettingsWindowWidthDesign ? _minTabStripWidth : SettingsWindowWidthDesign;
+        private Tab _replayTab;
+        private ReplayTab _replayTabContent;
         private const float SettingsWindowHeight = 350f; // design height at GameConfig.VirtualHeight = 360; fitted to the stage in PositionUI
         private Window _settingsWindow;
         private bool _isVisible = false;
@@ -611,16 +616,28 @@ namespace PitHero.UI
             PopulateButtonsTab(_buttonsTab, skin);
             _automationTab = new Tab(GetText(TextType.UI, UITextKey.TabAutomation), tabStyle);
             PopulateAutomationTab(_automationTab, skin);
+            _replayTab = new Tab(GetText(TextType.UI, UITextKey.TabReplay), tabStyle);
+            _replayTabContent = new ReplayTab(skin, _stage, this);
+            _replayTabContent.Build(_replayTab);
 
             // Add tabs to TabPane
             _tabPane.AddTab(_windowTab);
             _tabPane.AddTab(_sessionTab);
             _tabPane.AddTab(_buttonsTab);
             _tabPane.AddTab(_automationTab);
+            _tabPane.AddTab(_replayTab);
 
             // Switching settings tabs dismisses any open automation dialog
             for (int i = 0; i < _tabPane.TabButtons.Count; i++)
                 _tabPane.TabButtons[i].OnClick += HideAutomationDialogs;
+            // The replay list re-reads the replay folder each time its tab is opened
+            _tabPane.TabButtons[_tabPane.TabButtons.Count - 1].OnClick += () => _replayTabContent?.Refresh();
+
+            // Minimum window width that fits every tab button — measured from the real buttons so a
+            // new tab can never push the strip outside the window (HeroUI lesson)
+            _minTabStripWidth = TabStripMargin;
+            for (int i = 0; i < _tabPane.TabButtons.Count; i++)
+                _minTabStripWidth += _tabPane.TabButtons[i].PreferredWidth;
 
             // Add TabPane to settings window
             _settingsWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
@@ -2236,6 +2253,14 @@ namespace PitHero.UI
                 return;
             }
 
+            // Replay mode: bars stay pinned off-screen (no blocker — the camera must stay live);
+            // the scrubber panel is the only interactive UI
+            if (_isReplayModeActive)
+            {
+                SnapHudHiddenForIntro();
+                return;
+            }
+
             // Free-move mode suspends shortcuts, farm modes, auto-hide and smooth scrolling for its duration
             if (_isFreeMoveModeActive)
             {
@@ -2691,6 +2716,42 @@ namespace PitHero.UI
 
             _isIntroModeActive = false;
             _introBlocker?.SetVisible(false);
+            ShowUIBar();
+            ShowShortcutBar();
+            ShowEventConsole();
+        }
+
+        // ── Replay mode (issue: replay system) ────────────────────────────────────
+
+        private bool _isReplayModeActive;
+
+        /// <summary>True while a replay plays back: every bar is hidden and the settings window cannot open.</summary>
+        public bool IsReplayModeActive => _isReplayModeActive;
+
+        /// <summary>
+        /// Enters replay mode: closes every window, pins the bars off-screen and keeps them there.
+        /// Unlike intro/free-move mode there is no full-stage blocker, so camera pan/zoom stay live.
+        /// </summary>
+        public void EnterReplayMode()
+        {
+            if (_isReplayModeActive)
+                return;
+            ForceCloseSettings();
+            _heroUI?.ForceCloseWindow();
+            _monsterUI?.ForceCloseWindow();
+            _secondChanceShopUI?.ForceCloseWindow();
+            _farmUI?.DismissSubButtons();
+            _constructionUI?.DismissSubButtons();
+            _isReplayModeActive = true;
+            SnapHudHiddenForIntro();
+        }
+
+        /// <summary>Exits replay mode: slides the bars back into view.</summary>
+        public void ExitReplayMode()
+        {
+            if (!_isReplayModeActive)
+                return;
+            _isReplayModeActive = false;
             ShowUIBar();
             ShowShortcutBar();
             ShowEventConsole();

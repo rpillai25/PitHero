@@ -466,3 +466,32 @@ MonsterInfoIdleWorkers,Current Idle Workers:
 ConsoleThreatTarget,{0} has the monsters' attention!
 ConsoleBattleProvoke,{0} provokes the enemy to protect {1}!
 ConsoleBattleProvokeSolo,{0} provokes the enemy!
+
+# Replay system
+TabReplay,Replay
+ButtonReplayPlay,Play
+ButtonReplayPause,Pause
+ButtonReplayExit,Exit Replay
+ButtonReplayDelete,Delete
+ButtonReplaySaveSession,Save Session Replay
+ButtonReplayCurrentSession,Replay Current Session
+ButtonReplayPlaySelected,Play Selected
+ReplayListEmpty,No saved replays yet. Use Save Session Replay to keep the current session.
+ReplayRowTitleFormat,{0} the {1}
+ReplayRowDetailFormat,{0}  -  {1}  -  Pit {2}
+ReplaySelectedNone,No replay selected
+ReplaySelectedFormat,Selected: {0}
+ReplaySpeedFormat,{0}x
+ReplayTimeFormat,{0} / {1}
+ReplaySeekingFormat,Seeking... {0}%
+ReplayStarting,Starting replay...
+ReplayDivergenceAt,Diverged at {0}
+ReplayNoDivergence,In sync
+ReplayEndReached,End of replay
+DialogConfirmReplay,Start Replay
+ConfirmReplayInterruptMessage,Replaying interrupts your current session. When you exit the replay, play continues from the END of the replayed timeline. Continue?
+DialogConfirmDeleteReplay,Delete Replay
+ConfirmDeleteReplayMessage,Delete this replay? This cannot be undone.
+DialogReplaySaved,Replay Saved
+ReplaySavedMessage,Saved as {0}
+ReplaySaveFailedMessage,The session could not be saved as a replay.
