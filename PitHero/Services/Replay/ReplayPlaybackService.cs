@@ -143,7 +143,9 @@ namespace PitHero.Services.Replay
             }
 
             ReplaySessionBootstrap.SetPending(bootstrap);
-            Core.Scene = MainGameScene.CreateForGameplay(MainGameScene.DefaultMapPath);
+            // The running MainGameScene still owns its scene-scoped services; a trampoline scene lets
+            // it unload before the replayed MainGameScene is constructed
+            Core.Scene = new ReplayBootScene(MainGameScene.DefaultMapPath);
         }
 
         /// <summary>The quit-to-title reset list: nothing from the old scene may leak into the replayed one.</summary>
