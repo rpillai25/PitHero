@@ -15,8 +15,8 @@ namespace PitHero.Services.Replay
         /// <summary>Installed by the playback service: (tick, hash) for a hero decision.</summary>
         public static Action<long, ulong> PlaybackDecisionCheck;
 
-        /// <summary>Installed by the playback service: (tick, hash) for a periodic state sample.</summary>
-        public static Action<long, ulong> PlaybackStateHashCheck;
+        /// <summary>Installed by the playback service: a periodic state sample with its part hashes.</summary>
+        public static System.Action<ReplayHashSample> PlaybackStateHashCheck;
 
         /// <summary>Hashes a hero GOAP plan (action names in execution order) plus the hero tile.</summary>
         public static ulong HashPlan(Stack<Nez.AI.GOAP.Action> plan, int tileX, int tileY)
@@ -49,15 +49,15 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>Reports a periodic state sample.</summary>
-        public static void ReportStateHash(long tick, ulong hash)
+        public static void ReportStateHash(in ReplayHashSample sample)
         {
             var recorder = ReplayRecorder.Current;
             if (recorder != null && recorder.IsRecording)
             {
-                recorder.RecordStateHash(tick, hash);
+                recorder.RecordStateHash(in sample);
                 return;
             }
-            PlaybackStateHashCheck?.Invoke(tick, hash);
+            PlaybackStateHashCheck?.Invoke(sample);
         }
     }
 }

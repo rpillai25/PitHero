@@ -14,16 +14,32 @@ namespace PitHero.Services.Replay
         Load = 1,
     }
 
-    /// <summary>A hero decision (GOAP plan) or state sample recorded at a tick, used to detect divergence during playback.</summary>
+    /// <summary>
+    /// A hero decision (GOAP plan) or state sample recorded at a tick, used to detect divergence during
+    /// playback. State samples also carry the four part hashes the combined hash was built from so a
+    /// mismatch can say WHAT drifted (RNG stream, hero, party/monsters, world/economy).
+    /// </summary>
     public struct ReplayHashSample
     {
         public long Tick;
         public ulong Hash;
+        public ulong Rng;
+        public ulong Hero;
+        public ulong Party;
+        public ulong World;
 
         public ReplayHashSample(long tick, ulong hash)
         {
             Tick = tick;
             Hash = hash;
+            Rng = 0; Hero = 0; Party = 0; World = 0;
+        }
+
+        public ReplayHashSample(long tick, ulong hash, ulong rng, ulong hero, ulong party, ulong world)
+        {
+            Tick = tick;
+            Hash = hash;
+            Rng = rng; Hero = hero; Party = party; World = world;
         }
     }
 
@@ -47,10 +63,10 @@ namespace PitHero.Services.Replay
     /// </summary>
     public class ReplayData : IPersistable
     {
-        /// <summary>Current replay file format version.</summary>
-        public const int CurrentVersion = 1;
+        /// <summary>Current replay file format version (2: state samples carry part hashes).</summary>
+        public const int CurrentVersion = 2;
         /// <summary>Oldest replay file format this build can read.</summary>
-        public const int MinSupportedVersion = 1;
+        public const int MinSupportedVersion = 2;
 
         public int FormatVersion = CurrentVersion;
         public ReplayKind Kind;
@@ -113,8 +129,13 @@ namespace PitHero.Services.Replay
             writer.Write(samples.Count);
             for (int i = 0; i < samples.Count; i++)
             {
-                ReplayIO.WriteLong(writer, samples[i].Tick);
-                ReplayIO.WriteULong(writer, samples[i].Hash);
+                var s = samples[i];
+                ReplayIO.WriteLong(writer, s.Tick);
+                ReplayIO.WriteULong(writer, s.Hash);
+                ReplayIO.WriteULong(writer, s.Rng);
+                ReplayIO.WriteULong(writer, s.Hero);
+                ReplayIO.WriteULong(writer, s.Party);
+                ReplayIO.WriteULong(writer, s.World);
             }
         }
 
@@ -170,7 +191,11 @@ namespace PitHero.Services.Replay
             {
                 long tick = ReplayIO.ReadLong(reader);
                 ulong hash = ReplayIO.ReadULong(reader);
-                list.Add(new ReplayHashSample(tick, hash));
+                ulong rng = ReplayIO.ReadULong(reader);
+                ulong hero = ReplayIO.ReadULong(reader);
+                ulong party = ReplayIO.ReadULong(reader);
+                ulong world = ReplayIO.ReadULong(reader);
+                list.Add(new ReplayHashSample(tick, hash, rng, hero, party, world));
             }
             return list;
         }

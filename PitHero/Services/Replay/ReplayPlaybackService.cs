@@ -72,6 +72,7 @@ namespace PitHero.Services.Replay
         private int _commandCursor;
         private int _decisionCursor;
         private int _hashCursor;
+        private System.Collections.Generic.List<ReplayPauseSpan> _pauseSpans = new System.Collections.Generic.List<ReplayPauseSpan>();
         private long _startAtTick;
         private ReplayPlaybackState _stateAfterSeek = ReplayPlaybackState.Playing;
         private Action _afterSeek;
@@ -99,6 +100,7 @@ namespace PitHero.Services.Replay
 
             Data = data;
             TotalTicks = data.TotalTicks;
+            _pauseSpans = ReplayPauseSpans.Build(data.Commands, data.TotalTicks, GameConfig.ReplayPauseSkipMinTicks);
             SpeedIndex = 0;
             DivergenceTick = -1;
             DivergenceKind = null;
@@ -200,15 +202,26 @@ namespace PitHero.Services.Replay
             switch (State)
             {
                 case ReplayPlaybackState.Playing:
-                    Core.SimulationSuspended = false;
-                    Core.SimulationSpeed = Speed;
-                    Core.MaxStepsPerFrame = GameConfig.ReplayMaxStepsPerFrame;
+                {
                     if (CurrentTick >= TotalTicks)
                     {
                         State = ReplayPlaybackState.AtEnd;
                         Core.SimulationSuspended = true;
+                        break;
                     }
+                    // Nothing to watch while the recorded session sat in a menu: skip the stretch
+                    long skipTo = ReplayPauseSpans.FindSkipTarget(_pauseSpans, CurrentTick);
+                    if (skipTo > CurrentTick)
+                    {
+                        _stateAfterSeek = ReplayPlaybackState.Playing;
+                        BeginSeek(skipTo > TotalTicks ? TotalTicks : skipTo);
+                        break;
+                    }
+                    Core.SimulationSuspended = false;
+                    Core.SimulationSpeed = Speed;
+                    Core.MaxStepsPerFrame = GameConfig.ReplayMaxStepsPerFrame;
                     break;
+                }
 
                 case ReplayPlaybackState.Paused:
                 case ReplayPlaybackState.AtEnd:
@@ -403,14 +416,30 @@ namespace PitHero.Services.Replay
             Compare(Data.Decisions, ref _decisionCursor, tick, hash, "decision");
         }
 
-        private void CheckStateHash(long tick, ulong hash)
+        private void CheckStateHash(ReplayHashSample actual)
         {
             if (Data == null)
                 return;
-            Compare(Data.StateHashes, ref _hashCursor, tick, hash, "state");
+            Compare(Data.StateHashes, ref _hashCursor, actual.Tick, actual.Hash, "state", actual);
         }
 
         private void Compare(System.Collections.Generic.List<ReplayHashSample> samples, ref int cursor, long tick, ulong hash, string kind)
+        {
+            Compare(samples, ref cursor, tick, hash, kind, default);
+        }
+
+        /// <summary>Names the parts of a state sample that differ from the recording (diagnostic string).</summary>
+        private static string DescribeStateMismatch(in ReplayHashSample recorded, in ReplayHashSample actual)
+        {
+            string parts = string.Empty;
+            if (recorded.Rng != actual.Rng) parts += " rng";
+            if (recorded.Hero != actual.Hero) parts += " hero";
+            if (recorded.Party != actual.Party) parts += " party";
+            if (recorded.World != actual.World) parts += " world";
+            return parts.Length == 0 ? " (combined only)" : parts;
+        }
+
+        private void Compare(System.Collections.Generic.List<ReplayHashSample> samples, ref int cursor, long tick, ulong hash, string kind, ReplayHashSample actual)
         {
             // Samples past the recording's end are simply unverified (live play resumed)
             if (tick > TotalTicks)
@@ -430,7 +459,12 @@ namespace PitHero.Services.Replay
             }
             cursor++;
             if (s.Hash != hash)
-                ReportDivergence(tick, kind);
+            {
+                if (kind == "state")
+                    ReportDivergence(tick, kind + " mismatch in:" + DescribeStateMismatch(in s, in actual));
+                else
+                    ReportDivergence(tick, kind);
+            }
         }
 
         private void ReportDivergence(long tick, string kind)

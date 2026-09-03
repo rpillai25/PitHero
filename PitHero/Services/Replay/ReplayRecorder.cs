@@ -106,12 +106,20 @@ namespace PitHero.Services.Replay
             _decisions.Add(new ReplayHashSample(tick, hash));
         }
 
-        /// <summary>Records a periodic state hash.</summary>
+        /// <summary>Records a periodic state hash (combined only; parts zero).</summary>
         public void RecordStateHash(long tick, ulong hash)
         {
             if (!IsRecording)
                 return;
             _stateHashes.Add(new ReplayHashSample(tick, hash));
+        }
+
+        /// <summary>Records a periodic state sample with its part hashes.</summary>
+        public void RecordStateHash(in ReplayHashSample sample)
+        {
+            if (!IsRecording)
+                return;
+            _stateHashes.Add(sample);
         }
 
         /// <summary>Copies the recording into a new ReplayData ending at <paramref name="totalTicks"/>.</summary>

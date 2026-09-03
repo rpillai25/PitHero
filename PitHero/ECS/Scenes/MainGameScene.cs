@@ -3090,7 +3090,7 @@ namespace PitHero.ECS.Scenes
 
             // Divergence tripwire: periodic fingerprint of the simulation
             if (tick % GameConfig.ReplayHashIntervalTicks == 0)
-                Services.Replay.ReplayTripwire.ReportStateHash(tick, Services.Replay.SimulationStateHasher.Compute(tick));
+                Services.Replay.ReplayTripwire.ReportStateHash(Services.Replay.SimulationStateHasher.Sample(tick));
 
             // Always last: this step is complete
             _simulationClock?.Advance();
