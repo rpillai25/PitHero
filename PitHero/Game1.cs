@@ -45,6 +45,9 @@ namespace PitHero
             Services.AddService(new HairstyleQueueService(GameConfig.MaleHeroHairstyleCount));
             Services.AddService(new HeroDesignService());
 
+            // Replay system: replay files + playback survive scene swaps, so they are global
+            Services.AddService(new PitHero.Services.Replay.ReplayFileService());
+
             // Register persistence services
             var fileDataStore = new FileDataStore(null);
             Services.AddService(fileDataStore);

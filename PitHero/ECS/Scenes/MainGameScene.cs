@@ -67,6 +67,7 @@ namespace PitHero.ECS.Scenes
         /// <summary>Add-monster dialog (command handlers apply monster purchases through it).</summary>
         public AddMonsterDialog AddMonsterDialog => _addMonsterDialog;
         private Services.Replay.PlayerCommandService _playerCommands; // Player input -> simulation doorway (replay system)
+        private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
@@ -306,6 +307,8 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(SimulationClock));
             _playerCommands?.Detach();
             Core.Services.RemoveService(typeof(Services.Replay.PlayerCommandService));
+            _replayRecorder?.Detach();
+            Core.Services.RemoveService(typeof(Services.Replay.ReplayRecorder));
             // A new scene always starts unpaused; pending pause commands die with this scene
             Core.Services.GetService<PauseService>()?.ResetImmediate();
         }
@@ -333,6 +336,24 @@ namespace PitHero.ECS.Scenes
             _playerCommands = new Services.Replay.PlayerCommandService();
             Core.Services.AddService(_playerCommands);
             Debug.Log($"[MainGameScene] Session master seed {masterSeed}");
+
+            // ── Replay recorder: capture how this session starts ────────────────────────
+            // A replay of a NEW game re-runs the new-game path, so the global services that the
+            // new-game path does not reset (Second Chance vault, defeated monsters) are restored
+            // from the recording's start blob before any of them are touched.
+            if (replayBootstrap?.NewGameGlobals != null)
+                RestoreGlobalServicesFromSave(replayBootstrap.NewGameGlobals);
+
+            _replayRecorder = new Services.Replay.ReplayRecorder();
+            Core.Services.AddService(_replayRecorder);
+            _playerCommands.OnCommandApplied += _replayRecorder.RecordCommand;
+            var replayKind = isNewGame ? Services.Replay.ReplayKind.NewGame : Services.Replay.ReplayKind.Load;
+            byte[] startBlob = replayBootstrap?.Data != null
+                ? replayBootstrap.Data.StateBlob
+                : CaptureSessionStartBlob(isNewGame);
+            _replayRecorder.Initialize(replayKind, masterSeed, startBlob, replayBootstrap?.Data);
+            if (replayBootstrap?.Data != null)
+                _replayRecorder.IsRecording = false; // playback: the recording IS the list; resume on exit
 
             LoadMap();
             SpawnPit();
@@ -475,7 +496,85 @@ namespace PitHero.ECS.Scenes
             if (isNewGame)
                 StartNewGameIntro(hero);
 
+            // Replay list metadata (hero/job/pit) now that the hero and pit level exist
+            var heroForReplay = hero?.GetComponent<HeroComponent>()?.LinkedHero;
+            _replayRecorder?.SetSessionInfo(heroForReplay?.Name, heroForReplay?.Job?.Name,
+                Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0);
+
             _isInitializationComplete = true;
+        }
+
+        /// <summary>
+        /// Serializes the state this session starts from for the replay header: the exact SaveData
+        /// being loaded, or (new game) a snapshot of the global services as they stand before the
+        /// new-game path runs. Never throws — a null blob only weakens NewGame replays.
+        /// </summary>
+        private static byte[] CaptureSessionStartBlob(bool isNewGame)
+        {
+            try
+            {
+                var data = isNewGame ? SaveLoadService.GatherCurrentState() : SaveLoadService.PendingLoadData;
+                return Services.Replay.ReplayIO.SerializeSaveData(data);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Warn($"[MainGameScene] Could not capture replay start state: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Restores the global services a save carries that the scene's new-game path leaves alone:
+        /// the defeated-monster record and the Second Chance vault contents. Used by ApplyPendingLoadData
+        /// for loads and by Begin for NewGame-kind replays.
+        /// </summary>
+        private static void RestoreGlobalServicesFromSave(SaveData data)
+        {
+            if (data == null)
+                return;
+
+            var defeatedMonsterService = Core.Services.GetService<DefeatedMonsterService>();
+            if (defeatedMonsterService != null && data.DefeatedMonsterTypes != null)
+                defeatedMonsterService.LoadFrom(data.DefeatedMonsterTypes);
+
+            var vaultService = Core.Services.GetService<SecondChanceMerchantVault>();
+            if (vaultService == null)
+                return;
+
+            // Clear vault before restoring to prevent duplication on repeated loads
+            vaultService.Clear();
+
+            if (data.SecondChanceVaultCrystals != null)
+            {
+                for (int i = 0; i < data.SecondChanceVaultCrystals.Count; i++)
+                    vaultService.AddCrystal(data.SecondChanceVaultCrystals[i].ToHeroCrystal());
+            }
+
+            if (data.SecondChanceVaultItems != null)
+            {
+                for (int i = 0; i < data.SecondChanceVaultItems.Count; i++)
+                {
+                    var vi = data.SecondChanceVaultItems[i];
+                    if (string.IsNullOrEmpty(vi.Name)) continue;
+
+                    if (ItemRegistry.TryCreateItem(vi.Name, out var itemTemplate))
+                    {
+                        if (itemTemplate is Consumable consumable)
+                        {
+                            consumable.StackCount = vi.Quantity;
+                            vaultService.AddItem(consumable, logEvictions: false);
+                        }
+                        else
+                        {
+                            for (int q = 0; q < vi.Quantity; q++)
+                            {
+                                if (ItemRegistry.TryCreateItem(vi.Name, out var gearCopy))
+                                    vaultService.AddItem(gearCopy, logEvictions: false);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>Spawns the scripted new-game farm content: Monster House + Crop Storage + starter farming Slime (issue #316).</summary>
@@ -2944,7 +3043,12 @@ namespace PitHero.ECS.Scenes
             _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
 
             // Player commands land here, at the same point of every tick, live or replayed
-            _playerCommands?.Drain(_simulationClock != null ? _simulationClock.Tick : 0L);
+            long tick = _simulationClock != null ? _simulationClock.Tick : 0L;
+            _playerCommands?.Drain(tick);
+
+            // Divergence tripwire: periodic fingerprint of the simulation
+            if (tick % GameConfig.ReplayHashIntervalTicks == 0)
+                Services.Replay.ReplayTripwire.ReportStateHash(tick, Services.Replay.SimulationStateHasher.Compute(tick));
 
             // Always last: this step is complete
             _simulationClock?.Advance();
