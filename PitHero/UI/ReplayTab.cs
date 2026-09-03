@@ -186,8 +186,23 @@ namespace PitHero.UI
                 var current = ReplayRecorder.Current;
                 if (current == null)
                     return;
+                // Close first and release the settings pause ON THE RECORD: the scene is about to be
+                // torn down, so the queued unpause would never drain and the snapshot would end frozen
+                _settingsUI?.ForceCloseSettings();
+                ReleasePausesOnRecord();
                 StartPlayback(current.Snapshot(SimulationClock.CurrentTick));
             });
+        }
+
+        /// <summary>Applies and records pause releases immediately (the normal drain will not run before the scene swap).</summary>
+        private static void ReleasePausesOnRecord()
+        {
+            var commands = PlayerCommandService.Current;
+            if (commands == null)
+                return;
+            long tick = SimulationClock.CurrentTick;
+            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false), tick);
+            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false), tick);
         }
 
         private void StartPlayback(ReplayData data)
@@ -195,7 +210,6 @@ namespace PitHero.UI
             var playback = ReplayPlaybackService.Current;
             if (playback == null)
                 return;
-            // Close through the normal path so the unpause command is queued before the scene swaps
             _settingsUI?.ForceCloseSettings();
             playback.Start(data);
         }

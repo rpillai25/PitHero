@@ -117,6 +117,28 @@ namespace PitHero.Services.Replay
             Array.Clear(_draining, 0, n);
         }
 
+        /// <summary>
+        /// Applies a command immediately (outside the drain) and records it at <paramref name="tick"/>.
+        /// For the rare moments when the normal drain will never run before the scene is torn down,
+        /// e.g. releasing the settings pause right before a replay restarts the scene: the recording
+        /// must still contain the release or a later replay would freeze at that point.
+        /// </summary>
+        public void ApplyNow(in PlayerCommand command, long tick)
+        {
+            if (command.Type == PlayerCommandType.None)
+                return;
+            IsApplying = true;
+            try
+            {
+                PlayerCommandHandlers.Apply(in command);
+            }
+            finally
+            {
+                IsApplying = false;
+            }
+            OnCommandApplied?.Invoke(tick, command);
+        }
+
         /// <summary>Convenience: enqueue on the current service if one exists. Returns false otherwise.</summary>
         public static bool TryEnqueue(in PlayerCommand command)
         {

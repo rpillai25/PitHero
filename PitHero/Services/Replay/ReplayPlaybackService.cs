@@ -351,8 +351,18 @@ namespace PitHero.Services.Replay
             if (recorder != null)
                 recorder.IsRecording = true;
 
-            // Every window is closed in replay mode: bring the simulation's pause flags in line
-            Core.Services.GetService<PauseService>()?.ResetImmediate();
+            // Every window is closed in replay mode: bring the simulation's pause flags in line, ON
+            // THE RECORD, so a later replay of this continued session releases them at the same tick
+            if (commands != null)
+            {
+                long tick = SimulationClock.CurrentTick;
+                commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false), tick);
+                commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false), tick);
+            }
+            else
+            {
+                Core.Services.GetService<PauseService>()?.ResetImmediate();
+            }
 
             var settings = Core.Services.GetService<SettingsUI>();
             settings?.FastFUI?.SetSpeedUp(false);
