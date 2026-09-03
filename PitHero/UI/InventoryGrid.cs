@@ -729,14 +729,11 @@ namespace PitHero.UI
                 if (_stencilDragOffset.HasValue)
                 {
                     var newAnchor = new Point(gridPos.X - _stencilDragOffset.Value.X, gridPos.Y - _stencilDragOffset.Value.Y);
-                    _stencilManager.MoveStencil(_selectedStencil, newAnchor, GRID_WIDTH, GRID_HEIGHT);
-                    Debug.Log($"Moved stencil to anchor: ({newAnchor.X}, {newAnchor.Y})");
-                    // Mirror the clamped anchor (MoveStencil may clamp, so read back from the stencil)
-                    if (SyncStencilsToGameState)
-                        Core.Services?.GetService<GameStateService>()?.SetPlacedStencil(
-                            _selectedStencil.Pattern.Id,
-                            _selectedStencil.Anchor.X,
-                            _selectedStencil.Anchor.Y);
+                    // Lands on a deterministic tick via the command queue (stencils gate synergies; replay system)
+                    var moveCmd = Services.Replay.PlayerCommand.WithString(Services.Replay.PlayerCommandType.MoveStencil,
+                        _selectedStencil.Pattern.Id, newAnchor.X, newAnchor.Y);
+                    moveCmd.L = CommandGridId;
+                    Services.Replay.PlayerCommandService.Dispatch(moveCmd);
                 }
 
                 // Deselect stencil after move
@@ -1823,6 +1820,48 @@ namespace PitHero.UI
             _stencilManager.RemoveStencil(stencil);
             if (SyncStencilsToGameState)
                 Core.Services?.GetService<GameStateService>()?.RemovePlacedStencil(stencil.Pattern.Id);
+        }
+
+        /// <summary>Finds the placed stencil with the given pattern id, or null.</summary>
+        public PlacedStencil FindPlacedStencil(string patternId)
+        {
+            var placed = _stencilManager.PlacedStencils;
+            for (int i = 0; i < placed.Count; i++)
+            {
+                if (placed[i].Pattern.Id == patternId)
+                    return placed[i];
+            }
+            return null;
+        }
+
+        /// <summary>Places a pattern by id at an anchor if the pattern exists. Command handler entry point.</summary>
+        public void ApplyPlaceStencil(string patternId, int x, int y)
+        {
+            var pattern = RolePlayingFramework.Synergies.SynergyPatternRegistry.GetById(patternId);
+            if (pattern == null)
+                return;
+            PlaceStencil(pattern, new Point(x, y));
+        }
+
+        /// <summary>Removes the placed stencil with the given pattern id if present. Command handler entry point.</summary>
+        public void ApplyRemoveStencil(string patternId)
+        {
+            var stencil = FindPlacedStencil(patternId);
+            if (stencil != null)
+                RemoveStencil(stencil);
+        }
+
+        /// <summary>Moves the placed stencil with the given pattern id (anchor clamped to the grid). Command handler entry point.</summary>
+        public void ApplyMoveStencil(string patternId, int x, int y)
+        {
+            var stencil = FindPlacedStencil(patternId);
+            if (stencil == null)
+                return;
+            _stencilManager.MoveStencil(stencil, new Point(x, y), GRID_WIDTH, GRID_HEIGHT);
+            // Mirror the clamped anchor (MoveStencil may clamp, so read back from the stencil)
+            if (SyncStencilsToGameState)
+                Core.Services?.GetService<GameStateService>()?.SetPlacedStencil(
+                    stencil.Pattern.Id, stencil.Anchor.X, stencil.Anchor.Y);
         }
 
         /// <summary>Toggles move stencils mode.</summary>

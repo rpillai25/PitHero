@@ -1102,6 +1102,7 @@ namespace PitHero.UI
                         UITextKey.SettingsSellGearTypes, UITextKey.SettingsSellGearTypesTooltip,
                         () => Core.Services?.GetService<AutoSellExcessItemsService>()?.RarityAllowed,
                         () => Core.Services?.GetService<AutoSellExcessItemsService>()?.GearTypeAllowed);
+                    _gearSellOptionsDialog.CommandOwnerId = 0;
                 }
                 _gearSellOptionsDialog.Show();
             };
@@ -1198,6 +1199,7 @@ namespace PitHero.UI
                         UITextKey.SettingsBuyGearTypes, UITextKey.SettingsBuyGearTypesTooltip,
                         () => Core.Services?.GetService<AutoItemPurchaseService>()?.BuyRarityAllowed,
                         () => Core.Services?.GetService<AutoItemPurchaseService>()?.BuyGearTypeAllowed);
+                    _gearPurchaseOptionsDialog.CommandOwnerId = 1;
                 }
                 _gearPurchaseOptionsDialog.Show();
             };

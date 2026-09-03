@@ -108,6 +108,94 @@ namespace PitHero.Services.Replay
                     MainScene?.AddMonsterDialog?.ApplyPurchase(cmd.A, cmd.S, cmd.B);
                     return true;
 
+                // ── Shortcut bar assignment ──────────────────────────────────────────
+                case PlayerCommandType.SetShortcutItem:
+                    GetShortcutBar()?.ApplySetItemShortcut(cmd.A, cmd.B);
+                    return true;
+                case PlayerCommandType.SetShortcutSkill:
+                    GetShortcutBar()?.ApplySetSkillShortcut(cmd.A, cmd.S, cmd.B);
+                    return true;
+                case PlayerCommandType.ClearShortcut:
+                    GetShortcutBar()?.ClearShortcutReference(cmd.A);
+                    return true;
+                case PlayerCommandType.SwapShortcuts:
+                    GetShortcutBar()?.SwapShortcuts(cmd.A, cmd.B);
+                    return true;
+
+                // ── Stencils ─────────────────────────────────────────────────────────
+                case PlayerCommandType.PlaceStencil:
+                    GetGrid((int)cmd.L)?.ApplyPlaceStencil(cmd.S, cmd.A, cmd.B);
+                    GetSettingsUI()?.HeroUI?.RefreshStencilButtonStates();
+                    return true;
+                case PlayerCommandType.RemoveStencil:
+                    GetGrid((int)cmd.L)?.ApplyRemoveStencil(cmd.S);
+                    GetSettingsUI()?.HeroUI?.RefreshStencilButtonStates();
+                    return true;
+                case PlayerCommandType.MoveStencil:
+                    GetGrid((int)cmd.L)?.ApplyMoveStencil(cmd.S, cmd.A, cmd.B);
+                    return true;
+
+                // ── Automation option dialogs ────────────────────────────────────────
+                case PlayerCommandType.SetAutoPurchaseSelected:
+                {
+                    var svc = Services?.GetService<AutoItemPurchaseService>();
+                    if (svc != null && cmd.A >= 0 && cmd.A < svc.ConsumableSelected.Length)
+                        svc.ConsumableSelected[cmd.A] = cmd.B != 0;
+                    return true;
+                }
+                case PlayerCommandType.SetConsumableStackTarget:
+                {
+                    var svc = Services?.GetService<AutoItemPurchaseService>();
+                    if (svc != null && cmd.A >= 0 && cmd.A < svc.ConsumableStackTargets.Length)
+                        svc.ConsumableStackTargets[cmd.A] = cmd.B;
+                    return true;
+                }
+                case PlayerCommandType.SetConsumableSellAllowed:
+                {
+                    var svc = Services?.GetService<AutoSellExcessItemsService>();
+                    if (svc != null && cmd.A >= 0 && cmd.A < svc.ConsumableSellAllowed.Length)
+                        svc.ConsumableSellAllowed[cmd.A] = cmd.B != 0;
+                    return true;
+                }
+                case PlayerCommandType.SetConsumableMinStacks:
+                {
+                    var svc = Services?.GetService<AutoSellExcessItemsService>();
+                    if (svc != null && cmd.A >= 0 && cmd.A < svc.ConsumableMinStacks.Length)
+                        svc.ConsumableMinStacks[cmd.A] = cmd.B;
+                    return true;
+                }
+                case PlayerCommandType.SetGearFilterFlag:
+                {
+                    bool[] flags = null;
+                    if (cmd.A == 0)
+                    {
+                        var svc = Services?.GetService<AutoSellExcessItemsService>();
+                        flags = cmd.B == 0 ? svc?.RarityAllowed : svc?.GearTypeAllowed;
+                    }
+                    else
+                    {
+                        var svc = Services?.GetService<AutoItemPurchaseService>();
+                        flags = cmd.B == 0 ? svc?.BuyRarityAllowed : svc?.BuyGearTypeAllowed;
+                    }
+                    if (flags != null && cmd.C >= 0 && cmd.C < flags.Length)
+                        flags[cmd.C] = cmd.D != 0;
+                    return true;
+                }
+                case PlayerCommandType.SetCropDesignation:
+                {
+                    var svc = Services?.GetService<AutoCropSellService>();
+                    if (svc != null && cmd.A >= 0 && cmd.A < svc.Designations.Length)
+                        svc.Designations[cmd.A] = cmd.B != 0;
+                    return true;
+                }
+                case PlayerCommandType.SetCropKeepStacks:
+                {
+                    var svc = Services?.GetService<AutoCropSellService>();
+                    if (svc != null)
+                        svc.KeepStacks = cmd.A;
+                    return true;
+                }
+
                 // ── Inventory / shop ─────────────────────────────────────────────────
                 case PlayerCommandType.SwapSlots:
                     GetGrid((int)cmd.L)?.ApplySwapCommand(cmd.A, cmd.B);

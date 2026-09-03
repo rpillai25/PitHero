@@ -540,8 +540,12 @@ namespace PitHero.UI
             var dialog = new ConfirmationDialog("Remove Stencil", message, skin,
                 onYes: () =>
                 {
-                    _inventoryGrid.RemoveStencil(stencil);
-                    Debug.Log($"Removed stencil: {stencil.Pattern.Name}");
+                    // Lands on a deterministic tick via the command queue (replay system)
+                    var removeCmd = Services.Replay.PlayerCommand.WithString(
+                        Services.Replay.PlayerCommandType.RemoveStencil, stencil.Pattern.Id);
+                    removeCmd.L = _inventoryGrid.CommandGridId;
+                    Services.Replay.PlayerCommandService.Dispatch(removeCmd);
+                    Debug.Log($"Requested stencil removal: {stencil.Pattern.Name}");
 
                     // Exit remove mode after removal
                     _inventoryGrid.SetRemoveStencilsMode(false);
@@ -583,10 +587,16 @@ namespace PitHero.UI
                 return;
             }
 
-            _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
-            Debug.Log($"Activated stencil {pattern.Name} at ({targetAnchor.Value.X},{targetAnchor.Value.Y})");
-            UpdateStencilButtonStates();
+            // Lands on a deterministic tick via the command queue; the handler refreshes the buttons (replay system)
+            var placeCmd = Services.Replay.PlayerCommand.WithString(
+                Services.Replay.PlayerCommandType.PlaceStencil, pattern.Id, targetAnchor.Value.X, targetAnchor.Value.Y);
+            placeCmd.L = _inventoryGrid.CommandGridId;
+            Services.Replay.PlayerCommandService.Dispatch(placeCmd);
+            Debug.Log($"Requested stencil {pattern.Name} at ({targetAnchor.Value.X},{targetAnchor.Value.Y})");
         }
+
+        /// <summary>Re-evaluates the stencil buttons after a command-applied stencil change.</summary>
+        public void RefreshStencilButtonStates() => UpdateStencilButtonStates();
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
         {

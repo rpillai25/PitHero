@@ -525,7 +525,8 @@ namespace PitHero.UI
         }
 
         /// <summary>Swaps the item/skill references between two shortcut slots.</summary>
-        private void SwapShortcuts(int indexA, int indexB)
+        /// <summary>Swaps two shortcut slots. Command handler entry point.</summary>
+        public void SwapShortcuts(int indexA, int indexB)
         {
             if (indexA < 0 || indexA >= SHORTCUT_COUNT || indexB < 0 || indexB >= SHORTCUT_COUNT)
                 return;
@@ -720,15 +721,24 @@ namespace PitHero.UI
 
             slot.SetItemSpriteHidden(false);
 
+            bool direct = Services.Replay.PlayerCommandService.ShouldApplyDirectly;
             if (targetIndex >= 0 && targetIndex != index)
             {
-                // Dropped onto a different shortcut slot — swap
-                SwapShortcuts(index, targetIndex);
+                // Dropped onto a different shortcut slot — swap (on a deterministic tick, replay system)
+                if (direct)
+                    SwapShortcuts(index, targetIndex);
+                else
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SwapShortcuts, index, targetIndex));
             }
             else if (targetIndex < 0)
             {
                 // Dropped outside all shortcut slots — remove from shortcut bar
-                ClearShortcutReference(index);
+                if (direct)
+                    ClearShortcutReference(index);
+                else
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.ClearShortcut, index));
             }
             // Dropped on own slot — no-op (restore already done above)
 
@@ -783,15 +793,76 @@ namespace PitHero.UI
                 return;
 
             var item = inventorySource?.SlotData?.Item;
-            if (item is not Consumable)
+            if (item is not Consumable || !inventorySource.SlotData.BagIndex.HasValue)
             {
                 // Non-consumable items cannot be placed on the shortcut bar — cancel drag
                 InventoryDragManager.CancelDrag();
                 return;
             }
 
-            SetShortcutReference(index, inventorySource);
+            // Shortcut slots drive HealingItemExhausted, so the assignment lands on a tick (replay system).
+            // Without a session (headless), this bar applies the change itself.
+            if (Services.Replay.PlayerCommandService.ShouldApplyDirectly)
+                SetShortcutReference(index, inventorySource);
+            else
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetShortcutItem, index, inventorySource.SlotData.BagIndex.Value));
             InventoryDragManager.EndDrag();
+        }
+
+        /// <summary>Points a shortcut at the bag slot holding the given index (Party grid cell). Command handler entry point.</summary>
+        public void ApplySetItemShortcut(int shortcutIndex, int bagIndex)
+        {
+            var bag = _heroComponent?.Bag;
+            if (bag == null || _inventoryGrid == null || bagIndex < 0 || bagIndex >= bag.Capacity)
+                return;
+            var item = bag.GetSlotItem(bagIndex);
+            if (item is not Consumable)
+                return;
+            var slot = _inventoryGrid.FindSlotContainingItem(item);
+            if (slot != null)
+                SetShortcutReference(shortcutIndex, slot);
+        }
+
+        /// <summary>Points a shortcut at a learned skill of the hero (mercIndex -1) or a hired mercenary. Command handler entry point.</summary>
+        public void ApplySetSkillShortcut(int shortcutIndex, string skillId, int mercIndex)
+        {
+            if (string.IsNullOrEmpty(skillId))
+                return;
+            ISkill skill = null;
+            if (mercIndex >= 0)
+            {
+                if (Core.Instance == null)
+                    return;
+                var hired = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
+                if (hired == null || mercIndex >= hired.Count)
+                    return;
+                var merc = hired[mercIndex].GetComponent<MercenaryComponent>()?.LinkedMercenary;
+                if (merc == null || !merc.LearnedSkills.TryGetValue(skillId, out skill))
+                    return;
+                SetShortcutSkill(shortcutIndex, skill, merc);
+                return;
+            }
+            var hero = _heroComponent?.LinkedHero;
+            if (hero == null || !hero.LearnedSkills.TryGetValue(skillId, out skill))
+                return;
+            SetShortcutSkill(shortcutIndex, skill, null);
+        }
+
+        /// <summary>Index of a mercenary in the hired roster, or -1 (command payload for skill owners).</summary>
+        private static int HiredIndexOf(Mercenary merc)
+        {
+            if (merc == null || Core.Instance == null)
+                return -1;
+            var hired = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
+            if (hired == null)
+                return -1;
+            for (int i = 0; i < hired.Count; i++)
+            {
+                if (ReferenceEquals(hired[i].GetComponent<MercenaryComponent>()?.LinkedMercenary, merc))
+                    return i;
+            }
+            return -1;
         }
 
         /// <summary>Handles a skill dragged from a skill list dropped onto a shortcut slot.</summary>
@@ -812,7 +883,12 @@ namespace PitHero.UI
             }
 
             var owner = InventoryDragManager.DragSkillOwner;
-            SetShortcutSkill(index, skill, owner);
+            // Lands on a deterministic tick via the command queue (replay system); headless applies directly
+            if (Services.Replay.PlayerCommandService.ShouldApplyDirectly)
+                SetShortcutSkill(index, skill, owner);
+            else
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                    Services.Replay.PlayerCommandType.SetShortcutSkill, skill.Id, index, HiredIndexOf(owner)));
             InventoryDragManager.EndDrag();
         }
 

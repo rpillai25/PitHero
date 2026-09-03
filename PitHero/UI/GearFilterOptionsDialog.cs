@@ -42,6 +42,16 @@ namespace PitHero.UI
         /// Builds the (initially hidden) window and adds it to the stage. The filter arrays are
         /// resolved lazily through accessors because the owning service may not be registered yet.
         /// </summary>
+        /// <summary>Which service this dialog edits for replay commands: 0 = auto-sell filters, 1 = auto-purchase filters.</summary>
+        public int CommandOwnerId { get; set; }
+
+        /// <summary>Routes a flag change through the player command queue (replay system); the handler writes the service array.</summary>
+        private void DispatchFlag(int kind, int index, bool allowed)
+        {
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetGearFilterFlag, CommandOwnerId, kind, index, allowed ? 1 : 0));
+        }
+
         public GearFilterOptionsDialog(Stage stage, string titleKey, string rarityLabelKey, string rarityTooltipKey,
             string typeLabelKey, string typeTooltipKey, Func<bool[]> rarityAccessor, Func<bool[]> typeAccessor)
         {
@@ -84,12 +94,7 @@ namespace PitHero.UI
                 int rarityIndex = i;
                 var check = new CheckBox(GetText(RarityKeys[i]), skin, "ph-default");
                 check.IsChecked = true;
-                check.OnChanged += (isChecked) =>
-                {
-                    var flags = _rarityAccessor?.Invoke();
-                    if (flags != null && rarityIndex < flags.Length)
-                        flags[rarityIndex] = isChecked;
-                };
+                check.OnChanged += (isChecked) => DispatchFlag(0, rarityIndex, isChecked);
                 _rarityChecks[i] = check;
                 rarityTable.Add(check).Left().SetPadRight(12f).SetPadBottom(4f);
 
@@ -110,12 +115,7 @@ namespace PitHero.UI
                 int typeIndex = i;
                 var check = new CheckBox(GetText(GearCategoryUtils.GetDisplayNameKey((GearCategory)i)), skin, "ph-default");
                 check.IsChecked = true;
-                check.OnChanged += (isChecked) =>
-                {
-                    var flags = _typeAccessor?.Invoke();
-                    if (flags != null && typeIndex < flags.Length)
-                        flags[typeIndex] = isChecked;
-                };
+                check.OnChanged += (isChecked) => DispatchFlag(1, typeIndex, isChecked);
                 _typeChecks[i] = check;
                 typeTable.Add(check).Left().SetPadRight(12f).SetPadBottom(4f);
 
@@ -181,20 +181,16 @@ namespace PitHero.UI
         /// </summary>
         private void SetAll(bool allowed)
         {
-            var rarityFlags = _rarityAccessor?.Invoke();
             for (int i = 0; i < _rarityChecks.Length; i++)
             {
-                if (rarityFlags != null && i < rarityFlags.Length)
-                    rarityFlags[i] = allowed;
+                DispatchFlag(0, i, allowed);
                 if (_rarityChecks[i] != null)
                     _rarityChecks[i].IsChecked = allowed;
             }
 
-            var typeFlags = _typeAccessor?.Invoke();
             for (int i = 0; i < _typeChecks.Length; i++)
             {
-                if (typeFlags != null && i < typeFlags.Length)
-                    typeFlags[i] = allowed;
+                DispatchFlag(1, i, allowed);
                 if (_typeChecks[i] != null)
                     _typeChecks[i].IsChecked = allowed;
             }

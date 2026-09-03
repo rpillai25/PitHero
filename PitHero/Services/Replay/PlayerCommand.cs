@@ -34,12 +34,14 @@ namespace PitHero.Services.Replay
         SetShortcutItem = 32,        // A = shortcut index, B = bag index
         SetShortcutSkill = 33,       // A = shortcut index, S = skill name, B = hired merc index or -1
         ClearShortcut = 34,          // A = shortcut index
+        SwapShortcuts = 35,          // A, B = shortcut indices
 
         // Inventory / equipment
         SwapSlots = 40,              // A,B = packed SlotRef a; C,D = packed SlotRef b; L = grid owner id
         SellBagItem = 41,            // A = bag index, B = quantity (0 = whole stack)
         PlaceStencil = 42,           // S = pattern id, A = x, B = y
-        RemoveStencil = 43,          // S = pattern id
+        RemoveStencil = 43,          // S = pattern id, L = grid owner id
+        MoveStencil = 44,            // S = pattern id, A = x, B = y, L = grid owner id
 
         // Mercenaries / monsters
         HireMercenary = 50,          // A = tavern index, S = merc name
@@ -84,6 +86,15 @@ namespace PitHero.Services.Replay
         EnqueueCrystal = 103,        // A = inventory index
         ClearCrystalQueueSlot = 104, // A = queue slot
         RemoveCrystalFromInventory = 105, // A = inventory index
+
+        // Automation option dialogs
+        SetAutoPurchaseSelected = 110,   // A = consumable index, B = 0/1
+        SetConsumableStackTarget = 111,  // A = consumable index, B = target
+        SetConsumableSellAllowed = 112,  // A = consumable index, B = 0/1
+        SetConsumableMinStacks = 113,    // A = consumable index, B = min stacks
+        SetGearFilterFlag = 114,         // A = owner (0 sell, 1 purchase), B = kind (0 rarity, 1 type), C = index, D = 0/1
+        SetCropDesignation = 115,        // A = crop index, B = 0/1
+        SetCropKeepStacks = 116,         // A = stacks
 
         // Debug
         DebugQueuePitLevel = 200,    // A = level

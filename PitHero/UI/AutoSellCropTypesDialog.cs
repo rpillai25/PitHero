@@ -70,8 +70,8 @@ namespace PitHero.UI
                 int captured = i;
                 check.OnChanged += (isChecked) =>
                 {
-                    var svc = Core.Services?.GetService<AutoCropSellService>();
-                    if (svc != null) svc.Designations[captured] = isChecked;
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetCropDesignation, captured, isChecked ? 1 : 0));
                 };
                 _cropChecks[i] = check;
                 cell.Add(check).Left();
@@ -98,8 +98,8 @@ namespace PitHero.UI
             };
             _keepStacksSlider.OnValueCommitted += (value) =>
             {
-                var svc = Core.Services?.GetService<AutoCropSellService>();
-                if (svc != null) svc.KeepStacks = (int)value;
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetCropKeepStacks, (int)value));
             };
             keepStacksRow.Add(_keepStacksSlider).Width(200f).Left();
 
@@ -162,11 +162,10 @@ namespace PitHero.UI
         /// </summary>
         private void SetAllDesignations(bool designated)
         {
-            var svc = Core.Services?.GetService<AutoCropSellService>();
             for (int i = 0; i < _cropChecks.Length; i++)
             {
-                if (svc != null)
-                    svc.Designations[i] = designated;
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetCropDesignation, i, designated ? 1 : 0));
                 if (_cropChecks[i] != null)
                     _cropChecks[i].IsChecked = designated;
             }
