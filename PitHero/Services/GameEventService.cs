@@ -79,15 +79,25 @@ namespace PitHero.Services
         /// <summary>Fired whenever a game event is emitted. Carries the colored text segments and the event priority.</summary>
         public event Action<ConsoleSegment[], EventPriority> OnEvent;
 
+        /// <summary>
+        /// When true every emit is dropped. Set while a replay plays back: the events already
+        /// happened once, so re-announcing them would duplicate the console history.
+        /// </summary>
+        public bool Suppressed { get; set; }
+
         /// <summary>Broadcasts a plain white message.</summary>
         public void Emit(string message, EventPriority priority = EventPriority.Normal)
         {
+            if (Suppressed)
+                return;
             OnEvent?.Invoke(new[] { new ConsoleSegment(message, Color.White) }, priority);
         }
 
         /// <summary>Broadcasts a colored segment array built via <see cref="ConsoleSegment.Build"/>.</summary>
         public void Emit(ConsoleSegment[] segments, EventPriority priority = EventPriority.Normal)
         {
+            if (Suppressed)
+                return;
             OnEvent?.Invoke(segments, priority);
         }
 

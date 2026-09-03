@@ -73,6 +73,7 @@ namespace PitHero.Services.Replay
         private int _decisionCursor;
         private int _hashCursor;
         private System.Collections.Generic.List<ReplayPauseSpan> _pauseSpans = new System.Collections.Generic.List<ReplayPauseSpan>();
+        private bool _analyticsWasEnabled;
         private long _startAtTick;
         private ReplayPlaybackState _stateAfterSeek = ReplayPlaybackState.Playing;
         private Action _afterSeek;
@@ -185,6 +186,14 @@ namespace PitHero.Services.Replay
 
             ReplayTripwire.PlaybackDecisionCheck = CheckDecision;
             ReplayTripwire.PlaybackStateHashCheck = CheckStateHash;
+
+            // Replayed events already happened once: keep them out of the analytics session log and
+            // the event console history
+            _analyticsWasEnabled = Services.Analytics.AnalyticsService.Enabled;
+            Services.Analytics.AnalyticsService.Enabled = false;
+            var events = Core.Services.GetService<GameEventService>();
+            if (events != null)
+                events.Suppressed = true;
 
             Core.Services.GetService<SettingsUI>()?.EnterReplayMode();
 
@@ -357,6 +366,11 @@ namespace PitHero.Services.Replay
             State = ReplayPlaybackState.Idle;
             Data = null;
             Debug.QuietMode = false;
+
+            Services.Analytics.AnalyticsService.Enabled = _analyticsWasEnabled;
+            var events = Core.Services.GetService<GameEventService>();
+            if (events != null)
+                events.Suppressed = false;
 
             Core.SimulationSuspended = false;
             Core.SimulationSpeed = 1f;
