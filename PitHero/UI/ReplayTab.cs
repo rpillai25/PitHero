@@ -200,9 +200,8 @@ namespace PitHero.UI
             var commands = PlayerCommandService.Current;
             if (commands == null)
                 return;
-            long tick = SimulationClock.CurrentTick;
-            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false), tick);
-            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false), tick);
+            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false));
+            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false));
         }
 
         private void StartPlayback(ReplayData data)

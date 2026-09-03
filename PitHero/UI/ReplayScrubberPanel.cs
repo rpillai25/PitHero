@@ -174,7 +174,9 @@ namespace PitHero.UI
                 return;
             _lastShownDivergence = divergence;
             if (divergence >= 0)
-                _statusLabel.SetText(string.Format(GetText(UITextKey.ReplayDivergenceAt), ReplayTimeFormatter.FormatTicks(divergence)));
+                _statusLabel.SetText(string.Format(GetText(UITextKey.ReplayDivergenceAt),
+                    ReplayTimeFormatter.FormatTicks(divergence),
+                    GetText(playback.DivergenceIsDecision ? UITextKey.ReplayDivergenceDecision : UITextKey.ReplayDivergenceState)));
             else if (state == ReplayPlaybackState.AtEnd)
                 _statusLabel.SetText(GetText(UITextKey.ReplayEndReached));
             else

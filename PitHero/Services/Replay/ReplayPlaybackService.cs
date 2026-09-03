@@ -57,8 +57,11 @@ namespace PitHero.Services.Replay
         /// <summary>Tick of the first detected divergence, or -1.</summary>
         public long DivergenceTick { get; private set; } = -1;
 
-        /// <summary>"decision" or "state" for the first divergence, or null.</summary>
+        /// <summary>Diagnostic description of the first divergence (log only), or null.</summary>
         public string DivergenceKind { get; private set; }
+
+        /// <summary>True when the first divergence was a hero decision (GOAP plan) rather than a state sample.</summary>
+        public bool DivergenceIsDecision { get; private set; }
 
         /// <summary>Simulation tick the replayed scene is at.</summary>
         public long CurrentTick => SimulationClock.CurrentTick;
@@ -99,6 +102,7 @@ namespace PitHero.Services.Replay
             SpeedIndex = 0;
             DivergenceTick = -1;
             DivergenceKind = null;
+            DivergenceIsDecision = false;
             _stateAfterSeek = ReplayPlaybackState.Playing;
             _afterSeek = null;
 
@@ -355,9 +359,8 @@ namespace PitHero.Services.Replay
             // THE RECORD, so a later replay of this continued session releases them at the same tick
             if (commands != null)
             {
-                long tick = SimulationClock.CurrentTick;
-                commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false), tick);
-                commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false), tick);
+                commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false));
+                commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false));
             }
             else
             {
@@ -431,6 +434,7 @@ namespace PitHero.Services.Replay
                 return;
             DivergenceTick = tick;
             DivergenceKind = kind;
+            DivergenceIsDecision = kind.StartsWith("decision");
             Debug.Warn($"[ReplayPlayback] DIVERGENCE at tick {tick} ({tick * GameConfig.SimulationFixedStepSeconds:0.0}s): {kind}");
         }
     }

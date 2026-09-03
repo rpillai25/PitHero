@@ -118,12 +118,14 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>
-        /// Applies a command immediately (outside the drain) and records it at <paramref name="tick"/>.
-        /// For the rare moments when the normal drain will never run before the scene is torn down,
-        /// e.g. releasing the settings pause right before a replay restarts the scene: the recording
-        /// must still contain the release or a later replay would freeze at that point.
+        /// Applies a command immediately, between simulation steps, and records it so a replay
+        /// reproduces it at the same point. A command applied between steps is equivalent to one
+        /// drained at the end of the PREVIOUS step, so it is recorded at CurrentTick - 1; recording it
+        /// at CurrentTick would make the replay apply it one step late and drift. For the rare moments
+        /// when the normal drain will never run before the scene is torn down (releasing the settings
+        /// pause right before a replay restarts the scene) or must be on the record at once (exit).
         /// </summary>
-        public void ApplyNow(in PlayerCommand command, long tick)
+        public void ApplyNow(in PlayerCommand command)
         {
             if (command.Type == PlayerCommandType.None)
                 return;
@@ -136,7 +138,8 @@ namespace PitHero.Services.Replay
             {
                 IsApplying = false;
             }
-            OnCommandApplied?.Invoke(tick, command);
+            long tick = SimulationClock.CurrentTick - 1;
+            OnCommandApplied?.Invoke(tick < 0 ? 0 : tick, command);
         }
 
         /// <summary>Convenience: enqueue on the current service if one exists. Returns false otherwise.</summary>

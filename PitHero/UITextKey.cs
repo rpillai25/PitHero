@@ -148,6 +148,8 @@ namespace PitHero
         public const string ReplaySeekingFormat = "ReplaySeekingFormat";
         public const string ReplayStarting = "ReplayStarting";
         public const string ReplayDivergenceAt = "ReplayDivergenceAt";
+        public const string ReplayDivergenceState = "ReplayDivergenceState";
+        public const string ReplayDivergenceDecision = "ReplayDivergenceDecision";
         public const string ReplayNoDivergence = "ReplayNoDivergence";
         public const string ReplayEndReached = "ReplayEndReached";
         public const string DialogConfirmReplay = "DialogConfirmReplay";

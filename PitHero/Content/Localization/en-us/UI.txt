@@ -485,7 +485,9 @@ ReplaySpeedFormat,{0}x
 ReplayTimeFormat,{0} / {1}
 ReplaySeekingFormat,Seeking... {0}%
 ReplayStarting,Starting replay...
-ReplayDivergenceAt,Diverged at {0}
+ReplayDivergenceAt,Diverged at {0} ({1})
+ReplayDivergenceState,state
+ReplayDivergenceDecision,hero decision
 ReplayNoDivergence,In sync
 ReplayEndReached,End of replay
 DialogConfirmReplay,Start Replay
