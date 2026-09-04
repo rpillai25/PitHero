@@ -130,6 +130,7 @@ namespace PitHero.Services.Replay
         {
             Debug.QuietMode = false; // scene rebuild logs are worth keeping; the seek that follows re-arms quiet mode
             Core.CosmeticUpdatesSuspended = false;
+            PitHero.Util.SoundEffectManager.Muted = true; // silent through the rebuild and any seek; playback unmutes
             _startAtTick = startAtTick;
             _commandCursor = 0;
             _decisionCursor = 0;
@@ -221,7 +222,10 @@ namespace PitHero.Services.Replay
                 after();
             }
             else
+            {
                 State = _stateAfterSeek == ReplayPlaybackState.Paused ? ReplayPlaybackState.Paused : ReplayPlaybackState.Playing;
+                PitHero.Util.SoundEffectManager.Muted = false;
+            }
         }
 
         // ── Per-frame driving (presentation pass) ────────────────────────────────────
@@ -346,6 +350,7 @@ namespace PitHero.Services.Replay
             // skip purely visual per-step work nobody will see
             Debug.QuietMode = true;
             Core.CosmeticUpdatesSuspended = GameConfig.ReplaySeekSkipsCosmetics;
+            PitHero.Util.SoundEffectManager.Muted = true; // no burst of every sound the seek passes through
             _seekStopwatch.Restart();
         }
 
@@ -353,6 +358,7 @@ namespace PitHero.Services.Replay
         {
             Debug.QuietMode = false;
             Core.CosmeticUpdatesSuspended = false;
+            PitHero.Util.SoundEffectManager.Muted = false;
             _seekStopwatch.Stop();
             long steps = CurrentTick - _seekStartedAtTick;
             double seconds = _seekStopwatch.Elapsed.TotalSeconds;
@@ -446,6 +452,7 @@ namespace PitHero.Services.Replay
             _returnSession = null;
             Debug.QuietMode = false;
             Core.CosmeticUpdatesSuspended = false;
+            PitHero.Util.SoundEffectManager.Muted = false;
 
             Services.Analytics.AnalyticsService.Enabled = _analyticsWasEnabled;
             var events = Core.Services.GetService<GameEventService>();

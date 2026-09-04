@@ -131,13 +131,23 @@ namespace PitHero.Util
             return soundEffectDict[soundEffectType].IsSoundPlaying();
         }
 
+        /// <summary>
+        /// When true every play request is dropped. Set while a replay seeks: hundreds of simulated
+        /// seconds pass per real second and their sounds would all fire at once.
+        /// </summary>
+        public static bool Muted;
+
         public void PlaySound(SoundEffectType soundEffectType, uint frameInterval = 0)
         {
+            if (Muted)
+                return;
             soundEffectDict[soundEffectType].Play(SoundVolume, frameInterval);
         }
 
         public void PlaySound(SoundEffectType soundEffectType, float volume, float pitch, float pan)
         {
+            if (Muted)
+                return;
             soundEffectDict[soundEffectType].Play(volume, pitch, pan);
         }
 
@@ -145,6 +155,8 @@ namespace PitHero.Util
         /// skipped entirely beyond GameConfig.MaxAudibleDistanceTiles past the nearest edge. Position is sampled at play time.</summary>
         public void PlaySoundAt(SoundEffectType soundEffectType, Vector2 sourceWorldPosition)
         {
+            if (Muted)
+                return;
             float scale = 1f;
             float pan = 0f;
             var camera = Core.Scene?.Camera;
