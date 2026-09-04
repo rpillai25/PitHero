@@ -73,7 +73,50 @@ namespace PitHero.ECS.Components
                 _camera.Position = _hasPendingCenter ? ConstrainCameraPosition(_pendingCenter) : _defaultCameraPosition;
                 _hasPendingCenter = false;
                 QuantizeCameraPosition();
+
+                // A full view restore requested during scene setup (replay rebuild) wins over both
+                if (_hasPendingView)
+                {
+                    _hasPendingView = false;
+                    ApplyView(_pendingView);
+                }
             }
+        }
+
+        private bool _hasPendingView;
+        private CameraViewState _pendingView;
+
+        /// <summary>Captures position, zoom and follow state so a rebuilt scene can show the same view.</summary>
+        public CameraViewState CaptureView()
+        {
+            return new CameraViewState
+            {
+                Position = _camera != null ? _camera.Position : _pendingCenter,
+                RawZoom = _camera != null ? _camera.RawZoom : GameConfig.CameraDefaultZoom,
+                IsFollowingHero = _isFollowingHero,
+                ManualControlTimer = _manualControlTimer,
+            };
+        }
+
+        /// <summary>Restores a captured view. Safe before the camera is attached: applied in OnAddedToEntity.</summary>
+        public void RestoreView(in CameraViewState view)
+        {
+            if (_camera == null)
+            {
+                _pendingView = view;
+                _hasPendingView = true;
+                return;
+            }
+            ApplyView(view);
+        }
+
+        private void ApplyView(in CameraViewState view)
+        {
+            _camera.RawZoom = view.RawZoom;
+            _camera.Position = ConstrainCameraPosition(view.Position);
+            QuantizeCameraPosition();
+            _isFollowingHero = view.IsFollowingHero;
+            _manualControlTimer = view.ManualControlTimer;
         }
 
         /// <summary>
@@ -698,5 +741,16 @@ namespace PitHero.ECS.Components
                 QuantizeCameraPosition();
             }
         }
+    }
+}
+namespace PitHero.ECS.Components
+{
+    /// <summary>A camera view snapshot: where the player was looking and whether the camera was following the hero.</summary>
+    public struct CameraViewState
+    {
+        public Microsoft.Xna.Framework.Vector2 Position;
+        public float RawZoom;
+        public bool IsFollowingHero;
+        public float ManualControlTimer;
     }
 }

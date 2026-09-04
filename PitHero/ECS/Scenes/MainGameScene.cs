@@ -54,6 +54,8 @@ namespace PitHero.ECS.Scenes
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
         private SimulationClock _simulationClock; // Session tick counter; advanced last in every Update (replay system)
 
+        /// <summary>The camera controller (replay playback captures/restores the view across scene rebuilds).</summary>
+        public CameraControllerComponent CameraController => _cameraController;
         /// <summary>Building placement overlay (player command handlers apply placements/moves through it).</summary>
         public BuildingModeOverlay BuildingModeOverlay => _buildingModeOverlay;
         /// <summary>Seed planting overlay (command handlers apply crop plans through it).</summary>

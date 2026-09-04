@@ -75,6 +75,8 @@ namespace PitHero.Services.Replay
         private System.Collections.Generic.List<ReplayPauseSpan> _pauseSpans = new System.Collections.Generic.List<ReplayPauseSpan>();
         private bool _analyticsWasEnabled;
         private ReplayData _returnSession; // the live session set aside while a saved replay plays
+        private PitHero.ECS.Components.CameraViewState? _returnView; // the player's view when the replay started
+        private PitHero.ECS.Components.CameraViewState? _pendingView; // view to apply to the next rebuilt scene
         private readonly System.Diagnostics.Stopwatch _seekStopwatch = new System.Diagnostics.Stopwatch();
         private long _startAtTick;
         private ReplayPlaybackState _stateAfterSeek = ReplayPlaybackState.Playing;
@@ -108,6 +110,10 @@ namespace PitHero.Services.Replay
                 _returnSession = data;
             else
                 _returnSession = ReplayRecorder.Current?.Snapshot(SimulationClock.CurrentTick);
+
+            // The view is the player's, not the recording's: keep it across every scene rebuild
+            _returnView = CaptureView();
+            _pendingView = _returnView;
 
             Data = data;
             TotalTicks = data.TotalTicks;
@@ -211,6 +217,12 @@ namespace PitHero.Services.Replay
                 events.Suppressed = true;
 
             Core.Services.GetService<SettingsUI>()?.EnterReplayMode();
+
+            if (_pendingView.HasValue)
+            {
+                scene.CameraController?.RestoreView(_pendingView.Value);
+                _pendingView = null;
+            }
 
             if (_startAtTick > 0)
                 BeginSeek(_startAtTick);
@@ -334,10 +346,19 @@ namespace PitHero.Services.Replay
 
             if (targetTick < CurrentTick)
             {
+                // A backward seek rebuilds the scene: carry the current view over to the new one
+                _pendingView = CaptureView();
                 RestartScene(targetTick);
                 return;
             }
             BeginSeek(targetTick);
+        }
+
+        private static PitHero.ECS.Components.CameraViewState? CaptureView()
+        {
+            var scene = Core.Scene as MainGameScene;
+            var camera = scene?.CameraController;
+            return camera != null ? camera.CaptureView() : (PitHero.ECS.Components.CameraViewState?)null;
         }
 
         private void BeginSeek(long targetTick)
@@ -424,6 +445,7 @@ namespace PitHero.Services.Replay
             TotalTicks = session.TotalTicks;
             _pauseSpans.Clear();
             _afterSeek = FinishExit;
+            _pendingView = _returnView; // back to the view the player had before the replay
             Debug.Log($"[ReplayPlayback] Returning to the live session at tick {TotalTicks}");
             RestartScene(TotalTicks);
         }
