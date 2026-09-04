@@ -653,6 +653,7 @@ namespace PitHero
         public const float ReplaySeekWallBudgetSeconds = 0.011f; // Wall time per 60 Hz frame spent running seek steps: ~2/3 of the frame, leaving CPU headroom (raise for faster seeks)
         public const int ReplayHashIntervalTicks = 60;           // Simulation ticks between divergence-tripwire state hashes (1 per sim second)
         public const long ReplayPauseSkipMinTicks = 120;         // Recorded pause stretches at least this long (2 s) are skipped during playback
+        public const bool ReplaySeekSkipsCosmetics = true;       // Seeks skip purely visual per-step work (particles, floating text, Y-sort); flip to A/B a divergence
         public static readonly float[] ReplaySpeedSteps = { 1f, 2.5f, 4f, 8f }; // Speed button cycle during playback
         public const float ReplayScrubberWidth = 720f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels

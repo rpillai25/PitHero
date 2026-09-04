@@ -15,6 +15,8 @@ namespace RolePlayingFramework.Utils
     public sealed class ShuffleBag<T>
     {
         private readonly List<T> _items;
+        // Insertion-order snapshot so Reset can restore the exact starting arrangement (draws permute _items)
+        private readonly List<T> _initial;
 
         /// <summary>Index of the last undrawn slot; bag is exhausted when below 0.</summary>
         private int _cursor;
@@ -22,7 +24,20 @@ namespace RolePlayingFramework.Utils
         public ShuffleBag(int capacity)
         {
             _items = new List<T>(capacity);
+            _initial = new List<T>(capacity);
             _cursor = -1;
+        }
+
+        /// <summary>
+        /// Restores the bag to its state right after construction/Add: original marble order, full
+        /// cursor. Lets a seeded consumer reproduce the same draw sequence after a session restart.
+        /// </summary>
+        public void Reset()
+        {
+            _items.Clear();
+            for (var i = 0; i < _initial.Count; i++)
+                _items.Add(_initial[i]);
+            _cursor = _items.Count - 1;
         }
 
         /// <summary>Total marbles in the bag (full-cycle size).</summary>
@@ -38,7 +53,10 @@ namespace RolePlayingFramework.Utils
         public void Add(T item, int count = 1)
         {
             for (var i = 0; i < count; i++)
+            {
                 _items.Add(item);
+                _initial.Add(item);
+            }
             _cursor = _items.Count - 1;
         }
 
@@ -46,6 +64,7 @@ namespace RolePlayingFramework.Utils
         public void Clear()
         {
             _items.Clear();
+            _initial.Clear();
             _cursor = -1;
         }
 

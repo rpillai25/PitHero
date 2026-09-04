@@ -103,6 +103,8 @@ namespace PitHero.ECS.Components
         /// <summary>Update animations for completed actions.</summary>
         public void Update()
         {
+            if (Core.CosmeticUpdatesSuspended)
+                return; // replay seek: nobody sees this step and nothing in the simulation reads it
             if (!PitHero.AI.HeroStateMachine.IsBattleInProgress)
             {
                 // Clear animations when not in battle

@@ -74,6 +74,7 @@ namespace PitHero.Services.Replay
         private int _hashCursor;
         private System.Collections.Generic.List<ReplayPauseSpan> _pauseSpans = new System.Collections.Generic.List<ReplayPauseSpan>();
         private bool _analyticsWasEnabled;
+        private readonly System.Diagnostics.Stopwatch _seekStopwatch = new System.Diagnostics.Stopwatch();
         private long _startAtTick;
         private ReplayPlaybackState _stateAfterSeek = ReplayPlaybackState.Playing;
         private Action _afterSeek;
@@ -119,6 +120,7 @@ namespace PitHero.Services.Replay
         private void RestartScene(long startAtTick)
         {
             Debug.QuietMode = false; // scene rebuild logs are worth keeping; the seek that follows re-arms quiet mode
+            Core.CosmeticUpdatesSuspended = false;
             _startAtTick = startAtTick;
             _commandCursor = 0;
             _decisionCursor = 0;
@@ -169,6 +171,9 @@ namespace PitHero.Services.Replay
             HeroStateMachine.CurrentThreatTarget = null;
             Core.Services.GetService<TileStateService>()?.Clear();
             Core.Services.GetService<PauseService>()?.ResetImmediate();
+            // Global, lazily created and never removed: a level queued by the debug keys must not
+            // leak into the replayed world (the replay re-queues it through its recorded command)
+            Core.Services.GetService<PitLevelQueueService>()?.DequeueLevel();
         }
 
         /// <summary>
@@ -321,13 +326,22 @@ namespace PitHero.Services.Replay
             _seekStartedAtTick = CurrentTick;
             State = ReplayPlaybackState.Seeking;
             Core.SimulationSuspended = true;
-            // Thousands of simulated steps per second: keep Debug.WriteLine off the hot path
+            // Thousands of simulated steps per second: keep Debug.WriteLine off the hot path and
+            // skip purely visual per-step work nobody will see
             Debug.QuietMode = true;
+            Core.CosmeticUpdatesSuspended = GameConfig.ReplaySeekSkipsCosmetics;
+            _seekStopwatch.Restart();
         }
 
         private void FinishSeek()
         {
             Debug.QuietMode = false;
+            Core.CosmeticUpdatesSuspended = false;
+            _seekStopwatch.Stop();
+            long steps = CurrentTick - _seekStartedAtTick;
+            double seconds = _seekStopwatch.Elapsed.TotalSeconds;
+            if (steps > 0 && seconds > 0.0)
+                Debug.Log($"[ReplayPlayback] Seek ran {steps} steps in {seconds:0.00}s ({steps / seconds:0} steps/s, {seconds * 1000.0 / steps:0.000} ms/step)");
             var after = _afterSeek;
             _afterSeek = null;
             if (after != null)
@@ -369,6 +383,7 @@ namespace PitHero.Services.Replay
             State = ReplayPlaybackState.Idle;
             Data = null;
             Debug.QuietMode = false;
+            Core.CosmeticUpdatesSuspended = false;
 
             Services.Analytics.AnalyticsService.Enabled = _analyticsWasEnabled;
             var events = Core.Services.GetService<GameEventService>();
@@ -491,7 +506,74 @@ namespace PitHero.Services.Replay
             DivergenceTick = tick;
             DivergenceKind = kind;
             DivergenceIsDecision = kind.StartsWith("decision");
-            Debug.Warn($"[ReplayPlayback] DIVERGENCE at tick {tick} ({tick * GameConfig.SimulationFixedStepSeconds:0.0}s): {kind}");
+            string line = $"[ReplayPlayback] DIVERGENCE at tick {tick} ({tick * GameConfig.SimulationFixedStepSeconds:0.0}s): {kind}";
+            Debug.Warn(line);
+            WriteDivergenceReport(tick, line);
+        }
+
+        /// <summary>
+        /// Appends a diagnostic block to replay_divergence.log next to the replay files: what differed,
+        /// the recording's identity, the live state at the tick and the commands injected just before it.
+        /// </summary>
+        private void WriteDivergenceReport(long tick, string headline)
+        {
+            try
+            {
+                var files = Core.Services.GetService<ReplayFileService>();
+                if (files == null)
+                    return;
+                var sb = new System.Text.StringBuilder(1024);
+                sb.Append(System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")).Append("  ").AppendLine(headline);
+                sb.Append("  recording: kind=").Append(Data.Kind).Append(" seed=").Append(Data.MasterSeed)
+                  .Append(" totalTicks=").Append(TotalTicks).Append(" build=").Append(Data.BuildId)
+                  .Append(" thisBuild=").Append(BuildIdentity.Current).AppendLine();
+                sb.Append("  seek state: ").Append(State).Append(" seekTarget=").Append(SeekTarget)
+                  .Append(" cosmeticsSkipped=").Append(GameConfig.ReplaySeekSkipsCosmetics).AppendLine();
+
+                if (_hashCursor > 0 && _hashCursor - 1 < Data.StateHashes.Count)
+                {
+                    var rec = Data.StateHashes[_hashCursor - 1];
+                    var now = SimulationStateHasher.Sample(tick);
+                    sb.Append("  recorded @").Append(rec.Tick).Append(": rng=").Append(rec.Rng.ToString("X16"))
+                      .Append(" hero=").Append(rec.Hero.ToString("X16")).Append(" party=").Append(rec.Party.ToString("X16"))
+                      .Append(" world=").Append(rec.World.ToString("X16")).AppendLine();
+                    sb.Append("  actual   @").Append(now.Tick).Append(": rng=").Append(now.Rng.ToString("X16"))
+                      .Append(" hero=").Append(now.Hero.ToString("X16")).Append(" party=").Append(now.Party.ToString("X16"))
+                      .Append(" world=").Append(now.World.ToString("X16")).AppendLine();
+                }
+
+                var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<PitHero.ECS.Components.HeroComponent>();
+                if (heroComp?.LinkedHero != null)
+                {
+                    var t = heroComp.GetCurrentTilePosition();
+                    sb.Append("  hero: tile=").Append(t.X).Append(',').Append(t.Y)
+                      .Append(" hp=").Append(heroComp.LinkedHero.CurrentHP).Append(" mp=").Append(heroComp.LinkedHero.CurrentMP)
+                      .Append(" lvl=").Append(heroComp.LinkedHero.Level).Append(" insidePit=").Append(heroComp.InsidePit)
+                      .Append(" stopped=").Append(heroComp.StoppedAdventure).Append(" battle=").Append(HeroStateMachine.IsBattleInProgress)
+                      .AppendLine();
+                }
+                var gameState = Core.Services.GetService<GameStateService>();
+                var pause = Core.Services.GetService<PauseService>();
+                var pit = Core.Services.GetService<PitWidthManager>();
+                sb.Append("  world: funds=").Append(gameState?.Funds ?? -1).Append(" paused=").Append(pause?.IsPaused ?? false)
+                  .Append(" pit=").Append(pit?.CurrentPitLevel ?? -1).AppendLine();
+
+                sb.AppendLine("  last commands injected (tick type A B C D L S):");
+                int from = _commandCursor - 8; if (from < 0) from = 0;
+                for (int i = from; i < _commandCursor && i < Data.Commands.Count; i++)
+                {
+                    var c = Data.Commands[i];
+                    sb.Append("    ").Append(c.Tick).Append(' ').Append(c.Command.Type).Append(' ').Append(c.Command.A).Append(' ')
+                      .Append(c.Command.B).Append(' ').Append(c.Command.C).Append(' ').Append(c.Command.D).Append(' ')
+                      .Append(c.Command.L).Append(' ').Append(c.Command.S ?? "-").AppendLine();
+                }
+                sb.AppendLine();
+                System.IO.File.AppendAllText(System.IO.Path.Combine(files.Directory_, "replay_divergence.log"), sb.ToString());
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Warn($"[ReplayPlayback] Could not write divergence report: {ex.Message}");
+            }
         }
     }
 }

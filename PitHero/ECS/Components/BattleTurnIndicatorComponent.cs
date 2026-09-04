@@ -112,6 +112,8 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
+            if (Core.CosmeticUpdatesSuspended)
+                return; // replay seek: nobody sees this step and nothing in the simulation reads it
             if (!_isShowing || _targetEntity == null || _renderer == null) return;
 
             Entity.Transform.Position = _targetEntity.Transform.Position;

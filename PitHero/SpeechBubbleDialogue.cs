@@ -29,7 +29,14 @@ namespace PitHero
         public static void Reseed(int seed)
         {
             _rng = new System.Random(seed);
+            // The option bags are static and survive a scene restart; put every marble back in its
+            // starting order so the seeded stream reproduces the same lines on a replay restart
+            for (int i = 0; i < _allBags.Count; i++)
+                _allBags[i].Bag.Reset();
         }
+
+        // Every OptionBag registers here at construction so Reseed can reset them all
+        private static readonly System.Collections.Generic.List<OptionBag> _allBags = new System.Collections.Generic.List<OptionBag>(24);
 
         // ── Gate ─────────────────────────────────────────────────────────────────
 
@@ -90,6 +97,7 @@ namespace PitHero
                     if (options[i].Gate == Gate.Merc)
                         HasMercGate = true;
                 }
+                _allBags.Add(this);
             }
         }
 
