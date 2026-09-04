@@ -34,7 +34,19 @@ namespace PitHero.UI
         private int _lastSeekPercent = -1;
         private bool _previewing;
 
-        private const float ButtonWidth = 70f;
+        private const float ButtonTextPad = 14f; // horizontal room around a button's label
+        private const float EdgePad = 10f;       // gap between the outermost controls and the window edge
+
+        private static float TextButtonWidth(TextButton button)
+        {
+            return button.GetLabel().PreferredWidth + ButtonTextPad;
+        }
+
+        private float MeasureButtonText(string text)
+        {
+            var probe = new Label(text, _skin, "ph-default");
+            return probe.PreferredWidth;
+        }
         private const float ButtonHeight = 20f;
 
         /// <summary>Builds the panel. Positioned by MainGameScene.PositionReplayScrubber.</summary>
@@ -64,13 +76,18 @@ namespace PitHero.UI
             _timeLabel = new Label(string.Format(GetText(UITextKey.ReplayTimeFormat), "00:00", "00:00"), skin, "ph-default");
             _statusLabel = new Label(GetText(UITextKey.ReplayNoDivergence), skin, "ph-default");
 
-            Add(_exitButton).Width(ButtonWidth).Height(ButtonHeight).SetPadRight(6f);
-            Add(_continueButton).Width(ButtonWidth + 20f).Height(ButtonHeight).SetPadRight(6f);
-            Add(_playPauseButton).Width(ButtonWidth).Height(ButtonHeight).SetPadRight(6f);
-            Add(_speedButton).Width(44f).Height(ButtonHeight).SetPadRight(10f);
+            // Buttons size to their text (plus breathing room) so no label is clipped; the outer
+            // padding keeps the first button and the status label off the window edges
+            Add(_exitButton).Width(TextButtonWidth(_exitButton)).Height(ButtonHeight).SetPadLeft(EdgePad).SetPadRight(6f);
+            Add(_continueButton).Width(TextButtonWidth(_continueButton)).Height(ButtonHeight).SetPadRight(6f);
+            // Play/Pause swaps text: size for the wider of the two so the layout never shifts
+            float playPauseWidth = System.Math.Max(TextButtonWidth(_playPauseButton),
+                MeasureButtonText(GetText(UITextKey.ButtonReplayPlay)) + ButtonTextPad);
+            Add(_playPauseButton).Width(playPauseWidth).Height(ButtonHeight).SetPadRight(6f);
+            Add(_speedButton).Width(TextButtonWidth(_speedButton) + 8f).Height(ButtonHeight).SetPadRight(10f);
             Add(_slider).Expand().Fill().Height(ButtonHeight).SetPadRight(10f);
             Add(_timeLabel).SetPadRight(10f);
-            Add(_statusLabel);
+            Add(_statusLabel).SetPadRight(EdgePad);
 
             SetVisible(false);
         }
