@@ -507,6 +507,10 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void HandleHeroFollowing()
         {
+            // A replay is history viewed at the player's own pace: the camera never chases the hero
+            if (Services.Replay.ReplayPlaybackService.IsPlaybackActive)
+                return;
+
             // Check if auto-scroll to hero is enabled
             if (!UI.UIWindowManager.AutoScrollToHeroEnabled)
             {
