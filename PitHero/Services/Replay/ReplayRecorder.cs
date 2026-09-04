@@ -122,6 +122,35 @@ namespace PitHero.Services.Replay
             _stateHashes.Add(sample);
         }
 
+        /// <summary>
+        /// Drops every command and sample recorded after <paramref name="tick"/>. Used when live play
+        /// continues from the middle of a replay (time travel) so the recording stays a single timeline.
+        /// </summary>
+        public void TruncateAfter(long tick)
+        {
+            TruncateCommands(tick);
+            TruncateSamples(_decisions, tick);
+            TruncateSamples(_stateHashes, tick);
+        }
+
+        private void TruncateCommands(long tick)
+        {
+            int keep = _commands.Count;
+            while (keep > 0 && _commands[keep - 1].Tick > tick)
+                keep--;
+            if (keep < _commands.Count)
+                _commands.RemoveRange(keep, _commands.Count - keep);
+        }
+
+        private static void TruncateSamples(List<ReplayHashSample> samples, long tick)
+        {
+            int keep = samples.Count;
+            while (keep > 0 && samples[keep - 1].Tick > tick)
+                keep--;
+            if (keep < samples.Count)
+                samples.RemoveRange(keep, samples.Count - keep);
+        }
+
         /// <summary>Copies the recording into a new ReplayData ending at <paramref name="totalTicks"/>.</summary>
         public ReplayData Snapshot(long totalTicks)
         {

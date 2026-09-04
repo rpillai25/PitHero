@@ -138,6 +138,9 @@ namespace PitHero
         public const string ButtonReplaySaveSession = "ButtonReplaySaveSession";
         public const string ButtonReplayCurrentSession = "ButtonReplayCurrentSession";
         public const string ButtonReplayPlaySelected = "ButtonReplayPlaySelected";
+        public const string ButtonReplayContinueHere = "ButtonReplayContinueHere";
+        public const string DialogConfirmContinueHere = "DialogConfirmContinueHere";
+        public const string ConfirmContinueHereMessage = "ConfirmContinueHereMessage";
         public const string ReplayListEmpty = "ReplayListEmpty";
         public const string ReplayRowTitleFormat = "ReplayRowTitleFormat";
         public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";

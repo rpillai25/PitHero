@@ -18,6 +18,8 @@ namespace PitHero.UI
         private TextService _textService;
 
         private TextButton _exitButton;
+        private TextButton _continueButton;
+        private ConfirmationDialog _continueDialog;
         private TextButton _playPauseButton;
         private TextButton _speedButton;
         private EnhancedSlider _slider;
@@ -46,6 +48,9 @@ namespace PitHero.UI
             _exitButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             _exitButton.OnClicked += (_) => ReplayPlaybackService.Current?.Exit();
 
+            _continueButton = new TextButton(GetText(UITextKey.ButtonReplayContinueHere), skin, "ph-default");
+            _continueButton.OnClicked += (_) => ConfirmContinueHere();
+
             _playPauseButton = new TextButton(GetText(UITextKey.ButtonReplayPause), skin, "ph-default");
             _playPauseButton.OnClicked += (_) => ReplayPlaybackService.Current?.TogglePause();
 
@@ -60,6 +65,7 @@ namespace PitHero.UI
             _statusLabel = new Label(GetText(UITextKey.ReplayNoDivergence), skin, "ph-default");
 
             Add(_exitButton).Width(ButtonWidth).Height(ButtonHeight).SetPadRight(6f);
+            Add(_continueButton).Width(ButtonWidth + 20f).Height(ButtonHeight).SetPadRight(6f);
             Add(_playPauseButton).Width(ButtonWidth).Height(ButtonHeight).SetPadRight(6f);
             Add(_speedButton).Width(44f).Height(ButtonHeight).SetPadRight(10f);
             Add(_slider).Expand().Fill().Height(ButtonHeight).SetPadRight(10f);
@@ -79,6 +85,24 @@ namespace PitHero.UI
         private string GetText(string key)
         {
             return GetTextService()?.DisplayText(TextType.UI, key) ?? key;
+        }
+
+        /// <summary>Time travel is destructive for the set-aside session, so it always asks first.</summary>
+        private void ConfirmContinueHere()
+        {
+            var playback = ReplayPlaybackService.Current;
+            var stage = GetStage();
+            if (playback == null || !playback.IsActive || stage == null)
+                return;
+            if (playback.State == ReplayPlaybackState.Seeking || playback.State == ReplayPlaybackState.Starting)
+                return;
+            _continueDialog = new ConfirmationDialog(
+                GetText(UITextKey.DialogConfirmContinueHere),
+                GetText(UITextKey.ConfirmContinueHereMessage),
+                _skin,
+                onYes: () => ReplayPlaybackService.Current?.ContinueFromHere());
+            _continueDialog.YesButton.SuppressGlobalClick = true;
+            _continueDialog.Show(stage);
         }
 
         private void OnSliderChanged(float value)

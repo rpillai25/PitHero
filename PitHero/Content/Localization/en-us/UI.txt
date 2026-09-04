@@ -491,9 +491,12 @@ ReplayDivergenceDecision,hero decision
 ReplayNoDivergence,In sync
 ReplayEndReached,End of replay
 DialogConfirmReplay,Start Replay
-ConfirmReplayInterruptMessage,Replaying interrupts your current session. When you exit the replay, play continues from the END of the replayed timeline. Continue?
+ConfirmReplayInterruptMessage,Your session is set aside while the replay plays and resumes exactly where you left it when you exit. Continue?
 DialogConfirmDeleteReplay,Delete Replay
 ConfirmDeleteReplayMessage,Delete this replay? This cannot be undone.
 DialogReplaySaved,Replay Saved
 ReplaySavedMessage,Saved as {0}
 ReplaySaveFailedMessage,The session could not be saved as a replay.
+ButtonReplayContinueHere,Continue Here
+DialogConfirmContinueHere,Continue From Here
+ConfirmContinueHereMessage,Abandon the session you left and keep playing from this point of the replay? The rest of the replay is discarded. This cannot be undone.

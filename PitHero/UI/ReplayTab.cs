@@ -172,7 +172,11 @@ namespace PitHero.UI
                     Refresh();
                     return;
                 }
-                StartPlayback(data);
+                // Close and release the pause on the record BEFORE playback snapshots the live
+                // session as its return point, so the return trip lands unpaused
+                _settingsUI?.ForceCloseSettings();
+                ReleasePausesOnRecord();
+                StartPlayback(data, isCurrentSession: false);
             });
         }
 
@@ -190,7 +194,7 @@ namespace PitHero.UI
                 // torn down, so the queued unpause would never drain and the snapshot would end frozen
                 _settingsUI?.ForceCloseSettings();
                 ReleasePausesOnRecord();
-                StartPlayback(current.Snapshot(SimulationClock.CurrentTick));
+                StartPlayback(current.Snapshot(SimulationClock.CurrentTick), isCurrentSession: true);
             });
         }
 
@@ -204,13 +208,13 @@ namespace PitHero.UI
             commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false));
         }
 
-        private void StartPlayback(ReplayData data)
+        private void StartPlayback(ReplayData data, bool isCurrentSession)
         {
             var playback = ReplayPlaybackService.Current;
             if (playback == null)
                 return;
             _settingsUI?.ForceCloseSettings();
-            playback.Start(data);
+            playback.Start(data, isCurrentSession);
         }
 
         private void OnSaveSession()

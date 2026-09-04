@@ -74,6 +74,7 @@ namespace PitHero.Services.Replay
         private int _hashCursor;
         private System.Collections.Generic.List<ReplayPauseSpan> _pauseSpans = new System.Collections.Generic.List<ReplayPauseSpan>();
         private bool _analyticsWasEnabled;
+        private ReplayData _returnSession; // the live session set aside while a saved replay plays
         private readonly System.Diagnostics.Stopwatch _seekStopwatch = new System.Diagnostics.Stopwatch();
         private long _startAtTick;
         private ReplayPlaybackState _stateAfterSeek = ReplayPlaybackState.Playing;
@@ -92,13 +93,21 @@ namespace PitHero.Services.Replay
         /// Starts playing <paramref name="data"/> from its beginning (or seeks to
         /// <paramref name="startAtTick"/> first). Interrupts the current live session.
         /// </summary>
-        public void Start(ReplayData data, long startAtTick = 0)
+        public void Start(ReplayData data, bool isCurrentSession, long startAtTick = 0)
         {
             if (data == null || data.StateBlob == null && data.Kind == ReplayKind.Load)
             {
                 Debug.Warn("[ReplayPlayback] Cannot start: recording has no start state");
                 return;
             }
+
+            // Remember where the live session was so Exit can bring the player back to it exactly:
+            // for a saved replay that is a snapshot of the live recording; for "Replay Current
+            // Session" the replay IS that snapshot
+            if (isCurrentSession)
+                _returnSession = data;
+            else
+                _returnSession = ReplayRecorder.Current?.Snapshot(SimulationClock.CurrentTick);
 
             Data = data;
             TotalTicks = data.TotalTicks;
@@ -204,6 +213,13 @@ namespace PitHero.Services.Replay
 
             if (_startAtTick > 0)
                 BeginSeek(_startAtTick);
+            else if (_afterSeek != null)
+            {
+                // Nothing to seek (a session that had not ticked yet): run the continuation now
+                var after = _afterSeek;
+                _afterSeek = null;
+                after();
+            }
             else
                 State = _stateAfterSeek == ReplayPlaybackState.Paused ? ReplayPlaybackState.Paused : ReplayPlaybackState.Playing;
         }
@@ -362,6 +378,21 @@ namespace PitHero.Services.Replay
         {
             if (!IsActive)
                 return;
+
+            // Watching a saved replay: the live session was set aside, not abandoned. Bring the
+            // world back to exactly where it was by re-simulating the live recording to its end.
+            if (_returnSession != null && !ReferenceEquals(_returnSession, Data))
+            {
+                if (State == ReplayPlaybackState.Seeking || State == ReplayPlaybackState.Starting)
+                {
+                    // Let the in-flight seek/start land, then return
+                    _afterSeek = ReturnToLiveSession;
+                    return;
+                }
+                ReturnToLiveSession();
+                return;
+            }
+
             if (State == ReplayPlaybackState.Starting)
             {
                 // Scene not ready yet: finish the exit once it starts
@@ -378,10 +409,41 @@ namespace PitHero.Services.Replay
             FinishExit();
         }
 
+        /// <summary>Restarts the scene from the live session's recording and seeks to its last tick, then hands control back.</summary>
+        private void ReturnToLiveSession()
+        {
+            var session = _returnSession;
+            _returnSession = null;
+            Data = session;
+            TotalTicks = session.TotalTicks;
+            _pauseSpans.Clear();
+            _afterSeek = FinishExit;
+            Debug.Log($"[ReplayPlayback] Returning to the live session at tick {TotalTicks}");
+            RestartScene(TotalTicks);
+        }
+
+        /// <summary>
+        /// Time travel: abandon the set-aside live session and continue playing from the replay's
+        /// CURRENT position. Everything recorded after this tick is discarded so the recording stays
+        /// a straight line for future replays.
+        /// </summary>
+        public void ContinueFromHere()
+        {
+            if (!IsActive || State == ReplayPlaybackState.Starting || State == ReplayPlaybackState.Seeking)
+                return;
+            _returnSession = null;
+            long tick = CurrentTick;
+            ReplayRecorder.Current?.TruncateAfter(tick);
+            TotalTicks = tick;
+            Debug.Log($"[ReplayPlayback] Continuing live play from replay tick {tick}");
+            FinishExit();
+        }
+
         private void FinishExit()
         {
             State = ReplayPlaybackState.Idle;
             Data = null;
+            _returnSession = null;
             Debug.QuietMode = false;
             Core.CosmeticUpdatesSuspended = false;
 
