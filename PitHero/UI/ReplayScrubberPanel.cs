@@ -124,8 +124,8 @@ namespace PitHero.UI
 
         private void OnSliderChanged(float value)
         {
-            if (!_slider.IsDragging())
-                return;
+            if (!_slider.IsPointerHeld)
+                return; // programmatic sync, not the user
             _previewing = true;
             var playback = ReplayPlaybackService.Current;
             long total = playback != null ? playback.TotalTicks : 0;
@@ -159,9 +159,13 @@ namespace PitHero.UI
                 _slider.SetMinMax(0f, total > 0 ? total : 1f);
             }
 
-            long tick = playback.CurrentTick;
+            // While seeking the knob shows the destination, not the ticks racing toward it
+            var state0 = playback.State;
+            long tick = state0 == ReplayPlaybackState.Seeking || state0 == ReplayPlaybackState.Starting
+                ? playback.SeekTarget
+                : playback.CurrentTick;
             if (tick > total) tick = total;
-            if (!_slider.IsDragging() && !_previewing && tick != _lastShownTick)
+            if (!_slider.IsPointerHeld && !_previewing && tick != _lastShownTick)
             {
                 _lastShownTick = tick;
                 _slider.SetValue(tick);

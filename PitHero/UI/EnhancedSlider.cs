@@ -82,9 +82,11 @@ namespace PitHero.UI
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
         {
-            CalculatePositionAndValue(mousePos);
+            // Mark the drag before the value changes so OnChanged listeners can tell a user press
+            // from a programmatic SetValue
             _mouseDown = true;
             _isDragging = true;
+            CalculatePositionAndValue(mousePos);
 
             // If not using deferred commit, commit immediately (normal slider behavior)
             if (!UseDeferredCommit)
@@ -164,6 +166,13 @@ namespace PitHero.UI
         {
             return _mouseDown && _mouseOver;
         }
+
+        /// <summary>
+        /// True from the press until the release, even when the pointer strays off the slider
+        /// mid-drag. Owners that mirror an external value into the slider should hold off while
+        /// this is true, or the user's drag gets overwritten (rubber band).
+        /// </summary>
+        public bool IsPointerHeld => _mouseDown;
 
         protected override Nez.UI.IDrawable GetKnobDrawable()
         {
