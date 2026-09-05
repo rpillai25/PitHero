@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Nez;
 using Nez.UI;
+using Nez.Textures;
 using PitHero.Services;
 using PitHero.Services.Replay;
 
@@ -125,9 +126,18 @@ namespace PitHero.UI
             var replayCurrentButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplayCurrentSession), out float replayCurrentWidth);
             replayCurrentButton.OnClicked += (_) => OnReplayCurrent();
 
-            // "?" button opening the Replay Info window (session-length disclaimer)
+            // "?" button opening the Replay Info window (session-length disclaimer): a standard
+            // nine-patch button face (no side padding) with the 32x32 sprite drawn at native size
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-            var infoStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(uiAtlas.GetSprite("QuestionMark")) };
+            var infoStyle = new ImageButtonStyle
+            {
+                Up = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4)),
+                Down = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4)),
+                Over = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4)),
+                ImageUp = new SpriteDrawable(uiAtlas.GetSprite("QuestionMark")),
+                PressedOffsetX = 1,
+                PressedOffsetY = 1
+            };
             var infoButton = new HoverableImageButton(infoStyle, GetText(UITextKey.ButtonReplayInfo));
             infoButton.OnClicked += (_) => ShowInfo();
 
@@ -340,7 +350,7 @@ namespace PitHero.UI
         }
 
         private Window _infoWindow;
-        private const float InfoButtonSize = 32f;
+        private const float InfoButtonSize = 40f; // 4 px nine-patch border each side around the 32x32 sprite
         private const float InfoWindowWidth = 460f;
         private const float InfoWindowDesignHeight = 210f; // fitted to the live stage height at show time
         private const float InfoWindowPad = 16f;
