@@ -32,6 +32,36 @@ namespace PitHero.UI
         private const float RowHeight = 40f;
         private const float RowWidth = 400f;
         private const float RowPad = 3f;
+        private const float ButtonRowHeight = 32f;    // tall enough for two text lines; single-line labels center vertically
+        private const float TwoLineButtonPad = 16f;   // horizontal room around the wider of the two lines
+
+        /// <summary>
+        /// A button whose label wraps at its last space onto two lines. The button is made just wide
+        /// enough for the wider line, which is narrower than the whole text, so Nez's word wrap breaks
+        /// exactly there ("Replay Current" / "Session").
+        /// </summary>
+        private TextButton MakeTwoLineButton(string text, out float width)
+        {
+            var button = new TextButton(text, _skin, "ph-default");
+            var label = button.GetLabel();
+            label.SetWrap(true);
+            label.SetAlignment(Align.Center);
+
+            int split = text.LastIndexOf(' ');
+            string line1 = split > 0 ? text.Substring(0, split) : text;
+            string line2 = split > 0 ? text.Substring(split + 1) : string.Empty;
+            float widest = System.Math.Max(MeasureText(line1), MeasureText(line2));
+            float full = MeasureText(text);
+            width = widest + TwoLineButtonPad;
+            if (width >= full)
+                width = full - 1f; // must be narrower than the unbroken text or it will not wrap
+            return button;
+        }
+
+        private float MeasureText(string text)
+        {
+            return new Label(text, _skin, "ph-default").PreferredWidth;
+        }
 
         /// <summary>Creates the tab content builder.</summary>
         public ReplayTab(Skin skin, Stage stage, SettingsUI settingsUI)
@@ -76,15 +106,16 @@ namespace PitHero.UI
             _deleteButton = new TextButton(GetText(UITextKey.ButtonReplayDelete), _skin, "ph-default");
             _deleteButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             _deleteButton.OnClicked += (_) => OnDeleteSelected();
-            var saveButton = new TextButton(GetText(UITextKey.ButtonReplaySaveSession), _skin, "ph-default");
+            // The two long labels wrap onto two lines ("Save Session" / "Replay") so the row fits the window
+            var saveButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplaySaveSession), out float saveWidth);
             saveButton.OnClicked += (_) => OnSaveSession();
-            var replayCurrentButton = new TextButton(GetText(UITextKey.ButtonReplayCurrentSession), _skin, "ph-default");
+            var replayCurrentButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplayCurrentSession), out float replayCurrentWidth);
             replayCurrentButton.OnClicked += (_) => OnReplayCurrent();
 
-            buttons.Add(_playButton).SetMinWidth(100f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(6f);
-            buttons.Add(_deleteButton).SetMinWidth(70f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(6f);
-            buttons.Add(saveButton).SetMinWidth(130f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadRight(6f);
-            buttons.Add(replayCurrentButton).SetMinWidth(150f).SetMinHeight(GameConfig.DialogButtonMinHeight);
+            buttons.Add(_playButton).SetMinWidth(100f).Height(ButtonRowHeight).SetPadRight(6f);
+            buttons.Add(_deleteButton).SetMinWidth(70f).Height(ButtonRowHeight).SetPadRight(6f);
+            buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(6f);
+            buttons.Add(replayCurrentButton).Width(replayCurrentWidth).Height(ButtonRowHeight);
             content.Add(buttons).Left().SetPadBottom(8f);
 
             tab.Add(content).Expand().Fill();
