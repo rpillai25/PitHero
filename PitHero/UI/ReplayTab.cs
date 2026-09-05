@@ -33,7 +33,7 @@ namespace PitHero.UI
         private const float RowWidth = 400f;
         private const float RowPad = 3f;
         private const float ButtonRowHeight = 32f;    // tall enough for two text lines; single-line labels center vertically
-        private const float TwoLineButtonPad = 16f;   // horizontal room around the wider of the two lines
+        private const float TwoLineButtonPad = 4f;    // horizontal room around the wider of the two lines (insets are added separately)
 
         /// <summary>
         /// A button whose label wraps at its last space onto two lines. The button is made just wide
