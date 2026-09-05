@@ -42,7 +42,7 @@ namespace PitHero.UI
         /// </summary>
         private TextButton MakeTwoLineButton(string text, out float width)
         {
-            var button = new TextButton(text, _skin, "ph-default");
+            var button = new TextButton(text, _skin, CompactButtonStyle);
             var label = button.GetLabel();
             label.SetWrap(true);
             label.SetAlignment(Align.Center);
@@ -50,8 +50,8 @@ namespace PitHero.UI
             int split = text.LastIndexOf(' ');
             string line1 = split > 0 ? text.Substring(0, split) : text;
             string line2 = split > 0 ? text.Substring(split + 1) : string.Empty;
-            float widest = System.Math.Max(MeasureText(line1), MeasureText(line2));
-            float full = MeasureText(text);
+            float widest = System.Math.Max(MeasureText(button, line1), MeasureText(button, line2));
+            float full = MeasureText(button, text);
             // The button's background insets come out of the cell width before the label sees it
             float insets = button.GetPadX();
             width = widest + TwoLineButtonPad + insets;
@@ -61,10 +61,21 @@ namespace PitHero.UI
             return button;
         }
 
-        private float MeasureText(string text)
+        /// <summary>A single-line compact button sized to its text plus the style's insets.</summary>
+        private TextButton MakeSingleLineButton(string text, out float width)
         {
-            return new Label(text, _skin, "ph-default").PreferredWidth;
+            var button = new TextButton(text, _skin, CompactButtonStyle);
+            width = MeasureText(button, text) + TwoLineButtonPad + button.GetPadX();
+            return button;
         }
+
+        // Measured with the button's own label style so the font matches what is drawn
+        private static float MeasureText(TextButton button, string text)
+        {
+            return new Label(text, button.GetLabel().GetStyle()).PreferredWidth;
+        }
+
+        private const string CompactButtonStyle = "ph-compact";
 
         /// <summary>Creates the tab content builder.</summary>
         public ReplayTab(Skin skin, Stage stage, SettingsUI settingsUI)
@@ -104,9 +115,9 @@ namespace PitHero.UI
             content.Row();
 
             var buttons = new Table();
-            _playButton = new TextButton(GetText(UITextKey.ButtonReplayPlaySelected), _skin, "ph-default");
+            _playButton = MakeSingleLineButton(GetText(UITextKey.ButtonReplayPlaySelected), out float playWidth);
             _playButton.OnClicked += (_) => OnPlaySelected();
-            _deleteButton = new TextButton(GetText(UITextKey.ButtonReplayDelete), _skin, "ph-default");
+            _deleteButton = MakeSingleLineButton(GetText(UITextKey.ButtonReplayDelete), out float deleteWidth);
             _deleteButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             _deleteButton.OnClicked += (_) => OnDeleteSelected();
             // The two long labels wrap onto two lines ("Save Session" / "Replay") so the row fits the window
@@ -115,9 +126,9 @@ namespace PitHero.UI
             var replayCurrentButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplayCurrentSession), out float replayCurrentWidth);
             replayCurrentButton.OnClicked += (_) => OnReplayCurrent();
 
-            buttons.Add(_playButton).SetMinWidth(100f).Height(ButtonRowHeight).SetPadRight(6f);
-            buttons.Add(_deleteButton).SetMinWidth(70f).Height(ButtonRowHeight).SetPadRight(6f);
-            buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(6f);
+            buttons.Add(_playButton).Width(playWidth).Height(ButtonRowHeight).SetPadRight(4f);
+            buttons.Add(_deleteButton).Width(deleteWidth).Height(ButtonRowHeight).SetPadRight(4f);
+            buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(4f);
             buttons.Add(replayCurrentButton).Width(replayCurrentWidth).Height(ButtonRowHeight);
             content.Add(buttons).Left().SetPadBottom(8f);
 
