@@ -112,7 +112,7 @@ namespace PitHero.UI
             content.Row();
 
             _selectedLabel = new Label(GetText(UITextKey.ReplaySelectedNone), _skin, "ph-default");
-            content.Add(_selectedLabel).Left().SetPadBottom(6f);
+            content.Add(_selectedLabel).Left().SetPadLeft(8f).SetPadBottom(6f);
             content.Row();
 
             var buttons = new Table();
