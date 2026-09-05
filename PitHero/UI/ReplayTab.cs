@@ -34,6 +34,7 @@ namespace PitHero.UI
         private const float RowPad = 3f;
         private const float ButtonRowHeight = 32f;    // tall enough for two text lines; single-line labels center vertically
         private const float TwoLineButtonPad = 4f;    // horizontal room around the wider of the two lines (insets are added separately)
+        private const float ButtonGap = 10f;          // space between neighbouring buttons in the row
 
         /// <summary>
         /// A button whose label wraps at its last space onto two lines. The button is made just wide
@@ -45,7 +46,7 @@ namespace PitHero.UI
             var button = new TextButton(text, _skin, CompactButtonStyle);
             var label = button.GetLabel();
             label.SetWrap(true);
-            label.SetAlignment(Align.Center);
+            label.SetAlignment(Align.Center, Align.Center); // center the block and each wrapped line
 
             int split = text.LastIndexOf(' ');
             string line1 = split > 0 ? text.Substring(0, split) : text;
@@ -126,11 +127,11 @@ namespace PitHero.UI
             var replayCurrentButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplayCurrentSession), out float replayCurrentWidth);
             replayCurrentButton.OnClicked += (_) => OnReplayCurrent();
 
-            buttons.Add(_playButton).Width(playWidth).Height(ButtonRowHeight).SetPadRight(4f);
-            buttons.Add(_deleteButton).Width(deleteWidth).Height(ButtonRowHeight).SetPadRight(4f);
-            buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(4f);
+            buttons.Add(_playButton).Width(playWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
+            buttons.Add(_deleteButton).Width(deleteWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
+            buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
             buttons.Add(replayCurrentButton).Width(replayCurrentWidth).Height(ButtonRowHeight);
-            content.Add(buttons).Left().SetPadBottom(8f);
+            content.Add(buttons).Center().SetPadBottom(8f);
 
             tab.Add(content).Expand().Fill();
 
