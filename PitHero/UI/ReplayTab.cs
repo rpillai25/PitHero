@@ -52,9 +52,12 @@ namespace PitHero.UI
             string line2 = split > 0 ? text.Substring(split + 1) : string.Empty;
             float widest = System.Math.Max(MeasureText(line1), MeasureText(line2));
             float full = MeasureText(text);
-            width = widest + TwoLineButtonPad;
-            if (width >= full)
-                width = full - 1f; // must be narrower than the unbroken text or it will not wrap
+            // The button's background insets come out of the cell width before the label sees it
+            float insets = button.GetPadX();
+            width = widest + TwoLineButtonPad + insets;
+            float unbroken = full + insets;
+            if (width >= unbroken)
+                width = unbroken - 1f; // must be narrower than the unbroken text or it will not wrap
             return button;
         }
 
