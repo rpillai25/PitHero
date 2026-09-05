@@ -112,8 +112,6 @@ namespace PitHero.UI
             content.Row();
 
             _selectedLabel = new Label(GetText(UITextKey.ReplaySelectedNone), _skin, "ph-default");
-            content.Add(_selectedLabel).Left().SetPadLeft(8f).SetPadBottom(6f);
-            content.Row();
 
             var buttons = new Table();
             _playButton = MakeSingleLineButton(GetText(UITextKey.ButtonReplayPlaySelected), out float playWidth);
@@ -131,7 +129,14 @@ namespace PitHero.UI
             buttons.Add(_deleteButton).Width(deleteWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
             buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
             buttons.Add(replayCurrentButton).Width(replayCurrentWidth).Height(ButtonRowHeight);
-            content.Add(buttons).Center().SetPadBottom(8f);
+
+            // Label and button row share one centered block, so the label's left edge is the row's
+            // left edge whatever widths the localized labels produce
+            var bottom = new Table();
+            bottom.Add(_selectedLabel).Left().SetPadBottom(6f);
+            bottom.Row();
+            bottom.Add(buttons).Left();
+            content.Add(bottom).Center().SetPadBottom(8f);
 
             tab.Add(content).Expand().Fill();
 
