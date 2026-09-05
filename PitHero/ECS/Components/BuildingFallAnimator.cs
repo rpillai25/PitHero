@@ -27,9 +27,14 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
-            if (Core.CosmeticUpdatesSuspended)
-                return; // replay seek: nobody sees this step and nothing in the simulation reads it
             float remaining = _targetY - _currentY;
+            if (Core.CosmeticUpdatesSuspended)
+            {
+                // replay seek: land instantly so the building does not fall when the seek ends
+                Entity.SetPosition(Entity.Position.X, _targetY);
+                Entity.RemoveComponent(this);
+                return;
+            }
             if (System.Math.Abs(remaining) <= _snapPx)
             {
                 Entity.SetPosition(Entity.Position.X, _targetY);

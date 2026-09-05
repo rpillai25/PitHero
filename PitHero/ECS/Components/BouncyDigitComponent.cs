@@ -135,7 +135,12 @@ namespace PitHero.ECS.Components
         public void Update()
         {
             if (Core.CosmeticUpdatesSuspended)
-                return; // replay seek: nobody sees this step and nothing in the simulation reads it
+            {
+                // replay seek: finish instantly so the bounce does not play when the seek ends
+                _currentColor = _initColor;
+                Enabled = false;
+                return;
+            }
             _elapsedTime += Time.DeltaTime;
 
             if (_pauseService?.IsPaused == true)

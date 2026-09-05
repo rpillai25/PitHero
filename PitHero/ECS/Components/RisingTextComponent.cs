@@ -60,7 +60,10 @@ namespace PitHero.ECS.Components
         public void Update()
         {
             if (Core.CosmeticUpdatesSuspended)
-                return; // replay seek: nobody sees this step and nothing in the simulation reads it
+            {
+                Kill(); // replay seek: finish instantly so the text does not rise when the seek ends
+                return;
+            }
             _elapsedTime += Time.DeltaTime;
 
             if (_pauseService?.IsPaused == true)
