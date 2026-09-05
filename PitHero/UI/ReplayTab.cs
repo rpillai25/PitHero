@@ -138,7 +138,7 @@ namespace PitHero.UI
                 PressedOffsetX = 1,
                 PressedOffsetY = 1
             };
-            var infoButton = new HoverableImageButton(infoStyle, GetText(UITextKey.ButtonReplayInfo));
+            var infoButton = new ImageButton(infoStyle);
             infoButton.OnClicked += (_) => ShowInfo();
 
             buttons.Add(_playButton).Width(playWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);

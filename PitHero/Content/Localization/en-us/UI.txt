@@ -500,7 +500,6 @@ ReplaySaveFailedMessage,The session could not be saved as a replay.
 ButtonReplayContinueHere,Continue Here
 DialogConfirmContinueHere,Continue From Here
 ConfirmContinueHereMessage,Abandon the session you left and keep playing from this point of the replay? The rest of the replay is discarded. This cannot be undone.
-ButtonReplayInfo,Replay Info
 ReplayInfoTitle,Replay Info
 ReplayInfoIntro,Save a replay and play it back, or replay the currently running session up to the current point in time without saving.
 ReplayInfoWarning,WARNING: The longer a play session is, the longer the replay takes to seek. It is intended for sessions of a few hours. If you leave a session on for several days, expect much longer seek times. A new session is started any time you load a save file or start a new game.
