@@ -125,10 +125,17 @@ namespace PitHero.UI
             var replayCurrentButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplayCurrentSession), out float replayCurrentWidth);
             replayCurrentButton.OnClicked += (_) => OnReplayCurrent();
 
+            // "?" button opening the Replay Info window (session-length disclaimer)
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            var infoStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(uiAtlas.GetSprite("QuestionMark")) };
+            var infoButton = new HoverableImageButton(infoStyle, GetText(UITextKey.ButtonReplayInfo));
+            infoButton.OnClicked += (_) => ShowInfo();
+
             buttons.Add(_playButton).Width(playWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
             buttons.Add(_deleteButton).Width(deleteWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
             buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
-            buttons.Add(replayCurrentButton).Width(replayCurrentWidth).Height(ButtonRowHeight);
+            buttons.Add(replayCurrentButton).Width(replayCurrentWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
+            buttons.Add(infoButton).Size(InfoButtonSize, InfoButtonSize);
 
             // Label and button row share one centered block, so the label's left edge is the row's
             // left edge whatever widths the localized labels produce
@@ -294,6 +301,50 @@ namespace PitHero.UI
                 Refresh();
             });
         }
+
+        /// <summary>Opens the Replay Info window: what replays do, plus the session-length disclaimer.</summary>
+        private void ShowInfo()
+        {
+            if (_infoWindow != null)
+                _infoWindow.Remove();
+
+            var window = new Window(GetText(UITextKey.ReplayInfoTitle), _skin.Get<WindowStyle>("ph-default"));
+            window.SetMovable(false);
+            float stageH = _stage.GetHeight();
+            float height = UILayout.FitHeight(InfoWindowDesignHeight, stageH, GameConfig.UIStageMargin, GameConfig.UIStageMargin);
+            window.SetSize(InfoWindowWidth, height);
+
+            var content = new Table();
+            content.Pad(InfoWindowPad);
+
+            float textWidth = InfoWindowWidth - 2f * InfoWindowPad;
+            var intro = new Label(GetText(UITextKey.ReplayInfoIntro), _skin, "ph-default");
+            intro.SetWrap(true);
+            content.Add(intro).Width(textWidth).Left().SetPadBottom(InfoParagraphGap);
+            content.Row();
+
+            var warning = new Label(GetText(UITextKey.ReplayInfoWarning), _skin, "ph-default");
+            warning.SetWrap(true);
+            content.Add(warning).Width(textWidth).Left().Expand().Top();
+            content.Row();
+
+            var ok = new TextButton(GetText(UITextKey.ButtonOK), _skin, "ph-default");
+            ok.OnClicked += (_) => { window.Remove(); _infoWindow = null; };
+            content.Add(ok).Width(80f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadTop(InfoParagraphGap);
+
+            window.Add(content).Expand().Fill();
+            window.SetPosition((_stage.GetWidth() - InfoWindowWidth) / 2f, UILayout.CenterY(height, stageH, 0f));
+            _stage.AddElement(window);
+            window.ToFront();
+            _infoWindow = window;
+        }
+
+        private Window _infoWindow;
+        private const float InfoButtonSize = 32f;
+        private const float InfoWindowWidth = 460f;
+        private const float InfoWindowDesignHeight = 210f; // fitted to the live stage height at show time
+        private const float InfoWindowPad = 16f;
+        private const float InfoParagraphGap = 10f;      // the "empty line" between the two paragraphs
 
         private void ShowConfirm(string title, string message, System.Action onYes)
         {
