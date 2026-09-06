@@ -29,6 +29,7 @@ You are **not** a designer. You receive a plan and context, then implement. If s
 - **Monsters** are implemented from `PitHero/docs/MonsterLibrary.md` entries. After adding the C# class, register the monster in the appropriate spawn pool. If a spawn-pool concept doesn't exist for the relevant biome yet, create it and integrate it cleanly. If no texture exists, use a placeholder consistent with the visual description in the library.
 - **Equipment** is implemented from `PitHero/docs/EquipmentLibrary.md` entries. After adding the factory method, ensure the item can spawn in treasure chests via the appropriate spawn pool. Same texture placeholder rule applies.
 - Project-wide rules (AOT, Nez, UI, localization, constants, code style) are in `AGENTS.md` at the repo root.
+- **Replay determinism is a hard rule** (`AGENTS.md` → "Replay Determinism", `PitHero/docs/ReplaySystem.md`): player actions go through `PlayerCommand`s, sim code never reads input or wall time, non-sim randomness never touches `Nez.Random`, sim-read static state resets at the session reseed. Check every feature against it before declaring done.
 
 # Monster Creation Pattern
 
@@ -131,6 +132,8 @@ dotnet test PitHero.Tests/PitHero.Tests.csproj
 ```
 
 Both must pass. For UI changes, also run the game (`dotnet run`) and visually confirm the change — automated tests don't catch UI regressions.
+
+For any change that adds a player action, randomness, a timer/timestamp, or new static/global state, also run a replay check: play the feature, **Settings → Replay → Replay Current Session**, seek back and forth across it, and confirm the scrubber reads **In sync** (a "Diverged at" label means the feature broke determinism — `replay_divergence.log` names the drifted part).
 
 ## Cave Biome Validation
 

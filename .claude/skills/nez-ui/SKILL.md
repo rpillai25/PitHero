@@ -22,6 +22,7 @@ Nez UI is based on [TableLayout](https://github.com/EsotericSoftware/tablelayout
 8. **Use `PausableSpriteAnimator`** instead of `SpriteAnimator`.
 9. **For new UI needs:** inherit and override Nez classes first; only duplicate Nez elements if inheritance is insufficient.
 10. **AOT compliance:** No `foreach`, no LINQ in UI update loops. Use `for` loops. Pre-allocate collections. Avoid `new` during gameplay.
+11. **Replay determinism:** a click/drag/slider that changes simulation state (hero, party, inventory, gold, farm, buildings, automation flags, pause) never mutates it directly — it dispatches a `PlayerCommand` (`PlayerCommandService.Dispatch`; branch on `ShouldApplyDirectly` when the same method also serves the handler). UI-time randomness uses `GameRandom.Ui`, never `Nez.Random`. UI code runs in the presentation pass and must not be read by the simulation. See the `replay-determinism` skill and `PitHero/docs/ReplaySystem.md`.
 
 ## UICanvas Setup
 
@@ -118,6 +119,8 @@ public class MyFeatureUI
 | Drag source sprite disappears | Always call `InventoryDragManager.EndDrag()` or `CancelDrag()` |
 | Item tooltip doesn't appear on hover | Add periodic hover check every 5 frames (see `references/dialogs-tooltips.md`) |
 | Item tooltip slow / rebuilds every hover | `ItemCardTooltip.ShowItem()` already caches by reference — `InvalidateCache()` on window open / shop refresh |
+| Replay says "Diverged at" after a new button/dialog | The button mutated sim state directly or rolled `Nez.Random` — route it through a `PlayerCommand` / `GameRandom.Ui` (`replay-determinism` skill) |
+| Click does nothing during replay playback | Expected: `PlayerCommandService.RejectLiveEnqueues` drops live commands while a replay runs |
 
 ## Element Lifecycle
 

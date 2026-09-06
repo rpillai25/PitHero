@@ -55,6 +55,17 @@ Game1 (Nez.Core)
 - Strings in the game loop must be `const` — no dynamic concatenation (`Debug.Log` is exempt)
 - Pre-allocate collections with sufficient capacity; avoid `new` during gameplay
 
+### Replay Determinism (critical)
+Every session is recorded and can be replayed by **re-simulating** it (fixed 60 Hz tick + seeded RNG + recorded player commands — see `PitHero/docs/ReplaySystem.md`). A feature that breaks determinism silently breaks every replay, so **every feature must be replay-friendly**:
+- **Simulation vs presentation.** `MainGameScene.Update` (and entity/component `Update`) is the simulation step; `PresentationUpdate` (UI stages, camera, HUD, overlays, hover/click handling) runs once per rendered frame. Simulation code never reads `Input`, `Time.TotalTime`, `Time.FrameCount`, `DateTime`, `Stopwatch` or `Environment.TickCount`; sim timestamps use `SimulationClock.Now`. `Time.DeltaTime` inside a step is the fixed step and is safe
+- **Every player-driven change to simulation state is a `PlayerCommand`**: append a `PlayerCommandType` (persisted, append-only, never renumber), add a re-validating handler in `PlayerCommandHandlers`, and have the UI call `PlayerCommandService.Dispatch` (branch on `ShouldApplyDirectly` when one method serves both paths). View-only things (camera, window layout, fast-forward, hover, tooltips) are not commands
+- **RNG streams.** Simulation rolls use `Nez.Random` (installed as `GameRandom.Sim`) or `GameRandom.Loot` for the mid-battle epic chest. UI, audio, particles and other visuals must **never** touch `Nez.Random`: use `GameRandom.Ui`, `GameRandom.Audio`, Nez `ParticleRandom` or a private reseeded `System.Random`. No new `System.Random`, `Guid` or hash-order dependence in sim code. If a UI roll produces a gameplay result, roll on `Ui` and carry the result in the command payload
+- **Static/global state the simulation reads must be reset at the session reseed** (top of `MainGameScene.Begin`, next to `GameRandom.InitializeSession`) or be scene-scoped — replay seeks restart the scene inside one process. Shuffle bags register for `ShuffleBag.Reset`; scene services are removed in `Unload`
+- **Presentation never feeds back into the simulation** except through commands: a handler's result must not depend on which window is open or hovered
+- **Cosmetic-only components** (floating text, pickup arcs, Y-sort, indicators) early-return or finish instantly when `Core.CosmeticUpdatesSuspended`; anything the sim waits on (sprite animators, `AnimationState`) must not
+- **Speed = more fixed steps** (`Core.SimulationSpeed`), never `Time.TimeScale`
+- **Validate**: after a feature that adds input, randomness, timers or player actions, play it, **Settings → Replay → Replay Current Session**, seek across it, and confirm the scrubber reads **In sync**. "Diverged at" plus `replay_divergence.log` names the drifted part (`rng`/`hero`/`party`/`world`)
+
 ### Nez Framework
 - `Game1` inherits `Nez.Core` — do not override `Draw()` or `Update()`
 - Scenes inherit `Nez.Scene`, override `Initialize()` for setup
@@ -179,6 +190,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/MonsterLibrary.md`
 
 **Architecture / subsystems:**
+- `PitHero/docs/ReplaySystem.md` — **Deterministic replay (read before adding input, randomness, timers or player actions)**: fixed-step simulation vs presentation pass, `GameRandom` streams, `SimulationClock`, `PlayerCommand` pipeline + handler rules, recording format, playback/seek model, divergence tripwire, the invariants with their reasons, and recipes for new commands / RNG / timers / cosmetic components / diagnosing "Diverged at"
 - `PitHero/docs/RenderingSystem.md` — render layer stack, Y-sort, MultiSpriteAnimator / StaticSpriteCompositor / YSortSpriteRenderer
 - `PitHero/docs/ParticleEffects.md` — ParticleEffectManager, .pex authoring quirks, sizing rules, effect patterns (attached/projectile/AoE), battle + out-of-battle wiring map
 - `PitHero/docs/RolePlayingFramework.md`
@@ -203,6 +215,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 
 Domain skills under `.claude/skills/` provide on-demand guidance via progressive disclosure. They surface automatically based on task context — don't reference them explicitly:
 
+- `replay-determinism` — keeping features replay-safe: PlayerCommand recipe, RNG streams, sim-vs-presentation, divergence diagnosis
 - `nez-ai` — GOAP, state machines, behavior trees, virtual-layer AI
 - `nez-ui` — Nez.UI patterns, skins, drag-drop, dialogs, UI implementation
 - `monster-design` — monster balance, biome progression, `PitHero/docs/MonsterLibrary.md`
