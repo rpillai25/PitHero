@@ -278,6 +278,12 @@ gold and the artifact. With nothing to rewind there is nothing to exploit.
    Sprite animators are NOT cosmetic: `EnemyAnimationComponent` waits on `AnimationState`.
 9. **Fast-forward is more steps, never a scaled delta.** `Time.TimeScale` stays 1.
 10. **`PlayerCommandType` is append-only.** Recorded files store the numeric value.
+11. **Component update order must not depend on history.** Nez re-sorts an entity's updatable
+    components on every add; the fork's `ComponentList` uses `FastList.StableSort` so equal
+    `UpdateOrder`s keep insertion order. Before that fix, adding/removing a particle emitter on the
+    hero at different ticks (live play vs a seek that finishes cosmetics instantly) reshuffled the
+    hero's components and produced hero-only divergences with identical RNG. Never reintroduce an
+    unstable sort into an update path, and never rely on `Array.Sort` for ties.
 
 ## Recipes
 
@@ -328,7 +334,11 @@ gold and the artifact. With nothing to rewind there is nothing to exploit.
 1. Open `%LOCALAPPDATA%\FeedTheHero\replays\replay_divergence.log`: the block names the first tick and
    which of `rng` / `hero` / `party` / `world` differed.
 2. `rng` alone with everything else equal = an extra or missing roll (invariant 3 or 4). Flip
-   `GameConfig.ReplaySeekSkipsCosmetics` to A/B a cosmetic suspect.
+   `GameConfig.ReplaySeekSkipsCosmetics` to A/B a cosmetic suspect and
+   `GameConfig.ReplaySeekQuietLogging` to A/B the log path; a divergence that only appears right
+   after a play-to-seek transition points at something whose finish timing feeds the sim.
+   `hero` only with `rng` equal, appearing only during seeks, was the unstable component sort
+   (invariant 11).
 3. `hero`/`party`/`world` without `rng` = a timestamp, input read, missing command or stale static
    state (invariants 1, 2, 5, 7).
 4. A `decision` divergence with matching state hashes usually means the plan hash inputs changed

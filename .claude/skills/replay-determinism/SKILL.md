@@ -54,6 +54,7 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 | "Diverged at" with only the `rng` part differing | An extra/missing `Nez.Random` roll: a UI/audio/particle consumer on the sim stream, or a sim roll gated on something non-deterministic |
 | Diverges only after a backward seek, not on first play | Static state survived the scene restart — reset it at the reseed (`ShuffleBag.Reset`, service `Detach`, queue drain) |
 | Feature works live, replay skips it | The mutation never became a `PlayerCommand`; playback has nothing to inject |
+| `hero` part diverges only during seeks, RNG equal | Update-order drift: something reorders components/entities by history. Nez `ComponentList` uses a stable sort for this reason; never sort update lists with `Array.Sort` on tied keys |
 | Handler works live, no-ops on replay | Handler resolved its target through UI state (selected row, open window) instead of a stable index/id/name in the payload |
 | One-shot animation plays late after a seek | Component froze under `CosmeticUpdatesSuspended` instead of finishing instantly |
 | Timer drifts between live and replay | Stored `Time.TotalTime`; store `SimulationClock.Now` |

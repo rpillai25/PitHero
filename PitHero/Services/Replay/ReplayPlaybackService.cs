@@ -418,7 +418,7 @@ namespace PitHero.Services.Replay
             Core.SimulationSuspended = true;
             // Thousands of simulated steps per second: keep Debug.WriteLine off the hot path and
             // skip purely visual per-step work nobody will see
-            Debug.QuietMode = true;
+            Debug.QuietMode = GameConfig.ReplaySeekQuietLogging;
             Core.CosmeticUpdatesSuspended = GameConfig.ReplaySeekSkipsCosmetics;
             PitHero.Util.SoundEffectManager.Muted = true; // no burst of every sound the seek passes through
             _seekStopwatch.Restart();
