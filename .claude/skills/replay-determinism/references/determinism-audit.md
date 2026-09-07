@@ -69,6 +69,13 @@ matters, and the fix. The invariants are numbered as in `PitHero/docs/ReplaySyst
 ### Speed (invariant 9)
 - [ ] No `Time.TimeScale` changes. Fast-forward is `Core.SimulationSpeed`.
 
+### Update order (invariant 11)
+- [ ] No `Array.Sort` / `List.Sort` on update lists whose keys can tie (both are unstable). Nez's
+      `ComponentList` uses `FastList.StableSort`; new lists that drive update order need the same.
+- [ ] Adding or removing a component/entity (effects, pickups, indicators) leaves the relative
+      update order of everything else unchanged.
+- [ ] `Debug.Log` arguments are pure: they are skipped under `QuietMode` and absent in Release.
+
 ### Persistence (invariant 10)
 - [ ] `PlayerCommandType` members appended, never renumbered. If a member is retired, leave its
       number unused.
@@ -89,6 +96,7 @@ the recorded one.
    | `hero` / `party` / `world` without `rng` | State changed without a roll | A missing `PlayerCommand`; a `Time.TotalTime` timestamp; an `Input` read in a step; a handler reading UI state; stale static state |
    | `decision` with matching state | Plan hash inputs changed | Renamed/reordered GOAP actions; a plan depending on presentation state; usually not real drift if state stays in sync afterwards |
    | Everything, from tick 0 | Session start differs | Start blob missing something (new global service), seed lifecycle reset missing, content/build change (`BuildId` warning) |
+   | `hero` only, RNG equal, only right after a play-to-seek transition | Something mid-flight at the switch is finished differently | Update-order drift (invariant 11); A/B with `ReplaySeekSkipsCosmetics` then `ReplaySeekQuietLogging` |
 
 3. Narrow the window: seek to just before the tick, play at 1x, watch what the hero/party did.
 4. A/B a cosmetic suspect by flipping `GameConfig.ReplaySeekSkipsCosmetics`. If the divergence moves

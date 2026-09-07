@@ -10,7 +10,10 @@ model, the invariants and the recipes for staying inside them.
 
 Code lives in `PitHero/Services/Replay/` plus `Services/GameRandom.cs`, `Services/SimulationClock.cs`,
 the UI in `UI/ReplayTab.cs` and `UI/ReplayScrubberPanel.cs`, and the fixed-step loop in the Nez fork
-(`Nez/Nez.Portable/Core.cs`, `Utils/FixedStepScheduler.cs`, `Utils/Time.cs`, `ECS/Scene.cs`).
+(`Nez/Nez.Portable/Core.cs`, `Utils/FixedStepScheduler.cs`, `Utils/Time.cs`, `ECS/Scene.cs`; plus
+`ECS/InternalUtils/ComponentList.cs` + `Utils/Collections/FastList.StableSort` for history-independent
+update order, `Debug/QuietLogHandler.cs` for logs that cost nothing during seeks, and
+`ParticleRandom` / `ParticleEmitter` for particles off the sim stream).
 
 ## The model in one line
 
@@ -344,18 +347,31 @@ gold and the artifact. With nothing to rewind there is nothing to exploit.
 4. A `decision` divergence with matching state hashes usually means the plan hash inputs changed
    (renamed action) rather than a real drift.
 
+## Debug vs Release
+
+`Debug.Log` is `[Conditional("DEBUG")]` in Nez, so a Release build contains none of the ~600 log
+calls and runs the simulation (and seeks) markedly cooler; Debug builds additionally skip log
+interpolation under `Debug.QuietMode` (seeks). Both are safe only because log arguments are pure.
+Recordings replay across builds: the tripwire hashes simulation state only, and `BuildId` in the
+header is informational. The VS Code launch entries `.NET: Launch (Release)` run the Release build
+with the correct working directory (content paths are relative to it).
+
 ## Configuration (`GameConfig.cs`, "Simulation clock" and "Replay playback" blocks)
 
 `SimulationFixedStepSeconds`, `SimulationMaxStepsPerFrame`, `SimulationFastForwardSpeed`,
 `ReplayMaxStepsPerFrame`, `ReplaySeekWallBudgetSeconds`, `ReplayHashIntervalTicks`,
-`ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySpeedSteps`, scrubber size constants,
-`ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`, `ReplaySpeechSeedSalt`.
+`ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySeekQuietLogging`, `ReplaySpeedSteps`,
+scrubber size constants, `ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`,
+`ReplaySpeechSeedSalt`, `ReplayFutureSimulationMaxTicks`, `ReplayFutureTrackColor`; artifact prices,
+grid size and `SystemSaveFileName` in the "Artifacts" block.
 
 ## Tests
 
 `FixedStepSchedulerTests`, `SeedableRandomTests`, `VirtualSimSeedableRandomTests`,
 `PlayerCommandServiceTests`, `ReplayDataTests`, `ReplayRecorderTruncateTests`,
-`ReplayPauseSpansTests`, `ReplayTimeFormatterTests`, `ShuffleBagResetTests`. The existing same-seed
+`ReplayPauseSpansTests`, `ReplayTimeFormatterTests`, `ShuffleBagResetTests`, `ArtifactServiceTests`,
+`FastListStableSortTests` (update-order stability), `QuietLogHandlerTests` (log binding), plus the
+`SaveData_V32_HeroId` / `SaveData_V31_File_DerivesStableLegacyHeroId` layouts. The existing same-seed
 determinism suites (`BattleEngineTests`, `VirtualBalanceTraversalTests`) guard the RNG call-order
 contract. There is no headless end-to-end replay test; the live check is: record a session that
 exercises the feature, replay it, scrub back and forth, and read the status label.
