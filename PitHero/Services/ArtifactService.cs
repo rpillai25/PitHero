@@ -82,14 +82,19 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// True when the shop should offer the artifact: not owned yet and its prerequisite (if any) owned.
+        /// True when the shop should offer the artifact: not owned yet and every prerequisite owned.
         /// </summary>
         public bool IsAvailableInShop(ArtifactType type)
         {
             if (Owns(type))
                 return false;
-            var prerequisite = ArtifactCatalog.GetPrerequisite(type);
-            return !prerequisite.HasValue || Owns(prerequisite.Value);
+            var prerequisites = ArtifactCatalog.GetPrerequisites(type);
+            for (int i = 0; i < prerequisites.Length; i++)
+            {
+                if (!Owns(prerequisites[i]))
+                    return false;
+            }
+            return true;
         }
 
         /// <summary>

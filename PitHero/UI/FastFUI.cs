@@ -10,7 +10,7 @@ namespace PitHero.UI
     public class FastFUI
     {
         private Stage _stage;
-        private HoverableImageButton _fastFButton;
+        private SpeedOverlayImageButton _fastFButton;
         private TextService _textService;
 
         private ImageButtonStyle _fastFNormalStyle;
@@ -24,6 +24,8 @@ namespace PitHero.UI
         private FastFMode _currentFastFMode = FastFMode.Normal;
 
         private bool _isSpeedUp = false; // Track current speed state
+        private int _speedIndex = 0; // Rung into GameConfig.SpeedSteps; starts at 1X so no label shows until a speed is picked
+        private bool _showLabel = false; // The rung is remembered while disengaged, but its label is not drawn
         private bool _styleChanged = false; // tracks when style (and thus size) changed
 
         public FastFUI()
@@ -104,33 +106,99 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHigh2x)
             };
 
-            _fastFButton = new HoverableImageButton(_fastFNormalStyle, GetText(TextType.UI, UITextKey.ButtonFastForward));
+            _fastFButton = new SpeedOverlayImageButton(_fastFNormalStyle, GetText(TextType.UI, UITextKey.ButtonFastForward));
             _fastFButton.ClickSoundCategory = ButtonClickCategory.TopBar;
             // Explicitly size to the image
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 
-            // Handle click to toggle speed
-            _fastFButton.OnClicked += (button) => TriggerToggle();
+            // Plain click only engages/disengages; SHIFT+click only changes the speed rung.
+            // Read the keyboard directly rather than through Nez Input so the modifier is sampled at
+            // click time regardless of where in the frame the stage dispatches the click.
+            _fastFButton.OnClicked += (button) =>
+            {
+                var kb = Microsoft.Xna.Framework.Input.Keyboard.GetState();
+                if (kb.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
+                    || kb.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift))
+                    CycleSpeed();
+                else
+                    TriggerToggle();
+            };
         }
 
         /// <summary>
         /// Toggles game speed between normal and fast forward. Fast forward runs more fixed simulation
         /// steps per rendered frame (Core.SimulationSpeed) rather than scaling Time.DeltaTime, so the
-        /// simulation follows the exact same trajectory at either speed (replay determinism).
+        /// simulation follows the exact same trajectory at either speed (replay determinism). The
+        /// per-frame step cap is raised while engaged so the top rung is not silently clamped.
         /// </summary>
         public void TriggerToggle()
         {
             SetSpeedUp(!_isSpeedUp);
         }
 
+        /// <summary>
+        /// True once the Kairos Metronome is owned, which unlocks the 4X and 8X rungs. Without it the
+        /// ladder tops out at 2X.
+        /// </summary>
+        public static bool HighSpeedRungsUnlocked
+            => ArtifactService.Current != null && ArtifactService.Current.Owns(Artifacts.ArtifactType.KairosMetronome);
+
+        /// <summary>
+        /// Steps to the next speed rung: 2X -> 4X -> 8X -> 2X, or stays on 2X until the Kairos
+        /// Metronome unlocks the higher rungs. This only picks the speed fast forward will run at;
+        /// engaging and disengaging is the plain click's job alone. Rung 0 (1X, normal speed) is the
+        /// untouched start state and is never cycled back into — every rung the player can select is
+        /// an actual speed-up.
+        /// </summary>
+        public void CycleSpeed()
+        {
+            int topRung = HighSpeedRungsUnlocked
+                ? GameConfig.SpeedSteps.Length - 1
+                : GameConfig.SimulationDefaultSpeedIndex;
+
+            _speedIndex = _speedIndex >= topRung
+                ? GameConfig.SimulationDefaultSpeedIndex
+                : _speedIndex + 1;
+            _showLabel = true; // picking a speed shows it, engaged or not, so SHIFT+click has feedback
+            ApplySpeed();
+        }
+
         /// <summary>True while fast forward is engaged.</summary>
         public bool IsSpeedUp => _isSpeedUp;
+
+        /// <summary>Current speed rung index into GameConfig.SpeedSteps.</summary>
+        public int SpeedIndex => _speedIndex;
+
+        /// <summary>
+        /// Label drawn on the button face (2X / 4X / 8X), or null when nothing should be shown. It is
+        /// hidden whenever the game drops back to normal speed, and comes back when fast forward is
+        /// re-engaged or SHIFT+click picks a rung.
+        /// </summary>
+        public string SpeedLabel => _showLabel && _speedIndex > 0 ? GameConfig.SpeedStepLabels[_speedIndex] : null;
 
         /// <summary>Sets fast forward on or off explicitly (replay playback forces it off).</summary>
         public void SetSpeedUp(bool speedUp)
         {
+            // Rung 0 is normal speed, so engaging there would leave the button latched doing nothing.
+            // Engaging from 1X therefore picks the default rung; SHIFT+click is still the only way to
+            // change which rung that is.
+            if (speedUp && _speedIndex == 0)
+                _speedIndex = GameConfig.SimulationDefaultSpeedIndex;
+
             _isSpeedUp = speedUp;
-            Core.SimulationSpeed = speedUp ? GameConfig.SimulationFastForwardSpeed : 1f;
+            _showLabel = speedUp; // back to normal speed: drop the label until a speed is chosen again
+            ApplySpeed();
+        }
+
+        /// <summary>
+        /// Pushes the current rung to the engine. Speed is extra fixed steps per frame, never a scaled
+        /// delta; the step cap is raised alongside it so 8x is not clamped by the normal catch-up cap.
+        /// </summary>
+        private void ApplySpeed()
+        {
+            var speed = _isSpeedUp ? GameConfig.SpeedSteps[_speedIndex] : 1f;
+            Core.SimulationSpeed = speed;
+            Core.MaxStepsPerFrame = speed > 1f ? GameConfig.HighSpeedMaxStepsPerFrame : GameConfig.SimulationMaxStepsPerFrame;
         }
 
         /// <summary>
@@ -225,6 +293,9 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
+
+            if (_fastFButton != null)
+                _fastFButton.OverlayText = SpeedLabel;
         }
     }
 }

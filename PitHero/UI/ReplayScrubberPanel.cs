@@ -70,7 +70,7 @@ namespace PitHero.UI
             _playPauseButton = new TextButton(GetText(UITextKey.ButtonReplayPause), skin, "ph-default");
             _playPauseButton.OnClicked += (_) => ReplayPlaybackService.Current?.TogglePause();
 
-            _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.ReplaySpeedSteps[0]), skin, "ph-default");
+            _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.SpeedStepLabels[0]), skin, "ph-default");
             _speedButton.OnClicked += (_) => ReplayPlaybackService.Current?.CycleSpeed();
 
             _slider = new ReplayTimelineSlider(skin, useDeferredCommit: true);
@@ -189,7 +189,7 @@ namespace PitHero.UI
             if (playback.SpeedIndex != _lastShownSpeedIndex)
             {
                 _lastShownSpeedIndex = playback.SpeedIndex;
-                _speedButton.SetText(string.Format(GetText(UITextKey.ReplaySpeedFormat), playback.Speed));
+                _speedButton.SetText(string.Format(GetText(UITextKey.ReplaySpeedFormat), playback.SpeedLabel));
             }
 
             var state = playback.State;

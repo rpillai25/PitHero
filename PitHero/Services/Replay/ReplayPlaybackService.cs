@@ -51,7 +51,7 @@ namespace PitHero.Services.Replay
         /// <summary>Tick the current seek is heading for (valid while Seeking or Starting).</summary>
         public long SeekTarget { get; private set; }
 
-        /// <summary>Index into GameConfig.ReplaySpeedSteps.</summary>
+        /// <summary>Index into GameConfig.SpeedSteps.</summary>
         public int SpeedIndex { get; private set; }
 
         /// <summary>Tick of the first detected divergence, or -1.</summary>
@@ -67,7 +67,10 @@ namespace PitHero.Services.Replay
         public long CurrentTick => SimulationClock.CurrentTick;
 
         /// <summary>Playback speed multiplier.</summary>
-        public float Speed => GameConfig.ReplaySpeedSteps[SpeedIndex];
+        public float Speed => GameConfig.SpeedSteps[SpeedIndex];
+
+        /// <summary>Player-facing rendering of <see cref="Speed"/> (1X / 2X / 4X / 8X).</summary>
+        public string SpeedLabel => GameConfig.SpeedStepLabels[SpeedIndex];
 
         /// <summary>
         /// Whether the player may drag the timeline past the recorded session end into a simulated
@@ -307,7 +310,7 @@ namespace PitHero.Services.Replay
                     }
                     Core.SimulationSuspended = false;
                     Core.SimulationSpeed = Speed;
-                    Core.MaxStepsPerFrame = GameConfig.ReplayMaxStepsPerFrame;
+                    Core.MaxStepsPerFrame = GameConfig.HighSpeedMaxStepsPerFrame;
                     break;
                 }
 
@@ -372,7 +375,7 @@ namespace PitHero.Services.Replay
         /// <summary>Cycles to the next playback speed.</summary>
         public void CycleSpeed()
         {
-            SpeedIndex = (SpeedIndex + 1) % GameConfig.ReplaySpeedSteps.Length;
+            SpeedIndex = (SpeedIndex + 1) % GameConfig.SpeedSteps.Length;
         }
 
         /// <summary>Moves playback to <paramref name="targetTick"/>: forward by fast-forwarding, backward by restarting from tick 0.</summary>

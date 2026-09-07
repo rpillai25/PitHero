@@ -487,6 +487,17 @@ namespace PitHero.ECS.Scenes
             // Apply pending load data if available
             ApplyPendingLoadData();
 
+            // TEMPORARY TEST HACK — remove with GameConfig.DebugStartingGold.
+            if (GameConfig.DebugStartingGold > 0)
+            {
+                var debugGameState = Core.Services.GetService<GameStateService>();
+                if (debugGameState != null && debugGameState.Funds < GameConfig.DebugStartingGold)
+                {
+                    debugGameState.Funds = GameConfig.DebugStartingGold;
+                    Debug.Warn($"[MainGameScene] DEBUG: funds forced to {GameConfig.DebugStartingGold:N0} by GameConfig.DebugStartingGold");
+                }
+            }
+
             EmitWelcomeMessage();
 
             // Clear any UI window count leaked from the previous scene (windows destroyed by a

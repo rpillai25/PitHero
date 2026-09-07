@@ -12,13 +12,16 @@ namespace PitHero.Artifacts
 
         /// <summary>Unlocks Time Travel Here in replays. Requires the Sphere of Foresight first.</summary>
         ChronosTimepiece = 1,
+
+        /// <summary>Unlocks the 4X and 8X fast-forward rungs.</summary>
+        KairosMetronome = 2,
     }
 
     /// <summary>Static facts about each artifact: sprite, text keys, price and purchase prerequisite.</summary>
     public static class ArtifactCatalog
     {
         /// <summary>Number of artifact kinds (the enum is dense from 0).</summary>
-        public const int Count = 2;
+        public const int Count = 3;
 
         /// <summary>Sprite name in the Items atlas.</summary>
         public static string GetSpriteName(ArtifactType type)
@@ -27,6 +30,7 @@ namespace PitHero.Artifacts
             {
                 case ArtifactType.SphereOfForesight: return "SphereOfForesight";
                 case ArtifactType.ChronosTimepiece: return "ChronosTimepiece";
+                case ArtifactType.KairosMetronome: return "KairosMetronome";
                 default: return string.Empty;
             }
         }
@@ -38,6 +42,7 @@ namespace PitHero.Artifacts
             {
                 case ArtifactType.SphereOfForesight: return UITextKey.ArtifactSphereOfForesightName;
                 case ArtifactType.ChronosTimepiece: return UITextKey.ArtifactChronosTimepieceName;
+                case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeName;
                 default: return string.Empty;
             }
         }
@@ -49,6 +54,20 @@ namespace PitHero.Artifacts
             {
                 case ArtifactType.SphereOfForesight: return UITextKey.ArtifactSphereOfForesightDesc;
                 case ArtifactType.ChronosTimepiece: return UITextKey.ArtifactChronosTimepieceDesc;
+                case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeDesc;
+                default: return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// UI.txt key of an optional second paragraph shown under the description — the mechanical
+        /// effect, kept off the flavor line. Empty when the artifact's card is a single paragraph.
+        /// </summary>
+        public static string GetEffectKey(ArtifactType type)
+        {
+            switch (type)
+            {
+                case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeEffect;
                 default: return string.Empty;
             }
         }
@@ -60,20 +79,27 @@ namespace PitHero.Artifacts
             {
                 case ArtifactType.SphereOfForesight: return GameConfig.ArtifactSphereOfForesightPrice;
                 case ArtifactType.ChronosTimepiece: return GameConfig.ArtifactChronosTimepiecePrice;
+                case ArtifactType.KairosMetronome: return GameConfig.ArtifactKairosMetronomePrice;
                 default: return 0;
             }
         }
 
+        private static readonly ArtifactType[] NoPrerequisites = new ArtifactType[0];
+
+        private static readonly ArtifactType[] TimepiecePrerequisites =
+            { ArtifactType.SphereOfForesight, ArtifactType.KairosMetronome };
+
         /// <summary>
-        /// Artifact that must be owned before this one is offered, or null. The timepiece builds on
-        /// the sphere: seeing the future comes before changing it.
+        /// Every artifact that must be owned before this one is offered, or an empty array. The
+        /// timepiece is the capstone: seeing the future and hurrying it along both come before
+        /// changing it.
         /// </summary>
-        public static ArtifactType? GetPrerequisite(ArtifactType type)
+        public static ArtifactType[] GetPrerequisites(ArtifactType type)
         {
             switch (type)
             {
-                case ArtifactType.ChronosTimepiece: return ArtifactType.SphereOfForesight;
-                default: return null;
+                case ArtifactType.ChronosTimepiece: return TimepiecePrerequisites;
+                default: return NoPrerequisites;
             }
         }
 

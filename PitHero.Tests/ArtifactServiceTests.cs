@@ -54,11 +54,16 @@ namespace PitHero.Tests
             try
             {
                 var service = new ArtifactService(dir, "system.bin");
+                // The sphere and the metronome are both offered up front; the timepiece is the capstone
                 Assert.IsTrue(service.IsAvailableInShop(ArtifactType.SphereOfForesight));
-                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.ChronosTimepiece), "The timepiece needs the sphere first");
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.KairosMetronome));
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.ChronosTimepiece), "The timepiece needs both others first");
 
                 service.Grant(ArtifactType.SphereOfForesight);
                 Assert.IsFalse(service.IsAvailableInShop(ArtifactType.SphereOfForesight), "Owned artifacts leave the shop");
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.ChronosTimepiece), "One prerequisite is not enough");
+
+                service.Grant(ArtifactType.KairosMetronome);
                 Assert.IsTrue(service.IsAvailableInShop(ArtifactType.ChronosTimepiece));
 
                 service.Grant(ArtifactType.ChronosTimepiece);
@@ -66,7 +71,9 @@ namespace PitHero.Tests
 
                 var owned = new List<ArtifactType>();
                 service.GetOwnedInOrder(owned);
-                CollectionAssert.AreEqual(new[] { ArtifactType.SphereOfForesight, ArtifactType.ChronosTimepiece }, owned);
+                CollectionAssert.AreEqual(
+                    new[] { ArtifactType.SphereOfForesight, ArtifactType.KairosMetronome, ArtifactType.ChronosTimepiece },
+                    owned);
                 service.Detach();
             }
             finally

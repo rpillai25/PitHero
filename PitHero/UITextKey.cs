@@ -373,6 +373,9 @@ namespace PitHero
         public const string ArtifactSphereOfForesightDesc = "ArtifactSphereOfForesightDesc";
         public const string ArtifactChronosTimepieceName = "ArtifactChronosTimepieceName";
         public const string ArtifactChronosTimepieceDesc = "ArtifactChronosTimepieceDesc";
+        public const string ArtifactKairosMetronomeName = "ArtifactKairosMetronomeName";
+        public const string ArtifactKairosMetronomeDesc = "ArtifactKairosMetronomeDesc";
+        public const string ArtifactKairosMetronomeEffect = "ArtifactKairosMetronomeEffect";
         public const string ArtifactGrantButtonFormat = "ArtifactGrantButtonFormat";
         public const string ArtifactShopHeader = "ArtifactShopHeader";
         public const string ArtifactPriceFormat = "ArtifactPriceFormat";

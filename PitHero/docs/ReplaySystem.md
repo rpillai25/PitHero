@@ -32,8 +32,8 @@ enables it with `GameConfig.SimulationFixedStepSeconds`, 1/60 s):
 | `Core` static | Meaning |
 |---|---|
 | `UseFixedTimeStep`, `FixedStepSeconds` | Opt-in and step length |
-| `SimulationSpeed` | Steps-per-wall-second multiplier. Fast-forward = `GameConfig.SimulationFastForwardSpeed` (2.5). **Never use `Time.TimeScale`** for speed: more steps of the same length keep the trajectory identical; a scaled delta does not |
-| `MaxStepsPerFrame` | Catch-up cap after a hitch or occlusion; the backlog is dropped (the sim slows, it never desyncs) |
+| `SimulationSpeed` | Steps-per-wall-second multiplier, picked from the shared `GameConfig.SpeedSteps` ladder (`1 / 2.5 / 4 / 8`, shown to the player as `1X / 2X / 4X / 8X` via `GameConfig.SpeedStepLabels`) by both the live fast-forward button and the replay scrubber. **Never use `Time.TimeScale`** for speed: more steps of the same length keep the trajectory identical; a scaled delta does not |
+| `MaxStepsPerFrame` | Catch-up cap after a hitch or occlusion; the backlog is dropped (the sim slows, it never desyncs). Raised from `GameConfig.SimulationMaxStepsPerFrame` to `GameConfig.HighSpeedMaxStepsPerFrame` whenever the sim runs above 1x, so the top rung is not silently clamped |
 | `SimulationSuspended` | Zero steps this frame (replay paused / at end) |
 | `PendingExtraSteps` + `ExtraStepWallBudgetSeconds` | Seek: run as many extra steps per frame as fit the wall budget |
 | `IsInSimulationStep` | True inside a step, false during the presentation pass |
@@ -171,7 +171,7 @@ constructs `MainGameScene.CreateForGameplay`. The old scene must fully unload fi
 are keyed by type (constructing a second `MainGameScene` while the first is registered throws).
 
 - **Playing / Paused / AtEnd** drive `SimulationSpeed` / `SimulationSuspended` from the presentation
-  side. Speed cycles `GameConfig.ReplaySpeedSteps`.
+  side. Speed cycles `GameConfig.SpeedSteps`.
 - **Seek forward** = `Seeking` with `PendingExtraSteps`. **Seek backward** = restart the scene from
   tick 0 and fast-forward. There are no keyframes: a `SaveData` snapshot is not faithful mid-pit, so
   re-simulation is the only exact path. Measured throughput is roughly 250x real time (an hour of play
@@ -239,13 +239,14 @@ that the hero holds the required gold; nothing is deducted. This is deliberate: 
 outside the save, so deducting gold would let the player reload an older save and keep both the
 gold and the artifact. With nothing to rewind there is nothing to exploit.
 
-| Artifact | Wealth to show | Unlocks | Prerequisite |
+| Artifact | Wealth to show | Unlocks | Prerequisites |
 |---|---|---|---|
 | Sphere of Foresight | `ArtifactSphereOfForesightPrice` | Future simulation (blue region) | none |
-| Chronos Timepiece | `ArtifactChronosTimepiecePrice` | Time Travel Here | Sphere of Foresight |
+| Kairos Metronome | `ArtifactKairosMetronomePrice` | The 4X and 8X live fast-forward rungs (`FastFUI.HighSpeedRungsUnlocked`) | none |
+| Chronos Timepiece | `ArtifactChronosTimepiecePrice` | Time Travel Here | Sphere of Foresight **and** Kairos Metronome |
 
 - **Shop:** Second Chance → Artifacts tab (header "Show proof of gold to be granted an artifact")
-  lists what `ArtifactService.IsAvailableInShop` allows (not owned, prerequisite owned); rows
+  lists what `ArtifactService.IsAvailableInShop` allows (not owned, every prerequisite owned); rows
   disappear once granted. Clicking a slot opens `ArtifactInfoDialog` (sprite + description) with a
   Grant button that acts at once, grayed and dead when the hero cannot show that much gold. The
   merchant bubble says the Dialogue.txt line `SecondChanceProveWealth` while the tab is in front.
@@ -255,7 +256,7 @@ gold and the artifact. With nothing to rewind there is nothing to exploit.
   wealth and calls the idempotent `Grant`; no simulation state changes, so a replayed grant is
   harmless. Ownership is read only by presentation code (replay gates, tabs).
 - **Adding an artifact:** append to `ArtifactType` (persisted ordinal), fill in the catalog switches
-  (sprite name in the Items atlas, name/description keys, price constant, prerequisite), bump
+  (sprite name in the Items atlas, name/description/effect keys, price constant, prerequisites), bump
   `ArtifactCatalog.Count`. The system save keeps unknown ordinals, so older builds never drop a purchase.
 
 ## Invariants (and why)
@@ -358,9 +359,9 @@ with the correct working directory (content paths are relative to it).
 
 ## Configuration (`GameConfig.cs`, "Simulation clock" and "Replay playback" blocks)
 
-`SimulationFixedStepSeconds`, `SimulationMaxStepsPerFrame`, `SimulationFastForwardSpeed`,
-`ReplayMaxStepsPerFrame`, `ReplaySeekWallBudgetSeconds`, `ReplayHashIntervalTicks`,
-`ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySeekQuietLogging`, `ReplaySpeedSteps`,
+`SimulationFixedStepSeconds`, `SimulationMaxStepsPerFrame`, `HighSpeedMaxStepsPerFrame`,
+`SimulationDefaultSpeedIndex`, `SpeedSteps`, `SpeedStepLabels`, `ReplaySeekWallBudgetSeconds`, `ReplayHashIntervalTicks`,
+`ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySeekQuietLogging`,
 scrubber size constants, `ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`,
 `ReplaySpeechSeedSalt`, `ReplayFutureSimulationMaxTicks`, `ReplayFutureTrackColor`; artifact prices,
 grid size and `SystemSaveFileName` in the "Artifacts" block.

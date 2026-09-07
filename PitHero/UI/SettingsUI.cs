@@ -1805,6 +1805,7 @@ namespace PitHero.UI
                     pauseService.Unpause();
                 Time.TimeScale = 1f;
                 Core.SimulationSpeed = 1f;
+                Core.MaxStepsPerFrame = GameConfig.SimulationMaxStepsPerFrame;
                 Core.SimulationSuspended = false;
                 Core.PendingExtraSteps = 0;
                 Core.GetGlobalManager<CoroutineManager>().StopAllCoroutines();
@@ -2189,11 +2190,14 @@ namespace PitHero.UI
             bool JustPressed(Microsoft.Xna.Framework.Input.Keys key)
                 => currentKeyState.IsKeyDown(key) && !_prevKeyboardState.IsKeyDown(key);
 
-            // Letter shortcuts require SHIFT so bare WASD keys stay free for camera panning
+            // Letter shortcuts require SHIFT so bare WASD keys stay free for camera panning.
+            // CTRL is excluded so CTRL+SHIFT combinations stay free for their own bindings.
             bool shiftDown = currentKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
                           || currentKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
+            bool ctrlDown = currentKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftControl)
+                         || currentKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightControl);
             bool ShortcutPressed(Microsoft.Xna.Framework.Input.Keys key)
-                => shiftDown && JustPressed(key);
+                => shiftDown && !ctrlDown && JustPressed(key);
 
             if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.R))
                 _replenishUI?.TriggerReplenish();
@@ -2201,8 +2205,20 @@ namespace PitHero.UI
             if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.S))
                 _stopAdventuringUI?.TriggerToggle();
 
+            // Both fast-forward shortcuts reveal the top bar so the button (and its speed label) is
+            // visible feedback for what the keystroke just did.
             if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.F))
+            {
                 _fastFUI?.TriggerToggle();
+                RevealUIBarForFeedback();
+            }
+
+            // CTRL+SHIFT+F steps the fast-forward speed rung (2X -> 4X -> 8X -> 2X)
+            if (shiftDown && ctrlDown && JustPressed(Microsoft.Xna.Framework.Input.Keys.F))
+            {
+                _fastFUI?.CycleSpeed();
+                RevealUIBarForFeedback();
+            }
 
             if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.E))
                 ToggleSettingsVisibility();
@@ -2900,6 +2916,18 @@ namespace PitHero.UI
             _uiBarIdleTimer = 0f;
             _uiBarAnimating = true;
             SetTopBarButtonsTouchable(true);
+        }
+
+        /// <summary>
+        /// Brings the top bar back into view so a keyboard shortcut's effect is visible, and restarts
+        /// the auto-hide countdown when it is already showing.
+        /// </summary>
+        private void RevealUIBarForFeedback()
+        {
+            if (_uiBarHidden)
+                ShowUIBar();
+            else
+                _uiBarIdleTimer = 0f;
         }
 
         /// <summary>Slides the UI bar up off the top of the screen.</summary>

@@ -14,6 +14,8 @@ namespace PitHero.UI
     {
         private const float DialogWidth = 360f;
         private const float DialogHeight = 200f;
+        /// <summary>Taller card for artifacts whose effect gets its own paragraph under the flavor line.</summary>
+        private const float DialogHeightWithEffect = 232f;
         private const float TextWidth = 300f;
 
         private readonly TextButton _closeButton;
@@ -31,7 +33,11 @@ namespace PitHero.UI
         public ArtifactInfoDialog(ArtifactType artifact, Skin skin, int? grantPrice = null, System.Action onGrant = null, bool canAfford = true)
             : base(GetText(ArtifactCatalog.GetNameKey(artifact)), skin)
         {
-            SetSize(DialogWidth, DialogHeight);
+            string effectKey = ArtifactCatalog.GetEffectKey(artifact);
+            string effectText = string.IsNullOrEmpty(effectKey) ? null : GetText(effectKey);
+            bool hasEffectLine = !string.IsNullOrEmpty(effectText);
+
+            SetSize(DialogWidth, hasEffectLine ? DialogHeightWithEffect : DialogHeight);
             SetMovable(false);
 
             var table = new Table();
@@ -52,8 +58,17 @@ namespace PitHero.UI
             var description = new Label(GetText(ArtifactCatalog.GetDescriptionKey(artifact)), skin, "ph-default");
             description.SetWrap(true);
             description.SetAlignment(Nez.UI.Align.Center);
-            table.Add(description).Width(TextWidth).SetPadBottom(12f);
+            table.Add(description).Width(TextWidth).SetPadBottom(hasEffectLine ? 8f : 12f);
             table.Row();
+
+            if (hasEffectLine)
+            {
+                var effect = new Label(effectText, skin, "ph-default");
+                effect.SetWrap(true);
+                effect.SetAlignment(Nez.UI.Align.Center);
+                table.Add(effect).Width(TextWidth).SetPadBottom(12f);
+                table.Row();
+            }
 
             var buttons = new Table();
             if (grantPrice.HasValue)
