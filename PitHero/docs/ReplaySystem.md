@@ -179,12 +179,48 @@ are keyed by type (constructing a second `MainGameScene` while the first is regi
 - `GameEventService.Suppressed` and analytics are off during playback; the recruit-notification queue
   is cleared on exit.
 - **Exit** re-simulates the set-aside live recording to its end and returns to the exact pre-replay
-  live state. **Continue Here** (confirmed) truncates the recording at the current tick
+  live state. **Time Travel Here** (`ContinueFromHere`, confirmed) truncates the recording at the current tick
   (`ReplayRecorder.TruncateAfter`) and branches live play from there.
 - `CheckDecision` / `CheckStateHash` set `DivergenceTick` on the first mismatch; the scrubber shows
   "Diverged at m:ss (state|decision)" and a diagnostic block is appended to
   `replay_divergence.log` next to the replay files, naming which part hash (`rng`, `hero`, `party`,
   `world`) drifted first. Playback continues: a diverged replay is still a valid game.
+
+## Future simulation
+
+When `ReplayPlaybackService.FutureSimulationUnlocked` is true (runtime flag, defaulting from
+`GameConfig.ReplayFutureSimulationUnlockedByDefault`; meant to be unlocked by an item later), the
+scrubber's range extends `ReplayFutureSimulationMaxTicks` (30 min) past the recorded session end and
+that stretch of the track is tinted `ReplayFutureTrackColor` (`ReplayTimelineSlider`). Beyond the end
+there are no recorded commands: the world simply keeps simulating with every automated setting the
+player had, which is all a replay ever is.
+
+- **Natural playback stops at the session end.** Only a deliberate drag or click past it sets
+  `InFuture`; from then on Play runs to `FutureEndTick` and stops there.
+- **Scrubbing into the future is free and reversible.** Forward drags simulate more. Backward drags
+  inside the future rebuild the scene and fast-forward like any backward seek. Because the future is
+  a pure function of the recording, that re-simulation lands on exactly the state the player already
+  saw, so it behaves like jumping between simulated points (at the cost of the seek time, not a
+  different outcome). No warning is shown for dragging.
+- **Ticks past the recorded end are recorded, not verified.** `CheckDecision` / `CheckStateHash` and
+  `InjectDue` flip the recorder back on for any tick above `TotalTicks`, so the recording stays gap-free
+  whether the player entered the future on purpose or fast playback overshot the end by a few ticks.
+  A scene restart re-preloads the recorder from the recording and drops those ticks again.
+- **Exit always returns to the normal session time.** From the future, `ReturnFromFuture` rebuilds
+  the current session back to its recorded end (or returns to the set-aside live session for a saved
+  replay). Nothing watched in the future is kept.
+- **Time Travel Here is the only way to keep the future**, and it confirms with a message that depends
+  on where the playhead is: `ConfirmContinueHereMessage` in the past ("time travel to the selected point in the past? Anything that happened since
+  then will be lost") or `ConfirmContinueFutureMessage` in the future. Continuing from the future
+  makes the recording end at that tick (the recorder already holds those ticks) and live play resumes
+  there.
+- **Time travel is hero-gated.** Every playthrough has one hero, identified by `GameStateService.HeroId`
+  (generated at new game, saved as `SaveData.HeroId` since v32, stamped into the replay header as
+  `ReplayData.HeroId` since format v3). `ReplayPlaybackService.TimeTravelAllowed` is always true for
+  Replay Current Session and otherwise only when the recording's id matches the hero that was live
+  when playback started; the scrubber disables the button otherwise, so another hero's replay is
+  watch-only. Saves older than v32 derive a stable id from the hero design
+  (`SaveData.ComputeLegacyHeroId`); v2 replay files carry id 0 and never qualify.
 
 ## Invariants (and why)
 

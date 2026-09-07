@@ -31,6 +31,7 @@ namespace PitHero.Tests
                 HeroName = "Sir O'Malley",
                 JobName = "Knight",
                 PitLevelAtStart = 12,
+                HeroId = 0x5EED1D,
                 RecordedAtUtcTicks = new DateTime(2026, 9, 3, 10, 30, 0, DateTimeKind.Utc).Ticks,
                 TotalTicks = 123456789012L,
                 BuildId = "1.2.3.4",
@@ -70,6 +71,7 @@ namespace PitHero.Tests
                 Assert.AreEqual(original.HeroName, loaded.HeroName);
                 Assert.AreEqual(original.JobName, loaded.JobName);
                 Assert.AreEqual(original.PitLevelAtStart, loaded.PitLevelAtStart);
+                Assert.AreEqual(original.HeroId, loaded.HeroId);
                 Assert.AreEqual(original.RecordedAtUtcTicks, loaded.RecordedAtUtcTicks);
                 Assert.AreEqual(original.TotalTicks, loaded.TotalTicks);
                 Assert.AreEqual(original.BuildId, loaded.BuildId);

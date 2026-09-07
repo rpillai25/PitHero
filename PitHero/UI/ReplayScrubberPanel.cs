@@ -22,12 +22,14 @@ namespace PitHero.UI
         private ConfirmationDialog _continueDialog;
         private TextButton _playPauseButton;
         private TextButton _speedButton;
-        private EnhancedSlider _slider;
+        private ReplayTimelineSlider _slider;
         private Label _timeLabel;
         private Label _statusLabel;
 
         private long _lastShownTick = -1;
         private long _lastShownTotal = -1;
+        private long _lastShownMax = -1;
+        private bool _lastShownInFuture;
         private ReplayPlaybackState _lastShownState = ReplayPlaybackState.Idle;
         private int _lastShownSpeedIndex = -1;
         private long _lastShownDivergence = -2;
@@ -69,7 +71,7 @@ namespace PitHero.UI
             _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.ReplaySpeedSteps[0]), skin, "ph-default");
             _speedButton.OnClicked += (_) => ReplayPlaybackService.Current?.CycleSpeed();
 
-            _slider = new EnhancedSlider(0f, 1f, 1f, false, skin, null, useDeferredCommit: true);
+            _slider = new ReplayTimelineSlider(skin, useDeferredCommit: true);
             _slider.OnChanged += OnSliderChanged;
             _slider.OnValueCommitted += OnSliderCommitted;
 
@@ -109,13 +111,16 @@ namespace PitHero.UI
         {
             var playback = ReplayPlaybackService.Current;
             var stage = GetStage();
-            if (playback == null || !playback.IsActive || stage == null)
+            if (playback == null || !playback.IsActive || stage == null || !playback.TimeTravelAllowed)
                 return;
             if (playback.State == ReplayPlaybackState.Seeking || playback.State == ReplayPlaybackState.Starting)
                 return;
+            // Continuing from the past discards what happened since; continuing from the simulated
+            // future commits to a world the player only watched
+            string message = GetText(playback.InFuture ? UITextKey.ConfirmContinueFutureMessage : UITextKey.ConfirmContinueHereMessage);
             _continueDialog = new ConfirmationDialog(
                 GetText(UITextKey.DialogConfirmContinueHere),
-                GetText(UITextKey.ConfirmContinueHereMessage),
+                message,
                 _skin,
                 onYes: () => ReplayPlaybackService.Current?.ContinueFromHere());
             _continueDialog.YesButton.SuppressGlobalClick = true;
@@ -140,6 +145,8 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
             long target = (long)value;
+            if (target > playback.TotalTicks && !ReplayPlaybackService.FutureSimulationUnlocked)
+                target = playback.TotalTicks;
             if (target != playback.CurrentTick)
                 playback.Seek(target);
             _lastShownTick = -1; // force a label refresh
@@ -153,10 +160,13 @@ namespace PitHero.UI
                 return;
 
             long total = playback.TotalTicks;
-            if (total != _lastShownTotal)
+            long max = playback.MaxSeekTick; // session end, or the future cap when unlocked
+            if (total != _lastShownTotal || max != _lastShownMax)
             {
                 _lastShownTotal = total;
-                _slider.SetMinMax(0f, total > 0 ? total : 1f);
+                _lastShownMax = max;
+                _slider.SetMinMax(0f, max > 0 ? max : 1f);
+                _slider.FutureStartValue = max > total ? total : float.MaxValue; // blue track past the session end
             }
 
             // While seeking the knob shows the destination, not the ticks racing toward it
@@ -164,7 +174,7 @@ namespace PitHero.UI
             long tick = state0 == ReplayPlaybackState.Seeking || state0 == ReplayPlaybackState.Starting
                 ? playback.SeekTarget
                 : playback.CurrentTick;
-            if (tick > total) tick = total;
+            if (tick > max) tick = max;
             if (!_slider.IsPointerHeld && !_previewing && tick != _lastShownTick)
             {
                 _lastShownTick = tick;
@@ -185,6 +195,7 @@ namespace PitHero.UI
                 _lastShownState = state;
                 _playPauseButton.SetText(GetText(state == ReplayPlaybackState.Playing ? UITextKey.ButtonReplayPause : UITextKey.ButtonReplayPlay));
                 _playPauseButton.SetDisabled(state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting);
+                _continueButton.SetDisabled(!playback.TimeTravelAllowed); // another hero's recording: watch only
                 _lastSeekPercent = -1;
                 _lastShownDivergence = -2;
             }
@@ -215,10 +226,14 @@ namespace PitHero.UI
             }
 
             long divergence = playback.DivergenceTick;
-            if (divergence == _lastShownDivergence && state != ReplayPlaybackState.AtEnd)
+            bool inFuture = playback.InFuture;
+            if (divergence == _lastShownDivergence && inFuture == _lastShownInFuture && state != ReplayPlaybackState.AtEnd)
                 return;
             _lastShownDivergence = divergence;
-            if (divergence >= 0)
+            _lastShownInFuture = inFuture;
+            if (inFuture)
+                _statusLabel.SetText(GetText(UITextKey.ReplayFutureStatus));
+            else if (divergence >= 0)
                 _statusLabel.SetText(string.Format(GetText(UITextKey.ReplayDivergenceAt),
                     ReplayTimeFormatter.FormatTicks(divergence),
                     GetText(playback.DivergenceIsDecision ? UITextKey.ReplayDivergenceDecision : UITextKey.ReplayDivergenceState)));
@@ -233,9 +248,11 @@ namespace PitHero.UI
         {
             _lastShownTick = -1;
             _lastShownTotal = -1;
+            _lastShownMax = -1;
             _lastShownState = ReplayPlaybackState.Idle;
             _lastShownSpeedIndex = -1;
             _lastShownDivergence = -2;
+            _lastShownInFuture = false;
             _lastSeekPercent = -1;
             _previewing = false;
         }

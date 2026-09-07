@@ -477,6 +477,8 @@ ButtonReplaySaveSession,Save Session Replay
 ButtonReplayCurrentSession,Replay Current Session
 ButtonReplayPlaySelected,Play Selected
 ReplayListEmpty,No saved replays yet. Use Save Session Replay to keep the current session.
+ReplayListEmptyFiltered,No saved replays for the current hero. Untick Filter to current hero to see all replays.
+ReplayFilterCurrentHero,Filter to current hero
 ReplayRowTitleFormat,{0} the {1}
 ReplayRowDetailFormat,{0}  -  {1}  -  Pit {2}
 ReplaySelectedNone,No replay selected
@@ -490,6 +492,7 @@ ReplayDivergenceState,state
 ReplayDivergenceDecision,hero decision
 ReplayNoDivergence,In sync
 ReplayEndReached,End of replay
+ReplayFutureStatus,Simulated future
 DialogConfirmReplay,Start Replay
 ConfirmReplayInterruptMessage,Your session is set aside while the replay plays and resumes exactly where you left it when you exit. Continue?
 DialogConfirmDeleteReplay,Delete Replay
@@ -497,9 +500,10 @@ ConfirmDeleteReplayMessage,Delete this replay? This cannot be undone.
 DialogReplaySaved,Replay Saved
 ReplaySavedMessage,Saved as {0}
 ReplaySaveFailedMessage,The session could not be saved as a replay.
-ButtonReplayContinueHere,Continue Here
-DialogConfirmContinueHere,Continue From Here
-ConfirmContinueHereMessage,Abandon the session you left and keep playing from this point of the replay? The rest of the replay is discarded. This cannot be undone.
+ButtonReplayContinueHere,Time Travel Here
+DialogConfirmContinueHere,Time Travel
+ConfirmContinueHereMessage,Are you sure you want to time travel to the selected point in the past? Anything that happened since then will be lost.
+ConfirmContinueFutureMessage,Are you sure you want to time travel to the selected point in the future?
 ReplayInfoTitle,Replay Info
 ReplayInfoIntro,Save a replay and play it back, or replay the currently running session up to the current point in time without saving.
 ReplayInfoWarning,WARNING: The longer a play session is, the longer the replay takes to seek. It is intended for sessions of a few hours. If you leave a session on for several days, expect much longer seek times. A new session is started any time you load a save file or start a new game.

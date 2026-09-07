@@ -69,6 +69,32 @@ namespace PitHero.Services.Replay
         /// <summary>Playback speed multiplier.</summary>
         public float Speed => GameConfig.ReplaySpeedSteps[SpeedIndex];
 
+        /// <summary>
+        /// Whether the player may drag the timeline past the recorded session end into a simulated
+        /// future. Runtime flag for now (defaults from GameConfig); intended to be unlocked by an item.
+        /// </summary>
+        public static bool FutureSimulationUnlocked = GameConfig.ReplayFutureSimulationUnlockedByDefault;
+
+        /// <summary>Last tick of the future-simulation region (session end + the configured allowance).</summary>
+        public long FutureEndTick => TotalTicks + GameConfig.ReplayFutureSimulationMaxTicks;
+
+        /// <summary>Furthest tick a seek may target: the session end, or the future cap when unlocked.</summary>
+        public long MaxSeekTick => FutureSimulationUnlocked ? FutureEndTick : TotalTicks;
+
+        /// <summary>
+        /// True once the player has deliberately placed the playhead past the session end. Playback then
+        /// runs on to <see cref="FutureEndTick"/> instead of stopping at the session end. Exit still
+        /// returns to the normal session time; only Continue Here commits to the simulated future.
+        /// </summary>
+        public bool InFuture { get; private set; }
+
+        /// <summary>
+        /// Whether Time Travel Here may be used: always for the current session, otherwise only when
+        /// the recording belongs to the hero being played right now (a different hero's world would
+        /// silently replace the player's). Unknown ids (old recordings) never qualify.
+        /// </summary>
+        public bool TimeTravelAllowed => _isCurrentSession || Data != null && Data.HeroId != 0 && Data.HeroId == _liveHeroId;
+
         private int _commandCursor;
         private int _decisionCursor;
         private int _hashCursor;
@@ -79,6 +105,9 @@ namespace PitHero.Services.Replay
         private PitHero.ECS.Components.CameraViewState? _pendingView; // view to apply to the next rebuilt scene
         private readonly System.Diagnostics.Stopwatch _seekStopwatch = new System.Diagnostics.Stopwatch();
         private long _startAtTick;
+        private bool _pastEndUnpauseInjected; // per scene instance: the future's pause release has been injected
+        private bool _isCurrentSession;
+        private int _liveHeroId; // hero of the session that was live when playback started
         private ReplayPlaybackState _stateAfterSeek = ReplayPlaybackState.Playing;
         private Action _afterSeek;
         private long _seekStartedAtTick;
@@ -114,6 +143,8 @@ namespace PitHero.Services.Replay
             // The view is the player's, not the recording's: keep it across every scene rebuild
             _returnView = CaptureView();
             _pendingView = _returnView;
+            _isCurrentSession = isCurrentSession;
+            _liveHeroId = Core.Services.GetService<GameStateService>()?.HeroId ?? 0;
 
             Data = data;
             TotalTicks = data.TotalTicks;
@@ -122,6 +153,7 @@ namespace PitHero.Services.Replay
             DivergenceTick = -1;
             DivergenceKind = null;
             DivergenceIsDecision = false;
+            InFuture = false;
             _stateAfterSeek = ReplayPlaybackState.Playing;
             _afterSeek = null;
 
@@ -141,6 +173,7 @@ namespace PitHero.Services.Replay
             _commandCursor = 0;
             _decisionCursor = 0;
             _hashCursor = 0;
+            _pastEndUnpauseInjected = false;
             State = ReplayPlaybackState.Starting;
 
             // Live-input doorway closes now; the new scene's service inherits the flag in OnSceneStarted
@@ -252,14 +285,16 @@ namespace PitHero.Services.Replay
             {
                 case ReplayPlaybackState.Playing:
                 {
-                    if (CurrentTick >= TotalTicks)
+                    // Natural playback stops at the session end; only a deliberate drag past it
+                    // (InFuture) lets it run on to the future cap
+                    if (CurrentTick >= PlayStopTick)
                     {
                         State = ReplayPlaybackState.AtEnd;
                         Core.SimulationSuspended = true;
                         break;
                     }
                     // Nothing to watch while the recorded session sat in a menu: skip the stretch
-                    long skipTo = ReplayPauseSpans.FindSkipTarget(_pauseSpans, CurrentTick);
+                    long skipTo = InFuture ? CurrentTick : ReplayPauseSpans.FindSkipTarget(_pauseSpans, CurrentTick);
                     if (skipTo > CurrentTick)
                     {
                         _stateAfterSeek = ReplayPlaybackState.Playing;
@@ -318,12 +353,15 @@ namespace PitHero.Services.Replay
 
         // ── Player controls ──────────────────────────────────────────────────────────
 
+        /// <summary>Tick at which natural playback stops: the session end, or the future cap once the player is in the future.</summary>
+        private long PlayStopTick => InFuture ? FutureEndTick : TotalTicks;
+
         /// <summary>Pauses or resumes playback (no effect while seeking).</summary>
         public void TogglePause()
         {
             if (State == ReplayPlaybackState.Playing)
                 State = ReplayPlaybackState.Paused;
-            else if (State == ReplayPlaybackState.Paused || State == ReplayPlaybackState.AtEnd && CurrentTick < TotalTicks)
+            else if (State == ReplayPlaybackState.Paused || State == ReplayPlaybackState.AtEnd && CurrentTick < PlayStopTick)
                 State = ReplayPlaybackState.Playing;
         }
 
@@ -339,10 +377,17 @@ namespace PitHero.Services.Replay
             if (!IsActive)
                 return;
             if (targetTick < 0) targetTick = 0;
-            if (targetTick > TotalTicks) targetTick = TotalTicks;
+            if (targetTick > MaxSeekTick) targetTick = MaxSeekTick;
 
             if (State == ReplayPlaybackState.Playing || State == ReplayPlaybackState.Paused || State == ReplayPlaybackState.AtEnd)
                 _stateAfterSeek = State == ReplayPlaybackState.Paused ? ReplayPlaybackState.Paused : ReplayPlaybackState.Playing;
+
+            // Past the session end the world keeps simulating with no player input: the future is a
+            // pure function of the recording, so a backward seek inside it rebuilds the same future
+            bool enteringFuture = targetTick > TotalTicks;
+            if (enteringFuture && !InFuture)
+                Debug.Log($"[ReplayPlayback] Entering future simulation (session end {TotalTicks}, cap {FutureEndTick})");
+            InFuture = enteringFuture;
 
             if (targetTick < CurrentTick)
             {
@@ -392,7 +437,7 @@ namespace PitHero.Services.Replay
                 after();
                 return;
             }
-            State = CurrentTick >= TotalTicks ? ReplayPlaybackState.AtEnd : _stateAfterSeek;
+            State = CurrentTick >= PlayStopTick ? ReplayPlaybackState.AtEnd : _stateAfterSeek;
             if (State == ReplayPlaybackState.AtEnd)
                 Core.SimulationSuspended = true;
         }
@@ -405,6 +450,19 @@ namespace PitHero.Services.Replay
         {
             if (!IsActive)
                 return;
+
+            // The simulated future is only ever watched: exiting from it goes back to the normal
+            // session time (the world is rebuilt to the session end, or to the set-aside live session)
+            if (InFuture)
+            {
+                if (State == ReplayPlaybackState.Seeking || State == ReplayPlaybackState.Starting)
+                {
+                    _afterSeek = ReturnFromFuture;
+                    return;
+                }
+                ReturnFromFuture();
+                return;
+            }
 
             // Watching a saved replay: the live session was set aside, not abandoned. Bring the
             // world back to exactly where it was by re-simulating the live recording to its end.
@@ -436,6 +494,25 @@ namespace PitHero.Services.Replay
             FinishExit();
         }
 
+        /// <summary>
+        /// Leaves the simulated future without keeping it: a saved replay returns to the set-aside
+        /// live session; the current session is rebuilt back to its recorded end.
+        /// </summary>
+        private void ReturnFromFuture()
+        {
+            InFuture = false;
+            if (_returnSession != null && !ReferenceEquals(_returnSession, Data))
+            {
+                ReturnToLiveSession();
+                return;
+            }
+            _pauseSpans.Clear();
+            _afterSeek = FinishExit;
+            _pendingView = CaptureView();
+            Debug.Log($"[ReplayPlayback] Leaving the simulated future; returning to the session end at tick {TotalTicks}");
+            RestartScene(TotalTicks);
+        }
+
         /// <summary>Restarts the scene from the live session's recording and seeks to its last tick, then hands control back.</summary>
         private void ReturnToLiveSession()
         {
@@ -461,8 +538,11 @@ namespace PitHero.Services.Replay
                 return;
             _returnSession = null;
             long tick = CurrentTick;
+            // In the future the recorder has been appending past the recorded end, so the recording
+            // already runs up to this tick and the truncation is a no-op
             ReplayRecorder.Current?.TruncateAfter(tick);
             TotalTicks = tick;
+            InFuture = false;
             Debug.Log($"[ReplayPlayback] Continuing live play from replay tick {tick}");
             FinishExit();
         }
@@ -521,6 +601,20 @@ namespace PitHero.Services.Replay
         {
             if (Data == null || service == null)
                 return;
+            if (tick > TotalTicks)
+            {
+                BeginRecordingPastEnd();
+                if (!_pastEndUnpauseInjected)
+                {
+                    // A saved replay is snapshotted from inside the Settings window, so its recording
+                    // ends with the menu pause still applied and nothing past the end releases it.
+                    // Release both pause flags on the first future tick; they are recorded like any
+                    // other past-end tick so a continued session stays consistent.
+                    _pastEndUnpauseInjected = true;
+                    service.Inject(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false));
+                    service.Inject(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false));
+                }
+            }
             var commands = Data.Commands;
             while (_commandCursor < commands.Count && commands[_commandCursor].Tick <= tick)
             {
@@ -532,10 +626,32 @@ namespace PitHero.Services.Replay
             }
         }
 
+        /// <summary>
+        /// Ticks past the recorded end have nothing to verify against, so the recorder takes over and
+        /// appends them (future simulation, or the few ticks a fast playback overshoots the end by).
+        /// Continuing live play from there then leaves a gap-free recording. A scene restart re-preloads
+        /// the recorder from the recording, so a backward seek drops these and re-records them.
+        /// </summary>
+        private static bool BeginRecordingPastEnd()
+        {
+            var recorder = ReplayRecorder.Current;
+            if (recorder == null)
+                return false;
+            if (!recorder.IsRecording)
+                recorder.IsRecording = true;
+            return true;
+        }
+
         private void CheckDecision(long tick, ulong hash)
         {
             if (Data == null)
                 return;
+            if (tick > TotalTicks)
+            {
+                if (BeginRecordingPastEnd())
+                    ReplayRecorder.Current.RecordDecision(tick, hash);
+                return;
+            }
             Compare(Data.Decisions, ref _decisionCursor, tick, hash, "decision");
         }
 
@@ -543,6 +659,12 @@ namespace PitHero.Services.Replay
         {
             if (Data == null)
                 return;
+            if (actual.Tick > TotalTicks)
+            {
+                if (BeginRecordingPastEnd())
+                    ReplayRecorder.Current.RecordStateHash(in actual);
+                return;
+            }
             Compare(Data.StateHashes, ref _hashCursor, actual.Tick, actual.Hash, "state", actual);
         }
 

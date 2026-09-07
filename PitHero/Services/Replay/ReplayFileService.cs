@@ -14,6 +14,8 @@ namespace PitHero.Services.Replay
         public string HeroName;
         public string JobName;
         public int PitLevelAtStart;
+        /// <summary>Hero the recording belongs to (0 = unknown, pre-v3 file).</summary>
+        public int HeroId;
         public DateTime RecordedAtUtc;
         public long TotalTicks;
         public ReplayKind Kind;
@@ -164,6 +166,7 @@ namespace PitHero.Services.Replay
                     FileName = Path.GetFileName(path),
                     HeroName = data.HeroName,
                     JobName = data.JobName,
+                    HeroId = data.HeroId,
                     PitLevelAtStart = data.PitLevelAtStart,
                     RecordedAtUtc = new DateTime(data.RecordedAtUtcTicks, DateTimeKind.Utc),
                     TotalTicks = data.TotalTicks,

@@ -502,7 +502,8 @@ namespace PitHero.ECS.Scenes
             // Replay list metadata (hero/job/pit) now that the hero and pit level exist
             var heroForReplay = hero?.GetComponent<HeroComponent>()?.LinkedHero;
             _replayRecorder?.SetSessionInfo(heroForReplay?.Name, heroForReplay?.Job?.Name,
-                Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0);
+                Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0,
+                Core.Services.GetService<GameStateService>()?.HeroId ?? 0);
 
             _isInitializationComplete = true;
 

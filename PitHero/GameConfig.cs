@@ -663,6 +663,11 @@ namespace PitHero
         public const string ReplayFileExtension = ".bin";
         public const int ReplaySpeechSeedSalt = 0x5BEEC4;        // XOR'd with the master seed for the cosmetic speech-bubble RNG
 
+        // Future simulation: the replay timeline extends past the session end and the player can drag into it
+        public const bool ReplayFutureSimulationUnlockedByDefault = true; // REVIEW: on for evaluation; the plan is to gate this behind a purchasable item
+        public const long ReplayFutureSimulationMaxTicks = 30L * 60L * 60L; // 30 minutes of simulated time beyond the recorded session end
+        public static readonly Color ReplayFutureTrackColor = new Color(70, 120, 230, 190); // Tint over the scrubber track beyond the session end
+
         // Second Chance Shop layout positions
         // Composed for a 1920x360 stage; SecondChanceShopUI centers the whole composition on
         // wider stages by shifting all X positions right by (stageWidth - VirtualWidth) / 2, and fits

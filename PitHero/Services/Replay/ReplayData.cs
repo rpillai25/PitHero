@@ -63,8 +63,8 @@ namespace PitHero.Services.Replay
     /// </summary>
     public class ReplayData : IPersistable
     {
-        /// <summary>Current replay file format version (2: state samples carry part hashes).</summary>
-        public const int CurrentVersion = 2;
+        /// <summary>Current replay file format version (2: state samples carry part hashes; 3: HeroId in the header).</summary>
+        public const int CurrentVersion = 3;
         /// <summary>Oldest replay file format this build can read.</summary>
         public const int MinSupportedVersion = 2;
 
@@ -74,6 +74,8 @@ namespace PitHero.Services.Replay
         public string HeroName = string.Empty;
         public string JobName = string.Empty;
         public int PitLevelAtStart;
+        /// <summary>Identity of the hero the session belonged to (SaveData.HeroId); 0 in v2 files = unknown.</summary>
+        public int HeroId;
         public long RecordedAtUtcTicks;
         public long TotalTicks;
         /// <summary>Identifies the game build the recording was made with; a mismatch is a warning, not a block.</summary>
@@ -99,6 +101,7 @@ namespace PitHero.Services.Replay
             writer.Write(HeroName ?? string.Empty);
             writer.Write(JobName ?? string.Empty);
             writer.Write(PitLevelAtStart);
+            writer.Write(HeroId);
             ReplayIO.WriteLong(writer, RecordedAtUtcTicks);
             ReplayIO.WriteLong(writer, TotalTicks);
             writer.Write(BuildId ?? string.Empty);
@@ -150,6 +153,7 @@ namespace PitHero.Services.Replay
             HeroName = reader.ReadString();
             JobName = reader.ReadString();
             PitLevelAtStart = reader.ReadInt();
+            HeroId = FormatVersion >= 3 ? reader.ReadInt() : 0;
             RecordedAtUtcTicks = ReplayIO.ReadLong(reader);
             TotalTicks = ReplayIO.ReadLong(reader);
             BuildId = reader.ReadString();

@@ -145,6 +145,8 @@ namespace PitHero
         public const string DialogConfirmContinueHere = "DialogConfirmContinueHere";
         public const string ConfirmContinueHereMessage = "ConfirmContinueHereMessage";
         public const string ReplayListEmpty = "ReplayListEmpty";
+        public const string ReplayListEmptyFiltered = "ReplayListEmptyFiltered";
+        public const string ReplayFilterCurrentHero = "ReplayFilterCurrentHero";
         public const string ReplayRowTitleFormat = "ReplayRowTitleFormat";
         public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";
         public const string ReplaySelectedNone = "ReplaySelectedNone";
@@ -158,6 +160,8 @@ namespace PitHero
         public const string ReplayDivergenceDecision = "ReplayDivergenceDecision";
         public const string ReplayNoDivergence = "ReplayNoDivergence";
         public const string ReplayEndReached = "ReplayEndReached";
+        public const string ReplayFutureStatus = "ReplayFutureStatus";
+        public const string ConfirmContinueFutureMessage = "ConfirmContinueFutureMessage";
         public const string DialogConfirmReplay = "DialogConfirmReplay";
         public const string ConfirmReplayInterruptMessage = "ConfirmReplayInterruptMessage";
         public const string DialogConfirmDeleteReplay = "DialogConfirmDeleteReplay";

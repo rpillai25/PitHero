@@ -19,6 +19,19 @@ namespace PitHero.Services
         /// <summary>Gold currency that persists across all heroes.</summary>
         public int Funds { get; set; }
 
+        /// <summary>
+        /// Identity of this playthrough's hero: generated once when a new game starts, saved with the
+        /// game and stamped on every replay. Time travel into a saved replay requires a match.
+        /// </summary>
+        public int HeroId { get; set; }
+
+        /// <summary>Non-zero id for a newly created hero (wall-clock entropy; never called inside the simulation).</summary>
+        public static int GenerateHeroId()
+        {
+            int id = System.Guid.NewGuid().GetHashCode() ^ System.Environment.TickCount;
+            return id != 0 ? id : 1;
+        }
+
         /// <summary>Adds gold to Funds and records the gain with its source for balance analytics.</summary>
         public void AddFunds(int amount, string source)
         {

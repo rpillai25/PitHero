@@ -20,6 +20,7 @@ namespace PitHero.Services.Replay
         private string _heroName = string.Empty;
         private string _jobName = string.Empty;
         private int _pitLevelAtStart;
+        private int _heroId;
         private long _recordedAtUtcTicks;
         private byte[] _stateBlob;
         private readonly List<ReplayCommandRecord> _commands = new List<ReplayCommandRecord>(InitialCapacity);
@@ -73,6 +74,7 @@ namespace PitHero.Services.Replay
                 _heroName = preload.HeroName;
                 _jobName = preload.JobName;
                 _pitLevelAtStart = preload.PitLevelAtStart;
+                _heroId = preload.HeroId;
                 _commands.AddRange(preload.Commands);
                 _decisions.AddRange(preload.Decisions);
                 _stateHashes.AddRange(preload.StateHashes);
@@ -80,8 +82,10 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>Fills in the display metadata once the hero exists (called after Begin builds the world).</summary>
-        public void SetSessionInfo(string heroName, string jobName, int pitLevel)
+        public void SetSessionInfo(string heroName, string jobName, int pitLevel, int heroId = 0)
         {
+            if (heroId != 0)
+                _heroId = heroId;
             if (!string.IsNullOrEmpty(heroName))
                 _heroName = heroName;
             if (!string.IsNullOrEmpty(jobName))
@@ -161,6 +165,7 @@ namespace PitHero.Services.Replay
                 HeroName = _heroName ?? string.Empty,
                 JobName = _jobName ?? string.Empty,
                 PitLevelAtStart = _pitLevelAtStart,
+                HeroId = _heroId,
                 RecordedAtUtcTicks = _recordedAtUtcTicks,
                 TotalTicks = totalTicks,
                 BuildId = BuildIdentity.Current,

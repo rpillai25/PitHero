@@ -23,6 +23,7 @@ namespace PitHero.UI
         private Table _rowsTable;
         private ScrollPane _scrollPane;
         private Label _selectedLabel;
+        private CheckBox _filterCheckBox;      // on by default: list only the current hero's recordings
         private TextButton _playButton;
         private TextButton _deleteButton;
         private List<ReplayFileInfo> _entries = new List<ReplayFileInfo>();
@@ -114,6 +115,14 @@ namespace PitHero.UI
 
             _selectedLabel = new Label(GetText(UITextKey.ReplaySelectedNone), _skin, "ph-default");
 
+            _filterCheckBox = new CheckBox(GetText(UITextKey.ReplayFilterCurrentHero), _skin, "ph-default");
+            _filterCheckBox.IsChecked = true;
+            _filterCheckBox.OnChanged += (_) =>
+            {
+                _selectedIndex = -1; // row indices change with the filter
+                Refresh();
+            };
+
             var buttons = new Table();
             _playButton = MakeSingleLineButton(GetText(UITextKey.ButtonReplayPlaySelected), out float playWidth);
             _playButton.OnClicked += (_) => OnPlaySelected();
@@ -150,6 +159,8 @@ namespace PitHero.UI
             // Label and button row share one centered block, so the label's left edge is the row's
             // left edge whatever widths the localized labels produce
             var bottom = new Table();
+            bottom.Add(_filterCheckBox).Left().SetPadBottom(4f);
+            bottom.Row();
             bottom.Add(_selectedLabel).Left().SetPadBottom(6f);
             bottom.Row();
             bottom.Add(buttons).Left();
@@ -168,12 +179,31 @@ namespace PitHero.UI
                 return;
 
             var fileService = Core.Services?.GetService<ReplayFileService>();
-            _entries = fileService != null ? fileService.Enumerate() : new List<ReplayFileInfo>();
+            var all = fileService != null ? fileService.Enumerate() : new List<ReplayFileInfo>();
+
+            // "Filter to current hero": keep only recordings stamped with the live hero's id. With no
+            // known hero (id 0) the filter has nothing to match and the full list shows.
+            int heroId = Core.Services?.GetService<GameStateService>()?.HeroId ?? 0;
+            bool filtered = _filterCheckBox != null && _filterCheckBox.IsChecked && heroId != 0;
+            if (filtered)
+            {
+                _entries = new List<ReplayFileInfo>(all.Count);
+                for (int i = 0; i < all.Count; i++)
+                {
+                    if (all[i].HeroId == heroId)
+                        _entries.Add(all[i]);
+                }
+            }
+            else
+            {
+                _entries = all;
+            }
 
             _rowsTable.ClearChildren();
             if (_entries.Count == 0)
             {
-                var empty = new Label(GetText(UITextKey.ReplayListEmpty), _skin, "ph-default");
+                string emptyKey = filtered && all.Count > 0 ? UITextKey.ReplayListEmptyFiltered : UITextKey.ReplayListEmpty;
+                var empty = new Label(GetText(emptyKey), _skin, "ph-default");
                 empty.SetWrap(true);
                 _rowsTable.Add(empty).Width(RowWidth).SetPadTop(8f);
             }

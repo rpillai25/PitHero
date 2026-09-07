@@ -149,6 +149,7 @@ namespace PitHero.UI
             {
                 gameState.Funds = 0;
                 gameState.RunnerCarryLevel = GameConfig.KitchenRunnerCarryLevelMin;
+                gameState.HeroId = GameStateService.GenerateHeroId(); // a new hero: new identity for saves and replays
             }
             var heroCreationScene = new HeroCreationScene(mapPath);
             Core.Scene = heroCreationScene;
