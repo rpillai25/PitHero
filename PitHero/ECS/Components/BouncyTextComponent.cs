@@ -116,6 +116,13 @@ namespace PitHero.ECS.Components
         /// <summary>Advance timers</summary>
         public void Update()
         {
+            if (Core.CosmeticUpdatesSuspended)
+            {
+                // replay seek: finish instantly so the bounce does not play when the seek ends
+                _currentColor = _initColor;
+                Enabled = false;
+                return;
+            }
             _elapsedTime += Time.DeltaTime;
 
             if (_pauseService?.IsPaused == true)

@@ -120,6 +120,21 @@ namespace PitHero.UI
         /// <summary>Sets the reference to SettingsUI for single window policy enforcement.</summary>
         public void SetSettingsUI(SettingsUI settingsUI) { _settingsUI = settingsUI; }
 
+        /// <summary>Index of the monster in the allied roster (command payload), or -1.</summary>
+        private static int IndexOfAlliedMonster(AlliedMonster monster)
+        {
+            var manager = Core.Services.GetService<AlliedMonsterManager>();
+            if (manager == null)
+                return -1;
+            var roster = manager.AlliedMonsters;
+            for (int i = 0; i < roster.Count; i++)
+            {
+                if (ReferenceEquals(roster[i], monster))
+                    return i;
+            }
+            return -1;
+        }
+
         /// <summary>Sets the reference to SecondChanceShopUI for single window policy enforcement.</summary>
         public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
 
@@ -286,7 +301,7 @@ namespace PitHero.UI
             return foldOrphans && !IsLiveHouse(houses, monster.MonsterHouseId);
         }
 
-        private void RefreshMonsterList()
+        public void RefreshMonsterList()
         {
             _monsterListTable.Clear();
             var manager = Core.Services.GetService<AlliedMonsterManager>();
@@ -499,14 +514,12 @@ namespace PitHero.UI
                             var closuredJob = jobValue;
                             jobBtn.OnClicked += (_) =>
                             {
-                                if (closuredMonster.Job != closuredJob)
-                                {
-                                    AnalyticsService.LogMonsterJobChanged(closuredMonster.Name,
-                                        closuredMonster.MonsterTypeName, closuredMonster.Job.ToString(),
-                                        closuredJob.ToString(), "manual");
-                                }
-                                closuredMonster.Job = closuredJob;
-                                RefreshMonsterList();
+                                // Applied on a deterministic tick via the command queue; the handler
+                                // logs analytics, sets the job and refreshes this list (replay system)
+                                int rosterIndex = IndexOfAlliedMonster(closuredMonster);
+                                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                                    Services.Replay.PlayerCommandType.SetMonsterJob, closuredMonster.Name,
+                                    rosterIndex, (int)closuredJob));
                             };
                         }
 

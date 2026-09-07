@@ -1614,5 +1614,73 @@ namespace PitHero.Tests
             Assert.AreEqual(JobTextKey.Job_Knight_Name, loaded.JobName);
             Assert.AreEqual(9, loaded.Level);
         }
+
+        /// <summary>v32 appends HeroId as the last field; it must survive a round trip.</summary>
+        [TestMethod]
+        public void SaveData_V32_HeroId_RoundTrip()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                original.HeroName = "Identified";
+                original.HeroId = -1234567;
+                writer.Write(original);
+            }
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual(-1234567, loaded.HeroId);
+        }
+
+        /// <summary>
+        /// A v31 file has no HeroId. It must still load, and every load must derive the SAME non-zero
+        /// id from the hero design so replays recorded from that save keep matching it.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V31_File_DerivesStableLegacyHeroId()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                original.HeroName = "LegacyHero";
+                original.HeroGender = Gender.Female;
+                original.SkinColor = new Color(10, 20, 30, 255);
+                original.HairColor = new Color(40, 50, 60, 255);
+                original.HairstyleIndex = 3;
+                original.ShirtColor = new Color(70, 80, 90, 255);
+                original.HeroId = 999; // v32-only bytes: dropped below
+                writer.Write(original);
+            }
+
+            // HeroId is the final 4 bytes of a v32 file; strip them and patch the version to 31
+            byte[] v32 = ms.ToArray();
+            var v31 = new byte[v32.Length - 4];
+            Array.Copy(v32, 0, v31, 0, v31.Length);
+            v31[0] = 31;
+            v31[1] = 0;
+            v31[2] = 0;
+            v31[3] = 0;
+
+            var first = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v31)))
+                rdr.ReadPersistableInto(first);
+            var second = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v31)))
+                rdr.ReadPersistableInto(second);
+
+            int expected = SaveData.ComputeLegacyHeroId("LegacyHero", Gender.Female,
+                new Color(10, 20, 30, 255), new Color(40, 50, 60, 255), 3, new Color(70, 80, 90, 255));
+            Assert.AreNotEqual(0, first.HeroId, "Legacy id must be non-zero (0 means unknown)");
+            Assert.AreNotEqual(999, first.HeroId, "The v32 bytes were stripped; the id must be derived, not read");
+            Assert.AreEqual(expected, first.HeroId);
+            Assert.AreEqual(first.HeroId, second.HeroId, "Every load of the same old save must agree on the hero");
+            Assert.AreEqual("LegacyHero", first.HeroName);
+        }
     }
 }

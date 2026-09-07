@@ -20,6 +20,17 @@ namespace PitHero.AI
         private HeroComponent _hero;
         private ActionPlanner _planner;
         private Stack<Nez.AI.GOAP.Action> _actionPlan;
+
+        /// <summary>
+        /// Replay tripwire: hashes the freshly formed plan (action names + hero tile) so playback can
+        /// detect the first tick where the hero would have decided differently.
+        /// </summary>
+        private void ReportPlanDecision()
+        {
+            var tile = _hero != null ? _hero.GetCurrentTilePosition() : default;
+            Services.Replay.ReplayTripwire.ReportDecision(
+                Services.Replay.ReplayTripwire.HashPlan(_actionPlan, tile.X, tile.Y));
+        }
         private HeroActionBase _currentAction;
 
         // References to healing actions for dynamic cost updates
@@ -245,6 +256,8 @@ namespace PitHero.AI
 
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
+                ReportPlanDecision();
+
                 // Track current healing priorities so we can detect changes
                 _lastHealPriority1 = _hero.HealPriority1;
                 _lastHealPriority2 = _hero.HealPriority2;
@@ -313,6 +326,8 @@ namespace PitHero.AI
 
                     if (_actionPlan != null && _actionPlan.Count > 0)
                     {
+                        ReportPlanDecision();
+
                         // Track current healing priorities so we can detect changes
                         _lastHealPriority1 = _hero.HealPriority1;
                         _lastHealPriority2 = _hero.HealPriority2;

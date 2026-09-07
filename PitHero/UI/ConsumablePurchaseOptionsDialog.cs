@@ -85,9 +85,8 @@ namespace PitHero.UI
                 check.IsChecked = false;
                 check.OnChanged += (isChecked) =>
                 {
-                    var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-                    if (svc != null && index < svc.ConsumableSelected.Length)
-                        svc.ConsumableSelected[index] = isChecked;
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetAutoPurchaseSelected, index, isChecked ? 1 : 0));
                     SetStackControlsActive(index, isChecked);
                 };
                 _checks[i] = check;
@@ -112,9 +111,8 @@ namespace PitHero.UI
                 };
                 slider.OnValueCommitted += (value) =>
                 {
-                    var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-                    if (svc != null && index < svc.ConsumableStackTargets.Length)
-                        svc.ConsumableStackTargets[index] = (int)value;
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetConsumableStackTarget, index, (int)value));
                 };
                 _stackSliders[i] = slider;
                 cell.Add(slider).Width(SliderWidth).Left();
@@ -196,11 +194,10 @@ namespace PitHero.UI
         /// </summary>
         private void SetAllSelected(bool selected)
         {
-            var svc = Core.Services?.GetService<AutoItemPurchaseService>();
             for (int i = 0; i < _checks.Length; i++)
             {
-                if (svc != null && i < svc.ConsumableSelected.Length)
-                    svc.ConsumableSelected[i] = selected;
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetAutoPurchaseSelected, i, selected ? 1 : 0));
                 if (_checks[i] != null)
                     _checks[i].IsChecked = selected;
                 SetStackControlsActive(i, selected);

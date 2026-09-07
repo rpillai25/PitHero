@@ -1101,7 +1101,7 @@ namespace PitHero.ECS.Components
             {
                 // milestone + fog clear when entering pit area via tilemap
                 var historian = Entity.GetComponent<Historian>();
-                historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
+                historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, SimulationClock.Now);
             }
         }
 
@@ -1132,7 +1132,7 @@ namespace PitHero.ECS.Components
             InsidePit = true;
 
             var historian = Entity.GetComponent<Historian>();
-            historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
+            historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, SimulationClock.Now);
 
             var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
         }
@@ -1158,7 +1158,7 @@ namespace PitHero.ECS.Components
                 ActivatedWizardOrb = false;
 
                 var historian = Entity.GetComponent<Historian>();
-                historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+                historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, SimulationClock.Now);
             }
             else
             {

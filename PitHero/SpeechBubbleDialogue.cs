@@ -20,7 +20,23 @@ namespace PitHero
         // mid-battle would break BattleEngineTests and virtual/live run parity.
         // The number of _rng draws per bubble event is variable (bounded draw-and-skip),
         // which is fine — _rng is private to dialogue and not contract-bound.
-        private static readonly System.Random _rng = new System.Random();
+        private static System.Random _rng = new System.Random();
+
+        /// <summary>
+        /// Reseeds the dialogue stream. Called at session start with a value derived from the master
+        /// seed so a replay shows the same bubble variants (cosmetic, but nice to reproduce).
+        /// </summary>
+        public static void Reseed(int seed)
+        {
+            _rng = new System.Random(seed);
+            // The option bags are static and survive a scene restart; put every marble back in its
+            // starting order so the seeded stream reproduces the same lines on a replay restart
+            for (int i = 0; i < _allBags.Count; i++)
+                _allBags[i].Bag.Reset();
+        }
+
+        // Every OptionBag registers here at construction so Reseed can reset them all
+        private static readonly System.Collections.Generic.List<OptionBag> _allBags = new System.Collections.Generic.List<OptionBag>(24);
 
         // ── Gate ─────────────────────────────────────────────────────────────────
 
@@ -81,6 +97,7 @@ namespace PitHero
                     if (options[i].Gate == Gate.Merc)
                         HasMercGate = true;
                 }
+                _allBags.Add(this);
             }
         }
 
@@ -465,6 +482,18 @@ namespace PitHero
             if (key == null)
                 return null;
             return textService.DisplayText(TextType.Dialogue, key);
+        }
+
+        /// <summary>
+        /// The merchant's line for the Artifacts tab: artifacts are granted on proof of wealth, not
+        /// sold. Single fixed line (no bag, no RNG). Returns null when unavailable (headless).
+        /// </summary>
+        public static string GetSecondChanceArtifactLine()
+        {
+            if (Core.Instance == null)
+                return null;
+            var textService = Core.Services?.GetService<TextService>();
+            return textService?.DisplayText(TextType.Dialogue, DialogueTextKey.SecondChanceProveWealth);
         }
 
         // ── Selection core ───────────────────────────────────────────────────────

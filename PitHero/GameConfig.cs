@@ -643,6 +643,41 @@ namespace PitHero
         public const float UIBarHideOffset = 54f;     // Stage pixels the bar slides up when hidden
         public const float UIBarProximityY = 48f;     // Mouse Y <= this (stage coords) triggers proximity-unhide
 
+        // Simulation clock (deterministic fixed step — see docs on the replay system)
+        public const float SimulationFixedStepSeconds = 1f / 60f; // Length of one simulation step; every sim accumulator advances by exactly this
+        public const int SimulationMaxStepsPerFrame = 6;         // Catch-up cap per rendered frame (occluded window / hitch); backlog is dropped
+        public const float SimulationFastForwardSpeed = 2.5f;    // Fast-forward button multiplier: extra steps per frame, same per-step delta
+
+        // Replay playback
+        public const int ReplayMaxStepsPerFrame = 16;            // Accumulator cap while a replay plays at high speed
+        public const float ReplaySeekWallBudgetSeconds = 0.030f; // Wall time per 60 Hz frame spent running seek steps: ~2/3 of the frame, leaving CPU headroom (raise for faster seeks)
+        public const int ReplayHashIntervalTicks = 60;           // Simulation ticks between divergence-tripwire state hashes (1 per sim second)
+        public const long ReplayPauseSkipMinTicks = 120;         // Recorded pause stretches at least this long (2 s) are skipped during playback
+        public const bool ReplaySeekSkipsCosmetics = true;       // Seeks skip purely visual per-step work (particles, floating text, Y-sort); flip to A/B a divergence
+        public const bool ReplaySeekQuietLogging = true;        // Seeks drop Debug.Log output (and its interpolation); flip to A/B a divergence
+        public static readonly float[] ReplaySpeedSteps = { 1f, 2.5f, 4f, 8f }; // Speed button cycle during playback
+        public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
+        public const float ReplayScrubberHeight = 28f;           // Stage pixels
+        public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge
+        public const string ReplayDirectoryName = "replays";     // Under the persistent data folder
+        public const string ReplayFilePrefix = "replay_";
+        public const string ReplayFileExtension = ".bin";
+        public const int ReplaySpeechSeedSalt = 0x5BEEC4;        // XOR'd with the master seed for the cosmetic speech-bubble RNG
+
+        // Future simulation: the replay timeline extends past the session end and the player can drag
+        // into it once the Sphere of Foresight artifact is owned (Time Travel Here needs the Chronos Timepiece)
+        public const long ReplayFutureSimulationMaxTicks = 30L * 60L * 60L; // 30 minutes of simulated time beyond the recorded session end
+        public static readonly Color ReplayFutureTrackColor = new Color(70, 120, 230, 190); // Tint over the scrubber track beyond the session end
+
+        // Artifacts: one-time system-level purchases persisted in the system save (see ArtifactService)
+        public const string SystemSaveFileName = "system.bin";       // Under the persistent data folder, beside the save slots
+        public const int ArtifactSphereOfForesightPrice = 100000;     // Gold; unlocks future simulation in replays
+        public const int ArtifactChronosTimepiecePrice = 1000000;     // Gold; unlocks Time Travel Here (requires the sphere first)
+        public const int ArtifactGridColumns = 5;                     // Party > Artifacts grid
+        public const int ArtifactGridRows = 3;
+        public const float ArtifactSlotSize = 40f;                    // Stage pixels, matches the seed shop slots
+        public const float ArtifactDialogSpriteSize = 64f;            // Sprite size in the artifact card (2x the 32px art)
+
         // Second Chance Shop layout positions
         // Composed for a 1920x360 stage; SecondChanceShopUI centers the whole composition on
         // wider stages by shifting all X positions right by (stageWidth - VirtualWidth) / 2, and fits

@@ -14,7 +14,17 @@ namespace PitHero.Services
     /// </summary>
     public sealed class LootShuffleService
     {
-        private readonly System.Random _epicRng = new System.Random();
+        private System.Random _epicRng = new System.Random();
+
+        /// <summary>
+        /// Points the epic draw at a seeded stream (GameRandom.Loot) so replays reproduce boss loot.
+        /// Called from MainGameScene.Begin right after the session seed is applied.
+        /// </summary>
+        public void SetEpicRng(System.Random rng)
+        {
+            if (rng != null)
+                _epicRng = rng;
+        }
 
         /// <summary>The session's loot bags, shared by every chest roll.</summary>
         public LootBagSet Bags { get; } = new LootBagSet();

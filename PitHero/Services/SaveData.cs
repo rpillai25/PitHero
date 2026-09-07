@@ -273,7 +273,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 31;
+        public const int CurrentVersion = 32;
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -618,6 +618,13 @@ namespace PitHero.Services
         // Runner carry level (v29, issue #386)
         /// <summary>Global kitchen-runner carry level (1-3): units of each crop carried per trip (1/5/10).</summary>
         public int RunnerCarryLevel = 1;
+
+        /// <summary>
+        /// Identity of the playthrough's one hero, generated at hero creation (v32). Replays carry it so
+        /// time travel into a saved replay is only offered for the hero the player is currently playing.
+        /// Files older than v32 derive a stable id from the hero design on load.
+        /// </summary>
+        public int HeroId;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -1120,6 +1127,9 @@ namespace PitHero.Services
 
             // 46. Runner carry level (v29)
             writer.Write(RunnerCarryLevel);
+
+            // 47. Hero identity (v32)
+            writer.Write(HeroId);
         }
 
         /// <summary>
@@ -1672,6 +1682,38 @@ namespace PitHero.Services
             if (carry < GameConfig.KitchenRunnerCarryLevelMin) carry = GameConfig.KitchenRunnerCarryLevelMin;
             if (carry > GameConfig.KitchenRunnerCarryLevelMax) carry = GameConfig.KitchenRunnerCarryLevelMax;
             RunnerCarryLevel = carry;
+
+            // 47. Hero identity (section added in v32). Older files get a stable id derived from the
+            // hero design so every load of the same old save (and every replay recorded from it)
+            // agrees on who the hero is.
+            HeroId = fileVersion >= 32
+                ? reader.ReadInt()
+                : ComputeLegacyHeroId(HeroName, HeroGender, SkinColor, HairColor, HairstyleIndex, ShirtColor);
+        }
+
+        /// <summary>
+        /// Stable, non-zero FNV-1a hash of the hero design for saves written before HeroId existed.
+        /// </summary>
+        public static int ComputeLegacyHeroId(string name, Gender gender, Color skin, Color hair, int hairstyle, Color shirt)
+        {
+            const uint offset = 2166136261u;
+            const uint prime = 16777619u;
+            uint h = offset;
+            if (name != null)
+            {
+                for (int i = 0; i < name.Length; i++)
+                {
+                    h ^= name[i];
+                    h *= prime;
+                }
+            }
+            h ^= (uint)gender; h *= prime;
+            h ^= skin.PackedValue; h *= prime;
+            h ^= hair.PackedValue; h *= prime;
+            h ^= (uint)hairstyle; h *= prime;
+            h ^= shirt.PackedValue; h *= prime;
+            int id = unchecked((int)h);
+            return id != 0 ? id : 1;
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

@@ -11,7 +11,8 @@ PitHero is a horizontal RPG strip game built in **C# (.NET 8.0)** with **FNA + N
 ```bash
 git submodule update --init --recursive   # first-time setup (FNA + Nez)
 dotnet build PitHero.sln
-dotnet run --project PitHero/PitHero.csproj
+cd PitHero && dotnet run                  # run from the project folder: content paths are relative to the working directory
+cd PitHero && dotnet run -c Release       # Release compiles Debug.Log out and runs the simulation noticeably cooler
 dotnet test PitHero.Tests/PitHero.Tests.csproj
 ```
 
@@ -54,6 +55,19 @@ Game1 (Nez.Core)
 - No reflection
 - Strings in the game loop must be `const` — no dynamic concatenation (`Debug.Log` is exempt)
 - Pre-allocate collections with sufficient capacity; avoid `new` during gameplay
+
+### Replay Determinism (critical)
+Every session is recorded and can be replayed by **re-simulating** it (fixed 60 Hz tick + seeded RNG + recorded player commands — see `PitHero/docs/ReplaySystem.md`). A feature that breaks determinism silently breaks every replay, so **every feature must be replay-friendly**:
+- **Simulation vs presentation.** `MainGameScene.Update` (and entity/component `Update`) is the simulation step; `PresentationUpdate` (UI stages, camera, HUD, overlays, hover/click handling) runs once per rendered frame. Simulation code never reads `Input`, `Time.TotalTime`, `Time.FrameCount`, `DateTime`, `Stopwatch` or `Environment.TickCount`; sim timestamps use `SimulationClock.Now`. `Time.DeltaTime` inside a step is the fixed step and is safe
+- **Every player-driven change to simulation state is a `PlayerCommand`**: append a `PlayerCommandType` (persisted, append-only, never renumber), add a re-validating handler in `PlayerCommandHandlers`, and have the UI call `PlayerCommandService.Dispatch` (branch on `ShouldApplyDirectly` when one method serves both paths). View-only things (camera, window layout, fast-forward, hover, tooltips) are not commands
+- **RNG streams.** Simulation rolls use `Nez.Random` (installed as `GameRandom.Sim`) or `GameRandom.Loot` for the mid-battle epic chest. UI, audio, particles and other visuals must **never** touch `Nez.Random`: use `GameRandom.Ui`, `GameRandom.Audio`, Nez `ParticleRandom` or a private reseeded `System.Random`. No new `System.Random`, `Guid` or hash-order dependence in sim code. If a UI roll produces a gameplay result, roll on `Ui` and carry the result in the command payload
+- **Static/global state the simulation reads must be reset at the session reseed** (top of `MainGameScene.Begin`, next to `GameRandom.InitializeSession`) or be scene-scoped — replay seeks restart the scene inside one process. Shuffle bags register for `ShuffleBag.Reset`; scene services are removed in `Unload`
+- **Presentation never feeds back into the simulation** except through commands: a handler's result must not depend on which window is open or hovered
+- **Cosmetic-only components** (floating text, pickup arcs, Y-sort, indicators) early-return or finish instantly when `Core.CosmeticUpdatesSuspended`; anything the sim waits on (sprite animators, `AnimationState`) must not
+- **Speed = more fixed steps** (`Core.SimulationSpeed`), never `Time.TimeScale`
+- **Update order must not depend on history.** Never sort an update list with `Array.Sort`/`List.Sort` on keys that can tie (they are unstable); the Nez fork's `ComponentList` uses `FastList.StableSort` for exactly this reason. Add/remove of components or entities must not change the relative order of the survivors
+- **`Debug.Log` arguments must be pure.** Calls are compiled out in Release and the interpolation is skipped under `Debug.QuietMode` (replay seeks), so a side effect inside a log argument runs in some builds/modes and not others
+- **Validate**: after a feature that adds input, randomness, timers or player actions, play it, **Settings → Replay → Replay Current Session**, seek across it, and confirm the scrubber reads **In sync**. "Diverged at" plus `replay_divergence.log` names the drifted part (`rng`/`hero`/`party`/`world`)
 
 ### Nez Framework
 - `Game1` inherits `Nez.Core` — do not override `Draw()` or `Update()`
@@ -111,6 +125,7 @@ See `PitHero/docs/RenderingSystem.md` for the full reference.  Key rules:
 - The save system lives in `Services/SaveData.cs` (`CurrentVersion` / `MinSupportedVersion`). When a feature changes the byte layout, bump `CurrentVersion` **and keep every version from `MinSupportedVersion` up loadable**: read new fields conditionally on the file's version (`fileVersion >= N ? reader.ReadX() : safeDefault`) and pick defaults that degrade gracefully (e.g. "no active buff", "feature off")
 - Never raise `MinSupportedVersion` or drop a reader path on your own. Periodic **save unifications** (collapsing old versions into one, e.g. issue #311 → v17, PR #391 → v29) happen **only when the owner explicitly asks for one** — a past unification is a one-time cleanup, not a standing policy of rejecting old saves
 - Every version bump gets a backwards-compatibility test proving the previous layout still reads (see `SaveData_V29DiningRecord_ReadsWithDefaultExpiry` in `SaveLoadTests.cs`); loads always rewrite at `CurrentVersion` on the next save
+- The **system save** (`Services/SystemSaveData.cs`, `system.bin`, owned by `ArtifactService`) holds player-level state that no hero or slot resets (artifacts). It has its own version and the same rules: append fields, read conditionally, keep unknown entries. Replay files (`ReplayData`) are the one format allowed to drop old versions
 
 ### Code Style
 - Every public method gets a `/// <summary>` doc comment (keep it concise)
@@ -179,6 +194,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/MonsterLibrary.md`
 
 **Architecture / subsystems:**
+- `PitHero/docs/ReplaySystem.md` — **Deterministic replay (read before adding input, randomness, timers or player actions)**: fixed-step simulation vs presentation pass, `GameRandom` streams, `SimulationClock`, `PlayerCommand` pipeline + handler rules, recording format, playback/seek model, divergence tripwire, the invariants with their reasons, recipes for new commands / RNG / timers / cosmetic components / diagnosing "Diverged at", future simulation, hero-gated time travel, and the artifact system (system save, proof-of-wealth grants)
 - `PitHero/docs/RenderingSystem.md` — render layer stack, Y-sort, MultiSpriteAnimator / StaticSpriteCompositor / YSortSpriteRenderer
 - `PitHero/docs/ParticleEffects.md` — ParticleEffectManager, .pex authoring quirks, sizing rules, effect patterns (attached/projectile/AoE), battle + out-of-battle wiring map
 - `PitHero/docs/RolePlayingFramework.md`
@@ -203,6 +219,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 
 Domain skills under `.claude/skills/` provide on-demand guidance via progressive disclosure. They surface automatically based on task context — don't reference them explicitly:
 
+- `replay-determinism` — keeping features replay-safe: PlayerCommand recipe, RNG streams, sim-vs-presentation, divergence diagnosis
 - `nez-ai` — GOAP, state machines, behavior trees, virtual-layer AI
 - `nez-ui` — Nez.UI patterns, skins, drag-drop, dialogs, UI implementation
 - `monster-design` — monster balance, biome progression, `PitHero/docs/MonsterLibrary.md`

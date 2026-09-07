@@ -27,6 +27,29 @@
             "stopAtEntry": false,
             "console": "internalConsole"
         },
+        // Release: Debug.Log is compiled out and the JIT optimizes, so the simulation (and replay
+        // seeks) run noticeably cooler. Same working directory so relative Content paths resolve.
+        {
+            "name": ".NET: Launch (Release)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "dotnet: build (Release)",
+            "program": "${workspaceFolder}/PitHero/bin/Release/FeedTheHero.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/PitHero",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
+            "name": ".NET: Launch Without Building (Release)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/PitHero/bin/Release/FeedTheHero.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/PitHero",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
         {
             "name": ".NET: Attach to Process",
             "type": "coreclr",

@@ -80,6 +80,39 @@ namespace PitHero.UI
         /// <summary>Removes the grayscale overlay sprites (inverse of ShowTilledOverlays).</summary>
         public void HideTilledOverlays() => DestroyAllOverlays();
 
+        /// <summary>Marks a tile ReadyToTill if it is still tillable. Command handler entry point.</summary>
+        public void ApplyMarkTill(int tileX, int tileY)
+        {
+            var tileService = Core.Services.GetService<TileStateService>();
+            var buildingService = Core.Services.GetService<BuildingService>();
+            if (tileService == null)
+                return;
+            bool occupiedByBuilding = buildingService != null && buildingService.IsTileOccupied(tileX, tileY);
+            bool tillable = tileX >= GameConfig.FarmMinTillTileX && tileY >= GameConfig.FarmMinTillTileY && !occupiedByBuilding;
+            var tile = new Point(tileX, tileY);
+            if (!tillable || tileService.HasFlag(tile, TileStateFlag.ReadyToTill) || tileService.HasFlag(tile, TileStateFlag.Tilled))
+                return;
+            tileService.SetFlag(tile, TileStateFlag.ReadyToTill);
+            CreateOverlayEntity(tile);
+            RecalculateNeighborhood(tile);
+        }
+
+        /// <summary>Clears a ReadyToTill mark unless a crop plan sits on the tile. Command handler entry point.</summary>
+        public void ApplyUnmarkTill(int tileX, int tileY)
+        {
+            var tileService = Core.Services.GetService<TileStateService>();
+            if (tileService == null)
+                return;
+            var tile = new Point(tileX, tileY);
+            var cropService = Core.Services.GetService<CropPlantingService>();
+            bool hasCropPlan = cropService != null && cropService.HasPlan(tile);
+            if (!tileService.HasFlag(tile, TileStateFlag.ReadyToTill) || hasCropPlan)
+                return;
+            tileService.ClearFlag(tile, TileStateFlag.ReadyToTill);
+            DestroyOverlayEntity(tile);
+            RecalculateNeighborhood(tile);
+        }
+
         /// <summary>Per-frame update: moves the cursor, updates its color, and handles left/right click.</summary>
         public void Update()
         {
@@ -133,9 +166,9 @@ namespace PitHero.UI
                     if (tillable && !tileService.HasFlag(tile, TileStateFlag.ReadyToTill)
                         && !tileService.HasFlag(tile, TileStateFlag.Tilled))
                     {
-                        tileService.SetFlag(tile, TileStateFlag.ReadyToTill);
-                        CreateOverlayEntity(tile);
-                        RecalculateNeighborhood(tile);
+                        // Lands on a deterministic tick via the command queue (replay system)
+                        Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                            Services.Replay.PlayerCommandType.TillTile, tile.X, tile.Y));
                     }
                 }
             }
@@ -145,13 +178,10 @@ namespace PitHero.UI
                 if (tile != _lastUnmarkDragTile)
                 {
                     _lastUnmarkDragTile = tile;
-                    var cropService = Core.Services.GetService<CropPlantingService>();
-                    bool hasCropPlan = cropService != null && cropService.HasPlan(tile);
-                    if (tileService.HasFlag(tile, TileStateFlag.ReadyToTill) && !hasCropPlan)
+                    if (tileService.HasFlag(tile, TileStateFlag.ReadyToTill))
                     {
-                        tileService.ClearFlag(tile, TileStateFlag.ReadyToTill);
-                        DestroyOverlayEntity(tile);
-                        RecalculateNeighborhood(tile);
+                        Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                            Services.Replay.PlayerCommandType.UnmarkTillTile, tile.X, tile.Y));
                     }
                 }
             }

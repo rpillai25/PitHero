@@ -72,6 +72,16 @@ namespace PitHero.UI
             _notificationWindow.SetPosition(LeftPadding, y);
         }
 
+        /// <summary>Hides the notification immediately (replay mode takes over the screen).</summary>
+        public void HideNow()
+        {
+            if (!_isVisible || _notificationWindow == null)
+                return;
+            _notificationWindow.SetVisible(false);
+            _notificationWindow.Remove();
+            _isVisible = false;
+        }
+
         /// <summary>Polls for pending recruitment notifications and advances the hide timer.</summary>
         public void Update()
         {

@@ -52,6 +52,25 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
+        private SimulationClock _simulationClock; // Session tick counter; advanced last in every Update (replay system)
+
+        /// <summary>The camera controller (replay playback captures/restores the view across scene rebuilds).</summary>
+        public CameraControllerComponent CameraController => _cameraController;
+        /// <summary>Building placement overlay (player command handlers apply placements/moves through it).</summary>
+        public BuildingModeOverlay BuildingModeOverlay => _buildingModeOverlay;
+        /// <summary>Seed planting overlay (command handlers apply crop plans through it).</summary>
+        public SeedPlantingModeOverlay SeedModeOverlay => _seedModeOverlay;
+        /// <summary>Till overlay (command handlers apply till marks through it).</summary>
+        public TillModeOverlay TillModeOverlay => _tillModeOverlay;
+        /// <summary>Harvested-crops storage viewer (command handlers apply storage sales/moves through it).</summary>
+        public HarvestedCropsModeOverlay HarvestedCropsOverlay => _harvestedCropsModeOverlay;
+        /// <summary>Refrigerator window (command handlers apply fridge returns/sales through it).</summary>
+        public RefrigeratorDialog RefrigeratorDialog => _refrigeratorDialog;
+        /// <summary>Add-monster dialog (command handlers apply monster purchases through it).</summary>
+        public AddMonsterDialog AddMonsterDialog => _addMonsterDialog;
+        private Services.Replay.PlayerCommandService _playerCommands; // Player input -> simulation doorway (replay system)
+        private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
+        private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private Rendering.ColorGradingController _colorGrading;
@@ -287,6 +306,14 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(PitWidthManager));
             Core.Services.RemoveService(typeof(ShortcutBarService));
             Core.Services.RemoveService(typeof(SettingsUI));
+            _simulationClock?.Detach();
+            Core.Services.RemoveService(typeof(SimulationClock));
+            _playerCommands?.Detach();
+            Core.Services.RemoveService(typeof(Services.Replay.PlayerCommandService));
+            _replayRecorder?.Detach();
+            Core.Services.RemoveService(typeof(Services.Replay.ReplayRecorder));
+            // A new scene always starts unpaused; pending pause commands die with this scene
+            Core.Services.GetService<PauseService>()?.ResetImmediate();
         }
 
         public override void Begin()
@@ -297,6 +324,39 @@ namespace PitHero.ECS.Scenes
 
             // Captured up front: ApplyPendingLoadData() below clears PendingLoadData
             bool isNewGame = SaveLoadService.PendingLoadData == null;
+
+            // ── Deterministic session seed (replay system) ───────────────────────────────
+            // Must run before ANY world content is generated (SpawnPit/SetPitLevel draw RNG).
+            // A replay bootstrap supplies the recorded seed; otherwise a fresh one is generated.
+            var replayBootstrap = Services.Replay.ReplaySessionBootstrap.Consume();
+            int masterSeed = replayBootstrap != null ? replayBootstrap.MasterSeed : GameRandom.GenerateMasterSeed();
+            GameRandom.InitializeSession(masterSeed);
+            Core.Services.GetService<HairstyleQueueService>()?.ResetAndRefill();
+            SpeechBubbleDialogue.Reseed(masterSeed ^ GameConfig.ReplaySpeechSeedSalt);
+            Core.Services.GetService<Services.LootShuffleService>()?.SetEpicRng(GameRandom.Loot);
+            _simulationClock = new SimulationClock();
+            Core.Services.AddService(_simulationClock);
+            _playerCommands = new Services.Replay.PlayerCommandService();
+            Core.Services.AddService(_playerCommands);
+            Debug.Log($"[MainGameScene] Session master seed {masterSeed}");
+
+            // ── Replay recorder: capture how this session starts ────────────────────────
+            // A replay of a NEW game re-runs the new-game path, so the global services that the
+            // new-game path does not reset (Second Chance vault, defeated monsters) are restored
+            // from the recording's start blob before any of them are touched.
+            if (replayBootstrap?.NewGameGlobals != null)
+                RestoreGlobalServicesFromSave(replayBootstrap.NewGameGlobals);
+
+            _replayRecorder = new Services.Replay.ReplayRecorder();
+            Core.Services.AddService(_replayRecorder);
+            _playerCommands.OnCommandApplied += _replayRecorder.RecordCommand;
+            var replayKind = isNewGame ? Services.Replay.ReplayKind.NewGame : Services.Replay.ReplayKind.Load;
+            byte[] startBlob = replayBootstrap?.Data != null
+                ? replayBootstrap.Data.StateBlob
+                : CaptureSessionStartBlob(isNewGame);
+            _replayRecorder.Initialize(replayKind, masterSeed, startBlob, replayBootstrap?.Data);
+            if (replayBootstrap?.Data != null)
+                _replayRecorder.IsRecording = false; // playback: the recording IS the list; resume on exit
 
             LoadMap();
             SpawnPit();
@@ -439,7 +499,104 @@ namespace PitHero.ECS.Scenes
             if (isNewGame)
                 StartNewGameIntro(hero);
 
+            // Replay list metadata (hero/job/pit) now that the hero and pit level exist
+            var heroForReplay = hero?.GetComponent<HeroComponent>()?.LinkedHero;
+            _replayRecorder?.SetSessionInfo(heroForReplay?.Name, heroForReplay?.Job?.Name,
+                Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0,
+                Core.Services.GetService<GameStateService>()?.HeroId ?? 0);
+
             _isInitializationComplete = true;
+
+            // A scene started from a replay hands control to the playback service last, once every
+            // service and UI element exists
+            if (replayBootstrap?.Data != null)
+                Services.Replay.ReplayPlaybackService.Current?.OnSceneStarted(this);
+        }
+
+        /// <summary>The gameplay map every session uses.</summary>
+        public const string DefaultMapPath = "Content/Tilemaps/PitHero.tmx";
+
+        /// <summary>Creates the gameplay scene with its grass clear/letterbox colors set (new game, load and replay all start here).</summary>
+        public static MainGameScene CreateForGameplay(string mapPath)
+        {
+            var scene = new MainGameScene(mapPath);
+            var grassColor = new Color(71, 114, 56);
+            scene.ClearColor = grassColor;
+            scene.LetterboxColor = grassColor;
+            return scene;
+        }
+
+        /// <summary>
+        /// Serializes the state this session starts from for the replay header: the exact SaveData
+        /// being loaded, or (new game) a snapshot of the global services as they stand before the
+        /// new-game path runs. Never throws — a null blob only weakens NewGame replays.
+        /// </summary>
+        private static byte[] CaptureSessionStartBlob(bool isNewGame)
+        {
+            try
+            {
+                var data = isNewGame ? SaveLoadService.GatherCurrentState() : SaveLoadService.PendingLoadData;
+                return Services.Replay.ReplayIO.SerializeSaveData(data);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Warn($"[MainGameScene] Could not capture replay start state: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Restores the global services a save carries that the scene's new-game path leaves alone:
+        /// the defeated-monster record and the Second Chance vault contents. Used by ApplyPendingLoadData
+        /// for loads and by Begin for NewGame-kind replays.
+        /// </summary>
+        private static void RestoreGlobalServicesFromSave(SaveData data)
+        {
+            if (data == null)
+                return;
+
+            var defeatedMonsterService = Core.Services.GetService<DefeatedMonsterService>();
+            if (defeatedMonsterService != null && data.DefeatedMonsterTypes != null)
+                defeatedMonsterService.LoadFrom(data.DefeatedMonsterTypes);
+
+            var vaultService = Core.Services.GetService<SecondChanceMerchantVault>();
+            if (vaultService == null)
+                return;
+
+            // Clear vault before restoring to prevent duplication on repeated loads
+            vaultService.Clear();
+
+            if (data.SecondChanceVaultCrystals != null)
+            {
+                for (int i = 0; i < data.SecondChanceVaultCrystals.Count; i++)
+                    vaultService.AddCrystal(data.SecondChanceVaultCrystals[i].ToHeroCrystal());
+            }
+
+            if (data.SecondChanceVaultItems != null)
+            {
+                for (int i = 0; i < data.SecondChanceVaultItems.Count; i++)
+                {
+                    var vi = data.SecondChanceVaultItems[i];
+                    if (string.IsNullOrEmpty(vi.Name)) continue;
+
+                    if (ItemRegistry.TryCreateItem(vi.Name, out var itemTemplate))
+                    {
+                        if (itemTemplate is Consumable consumable)
+                        {
+                            consumable.StackCount = vi.Quantity;
+                            vaultService.AddItem(consumable, logEvictions: false);
+                        }
+                        else
+                        {
+                            for (int q = 0; q < vi.Quantity; q++)
+                            {
+                                if (ItemRegistry.TryCreateItem(vi.Name, out var gearCopy))
+                                    vaultService.AddItem(gearCopy, logEvictions: false);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>Spawns the scripted new-game farm content: Monster House + Crop Storage + starter farming Slime (issue #316).</summary>
@@ -1302,17 +1459,10 @@ namespace PitHero.ECS.Scenes
                     UI.PitHeroSkin.CreateSkin(),
                     onYes: () =>
                     {
-                        // Remove first and pay only if this call is what actually removed it. The
-                        // confirmation dialog is non-modal, so a second sell dialog can be opened
-                        // for the same building before the first is confirmed; paying out
-                        // unconditionally would mint the refund once per dialog.
-                        bool sold = Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb) ?? false;
-                        if (!sold)
-                            return;
-                        pb.WorldEntity?.Destroy();
-                        var gameState = Core.Services.GetService<Services.GameStateService>();
-                        gameState?.AddFunds(gold, "sell_building");
-                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(Util.SoundEffectTypes.SoundEffectType.ItemSell);
+                        // Lands on a deterministic tick via the command queue; the handler removes
+                        // first and pays only if this call is what actually removed it (replay system)
+                        Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                            Services.Replay.PlayerCommandType.RemoveBuilding, pb.UniqueId));
                     });
                 dialog.YesButton.SuppressGlobalClick = true;
                 dialog.Show(_uiStage);
@@ -2127,6 +2277,11 @@ namespace PitHero.ECS.Scenes
             shortcutBarService.SetShortcutBar(_shortcutBar);
             Core.Services.AddService(shortcutBarService);
 
+            // Replay transport (hidden until a replay plays)
+            _replayScrubber = new ReplayScrubberPanel(PitHeroSkin.CreateSkin());
+            uiCanvas.Stage.AddElement(_replayScrubber);
+            PositionReplayScrubber();
+
             // Let SettingsUI manage the shortcut bar hide/show animation
             _settingsUI?.SetShortcutBar(_shortcutBar);
 
@@ -2669,6 +2824,21 @@ namespace PitHero.ECS.Scenes
         /// <summary>
         /// Positions the shortcut bar at bottom center of screen based on current window mode
         /// </summary>
+        /// <summary>Bottom-center placement of the replay transport in stage space (re-run on stage resize and on show).</summary>
+        private void PositionReplayScrubber()
+        {
+            if (_replayScrubber == null || _uiStage == null)
+                return;
+            float stageW = _uiStage.GetWidth();
+            float stageH = _uiStage.GetHeight();
+            float width = GameConfig.ReplayScrubberWidth;
+            float maxWidth = stageW - 2f * GameConfig.UIStageMargin;
+            if (width > maxWidth)
+                width = maxWidth;
+            _replayScrubber.SetSize(width, GameConfig.ReplayScrubberHeight);
+            _replayScrubber.SetPosition((stageW - width) / 2f, stageH - GameConfig.ReplayScrubberHeight - GameConfig.ReplayScrubberBottomMargin);
+        }
+
         private void PositionShortcutBar()
         {
             if (_shortcutBar == null)
@@ -2836,9 +3006,130 @@ namespace PitHero.ECS.Scenes
             Debug.Log("[MainGameScene] Reconnected all UI to new hero");
         }
 
+        /// <summary>
+        /// One fixed simulation step. Only simulation state advances here (entities, coroutines via
+        /// Core, in-game clock, coordinators, automation). Nothing in this method may read input or
+        /// depend on the wall clock — see <see cref="PresentationUpdate"/> for UI/camera work.
+        /// </summary>
         public override void Update()
         {
             base.Update();
+
+            Core.Services.GetService<InGameTimeService>()?.Update();
+
+            // Update mercenary manager
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            mercenaryManager?.Update();
+
+            // Sync farming / kitchen workers with job assignments. Held during the new-game intro so
+            // the starter Slime stays inside its house until the hero has arrived (issue #396).
+            if (!IsIntroActive)
+            {
+                Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
+                Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
+            }
+
+            // Tick party dining (eat timers, auto-resume, reload restart)
+            Core.Services.GetService<Services.PartyDiningService>()?.Update();
+
+            // Hour-edge triggers: 6 AM (morning reset), 12 PM (lunch), 6 PM (dinner)
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService != null)
+            {
+                int currentHour = timeService.Hour;
+                if (_lastInGameHour != -1)
+                {
+                    if (currentHour == 6 && _lastInGameHour != 6)
+                    {
+                        // Morning reset: clear wet tiles, re-populate watering queue
+                        Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
+                        Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
+                        // Belt-and-braces ClearAll (last dinner ~9:59 PM expires ~3:59 AM naturally)
+                        Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
+                        // Reset so breakfast trip can fire (breakfast itself is wake-driven from SleepInBedAction)
+                        Core.Services.GetService<Services.PartyDiningService>()?.ResetForNewMealPeriod();
+                    }
+                    else if (currentHour == 12 && _lastInGameHour != 12)
+                    {
+                        // Lunch (issue #392)
+                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
+                        partyDining?.ResetForNewMealPeriod();
+                        partyDining?.BeginAutoDine(MealPeriod.Lunch);
+                    }
+                    else if (currentHour == 18 && _lastInGameHour != 18)
+                    {
+                        // Dinner (issue #392)
+                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
+                        partyDining?.ResetForNewMealPeriod();
+                        partyDining?.BeginAutoDine(MealPeriod.Dinner);
+                    }
+                }
+                _lastInGameHour = currentHour;
+            }
+
+            // Advance crop growth when not paused
+            var pauseService = Core.Services.GetService<PauseService>();
+            bool isPaused = pauseService?.IsPaused ?? false;
+            if (!isPaused)
+            {
+                var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+                Core.Services.GetService<Services.CropGrowthService>()?.Update(
+                    Core.Services.GetService<TileStateService>(), cropsAtlas);
+                Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
+                Core.Services.GetService<Services.AutoCropSellService>()?.Update();
+                Core.Services.GetService<Services.AutoJobAssignmentService>()?.Update();
+                Core.Services.GetService<Services.AutoLearnSkillsService>()?.Update();
+            }
+
+            // Check if a living hero who respawned without a crystal has arrived at the statue
+            _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
+
+            // Player commands land here, at the same point of every tick, live or replayed
+            long tick = _simulationClock != null ? _simulationClock.Tick : 0L;
+            var playback = Services.Replay.ReplayPlaybackService.Current;
+            if (playback != null && playback.IsActive)
+                playback.InjectDue(tick, _playerCommands);
+            _playerCommands?.Drain(tick);
+
+            // Divergence tripwire: periodic fingerprint of the simulation
+            if (tick % GameConfig.ReplayHashIntervalTicks == 0)
+                Services.Replay.ReplayTripwire.ReportStateHash(Services.Replay.SimulationStateHasher.Sample(tick));
+
+            // Always last: this step is complete
+            _simulationClock?.Advance();
+        }
+
+        /// <summary>
+        /// Once per rendered frame, after all simulation steps: UI stages, camera, HUD, labels, mode
+        /// overlays and world hover/click handling. Anything here that changes simulation state must
+        /// go through a player command so it lands on a deterministic tick.
+        /// </summary>
+        public override void PresentationUpdate()
+        {
+            // Replay playback drives the engine clock from the presentation side (play/pause/seek)
+            var replayPlayback = Services.Replay.ReplayPlaybackService.Current;
+            bool replayActive = replayPlayback != null && replayPlayback.IsActive;
+            if (replayActive)
+                replayPlayback.Update();
+            if (_replayScrubber != null)
+            {
+                if (_replayScrubber.IsVisible() != replayActive)
+                {
+                    _replayScrubber.SetVisible(replayActive);
+                    if (replayActive)
+                    {
+                        _replayScrubber.ResetDisplayCache();
+                        PositionReplayScrubber();
+                        _replayScrubber.ToFront();
+                    }
+                }
+                if (replayActive)
+                    _replayScrubber.Update();
+            }
+
+            // Camera before the UI stages, matching the entity-order the camera component used to update in
+            _cameraController?.PresentationUpdate();
+            base.PresentationUpdate();
 
             // Re-anchor stage-space HUD when the render target size changes (window shrink/restore,
             // dock, monitor swap). Clock/tilling/planting labels already reposition every frame.
@@ -2854,6 +3145,7 @@ namespace PitHero.ECS.Scenes
                     RepositionHudLabels();
                     RepositionGraphicalHud();
                     PositionEventConsolePanel();
+                    PositionReplayScrubber();
                     if (_pauseOverlayRenderer != null)
                     {
                         _pauseOverlayRenderer.SetWidth(stageW * 2f);
@@ -2872,13 +3164,13 @@ namespace PitHero.ECS.Scenes
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService != null && _pauseOverlayEntity != null)
             {
-                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused && !(_settingsUI?.IsFreeMoveModeActive ?? false));
+                // Recorded pauses replay the simulation freeze but must not dim a replay's screen
+                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused && !(_settingsUI?.IsFreeMoveModeActive ?? false) && !replayActive);
             }
 
             // Keep pit level label up to date
             UpdatePitLevelLabel();
             UpdateFundsLabel();
-            Core.Services.GetService<InGameTimeService>()?.Update();
             _colorGrading?.UpdateTimeOfDay();
             _cloudOverlay?.Update();
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
@@ -2987,7 +3279,9 @@ namespace PitHero.ECS.Scenes
                     _farmModeRestoreHalfZoom = false;
                     pauseService?.SetFarmModePause(false);
                     Core.Services.GetService<Services.CropGrowthService>()?.SetCropsVisible(true);
-                    Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
+                    // Rescan on a deterministic tick, after the unpause command above (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(
+                        new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.FarmRescan));
                     UIWindowManager.SetAutoScrollToHero(_savedFarmAutoScroll);
                     if (!inTillMode)
                         _tillModeOverlay?.HideTilledOverlays();
@@ -3016,91 +3310,29 @@ namespace PitHero.ECS.Scenes
             // Refresh shortcut bar to keep it in sync with inventory
             _shortcutBar?.RefreshItems();
 
-            // Handle keyboard shortcuts via shortcut bar (suspended during the new-game intro)
-            if (!IsIntroActive)
+            // Handle keyboard shortcuts via shortcut bar (suspended during the new-game intro and replays)
+            if (!IsIntroActive && !replayActive)
                 _shortcutBar?.HandleKeyboardShortcuts();
 
-            // Update mercenary manager
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
-            mercenaryManager?.Update();
-
-            // Sync farming / kitchen workers with job assignments. Held during the new-game intro so
-            // the starter Slime stays inside its house until the hero has arrived (issue #396).
-            if (!IsIntroActive)
-            {
-                Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
-                Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
-            }
-
-            // Tick party dining (eat timers, auto-resume, reload restart)
-            Core.Services.GetService<Services.PartyDiningService>()?.Update();
-
-            // Hour-edge triggers: 6 AM (morning reset), 12 PM (lunch), 6 PM (dinner)
-            var timeService = Core.Services.GetService<InGameTimeService>();
-            if (timeService != null)
-            {
-                int currentHour = timeService.Hour;
-                if (_lastInGameHour != -1)
-                {
-                    if (currentHour == 6 && _lastInGameHour != 6)
-                    {
-                        // Morning reset: clear wet tiles, re-populate watering queue
-                        Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
-                        Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
-                        // Belt-and-braces ClearAll (last dinner ~9:59 PM expires ~3:59 AM naturally)
-                        Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
-                        // Reset so breakfast trip can fire (breakfast itself is wake-driven from SleepInBedAction)
-                        Core.Services.GetService<Services.PartyDiningService>()?.ResetForNewMealPeriod();
-                    }
-                    else if (currentHour == 12 && _lastInGameHour != 12)
-                    {
-                        // Lunch (issue #392)
-                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
-                        partyDining?.ResetForNewMealPeriod();
-                        partyDining?.BeginAutoDine(MealPeriod.Lunch);
-                    }
-                    else if (currentHour == 18 && _lastInGameHour != 18)
-                    {
-                        // Dinner (issue #392)
-                        var partyDining = Core.Services.GetService<Services.PartyDiningService>();
-                        partyDining?.ResetForNewMealPeriod();
-                        partyDining?.BeginAutoDine(MealPeriod.Dinner);
-                    }
-                }
-                _lastInGameHour = currentHour;
-            }
-
-            // Advance crop growth when not paused
-            bool isPaused = pauseService?.IsPaused ?? false;
-            if (!isPaused)
-            {
-                var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-                Core.Services.GetService<Services.CropGrowthService>()?.Update(
-                    Core.Services.GetService<TileStateService>(), cropsAtlas);
-                Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
-                Core.Services.GetService<Services.AutoCropSellService>()?.Update();
-                Core.Services.GetService<Services.AutoJobAssignmentService>()?.Update();
-                Core.Services.GetService<Services.AutoLearnSkillsService>()?.Update();
-            }
-
-            // Check if a living hero who respawned without a crystal has arrived at the statue
-            _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
-
-            // Handle mercenary hover and click detection
+            // Handle mercenary hover and click detection (world clicks are view-only during a replay)
             HandleMercenaryHover();
-            HandleMercenaryClicks();
+            if (!replayActive)
+                HandleMercenaryClicks();
 
             // Handle placed-building hover outline and click-to-open context menu
             HandleBuildingHover();
-            HandleBuildingClicks();
+            if (!replayActive)
+                HandleBuildingClicks();
 
             // Handle hero-statue hover outline and click-to-open job change dialog
             HandleStatueHover();
-            HandleStatueClicks();
+            if (!replayActive)
+                HandleStatueClicks();
 
             // Handle kitchen-fridge hover outline and click-to-open refrigerator window
             HandleFridgeHover();
-            HandleFridgeClicks();
+            if (!replayActive)
+                HandleFridgeClicks();
             _refrigeratorDialog?.Update();
             UpdateFridgeDialogGate();
             UpdateBuildingMenuGate();

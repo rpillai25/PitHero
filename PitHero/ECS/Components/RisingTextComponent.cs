@@ -59,6 +59,11 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
+            if (Core.CosmeticUpdatesSuspended)
+            {
+                Kill(); // replay seek: finish instantly so the text does not rise when the seek ends
+                return;
+            }
             _elapsedTime += Time.DeltaTime;
 
             if (_pauseService?.IsPaused == true)

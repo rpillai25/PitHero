@@ -12,6 +12,8 @@ namespace PitHero.ECS.Components
 
         public override void Update()
         {
+            if (Core.CosmeticUpdatesSuspended)
+                return; // replay seek: layer depths are only read by the renderer
             var camera = Scene.Camera;
 
             foreach (var layer in _ySortLayers)

@@ -21,6 +21,12 @@ namespace PitHero
         {
             base.Initialize();
 
+            // Deterministic simulation: the world advances only in fixed 1/60 s steps (replay system).
+            // UI, camera and HUD run once per rendered frame via Scene.PresentationUpdate.
+            Core.UseFixedTimeStep = true;
+            Core.FixedStepSeconds = GameConfig.SimulationFixedStepSeconds;
+            Core.MaxStepsPerFrame = GameConfig.SimulationMaxStepsPerFrame;
+
             // Synchronize ItemRegistry tier stride with the biome loop length so that
             // tier-scaled gear names ("Item+2", "Item+3", …) resolve correctly on load.
             ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel;
@@ -39,10 +45,16 @@ namespace PitHero
             Services.AddService(new HairstyleQueueService(GameConfig.MaleHeroHairstyleCount));
             Services.AddService(new HeroDesignService());
 
+            // Replay system: replay files + playback survive scene swaps, so they are global
+            Services.AddService(new PitHero.Services.Replay.ReplayFileService());
+            Services.AddService(new PitHero.Services.Replay.ReplayPlaybackService());
+
             // Register persistence services
             var fileDataStore = new FileDataStore(null);
             Services.AddService(fileDataStore);
             Services.AddService(new SaveLoadService(fileDataStore));
+            // System save: artifacts belong to the player, not to a hero or slot
+            Services.AddService(new ArtifactService());
 
             // Register global managers
             SoundEffectManager soundEffectManager = new SoundEffectManager();

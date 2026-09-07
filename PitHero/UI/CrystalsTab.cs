@@ -456,14 +456,41 @@ namespace PitHero.UI
             if (svc.InventoryCount >= svc.InventoryCapacity)
                 return;
 
+            // Lands on a deterministic tick via the command queue; ApplyForge re-checks everything (replay system)
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.ForgeCrystals, _currentForgeFee));
+        }
+
+        /// <summary>Forges the two forge-slot crystals for the quoted fee if still possible. Command handler entry point.</summary>
+        public void ApplyForge(int fee)
+        {
+            var svc = GetCrystalService();
+            var gameState = Core.Services?.GetService<GameStateService>();
+            if (svc == null || gameState == null || gameState.Funds < fee)
+                return;
+            if (svc.InventoryCount >= svc.InventoryCapacity)
+                return;
+
             var result = svc.TryForge("Combo Crystal");
             if (result != null)
             {
                 svc.TryAddToInventory(result);
-                gameState.Funds -= _currentForgeFee;
+                gameState.Funds -= fee;
                 RefreshAll();
                 HideCrystalCard();
             }
+        }
+
+        /// <summary>Moves a crystal between two collection slots. Command handler entry point.</summary>
+        public void ApplyCrystalSlotSwap(int srcType, int srcIdx, int dstType, int dstIdx)
+        {
+            var svc = GetCrystalService();
+            if (svc == null)
+                return;
+            if (srcType == dstType && srcIdx == dstIdx)
+                return;
+            svc.SwapSlots((CrystalSlotType)srcType, srcIdx, (CrystalSlotType)dstType, dstIdx);
+            RefreshAll();
         }
 
         private void OnCreateClicked(Button b)
@@ -642,10 +669,10 @@ namespace PitHero.UI
             }
 
             InventoryDragManager.EndDrag();
-            svc.SwapSlots(srcType, srcIdx, dstType, dstIdx);
             // Swap outright — no tween. A ghost copy flying from the old slot to the new one read as
-            // a drag after-effect.
-            RefreshAll();
+            // a drag after-effect. Lands on a deterministic tick via the command queue (replay system).
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SwapCrystalSlots, (int)srcType, srcIdx, (int)dstType, dstIdx));
         }
 
         /// <summary>Full-screen transparent element that invokes an action when clicked (consuming the click).</summary>

@@ -266,6 +266,15 @@ ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear 
 WindowSecondChanceShop,Second Chance Shop
 TabItems,Items
 TabSeeds,Seeds
+TabArtifacts,Artifacts
+ArtifactSphereOfForesightName,Sphere of Foresight
+ArtifactSphereOfForesightDesc,Seer's crystal which allows one to see the future in replays
+ArtifactChronosTimepieceName,Chronos Timepiece
+ArtifactChronosTimepieceDesc,Powerful timepiece once owned by master of time. Allows for time travel in replays
+ArtifactGrantButtonFormat,Grant ({0}G)
+ArtifactShopHeader,Show proof of gold to be granted an artifact
+ArtifactPriceFormat,{0}G
+ArtifactShopEmpty,No artifacts are for sale right now.
 SecondChanceBuyPrompt,Buy for {0} gold?
 SecondChanceBuyQtyPrompt,Buy {0}?
 SecondChanceBuyTotal,Total: {0} gold
@@ -466,3 +475,44 @@ MonsterInfoIdleWorkers,Current Idle Workers:
 ConsoleThreatTarget,{0} has the monsters' attention!
 ConsoleBattleProvoke,{0} provokes the enemy to protect {1}!
 ConsoleBattleProvokeSolo,{0} provokes the enemy!
+
+# Replay system
+TabReplay,Replay
+ButtonReplayPlay,Play
+ButtonReplayPause,Pause
+ButtonReplayExit,Exit Replay
+ButtonReplayDelete,Delete
+ButtonReplaySaveSession,Save Session Replay
+ButtonReplayCurrentSession,Replay Current Session
+ButtonReplayPlaySelected,Play Selected
+ReplayListEmpty,No saved replays yet. Use Save Session Replay to keep the current session.
+ReplayListEmptyFiltered,No saved replays for the current hero. Untick Filter to current hero to see all replays.
+ReplayFilterCurrentHero,Filter to current hero
+ReplayRowTitleFormat,{0} the {1}
+ReplayRowDetailFormat,{0}  -  {1}  -  Pit {2}
+ReplaySelectedNone,No replay selected
+ReplaySelectedFormat,Selected: {0}
+ReplaySpeedFormat,{0}x
+ReplayTimeFormat,{0} / {1}
+ReplaySeekingFormat,Seeking... {0}%
+ReplayStarting,Starting replay...
+ReplayDivergenceAt,Diverged at {0} ({1})
+ReplayDivergenceState,state
+ReplayDivergenceDecision,hero decision
+ReplayNoDivergence,In sync
+ReplayEndReached,End of replay
+ReplayFutureStatus,Simulated future
+DialogConfirmReplay,Start Replay
+ConfirmReplayInterruptMessage,Your session is set aside while the replay plays and resumes exactly where you left it when you exit. Continue?
+DialogConfirmDeleteReplay,Delete Replay
+ConfirmDeleteReplayMessage,Delete this replay? This cannot be undone.
+DialogReplaySaved,Replay Saved
+ReplaySavedMessage,Saved as {0}
+ReplaySaveFailedMessage,The session could not be saved as a replay.
+ButtonReplayContinueHere,Time Travel Here
+DialogConfirmContinueHere,Time Travel
+ConfirmContinueHereMessage,Are you sure you want to time travel to the selected point in the past? Anything that happened since then will be lost.
+ConfirmContinueFutureMessage,Are you sure you want to time travel to the selected point in the future?
+ReplayInfoTitle,Replay Info
+ReplayInfoIntro,Save a replay and play it back, or replay the currently running session up to the current point in time without saving.
+ReplayInfoWarning,WARNING: The longer a play session is, the longer the replay takes to seek. It is intended for sessions of a few hours. If you leave a session on for several days, expect much longer seek times. A new session is started any time you load a save file or start a new game.

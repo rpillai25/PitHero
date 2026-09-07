@@ -1,0 +1,402 @@
+using System.Collections.Generic;
+using Nez;
+using Nez.UI;
+using Nez.Textures;
+using PitHero.Services;
+using PitHero.Services.Replay;
+
+namespace PitHero.UI
+{
+    /// <summary>
+    /// Content of the Settings window's Replay tab: a scrolling, selectable list of saved replays
+    /// plus Play Selected / Delete / Save Session Replay / Replay Current Session. Starting a
+    /// replay goes through a confirmation (it interrupts the live session) and then closes the
+    /// settings window through its normal path before handing the recording to playback.
+    /// </summary>
+    public class ReplayTab
+    {
+        private readonly Skin _skin;
+        private readonly Stage _stage;
+        private readonly SettingsUI _settingsUI;
+        private TextService _textService;
+
+        private Table _rowsTable;
+        private ScrollPane _scrollPane;
+        private Label _selectedLabel;
+        private CheckBox _filterCheckBox;      // on by default: list only the current hero's recordings
+        private TextButton _playButton;
+        private TextButton _deleteButton;
+        private List<ReplayFileInfo> _entries = new List<ReplayFileInfo>();
+        private int _selectedIndex = -1;
+        private ConfirmationDialog _confirmDialog;
+        private MessageDialog _messageDialog;
+
+        private const float RowHeight = 40f;
+        private const float RowWidth = 400f;
+        private const float RowPad = 3f;
+        private const float ButtonRowHeight = 32f;    // tall enough for two text lines; single-line labels center vertically
+        private const float TwoLineButtonPad = 4f;    // horizontal room around the wider of the two lines (insets are added separately)
+        private const float ButtonGap = 10f;          // space between neighbouring buttons in the row
+
+        /// <summary>
+        /// A button whose label wraps at its last space onto two lines. The button is made just wide
+        /// enough for the wider line, which is narrower than the whole text, so Nez's word wrap breaks
+        /// exactly there ("Replay Current" / "Session").
+        /// </summary>
+        private TextButton MakeTwoLineButton(string text, out float width)
+        {
+            var button = new TextButton(text, _skin, CompactButtonStyle);
+            var label = button.GetLabel();
+            label.SetWrap(true);
+            label.SetAlignment(Align.Center, Align.Center); // center the block and each wrapped line
+
+            int split = text.LastIndexOf(' ');
+            string line1 = split > 0 ? text.Substring(0, split) : text;
+            string line2 = split > 0 ? text.Substring(split + 1) : string.Empty;
+            float widest = System.Math.Max(MeasureText(button, line1), MeasureText(button, line2));
+            float full = MeasureText(button, text);
+            // The button's background insets come out of the cell width before the label sees it
+            float insets = button.GetPadX();
+            width = widest + TwoLineButtonPad + insets;
+            float unbroken = full + insets;
+            if (width >= unbroken)
+                width = unbroken - 1f; // must be narrower than the unbroken text or it will not wrap
+            return button;
+        }
+
+        /// <summary>A single-line compact button sized to its text plus the style's insets.</summary>
+        private TextButton MakeSingleLineButton(string text, out float width)
+        {
+            var button = new TextButton(text, _skin, CompactButtonStyle);
+            width = MeasureText(button, text) + TwoLineButtonPad + button.GetPadX();
+            return button;
+        }
+
+        // Measured with the button's own label style so the font matches what is drawn
+        private static float MeasureText(TextButton button, string text)
+        {
+            return new Label(text, button.GetLabel().GetStyle()).PreferredWidth;
+        }
+
+        private const string CompactButtonStyle = "ph-compact";
+
+        /// <summary>Creates the tab content builder.</summary>
+        public ReplayTab(Skin skin, Stage stage, SettingsUI settingsUI)
+        {
+            _skin = skin;
+            _stage = stage;
+            _settingsUI = settingsUI;
+        }
+
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+                _textService = Core.Services.GetService<TextService>();
+            return _textService;
+        }
+
+        private string GetText(string key)
+        {
+            return GetTextService()?.DisplayText(TextType.UI, key) ?? key;
+        }
+
+        /// <summary>Builds the tab's widgets into <paramref name="tab"/>.</summary>
+        public void Build(Tab tab)
+        {
+            var content = new Table();
+            content.PadLeft(10f).PadRight(10f);
+
+            _rowsTable = new Table();
+            _scrollPane = new ScrollPane(_rowsTable, _skin, "ph-default");
+            _scrollPane.SetScrollingDisabled(true, false);
+            _scrollPane.SetFadeScrollBars(false);
+            content.Add(_scrollPane).Expand().Fill().SetPadTop(8f).SetPadBottom(6f);
+            content.Row();
+
+            _selectedLabel = new Label(GetText(UITextKey.ReplaySelectedNone), _skin, "ph-default");
+
+            _filterCheckBox = new CheckBox(GetText(UITextKey.ReplayFilterCurrentHero), _skin, "ph-default");
+            _filterCheckBox.IsChecked = true;
+            _filterCheckBox.OnChanged += (_) =>
+            {
+                _selectedIndex = -1; // row indices change with the filter
+                Refresh();
+            };
+
+            var buttons = new Table();
+            _playButton = MakeSingleLineButton(GetText(UITextKey.ButtonReplayPlaySelected), out float playWidth);
+            _playButton.OnClicked += (_) => OnPlaySelected();
+            _deleteButton = MakeSingleLineButton(GetText(UITextKey.ButtonReplayDelete), out float deleteWidth);
+            _deleteButton.ClickSoundCategory = ButtonClickCategory.Cancel;
+            _deleteButton.OnClicked += (_) => OnDeleteSelected();
+            // The two long labels wrap onto two lines ("Save Session" / "Replay") so the row fits the window
+            var saveButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplaySaveSession), out float saveWidth);
+            saveButton.OnClicked += (_) => OnSaveSession();
+            var replayCurrentButton = MakeTwoLineButton(GetText(UITextKey.ButtonReplayCurrentSession), out float replayCurrentWidth);
+            replayCurrentButton.OnClicked += (_) => OnReplayCurrent();
+
+            // "?" button opening the Replay Info window (session-length disclaimer): a standard
+            // nine-patch button face (no side padding) with the 32x32 sprite drawn at native size
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            var infoStyle = new ImageButtonStyle
+            {
+                Up = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4)),
+                Down = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4)),
+                Over = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4)),
+                ImageUp = new SpriteDrawable(uiAtlas.GetSprite("QuestionMark")),
+                PressedOffsetX = 1,
+                PressedOffsetY = 1
+            };
+            var infoButton = new ImageButton(infoStyle);
+            infoButton.OnClicked += (_) => ShowInfo();
+
+            buttons.Add(_playButton).Width(playWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
+            buttons.Add(_deleteButton).Width(deleteWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
+            buttons.Add(saveButton).Width(saveWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
+            buttons.Add(replayCurrentButton).Width(replayCurrentWidth).Height(ButtonRowHeight).SetPadRight(ButtonGap);
+            buttons.Add(infoButton).Size(InfoButtonSize, InfoButtonSize);
+
+            // Label and button row share one centered block, so the label's left edge is the row's
+            // left edge whatever widths the localized labels produce
+            var bottom = new Table();
+            bottom.Add(_filterCheckBox).Left().SetPadBottom(4f);
+            bottom.Row();
+            bottom.Add(_selectedLabel).Left().SetPadBottom(6f);
+            bottom.Row();
+            bottom.Add(buttons).Left();
+            content.Add(bottom).Center().SetPadBottom(8f);
+
+            tab.Add(content).Expand().Fill();
+
+            SetSelected(-1);
+            Refresh();
+        }
+
+        /// <summary>Re-reads the replay directory and rebuilds the rows. Called when the tab is shown and after save/delete.</summary>
+        public void Refresh()
+        {
+            if (_rowsTable == null)
+                return;
+
+            var fileService = Core.Services?.GetService<ReplayFileService>();
+            var all = fileService != null ? fileService.Enumerate() : new List<ReplayFileInfo>();
+
+            // "Filter to current hero": keep only recordings stamped with the live hero's id. With no
+            // known hero (id 0) the filter has nothing to match and the full list shows.
+            int heroId = Core.Services?.GetService<GameStateService>()?.HeroId ?? 0;
+            bool filtered = _filterCheckBox != null && _filterCheckBox.IsChecked && heroId != 0;
+            if (filtered)
+            {
+                _entries = new List<ReplayFileInfo>(all.Count);
+                for (int i = 0; i < all.Count; i++)
+                {
+                    if (all[i].HeroId == heroId)
+                        _entries.Add(all[i]);
+                }
+            }
+            else
+            {
+                _entries = all;
+            }
+
+            _rowsTable.ClearChildren();
+            if (_entries.Count == 0)
+            {
+                string emptyKey = filtered && all.Count > 0 ? UITextKey.ReplayListEmptyFiltered : UITextKey.ReplayListEmpty;
+                var empty = new Label(GetText(emptyKey), _skin, "ph-default");
+                empty.SetWrap(true);
+                _rowsTable.Add(empty).Width(RowWidth).SetPadTop(8f);
+            }
+            else
+            {
+                for (int i = 0; i < _entries.Count; i++)
+                {
+                    BuildRow(_entries[i], i);
+                    _rowsTable.Row();
+                }
+            }
+            _rowsTable.Invalidate();
+            _scrollPane.Invalidate();
+
+            SetSelected(_selectedIndex < _entries.Count ? _selectedIndex : -1);
+        }
+
+        private void BuildRow(ReplayFileInfo info, int index)
+        {
+            var rowTable = new Table();
+
+            var title = new Label(string.Format(GetText(UITextKey.ReplayRowTitleFormat), info.HeroName, info.JobName), _skin, "ph-default");
+            rowTable.Add(title).Left().SetPadLeft(6f);
+            rowTable.Row();
+
+            var when = info.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            var detail = new Label(string.Format(GetText(UITextKey.ReplayRowDetailFormat),
+                when, ReplayTimeFormatter.FormatSeconds(info.DurationSeconds), info.PitLevelAtStart), _skin, "ph-default");
+            rowTable.Add(detail).Left().SetPadLeft(6f);
+
+            var rowButton = new TextButton("", _skin, "ph-default");
+            rowButton.ClearChildren();
+            rowButton.Add(rowTable).Expand().Fill().Left();
+            rowButton.SetSize(RowWidth, RowHeight);
+
+            int captured = index;
+            rowButton.OnClicked += (_) => SetSelected(captured);
+
+            _rowsTable.Add(rowButton).Width(RowWidth).Height(RowHeight).SetPadBottom(RowPad);
+        }
+
+        private void SetSelected(int index)
+        {
+            _selectedIndex = index;
+            bool has = index >= 0 && index < _entries.Count;
+            _selectedLabel?.SetText(has
+                ? string.Format(GetText(UITextKey.ReplaySelectedFormat), _entries[index].FileName)
+                : GetText(UITextKey.ReplaySelectedNone));
+            _playButton?.SetDisabled(!has);
+            _deleteButton?.SetDisabled(!has);
+        }
+
+        private void OnPlaySelected()
+        {
+            if (_selectedIndex < 0 || _selectedIndex >= _entries.Count)
+                return;
+            var entry = _entries[_selectedIndex];
+            ShowConfirm(GetText(UITextKey.DialogConfirmReplay), GetText(UITextKey.ConfirmReplayInterruptMessage), () =>
+            {
+                var fileService = Core.Services?.GetService<ReplayFileService>();
+                var data = fileService?.Load(entry.FileName);
+                if (data == null)
+                {
+                    Refresh();
+                    return;
+                }
+                // Close and release the pause on the record BEFORE playback snapshots the live
+                // session as its return point, so the return trip lands unpaused
+                _settingsUI?.ForceCloseSettings();
+                ReleasePausesOnRecord();
+                StartPlayback(data, isCurrentSession: false);
+            });
+        }
+
+        private void OnReplayCurrent()
+        {
+            var recorder = ReplayRecorder.Current;
+            if (recorder == null)
+                return;
+            ShowConfirm(GetText(UITextKey.DialogConfirmReplay), GetText(UITextKey.ConfirmReplayInterruptMessage), () =>
+            {
+                var current = ReplayRecorder.Current;
+                if (current == null)
+                    return;
+                // Close first and release the settings pause ON THE RECORD: the scene is about to be
+                // torn down, so the queued unpause would never drain and the snapshot would end frozen
+                _settingsUI?.ForceCloseSettings();
+                ReleasePausesOnRecord();
+                StartPlayback(current.Snapshot(SimulationClock.CurrentTick), isCurrentSession: true);
+            });
+        }
+
+        /// <summary>Applies and records pause releases immediately (the normal drain will not run before the scene swap).</summary>
+        private static void ReleasePausesOnRecord()
+        {
+            var commands = PlayerCommandService.Current;
+            if (commands == null)
+                return;
+            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetManualPause, false));
+            commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false));
+        }
+
+        private void StartPlayback(ReplayData data, bool isCurrentSession)
+        {
+            var playback = ReplayPlaybackService.Current;
+            if (playback == null)
+                return;
+            _settingsUI?.ForceCloseSettings();
+            playback.Start(data, isCurrentSession);
+        }
+
+        private void OnSaveSession()
+        {
+            var recorder = ReplayRecorder.Current;
+            var fileService = Core.Services?.GetService<ReplayFileService>();
+            if (recorder == null || fileService == null)
+                return;
+            string fileName = fileService.Save(recorder.Snapshot(SimulationClock.CurrentTick));
+            string message = fileName != null
+                ? string.Format(GetText(UITextKey.ReplaySavedMessage), fileName)
+                : GetText(UITextKey.ReplaySaveFailedMessage);
+            ShowMessage(GetText(UITextKey.DialogReplaySaved), message);
+            Refresh();
+        }
+
+        private void OnDeleteSelected()
+        {
+            if (_selectedIndex < 0 || _selectedIndex >= _entries.Count)
+                return;
+            var entry = _entries[_selectedIndex];
+            ShowConfirm(GetText(UITextKey.DialogConfirmDeleteReplay), GetText(UITextKey.ConfirmDeleteReplayMessage), () =>
+            {
+                Core.Services?.GetService<ReplayFileService>()?.Delete(entry.FileName);
+                _selectedIndex = -1;
+                Refresh();
+            });
+        }
+
+        /// <summary>Opens the Replay Info window: what replays do, plus the session-length disclaimer.</summary>
+        private void ShowInfo()
+        {
+            if (_infoWindow != null)
+                _infoWindow.Remove();
+
+            var window = new Window(GetText(UITextKey.ReplayInfoTitle), _skin.Get<WindowStyle>("ph-default"));
+            window.SetMovable(false);
+            float stageH = _stage.GetHeight();
+            float height = UILayout.FitHeight(InfoWindowDesignHeight, stageH, GameConfig.UIStageMargin, GameConfig.UIStageMargin);
+            window.SetSize(InfoWindowWidth, height);
+
+            var content = new Table();
+            content.Pad(InfoWindowPad);
+
+            float textWidth = InfoWindowWidth - 2f * InfoWindowPad;
+            var intro = new Label(GetText(UITextKey.ReplayInfoIntro), _skin, "ph-default");
+            intro.SetWrap(true);
+            content.Add(intro).Width(textWidth).Left().SetPadBottom(InfoParagraphGap);
+            content.Row();
+
+            var warning = new Label(GetText(UITextKey.ReplayInfoWarning), _skin, "ph-default");
+            warning.SetWrap(true);
+            content.Add(warning).Width(textWidth).Left().Expand().Top();
+            content.Row();
+
+            var ok = new TextButton(GetText(UITextKey.ButtonOK), _skin, "ph-default");
+            ok.OnClicked += (_) => { window.Remove(); _infoWindow = null; };
+            content.Add(ok).Width(80f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadTop(InfoParagraphGap);
+
+            window.Add(content).Expand().Fill();
+            window.SetPosition((_stage.GetWidth() - InfoWindowWidth) / 2f, UILayout.CenterY(height, stageH, 0f));
+            _stage.AddElement(window);
+            window.ToFront();
+            _infoWindow = window;
+        }
+
+        private Window _infoWindow;
+        private const float InfoButtonSize = 40f; // 4 px nine-patch border each side around the 32x32 sprite
+        private const float InfoWindowWidth = 460f;
+        private const float InfoWindowDesignHeight = 210f; // fitted to the live stage height at show time
+        private const float InfoWindowPad = 16f;
+        private const float InfoParagraphGap = 10f;      // the "empty line" between the two paragraphs
+
+        private void ShowConfirm(string title, string message, System.Action onYes)
+        {
+            _confirmDialog = new ConfirmationDialog(title, message, _skin, onYes);
+            _confirmDialog.YesButton.SuppressGlobalClick = true;
+            _confirmDialog.Show(_stage);
+        }
+
+        private void ShowMessage(string title, string message)
+        {
+            _messageDialog = new MessageDialog(title, message, _skin);
+            _messageDialog.Show(_stage);
+        }
+    }
+}

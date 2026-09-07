@@ -88,6 +88,23 @@ namespace PitHero.UI
             phTextButtonStyle.Up.SetPadding(0, 0, 25, 25); //Force centered text
             skin.Add("ph-default", phTextButtonStyle);
 
+            // Compact variant for dense button rows (Replay tab): same nine patch, 4 px side padding
+            // instead of 25 (plus the 4 px nine-patch border) so a button hugs its label. Separate drawable instances — SetPadding
+            // mutates the drawable, and the default style shares its instances.
+            var phCompactTextButtonStyle = new TextButtonStyle
+            {
+                Up = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4)),
+                Down = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4)),
+                Over = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4)),
+                FontColor = brownFontColor,
+                DownFontColor = brownFontColor,
+                OverFontColor = brownFontColor,
+                PressedOffsetX = 1,
+                PressedOffsetY = 1
+            };
+            phCompactTextButtonStyle.Up.SetPadding(0, 0, 4, 4);
+            skin.Add("ph-compact", phCompactTextButtonStyle);
+
             // Grayed ("deactivated") button variant: same nine patch faded out, with every state
             // drawn identically so hover/press give no feedback. Created after SetPadding above so
             // the tinted copy inherits the centering padding.

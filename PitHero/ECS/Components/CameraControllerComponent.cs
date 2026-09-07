@@ -73,10 +73,62 @@ namespace PitHero.ECS.Components
                 _camera.Position = _hasPendingCenter ? ConstrainCameraPosition(_pendingCenter) : _defaultCameraPosition;
                 _hasPendingCenter = false;
                 QuantizeCameraPosition();
+
+                // A full view restore requested during scene setup (replay rebuild) wins over both
+                if (_hasPendingView)
+                {
+                    _hasPendingView = false;
+                    ApplyView(_pendingView);
+                }
             }
         }
 
+        private bool _hasPendingView;
+        private CameraViewState _pendingView;
+
+        /// <summary>Captures position, zoom and follow state so a rebuilt scene can show the same view.</summary>
+        public CameraViewState CaptureView()
+        {
+            return new CameraViewState
+            {
+                Position = _camera != null ? _camera.Position : _pendingCenter,
+                RawZoom = _camera != null ? _camera.RawZoom : GameConfig.CameraDefaultZoom,
+                IsFollowingHero = _isFollowingHero,
+                ManualControlTimer = _manualControlTimer,
+            };
+        }
+
+        /// <summary>Restores a captured view. Safe before the camera is attached: applied in OnAddedToEntity.</summary>
+        public void RestoreView(in CameraViewState view)
+        {
+            if (_camera == null)
+            {
+                _pendingView = view;
+                _hasPendingView = true;
+                return;
+            }
+            ApplyView(view);
+        }
+
+        private void ApplyView(in CameraViewState view)
+        {
+            _camera.RawZoom = view.RawZoom;
+            _camera.Position = ConstrainCameraPosition(view.Position);
+            QuantizeCameraPosition();
+            _isFollowingHero = view.IsFollowingHero;
+            _manualControlTimer = view.ManualControlTimer;
+        }
+
+        /// <summary>
+        /// No-op: the camera is view-only and polls input, so it runs from
+        /// <see cref="PresentationUpdate"/> once per rendered frame instead of inside a simulation step.
+        /// </summary>
         public void Update()
+        {
+        }
+
+        /// <summary>Per-rendered-frame camera control (zoom, pan, quadrant jumps, hero following). Called by the scene's presentation pass.</summary>
+        public void PresentationUpdate()
         {
             if (_camera == null)
                 return;
@@ -97,8 +149,9 @@ namespace PitHero.ECS.Components
 
             // Only the manual (menu) pause freezes the camera; the farm-mode pause keeps camera
             // controls live so the player can right-mouse pan while planning crops.
+            // A replay re-applies the recorded pauses to the simulation; the viewer keeps the camera.
             var pauseService = Core.Services.GetService<PauseService>();
-            if (pauseService?.IsManuallyPaused == true && ShouldPause)
+            if (pauseService?.IsManuallyPaused == true && ShouldPause && !Services.Replay.ReplayPlaybackService.IsPlaybackActive)
                 return;
 
             // Cache hero entity reference if not already cached, or clear if hero is destroyed/dead
@@ -454,6 +507,10 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void HandleHeroFollowing()
         {
+            // A replay is history viewed at the player's own pace: the camera never chases the hero
+            if (Services.Replay.ReplayPlaybackService.IsPlaybackActive)
+                return;
+
             // Check if auto-scroll to hero is enabled
             if (!UI.UIWindowManager.AutoScrollToHeroEnabled)
             {
@@ -688,5 +745,16 @@ namespace PitHero.ECS.Components
                 QuantizeCameraPosition();
             }
         }
+    }
+}
+namespace PitHero.ECS.Components
+{
+    /// <summary>A camera view snapshot: where the player was looking and whether the camera was following the hero.</summary>
+    public struct CameraViewState
+    {
+        public Microsoft.Xna.Framework.Vector2 Position;
+        public float RawZoom;
+        public bool IsFollowingHero;
+        public float ManualControlTimer;
     }
 }

@@ -91,6 +91,13 @@ namespace PitHero.ECS.Components
         public void Update()
         {
             if (_animationComplete) return;
+            if (Core.CosmeticUpdatesSuspended)
+            {
+                // replay seek: finish instantly so the pickup does not replay when the seek ends
+                _animationComplete = true;
+                Entity.Destroy();
+                return;
+            }
 
             _elapsedTime += Time.DeltaTime;
             var progress = _elapsedTime / _animationDuration;

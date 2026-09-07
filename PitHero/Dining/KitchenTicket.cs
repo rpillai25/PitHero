@@ -34,7 +34,7 @@ namespace PitHero.Dining
         public int TicketId;
         public DishType Dish;
 
-        /// <summary>Time.TotalTime when the order was created; drives backpressure age metrics. Not persisted.</summary>
+        /// <summary>SimulationClock.Now when the order was created; drives backpressure age metrics. Not persisted.</summary>
         public float CreatedTime;
 
         /// <summary>True for hero/hired-merc orders; they get cook priority.</summary>

@@ -90,6 +90,21 @@ namespace PitHero.UI
         /// </summary>
         public void TriggerReplenish()
         {
+            // Player input: land on a deterministic tick via the command queue (replay system)
+            if (!Services.Replay.PlayerCommandService.ShouldApplyDirectly)
+            {
+                Services.Replay.PlayerCommandService.TryEnqueue(
+                    new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.Replenish));
+                return;
+            }
+            ApplyReplenish();
+        }
+
+        /// <summary>Activates smart replenish on the hero now. Command handler entry point.</summary>
+        public static void ApplyReplenish()
+        {
+            if (Core.Instance == null)
+                return;
             var heroEntity = Core.Scene?.FindEntity("hero");
             var heroComponent = heroEntity?.GetComponent<HeroComponent>();
 

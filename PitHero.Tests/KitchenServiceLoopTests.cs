@@ -52,7 +52,7 @@ namespace PitHero.Tests
         public void Cleanup()
         {
             Time.DeltaTime = 0f;
-            Time.TotalTime = 0f;
+            new SimulationClock(); // fresh session clock at tick 0 (job timestamps read SimulationClock.Now)
         }
 
         /// <summary>Deposits exactly enough crops in storage to cover N servings of the dish.</summary>
@@ -960,7 +960,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void BusJob_AgeGateClaimsTheOldestWaitingPlateFirst()
         {
-            Time.TotalTime = 1000f;
+            SimulationClock.Current.SetTick((long)(1000f / GameConfig.SimulationFixedStepSeconds)); // 1000 s
             _coordinator.ReleaseBusJob(MakeBusJob(new Vector2(10f, 10f), 900f));  // 100s old
             _coordinator.ReleaseBusJob(MakeBusJob(new Vector2(20f, 20f), 990f));  // 10s old
 

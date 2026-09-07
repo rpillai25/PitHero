@@ -24,8 +24,9 @@ PitHero uses **GOAP + SimpleStateMachine** following the F.E.A.R. pattern: a GOA
 3. **Use `GoapConstants` for all condition names** — strong-typed constants, never inline strings.
 4. **Use `for` loops, never `foreach`** — AOT compliance.
 5. **Pre-allocate collections** — avoid `new` during gameplay loops.
-6. **Use `Nez.Time.DeltaTime`** for all timing.
+6. **Use `Nez.Time.DeltaTime`** for all timing (it is the fixed simulation step). Stored timestamps use `SimulationClock.Now`, never `Time.TotalTime`.
 7. **Use `Nez.Debug`** for all AI logging.
+8. **Replay determinism:** AI runs inside the simulation step. Never read `Input`, wall-clock time or `DateTime`; roll only `Nez.Random` (the seeded Sim stream); no new `System.Random`/`Guid`; static state the planner reads must reset at the session reseed. Hero plans are hashed as a divergence tripwire (`ReplayTripwire.ReportDecision` in `HeroStateMachine`), so a plan that depends on anything non-deterministic shows up as "Diverged at" during replay. See the `replay-determinism` skill and `PitHero/docs/ReplaySystem.md`.
 
 ## State Flow
 
@@ -63,6 +64,7 @@ PitHero uses **GOAP + SimpleStateMachine** following the F.E.A.R. pattern: a GOA
 | Action cost ignored | Call `UpdateCost()` in `Idle_Enter()` before planning |
 | Mercenary out of sync | Check `_expectedMercInPit` / `_expectedTargetInPit` replan detection |
 | Virtual test doesn't run action | Implement `Execute(IGoapContext)` override on the action |
+| Replay diverges (`decision` or `rng` part) right after a new action | Action reads wall time / `Input`, rolls outside `Nez.Random`, or keeps static state across scene restarts — see `replay-determinism` |
 
 ## File Reference
 

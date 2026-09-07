@@ -68,10 +68,10 @@ namespace PitHero.ECS.Scenes
             _heroCreationUI.InitializeUI(uiCanvas.Stage, previewEntity);
         }
 
-        /// <summary>Updates the hero creation UI each frame</summary>
-        public override void Update()
+        /// <summary>Updates the hero creation UI once per rendered frame (presentation pass, never inside a simulation step)</summary>
+        public override void PresentationUpdate()
         {
-            base.Update();
+            base.PresentationUpdate();
             _heroCreationUI?.Update();
         }
     }

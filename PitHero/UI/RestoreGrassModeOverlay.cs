@@ -95,10 +95,9 @@ namespace PitHero.UI
                 if (tile != _lastActionTile && valid)
                 {
                     _lastActionTile = tile;
-                    var wetService    = Core.Services.GetService<WetTileService>();
-                    var tilledService = Core.Services.GetService<TilledTileService>();
-                    wetService?.ClearWet(tile);
-                    tilledService?.RestoreGrassTile(tile);
+                    // Lands on a deterministic tick via the command queue (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.RestoreGrassTile, tile.X, tile.Y));
                 }
             }
             else

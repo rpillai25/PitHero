@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
+using PitHero.Services;
 using System.Collections.Generic;
 
 namespace PitHero.ECS.Components
@@ -108,7 +109,7 @@ namespace PitHero.ECS.Components
         {
             if (!_isJumping) return;
 
-            var elapsed = Time.TotalTime - _jumpStartTime;
+            var elapsed = SimulationClock.Now - _jumpStartTime;
             var progress = elapsed / _jumpDuration;
             if (progress >= 1.0f)
             {
@@ -125,7 +126,7 @@ namespace PitHero.ECS.Components
         public void StartJump(Direction direction, float duration)
         {
             _jumpDuration = duration;
-            _jumpStartTime = Time.TotalTime;
+            _jumpStartTime = SimulationClock.Now;
             _isJumping = true;
 
             if (BeginAirbornePose(direction))

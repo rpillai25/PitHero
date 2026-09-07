@@ -31,6 +31,8 @@ namespace PitHero.UI
         private Tab _crystalTab;
         private Tab _mercenariesTab;
         private Tab _foodTab;
+        private Tab _artifactsTab;
+        private ArtifactsTab _artifactsTabComponent;
         private bool _windowVisible = false;
 
         // Graphical close button anchored outside the hero window's left edge (issue #399).
@@ -214,6 +216,10 @@ namespace PitHero.UI
             PopulateFoodTab(_foodTab, skin);
             _tabPane.AddTab(_foodTab);
 
+            _artifactsTab = new Tab(GetText(TextType.UI, UITextKey.TabArtifacts), tabStyle);
+            PopulateArtifactsTab(_artifactsTab, skin);
+            _tabPane.AddTab(_artifactsTab);
+
             _tabPane.AddTab(_prioritiesTab);
             
             // Hook into tab button clicks to adjust window width
@@ -262,6 +268,11 @@ namespace PitHero.UI
                 newWidth = COMPACT_WINDOW_WIDTH;
                 // Sync favorite/checkbox state in case a save was loaded after UI creation
                 _foodTabComponent?.RefreshFromService();
+            }
+            else if (selectedTab == _artifactsTab)
+            {
+                newWidth = COMPACT_WINDOW_WIDTH;
+                _artifactsTabComponent?.Refresh(); // a purchase may have landed since the tab was built
             }
             else
             {
@@ -540,8 +551,12 @@ namespace PitHero.UI
             var dialog = new ConfirmationDialog("Remove Stencil", message, skin,
                 onYes: () =>
                 {
-                    _inventoryGrid.RemoveStencil(stencil);
-                    Debug.Log($"Removed stencil: {stencil.Pattern.Name}");
+                    // Lands on a deterministic tick via the command queue (replay system)
+                    var removeCmd = Services.Replay.PlayerCommand.WithString(
+                        Services.Replay.PlayerCommandType.RemoveStencil, stencil.Pattern.Id);
+                    removeCmd.L = _inventoryGrid.CommandGridId;
+                    Services.Replay.PlayerCommandService.Dispatch(removeCmd);
+                    Debug.Log($"Requested stencil removal: {stencil.Pattern.Name}");
 
                     // Exit remove mode after removal
                     _inventoryGrid.SetRemoveStencilsMode(false);
@@ -583,10 +598,16 @@ namespace PitHero.UI
                 return;
             }
 
-            _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
-            Debug.Log($"Activated stencil {pattern.Name} at ({targetAnchor.Value.X},{targetAnchor.Value.Y})");
-            UpdateStencilButtonStates();
+            // Lands on a deterministic tick via the command queue; the handler refreshes the buttons (replay system)
+            var placeCmd = Services.Replay.PlayerCommand.WithString(
+                Services.Replay.PlayerCommandType.PlaceStencil, pattern.Id, targetAnchor.Value.X, targetAnchor.Value.Y);
+            placeCmd.L = _inventoryGrid.CommandGridId;
+            Services.Replay.PlayerCommandService.Dispatch(placeCmd);
+            Debug.Log($"Requested stencil {pattern.Name} at ({targetAnchor.Value.X},{targetAnchor.Value.Y})");
         }
+
+        /// <summary>Re-evaluates the stencil buttons after a command-applied stencil change.</summary>
+        public void RefreshStencilButtonStates() => UpdateStencilButtonStates();
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
         {
@@ -654,29 +675,24 @@ namespace PitHero.UI
             _strategicButton.IsChecked = true;
 
             // Wire up battle tactic events
+            // Player input lands on the simulation through the command queue (replay system)
             _blitzButton.OnChanged += (isChecked) =>
             {
                 if (isChecked)
-                {
-                    var heroComp = GetHeroComponent();
-                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Blitz;
-                }
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetBattleTactic, (int)BattleTactic.Blitz));
             };
             _strategicButton.OnChanged += (isChecked) =>
             {
                 if (isChecked)
-                {
-                    var heroComp = GetHeroComponent();
-                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Strategic;
-                }
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetBattleTactic, (int)BattleTactic.Strategic));
             };
             _defensiveButton.OnChanged += (isChecked) =>
             {
                 if (isChecked)
-                {
-                    var heroComp = GetHeroComponent();
-                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Defensive;
-                }
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetBattleTactic, (int)BattleTactic.Defensive));
             };
 
             // Consumable Options section
@@ -688,8 +704,8 @@ namespace PitHero.UI
             _useConsumablesOnMercsCheckBox.IsChecked = true;
             _useConsumablesOnMercsCheckBox.OnChanged += (isChecked) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.UseConsumablesOnMercenaries = isChecked;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.Flag(
+                    Services.Replay.PlayerCommandType.SetUseConsumablesOnMercs, isChecked));
             };
             container.Add(_useConsumablesOnMercsCheckBox).Left().SetPadBottom(8);
             container.Row();
@@ -698,8 +714,8 @@ namespace PitHero.UI
             _mercsCanUseConsumablesCheckBox.IsChecked = true;
             _mercsCanUseConsumablesCheckBox.OnChanged += (isChecked) =>
             {
-                var heroComp = GetHeroComponent();
-                if (heroComp != null) heroComp.MercenariesCanUseConsumables = isChecked;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.Flag(
+                    Services.Replay.PlayerCommandType.SetMercsCanUseConsumables, isChecked));
             };
             container.Add(_mercsCanUseConsumablesCheckBox).Left().SetPadBottom(15);
             container.Row();
@@ -743,6 +759,13 @@ namespace PitHero.UI
             _foodTabComponent = new FoodTab();
             var content = _foodTabComponent.CreateContent(skin, _stage);
             foodTab.Add(content).Expand().Fill();
+        }
+
+        private void PopulateArtifactsTab(Tab artifactsTab, Skin skin)
+        {
+            _artifactsTabComponent = new ArtifactsTab();
+            var content = _artifactsTabComponent.CreateContent(skin, _stage);
+            artifactsTab.Add(content).Expand().Fill();
         }
 
         private void InitializePriorityItems()
@@ -810,8 +833,11 @@ namespace PitHero.UI
                 }
             }
 
-            hero.SetHealPrioritiesInOrder(healPriorities);
-            Debug.Log($"[HeroUI] Updated heal priorities: {healPriorities[0]}, {healPriorities[1]}, {healPriorities[2]}");
+            // Applied on a deterministic tick via the command queue (handler also refreshes heal action costs)
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetHealPriorities,
+                (int)healPriorities[0], (int)healPriorities[1], (int)healPriorities[2]));
+            Debug.Log($"[HeroUI] Requested heal priorities: {healPriorities[0]}, {healPriorities[1]}, {healPriorities[2]}");
         }
 
         private void UpdateHealActionCosts()
@@ -1042,12 +1068,12 @@ namespace PitHero.UI
 
             var dialog = new ConfirmationDialog(title, message, skin, onYes: () =>
             {
+                // Applied on a deterministic tick via the command queue; the handler dismisses and
+                // then calls RefreshAfterPartyChange (replay system)
                 var mercManager = Core.Services?.GetService<MercenaryManager>();
-                mercManager?.DismissPartyMercenary(mercEntity);
-                RefreshMercenariesTab();
-                RefreshMercenaryEquipSlots();
-                // Notify inventory grid that items were added to the bag so they appear immediately
-                InventorySelectionManager.OnInventoryChanged?.Invoke();
+                int hiredIndex = mercManager != null ? mercManager.GetHiredMercenaries().IndexOf(mercEntity) : -1;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                    Services.Replay.PlayerCommandType.DismissPartyMercenary, mc?.LinkedMercenary?.Name, hiredIndex));
             });
 
             dialog.Show(_stage);
@@ -1087,8 +1113,11 @@ namespace PitHero.UI
             {
                 if (System.Enum.TryParse(_priorityItems[i], out HeroPitPriority priority)) newPriorities[i] = priority; else { Debug.Log($"Failed to parse priority: {_priorityItems[i]}"); return; }
             }
-            hero.SetPrioritiesInOrder(newPriorities);
-            Debug.Log($"Updated hero priorities: {newPriorities[0]}, {newPriorities[1]}, {newPriorities[2]}");
+            // Applied on a deterministic tick via the command queue (replay system)
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.SetPitPriorities,
+                (int)newPriorities[0], (int)newPriorities[1], (int)newPriorities[2]));
+            Debug.Log($"Requested hero priorities: {newPriorities[0]}, {newPriorities[1]}, {newPriorities[2]}");
         }
 
         /// <summary>Update button style based on shrink mode</summary>
@@ -1274,10 +1303,30 @@ namespace PitHero.UI
         /// <summary>Gets the hero crystal tab reference for UI reconnection.</summary>
         public HeroCrystalTab GetCrystalTab() => _heroCrystalTab;
 
+        /// <summary>Refreshes the mercenaries tab, merc equip slots and the inventory grid after a party change applied by a command.</summary>
+        public void RefreshAfterPartyChange()
+        {
+            RefreshMercenariesTab();
+            RefreshMercenaryEquipSlots();
+            // Notify inventory grid that items were added to the bag so they appear immediately
+            InventorySelectionManager.OnInventoryChanged?.Invoke();
+        }
+
+        /// <summary>Re-reads the hero's skills/JP into the Hero Info tab after a command-applied skill purchase.</summary>
+        public void RefreshAfterSkillPurchase()
+        {
+            var heroComponent = GetHeroComponent();
+            if (heroComponent != null)
+                _heroCrystalTab?.UpdateWithHero(heroComponent);
+        }
+
         /// <summary>Re-reads the crystal collection into the Crystals tab slots. Called on hero
         /// reconnection so a crystal consumed by the ceremony leaves the queue and the outgoing
         /// crystal appears in the inventory without needing a tab switch.</summary>
         public void RefreshCrystalsTab() => _crystalsTabComponent?.RefreshAll();
+
+        /// <summary>The Crystals tab component (command handlers apply forge/slot moves through it).</summary>
+        public CrystalsTab GetCrystalsTabComponent() => _crystalsTabComponent;
 
         /// <summary>Force close window</summary>
         public void ForceCloseWindow()

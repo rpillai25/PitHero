@@ -120,15 +120,21 @@ namespace PitHero.UI
             _lastDragTile = NoTile;
         }
 
+        // True while plan preview entities exist (farm sub-mode open). A plan placed by a replayed
+        // command outside that window registers data only, like a load-restored plan.
+        private bool _planVisualsShown;
+
         /// <summary>Creates translucent world entities for all plans. Called when any farm sub-mode is entered.</summary>
         public void ShowPlanVisuals()
         {
+            _planVisualsShown = true;
             RestorePlanVisuals();
         }
 
         /// <summary>Destroys translucent plan world entities. Called when all farm sub-modes are exited.</summary>
         public void HidePlanVisuals()
         {
+            _planVisualsShown = false;
             Core.Services.GetService<CropPlantingService>()?.DestroyPlanVisuals();
         }
 
@@ -224,7 +230,7 @@ namespace PitHero.UI
                         && shiftCropService != null
                         && shiftCropService.HasPlan(shiftTile))
                     {
-                        shiftCropService.RemovePlan(shiftTile); // destroys entity inside RemovePlan; no refund
+                        DispatchRemovePlan(shiftTile); // destroys entity inside RemovePlan; no refund
                     }
                 }
                 else
@@ -271,14 +277,14 @@ namespace PitHero.UI
                     {
                         _lastDragTile = tile;
                         if (hasPlan)
-                            cropService.RemovePlan(tile);
+                            DispatchRemovePlan(tile);
                     }
                 }
                 else
                 {
                     _lastDragTile = NoTile;
                     if (Input.LeftMouseButtonPressed && hasPlan)
-                        cropService.RemovePlan(tile);
+                        DispatchRemovePlan(tile);
                 }
             }
         }
@@ -478,7 +484,31 @@ namespace PitHero.UI
             return true;
         }
 
+        /// <summary>Queues a plan placement for the selected crop (replay system).</summary>
         private void PlaceCrop(int tileX, int tileY)
+        {
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.AddCropPlan, (int)_selectedCrop, tileX, tileY));
+        }
+
+        /// <summary>Queues a plan removal (replay system).</summary>
+        private static void DispatchRemovePlan(Point tile)
+        {
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.RemoveCropPlan, tile.X, tile.Y));
+        }
+
+        /// <summary>Removes the plan on a tile if one exists (entity destroyed inside RemovePlan). Command handler entry point.</summary>
+        public static void ApplyRemovePlan(int tileX, int tileY)
+        {
+            var cropService = Core.Services.GetService<CropPlantingService>();
+            var tile = new Point(tileX, tileY);
+            if (cropService != null && cropService.HasPlan(tile))
+                cropService.RemovePlan(tile);
+        }
+
+        /// <summary>Places a crop plan of the given type on a tile (replacing a different-type plan). Command handler entry point.</summary>
+        public void ApplyPlaceCrop(CropType crop, int tileX, int tileY)
         {
             var tile = new Point(tileX, tileY);
             var cropService = Core.Services.GetService<CropPlantingService>();
@@ -486,24 +516,33 @@ namespace PitHero.UI
             // If a different-type plan already exists, remove it first before placing the new one
             // (validation guarantees the existing plan, if any, is of a different type).
             if (cropService != null && cropService.HasPlan(tile))
+            {
+                var existing = cropService.GetPlanType(tile);
+                if (existing.HasValue && existing.Value == crop)
+                    return;
                 cropService.RemovePlan(tile);
+            }
 
-            var sprite = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(_selectedCrop));
-            float spriteH = sprite != null ? sprite.SourceRect.Height : GameConfig.TileSize;
-            float wx = tileX * GameConfig.TileSize + GameConfig.TileSize / 2f;
-            float wy = tileY * GameConfig.TileSize + GameConfig.TileSize - spriteH / 2f;
+            Entity entity = null;
+            if (_planVisualsShown)
+            {
+                var sprite = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(crop));
+                float spriteH = sprite != null ? sprite.SourceRect.Height : GameConfig.TileSize;
+                float wx = tileX * GameConfig.TileSize + GameConfig.TileSize / 2f;
+                float wy = tileY * GameConfig.TileSize + GameConfig.TileSize - spriteH / 2f;
 
-            var entity = _scene.CreateEntity(
-                "crop-plan-" + _selectedCrop.ToString() + "-" + tileX + "-" + tileY);
-            entity.SetPosition(wx, wy);
+                entity = _scene.CreateEntity(
+                    "crop-plan-" + crop.ToString() + "-" + tileX + "-" + tileY);
+                entity.SetPosition(wx, wy);
 
-            var renderer = entity.AddComponent(new SpriteRenderer(sprite));
-            renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
-            renderer.Color = new Color(255, 255, 255, GameConfig.CropPlanPreviewAlpha);
+                var renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                renderer.Color = new Color(255, 255, 255, GameConfig.CropPlanPreviewAlpha);
+            }
 
             cropService?.AddPlan(new PlacedCropPlan
             {
-                Type        = _selectedCrop,
+                Type        = crop,
                 TileX       = tileX,
                 TileY       = tileY,
                 WorldEntity = entity,
