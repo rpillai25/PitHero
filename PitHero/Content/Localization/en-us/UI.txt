@@ -266,6 +266,15 @@ ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear 
 WindowSecondChanceShop,Second Chance Shop
 TabItems,Items
 TabSeeds,Seeds
+TabArtifacts,Artifacts
+ArtifactSphereOfForesightName,Sphere of Foresight
+ArtifactSphereOfForesightDesc,Seer's crystal which allows one to see the future in replays
+ArtifactChronosTimepieceName,Chronos Timepiece
+ArtifactChronosTimepieceDesc,Powerful timepiece once owned by master of time. Allows for time travel in replays
+ArtifactGrantButtonFormat,Grant ({0}G)
+ArtifactShopHeader,Show proof of gold to be granted an artifact
+ArtifactPriceFormat,{0}G
+ArtifactShopEmpty,No artifacts are for sale right now.
 SecondChanceBuyPrompt,Buy for {0} gold?
 SecondChanceBuyQtyPrompt,Buy {0}?
 SecondChanceBuyTotal,Total: {0} gold

@@ -368,6 +368,15 @@ namespace PitHero
         public const string ConsoleWelcomePhrase2 = "ConsoleWelcomePhrase2";
         public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
         public const string TabSeeds = "TabSeeds";
+        public const string TabArtifacts = "TabArtifacts";
+        public const string ArtifactSphereOfForesightName = "ArtifactSphereOfForesightName";
+        public const string ArtifactSphereOfForesightDesc = "ArtifactSphereOfForesightDesc";
+        public const string ArtifactChronosTimepieceName = "ArtifactChronosTimepieceName";
+        public const string ArtifactChronosTimepieceDesc = "ArtifactChronosTimepieceDesc";
+        public const string ArtifactGrantButtonFormat = "ArtifactGrantButtonFormat";
+        public const string ArtifactShopHeader = "ArtifactShopHeader";
+        public const string ArtifactPriceFormat = "ArtifactPriceFormat";
+        public const string ArtifactShopEmpty = "ArtifactShopEmpty";
         public const string SecondChanceOwnedCount = "SecondChanceOwnedCount";
         public const string SecondChanceNeedCount = "SecondChanceNeedCount";
         public const string ConsoleSeedsFound = "ConsoleSeedsFound";

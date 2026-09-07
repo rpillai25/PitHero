@@ -59,6 +59,7 @@ InnkeeperFarewellComeBackSoon,Come back soon!
 SecondChanceInterestedWares,Interested in my wares?
 SecondChanceBuyBackSomething,Perhaps you want to buy back something?
 SecondChanceMissSomething,Miss something you once had?
+SecondChanceProveWealth,Prove your wealth and the artifact is yours
 
 HeroLunchTime,It's time for lunch
 HeroLunchOptions,Let's check out our lunch options

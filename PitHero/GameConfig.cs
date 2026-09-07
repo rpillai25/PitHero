@@ -663,10 +663,19 @@ namespace PitHero
         public const string ReplayFileExtension = ".bin";
         public const int ReplaySpeechSeedSalt = 0x5BEEC4;        // XOR'd with the master seed for the cosmetic speech-bubble RNG
 
-        // Future simulation: the replay timeline extends past the session end and the player can drag into it
-        public const bool ReplayFutureSimulationUnlockedByDefault = true; // REVIEW: on for evaluation; the plan is to gate this behind a purchasable item
+        // Future simulation: the replay timeline extends past the session end and the player can drag
+        // into it once the Sphere of Foresight artifact is owned (Time Travel Here needs the Chronos Timepiece)
         public const long ReplayFutureSimulationMaxTicks = 30L * 60L * 60L; // 30 minutes of simulated time beyond the recorded session end
         public static readonly Color ReplayFutureTrackColor = new Color(70, 120, 230, 190); // Tint over the scrubber track beyond the session end
+
+        // Artifacts: one-time system-level purchases persisted in the system save (see ArtifactService)
+        public const string SystemSaveFileName = "system.bin";       // Under the persistent data folder, beside the save slots
+        public const int ArtifactSphereOfForesightPrice = 100000;     // Gold; unlocks future simulation in replays
+        public const int ArtifactChronosTimepiecePrice = 1000000;     // Gold; unlocks Time Travel Here (requires the sphere first)
+        public const int ArtifactGridColumns = 5;                     // Party > Artifacts grid
+        public const int ArtifactGridRows = 3;
+        public const float ArtifactSlotSize = 40f;                    // Stage pixels, matches the seed shop slots
+        public const float ArtifactDialogSpriteSize = 64f;            // Sprite size in the artifact card (2x the 32px art)
 
         // Second Chance Shop layout positions
         // Composed for a 1920x360 stage; SecondChanceShopUI centers the whole composition on

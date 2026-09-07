@@ -484,6 +484,18 @@ namespace PitHero
             return textService.DisplayText(TextType.Dialogue, key);
         }
 
+        /// <summary>
+        /// The merchant's line for the Artifacts tab: artifacts are granted on proof of wealth, not
+        /// sold. Single fixed line (no bag, no RNG). Returns null when unavailable (headless).
+        /// </summary>
+        public static string GetSecondChanceArtifactLine()
+        {
+            if (Core.Instance == null)
+                return null;
+            var textService = Core.Services?.GetService<TextService>();
+            return textService?.DisplayText(TextType.Dialogue, DialogueTextKey.SecondChanceProveWealth);
+        }
+
         // ── Selection core ───────────────────────────────────────────────────────
 
         /// <summary>

@@ -31,6 +31,8 @@ namespace PitHero.UI
         private Tab _crystalTab;
         private Tab _mercenariesTab;
         private Tab _foodTab;
+        private Tab _artifactsTab;
+        private ArtifactsTab _artifactsTabComponent;
         private bool _windowVisible = false;
 
         // Graphical close button anchored outside the hero window's left edge (issue #399).
@@ -214,6 +216,10 @@ namespace PitHero.UI
             PopulateFoodTab(_foodTab, skin);
             _tabPane.AddTab(_foodTab);
 
+            _artifactsTab = new Tab(GetText(TextType.UI, UITextKey.TabArtifacts), tabStyle);
+            PopulateArtifactsTab(_artifactsTab, skin);
+            _tabPane.AddTab(_artifactsTab);
+
             _tabPane.AddTab(_prioritiesTab);
             
             // Hook into tab button clicks to adjust window width
@@ -262,6 +268,11 @@ namespace PitHero.UI
                 newWidth = COMPACT_WINDOW_WIDTH;
                 // Sync favorite/checkbox state in case a save was loaded after UI creation
                 _foodTabComponent?.RefreshFromService();
+            }
+            else if (selectedTab == _artifactsTab)
+            {
+                newWidth = COMPACT_WINDOW_WIDTH;
+                _artifactsTabComponent?.Refresh(); // a purchase may have landed since the tab was built
             }
             else
             {
@@ -748,6 +759,13 @@ namespace PitHero.UI
             _foodTabComponent = new FoodTab();
             var content = _foodTabComponent.CreateContent(skin, _stage);
             foodTab.Add(content).Expand().Fill();
+        }
+
+        private void PopulateArtifactsTab(Tab artifactsTab, Skin skin)
+        {
+            _artifactsTabComponent = new ArtifactsTab();
+            var content = _artifactsTabComponent.CreateContent(skin, _stage);
+            artifactsTab.Add(content).Expand().Fill();
         }
 
         private void InitializePriorityItems()

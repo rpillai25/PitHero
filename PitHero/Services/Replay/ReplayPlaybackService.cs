@@ -71,9 +71,12 @@ namespace PitHero.Services.Replay
 
         /// <summary>
         /// Whether the player may drag the timeline past the recorded session end into a simulated
-        /// future. Runtime flag for now (defaults from GameConfig); intended to be unlocked by an item.
+        /// future: owning the Sphere of Foresight artifact (system-level, shared by every hero).
         /// </summary>
-        public static bool FutureSimulationUnlocked = GameConfig.ReplayFutureSimulationUnlockedByDefault;
+        public static bool FutureSimulationUnlocked => ArtifactService.Current != null && ArtifactService.Current.Owns(PitHero.Artifacts.ArtifactType.SphereOfForesight);
+
+        /// <summary>Whether time travel is unlocked at all: owning the Chronos Timepiece artifact.</summary>
+        public static bool TimeTravelUnlocked => ArtifactService.Current != null && ArtifactService.Current.Owns(PitHero.Artifacts.ArtifactType.ChronosTimepiece);
 
         /// <summary>Last tick of the future-simulation region (session end + the configured allowance).</summary>
         public long FutureEndTick => TotalTicks + GameConfig.ReplayFutureSimulationMaxTicks;
@@ -89,11 +92,12 @@ namespace PitHero.Services.Replay
         public bool InFuture { get; private set; }
 
         /// <summary>
-        /// Whether Time Travel Here may be used: always for the current session, otherwise only when
-        /// the recording belongs to the hero being played right now (a different hero's world would
-        /// silently replace the player's). Unknown ids (old recordings) never qualify.
+        /// Whether Time Travel Here may be used: the Chronos Timepiece must be owned, and the recording
+        /// must be the current session or belong to the hero being played right now (a different hero's
+        /// world would silently replace the player's). Unknown ids (old recordings) never qualify.
         /// </summary>
-        public bool TimeTravelAllowed => _isCurrentSession || Data != null && Data.HeroId != 0 && Data.HeroId == _liveHeroId;
+        public bool TimeTravelAllowed => TimeTravelUnlocked
+            && (_isCurrentSession || Data != null && Data.HeroId != 0 && Data.HeroId == _liveHeroId);
 
         private int _commandCursor;
         private int _decisionCursor;

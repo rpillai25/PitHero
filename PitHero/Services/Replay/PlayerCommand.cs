@@ -78,6 +78,7 @@ namespace PitHero.Services.Replay
         BuyVaultItem = 90,           // A = vault stack index, B = quantity, C,D = packed dest SlotRef, S = item name
         BuyVaultCrystal = 91,        // A = vault crystal index, B = dest slot type, C = dest index
         BuySeeds = 92,               // A = crop type, B = quantity
+        GrantArtifact = 93,          // A = ArtifactType ordinal; proof of gold, nothing is deducted (system-level one-time grant)
 
         // Crystals
         CreateCrystal = 100,         // A = job index, B = STR, C = AGI, D = VIT, L = MAG

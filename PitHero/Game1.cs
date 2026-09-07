@@ -53,6 +53,8 @@ namespace PitHero
             var fileDataStore = new FileDataStore(null);
             Services.AddService(fileDataStore);
             Services.AddService(new SaveLoadService(fileDataStore));
+            // System save: artifacts belong to the player, not to a hero or slot
+            Services.AddService(new ArtifactService());
 
             // Register global managers
             SoundEffectManager soundEffectManager = new SoundEffectManager();

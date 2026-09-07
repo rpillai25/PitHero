@@ -32,6 +32,10 @@ namespace PitHero.UI
         private Tab _itemsTab;
         private Tab _crystalsTab;
         private Tab _seedsTab;
+        private Tab _artifactsTab;
+        private Table _artifactShopTable;      // rebuilt whenever ownership changes
+        private int _artifactShopVersion = -1;
+        private ArtifactInfoDialog _artifactDialog;
 
         // Graphical close button anchored outside the shop window's left edge (issue #399)
         private WindowCloseButton _closeButton;
@@ -161,14 +165,17 @@ namespace PitHero.UI
             _itemsTab    = new Tab(GetText(TextType.UI, UITextKey.TabItems),    tabStyle);
             _crystalsTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
             _seedsTab    = new Tab(GetText(TextType.UI, UITextKey.TabSeeds),    tabStyle);
+            _artifactsTab = new Tab(GetText(TextType.UI, UITextKey.TabArtifacts), tabStyle);
 
             PopulateItemsTab(_itemsTab, skin);
             PopulateCrystalsTab(_crystalsTab, skin);
             PopulateSeedsTab(_seedsTab, skin);
+            PopulateArtifactsTab(_artifactsTab, skin);
 
             _tabPane.AddTab(_itemsTab);
             _tabPane.AddTab(_crystalsTab);
             _tabPane.AddTab(_seedsTab);
+            _tabPane.AddTab(_artifactsTab);
 
             // Wire tab button clicks to swap the right-side hero panel
             for (int i = 0; i < _tabPane.TabButtons.Count; i++)
@@ -363,6 +370,106 @@ namespace PitHero.UI
             tab.Add(content).Expand().Fill();
         }
 
+        /// <summary>
+        /// Artifacts tab: one row per artifact currently for sale (not owned, prerequisite owned).
+        /// Clicking the slot opens the artifact card with a Buy button.
+        /// </summary>
+        private void PopulateArtifactsTab(Tab tab, Skin skin)
+        {
+            _artifactShopTable = new Table();
+            _artifactShopTable.Top().Left().Pad(4f);
+
+            var content = new Table();
+            content.Top().Left().Pad(8f).PadLeft(24f);
+            // Artifacts are granted on proof of wealth, not sold: say so above the rows
+            var header = new Label(GetText(TextType.UI, UITextKey.ArtifactShopHeader), skin, "ph-default");
+            header.SetWrap(true);
+            content.Add(header).Width(290f).Left().SetPadBottom(6f);
+            content.Row();
+            content.Add(_artifactShopTable).Top().Left();
+
+            tab.ClearChildren();
+            tab.Add(content).Expand().Fill();
+            RefreshArtifactShop(true);
+        }
+
+        /// <summary>The merchant explains the artifact deal; shown when the Artifacts tab is in front.</summary>
+        private void ShowMerchantArtifactLine()
+        {
+            var line = SpeechBubbleDialogue.GetSecondChanceArtifactLine();
+            if (line != null && _merchantBubble != null && _merchantBubble.GetStage() != null)
+                _merchantBubble.Show(line);
+        }
+
+        /// <summary>Rebuilds the artifact rows when ownership changed (or when forced).</summary>
+        private void RefreshArtifactShop(bool force)
+        {
+            if (_artifactShopTable == null) return;
+            var service = ArtifactService.Current;
+            int version = service != null ? service.Version : 0;
+            if (!force && version == _artifactShopVersion) return;
+            _artifactShopVersion = version;
+
+            _artifactShopTable.ClearChildren();
+            int shown = 0;
+            for (int i = 0; i < PitHero.Artifacts.ArtifactCatalog.Count; i++)
+            {
+                var type = (PitHero.Artifacts.ArtifactType)i;
+                if (service == null || !service.IsAvailableInShop(type)) continue;
+
+                string name = GetText(TextType.UI, PitHero.Artifacts.ArtifactCatalog.GetNameKey(type));
+                var slot = new ArtifactSlot();
+                slot.SetArtifact(type, null); // the name sits right beside the slot: no hover text
+                slot.OnClicked += ShowArtifactPurchaseCard;
+                _artifactShopTable.Add(slot).Size(GameConfig.ArtifactSlotSize, GameConfig.ArtifactSlotSize).Pad(2f);
+
+                var nameLabel = new Label(name, _skin, "ph-default");
+                _artifactShopTable.Add(nameLabel).Left().SetPadLeft(8f);
+
+                string priceText = string.Format(GetText(TextType.UI, UITextKey.ArtifactPriceFormat),
+                    PitHero.Artifacts.ArtifactCatalog.GetPrice(type).ToString("N0", System.Globalization.CultureInfo.InvariantCulture));
+                var priceLabel = new Label(priceText, _skin, "ph-default");
+                _artifactShopTable.Add(priceLabel).Left().SetPadLeft(12f);
+                _artifactShopTable.Row();
+                shown++;
+            }
+            if (shown == 0)
+            {
+                var empty = new Label(GetText(TextType.UI, UITextKey.ArtifactShopEmpty), _skin, "ph-default");
+                empty.SetWrap(true);
+                _artifactShopTable.Add(empty).Width(280f).Left();
+            }
+            _artifactShopTable.Invalidate();
+        }
+
+        /// <summary>
+        /// Opens the artifact card with a Grant button (the required wealth is on the button, so no
+        /// confirmation). The button is grayed and dead when the player cannot show that much gold.
+        /// </summary>
+        private void ShowArtifactPurchaseCard(PitHero.Artifacts.ArtifactType type)
+        {
+            if (_stage == null) return;
+            _artifactDialog?.Remove();
+            int price = PitHero.Artifacts.ArtifactCatalog.GetPrice(type);
+            var gameState = Core.Services?.GetService<GameStateService>();
+            bool canAfford = gameState != null && gameState.Funds >= price;
+            _artifactDialog = new ArtifactInfoDialog(type, _skin, price, onGrant: () => RequestArtifactGrant(type), canAfford);
+            _artifactDialog.Show(_stage);
+        }
+
+        /// <summary>Dispatches the grant; the command handler re-checks the wealth on the tick it applies. No gold changes hands.</summary>
+        private void RequestArtifactGrant(PitHero.Artifacts.ArtifactType type)
+        {
+            var gameState = Core.Services?.GetService<GameStateService>();
+            var service = ArtifactService.Current;
+            if (gameState == null || service == null || !service.IsAvailableInShop(type))
+                return;
+            if (gameState.Funds < PitHero.Artifacts.ArtifactCatalog.GetPrice(type))
+                return;
+            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                Services.Replay.PlayerCommandType.GrantArtifact, (int)type));
+        }
+
         /// <summary>Opens the quantity dialog and executes a seed purchase when confirmed.</summary>
         private void HandleSeedBuyClicked(CropType crop)
         {
@@ -435,10 +542,12 @@ namespace PitHero.UI
                 _heroInventoryWindow?.SetVisible(false);
                 _heroCrystalWindow?.SetVisible(true);
             }
-            else // Seeds tab — no hero-side panel
+            else // Seeds / Artifacts tabs — no hero-side panel
             {
                 _heroInventoryWindow?.SetVisible(false);
                 _heroCrystalWindow?.SetVisible(false);
+                if (tabIndex == 3)
+                    ShowMerchantArtifactLine();
             }
         }
 
@@ -509,6 +618,8 @@ namespace PitHero.UI
                         spriteY + GameConfig.SecondChanceMerchantBubbleHeadTopY);
                     _merchantBubble.Show(greeting);
                     _merchantBubble.ToFront();
+                    if (_activeTabIndex == 3)
+                        ShowMerchantArtifactLine(); // reopened on the Artifacts tab: the deal, not the greeting
                 }
 
                 // Hero panel (right) — show the one matching the active tab. The crystal panel is much
@@ -691,6 +802,8 @@ namespace PitHero.UI
                     _heroCrystalPanel?.Update(mousePos);
                 }
                 // Seeds tab (index 2): no per-frame grid update needed
+                else if (_activeTabIndex == 3)
+                    RefreshArtifactShop(false); // a purchase lands on the next tick; drop the sold row then
 
                 HandleWindowDismissInput();
             }

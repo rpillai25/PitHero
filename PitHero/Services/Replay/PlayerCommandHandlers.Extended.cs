@@ -212,6 +212,9 @@ namespace PitHero.Services.Replay
                 case PlayerCommandType.BuySeeds:
                     ApplyBuySeeds((PitHero.Farming.CropType)cmd.A, cmd.B);
                     return true;
+                case PlayerCommandType.GrantArtifact:
+                    ApplyGrantArtifact(cmd.A);
+                    return true;
 
                 // ── Farm / construction / storage ────────────────────────────────────
                 case PlayerCommandType.PlaceBuilding:
@@ -319,6 +322,26 @@ namespace PitHero.Services.Replay
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
             AnalyticsService.LogSeedPurchased(crop.ToString(), qty, totalPrice, "manual", gameState.Funds);
             services.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
+        }
+
+        /// <summary>
+        /// Grants an artifact at the system level on proof of wealth: the merchant only needs to see
+        /// the required gold, nothing is deducted (so reloading an older save cannot rewind a payment).
+        /// The simulation is untouched; the grant is idempotent, so a replayed grant is harmless.
+        /// </summary>
+        private static void ApplyGrantArtifact(int ordinal)
+        {
+            var services = Services;
+            if (services == null || !PitHero.Artifacts.ArtifactCatalog.IsValid(ordinal))
+                return;
+            var gameState = services.GetService<GameStateService>();
+            if (gameState == null)
+                return;
+            var type = (PitHero.Artifacts.ArtifactType)ordinal;
+            if (gameState.Funds < PitHero.Artifacts.ArtifactCatalog.GetPrice(type))
+                return;
+            if (ArtifactService.Current?.Grant(type) == true)
+                Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
         }
 
         private static void ApplyRemoveBuilding(int uniqueId)

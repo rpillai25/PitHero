@@ -188,9 +188,8 @@ are keyed by type (constructing a second `MainGameScene` while the first is regi
 
 ## Future simulation
 
-When `ReplayPlaybackService.FutureSimulationUnlocked` is true (runtime flag, defaulting from
-`GameConfig.ReplayFutureSimulationUnlockedByDefault`; meant to be unlocked by an item later), the
-scrubber's range extends `ReplayFutureSimulationMaxTicks` (30 min) past the recorded session end and
+When `ReplayPlaybackService.FutureSimulationUnlocked` is true (the player owns the **Sphere of
+Foresight** artifact, see "Artifacts" below), the scrubber's range extends `ReplayFutureSimulationMaxTicks` (30 min) past the recorded session end and
 that stretch of the track is tinted `ReplayFutureTrackColor` (`ReplayTimelineSlider`). Beyond the end
 there are no recorded commands: the world simply keeps simulating with every automated setting the
 player had, which is all a replay ever is.
@@ -214,6 +213,8 @@ player had, which is all a replay ever is.
   then will be lost") or `ConfirmContinueFutureMessage` in the future. Continuing from the future
   makes the recording end at that tick (the recorder already holds those ticks) and live play resumes
   there.
+- **Time travel needs the Chronos Timepiece artifact** (`ReplayPlaybackService.TimeTravelUnlocked`);
+  without it the button is hidden in every replay.
 - **Time travel is hero-gated.** Every playthrough has one hero, identified by `GameStateService.HeroId`
   (generated at new game, saved as `SaveData.HeroId` since v32, stamped into the replay header as
   `ReplayData.HeroId` since format v3). `ReplayPlaybackService.TimeTravelAllowed` is always true for
@@ -221,6 +222,38 @@ player had, which is all a replay ever is.
   when playback started; the scrubber disables the button otherwise, so another hero's replay is
   watch-only. Saves older than v32 derive a stable id from the hero design
   (`SaveData.ComputeLegacyHeroId`); v2 replay files carry id 0 and never qualify.
+
+## Artifacts (system-level unlocks)
+
+`ArtifactType` / `ArtifactCatalog` (`PitHero/Artifacts/`) define one-time grants that belong to the
+**player**, not to a hero or save slot: once granted they are owned forever, across every hero. They
+live in the **system save** (`SystemSaveData`, `%LOCALAPPDATA%\FeedTheHero\system.bin`, own format
+version) managed by the global `ArtifactService`, which writes the file the moment an artifact is
+granted. New Game and loading a slot never touch it.
+
+**Artifacts are not bought, they are granted on proof of wealth.** The merchant only needs to see
+that the hero holds the required gold; nothing is deducted. This is deliberate: an artifact lives
+outside the save, so deducting gold would let the player reload an older save and keep both the
+gold and the artifact. With nothing to rewind there is nothing to exploit.
+
+| Artifact | Wealth to show | Unlocks | Prerequisite |
+|---|---|---|---|
+| Sphere of Foresight | `ArtifactSphereOfForesightPrice` | Future simulation (blue region) | none |
+| Chronos Timepiece | `ArtifactChronosTimepiecePrice` | Time Travel Here | Sphere of Foresight |
+
+- **Shop:** Second Chance → Artifacts tab (header "Show proof of gold to be granted an artifact")
+  lists what `ArtifactService.IsAvailableInShop` allows (not owned, prerequisite owned); rows
+  disappear once granted. Clicking a slot opens `ArtifactInfoDialog` (sprite + description) with a
+  Grant button that acts at once, grayed and dead when the hero cannot show that much gold. The
+  merchant bubble says the Dialogue.txt line `SecondChanceProveWealth` while the tab is in front.
+- **Party → Artifacts tab:** a fixed `ArtifactGridColumns` x `ArtifactGridRows` grid of owned artifacts;
+  clicking one opens the same card without Grant.
+- **Replay-safe grant:** `PlayerCommandType.GrantArtifact` (A = ordinal). The handler re-checks the
+  wealth and calls the idempotent `Grant`; no simulation state changes, so a replayed grant is
+  harmless. Ownership is read only by presentation code (replay gates, tabs).
+- **Adding an artifact:** append to `ArtifactType` (persisted ordinal), fill in the catalog switches
+  (sprite name in the Items atlas, name/description keys, price constant, prerequisite), bump
+  `ArtifactCatalog.Count`. The system save keeps unknown ordinals, so older builds never drop a purchase.
 
 ## Invariants (and why)
 
