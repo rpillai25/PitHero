@@ -19,6 +19,8 @@ namespace PitHero.UI
 
         private TextButton _exitButton;
         private TextButton _continueButton;
+        private Cell _continueCell;            // collapsed to zero width when time travel is not offered
+        private float _continueWidth;
         private ConfirmationDialog _continueDialog;
         private TextButton _playPauseButton;
         private TextButton _speedButton;
@@ -81,7 +83,8 @@ namespace PitHero.UI
             // Buttons size to their text (plus breathing room) so no label is clipped; the outer
             // padding keeps the first button and the status label off the window edges
             Add(_exitButton).Width(TextButtonWidth(_exitButton)).Height(ButtonHeight).SetPadLeft(EdgePad).SetPadRight(6f);
-            Add(_continueButton).Width(TextButtonWidth(_continueButton)).Height(ButtonHeight).SetPadRight(6f);
+            _continueWidth = TextButtonWidth(_continueButton);
+            _continueCell = Add(_continueButton).Width(_continueWidth).Height(ButtonHeight).SetPadRight(6f);
             // Play/Pause swaps text: size for the wider of the two so the layout never shifts
             float playPauseWidth = System.Math.Max(TextButtonWidth(_playPauseButton),
                 MeasureButtonText(GetText(UITextKey.ButtonReplayPlay)) + ButtonTextPad);
@@ -195,7 +198,7 @@ namespace PitHero.UI
                 _lastShownState = state;
                 _playPauseButton.SetText(GetText(state == ReplayPlaybackState.Playing ? UITextKey.ButtonReplayPause : UITextKey.ButtonReplayPlay));
                 _playPauseButton.SetDisabled(state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting);
-                _continueButton.SetDisabled(!playback.TimeTravelAllowed); // another hero's recording: watch only
+                SetTimeTravelOffered(playback.TimeTravelAllowed);
                 _lastSeekPercent = -1;
                 _lastShownDivergence = -2;
             }
@@ -241,6 +244,20 @@ namespace PitHero.UI
                 _statusLabel.SetText(GetText(UITextKey.ReplayEndReached));
             else
                 _statusLabel.SetText(GetText(UITextKey.ReplayNoDivergence));
+        }
+
+        /// <summary>
+        /// Shows the Time Travel button, or hides it and collapses its cell so the slider takes the
+        /// room: another hero's recording is watch-only and a dead button would only invite clicks.
+        /// </summary>
+        private void SetTimeTravelOffered(bool offered)
+        {
+            if (_continueButton.IsVisible() == offered)
+                return;
+            _continueButton.SetVisible(offered);
+            _continueButton.SetTouchable(offered ? Touchable.Enabled : Touchable.Disabled);
+            _continueCell.Width(offered ? _continueWidth : 0f).SetPadRight(offered ? 6f : 0f);
+            Invalidate();
         }
 
         /// <summary>Resets cached display state so the next Update repaints everything (on show).</summary>
