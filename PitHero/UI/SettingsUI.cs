@@ -58,7 +58,7 @@ namespace PitHero.UI
         private CheckBox _autoScrollToHeroCheckBox;
 
         // Session tab controls
-        private TextButton _saveButton;
+        private HoverableTextButton _saveButton; // greyed + "Autosave in progress" tooltip while an autosave writes (issue #409)
         private TextButton _quitToTitleButton;
         private TextButton _exitButton;
         private SaveLoadUI _saveLoadUI;
@@ -855,7 +855,9 @@ namespace PitHero.UI
                 PressedOffsetX = saveBaseStyle.PressedOffsetX,
                 PressedOffsetY = saveBaseStyle.PressedOffsetY
             };
-            _saveButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonSave), saveButtonStyle);
+            _saveButton = new HoverableTextButton(GetText(TextType.UI, UITextKey.ButtonSave), saveButtonStyle, skin,
+                GetText(TextType.UI, UITextKey.SettingsSaveAutosaveInProgressTooltip), _stage);
+            _saveButton.SetTooltipEnabled(false); // only shown while an autosave is in flight (see Update)
             _saveButton.OnClicked += (button) =>
             {
                 ShowSaveLoadUI(SaveLoadUI.Mode.Save);
@@ -1997,14 +1999,26 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Enables or disables the Save button. Disabled (greyed out) during hero promotion walk
-        /// to prevent saving while the game is in a transitional state.
+        /// Keeps the Session → Save button in step with the save gate: greyed out whenever the session
+        /// may not be saved (SaveLoadService.SaveAllowed, written by MainGameScene) or an autosave is
+        /// writing; the "Autosave in progress" tooltip shows only in the latter case.
         /// </summary>
-        public void SetSaveEnabled(bool enabled)
+        private void RefreshSaveButtonState()
         {
             if (_saveButton == null)
                 return;
-            _saveButton.SetDisabled(!enabled);
+
+            var saveLoadService = Core.Services.GetService<SaveLoadService>();
+            var autoSaveService = Core.Services.GetService<AutoSaveService>();
+            bool saveAllowed = saveLoadService == null || saveLoadService.SaveAllowed;
+            bool autosaving = autoSaveService != null && autoSaveService.IsSaving;
+
+            _saveButton.SetDisabled(!saveAllowed || autosaving);
+
+            // The tooltip hides itself from Draw, which does not run while the Session tab is inactive
+            // or the window is closed — gate it off explicitly in those cases
+            bool sessionTabShown = _isVisible && _tabPane != null && _tabPane.CurrentTab == _sessionTab;
+            _saveButton.SetTooltipEnabled(autosaving && sessionTabShown);
         }
 
         /// <summary>
@@ -2264,6 +2278,8 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
+            RefreshSaveButtonState();
+
             // New-game intro owns the HUD: keep everything pinned off-screen and swallow all input
             if (_isIntroModeActive)
             {

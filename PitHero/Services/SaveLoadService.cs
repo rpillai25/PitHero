@@ -20,10 +20,24 @@ namespace PitHero.Services
 
         private readonly FileDataStore _fileDataStore;
 
+        /// <summary>
+        /// Dedicated store for the autosave file. FileDataStore caches one binary writer per instance,
+        /// so the worker-thread autosave write must never share the slot store (issue #409).
+        /// </summary>
+        private readonly FileDataStore _autoSaveStore;
+
         private readonly SaveData[] _slotPreviews;
+        private SaveData _autoSavePreview;
 
         /// <summary>Pending save data to be applied when MainGameScene initializes.</summary>
         public static SaveData PendingLoadData { get; set; }
+
+        /// <summary>
+        /// Whether the session may be saved right now (manual or auto). Written every presentation
+        /// frame by MainGameScene; false outside a live session, during replay playback, the new-game
+        /// intro, the death/respawn gap, the statue walk and the crystal ceremony.
+        /// </summary>
+        public bool SaveAllowed { get; set; }
 
         /// <summary>Records when a save or load operation occurs (Time.TotalTime at that moment).</summary>
         public double TimeAtSaveLoad { get; private set; }
@@ -34,12 +48,22 @@ namespace PitHero.Services
         /// <summary>Time.TotalTime at the moment the save was loaded. Zero for a new game.</summary>
         public double TimeAtLoad { get; private set; }
 
-        /// <summary>Creates a new SaveLoadService with the given FileDataStore.</summary>
-        public SaveLoadService(FileDataStore fileDataStore)
+        /// <summary>Creates a new SaveLoadService that uses one FileDataStore for slots and the autosave (synchronous callers, tests).</summary>
+        public SaveLoadService(FileDataStore fileDataStore) : this(fileDataStore, fileDataStore)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new SaveLoadService with a slot store (main thread) and a separate autosave store
+        /// (written from the AutoSaveService worker thread).
+        /// </summary>
+        public SaveLoadService(FileDataStore fileDataStore, FileDataStore autoSaveStore)
         {
             _fileDataStore = fileDataStore;
+            _autoSaveStore = autoSaveStore ?? fileDataStore;
             _slotPreviews = new SaveData[MaxSlots];
             RefreshSlotPreviews();
+            RefreshAutoSavePreview();
         }
 
         /// <summary>Resets time-tracking state so a new game begins with zero elapsed play time.</summary>
@@ -171,6 +195,80 @@ namespace PitHero.Services
             return data;
         }
 
+        /// <summary>Whether an autosave file with valid data exists.</summary>
+        public bool AutoSaveHasData => _autoSavePreview != null;
+
+        /// <summary>Gets the cached autosave preview (for the Load UI). Returns null if there is no autosave.</summary>
+        public SaveData GetAutoSavePreview()
+        {
+            return _autoSavePreview;
+        }
+
+        /// <summary>
+        /// Re-reads the autosave file from disk into the preview cache. Only the constructor needs this;
+        /// a completed autosave publishes its snapshot through SetAutoSavePreview instead of re-reading
+        /// a file that the worker may still be renaming.
+        /// </summary>
+        public void RefreshAutoSavePreview()
+        {
+            try
+            {
+                var data = new SaveData();
+                _autoSaveStore.Load(GameConfig.AutoSaveFileName, data);
+                _autoSavePreview = data.HeroName != null ? data : null;
+            }
+            catch (System.Exception ex)
+            {
+                // Incompatible version or corrupt file — treat the autosave as empty
+                Debug.Log("SaveLoadService: AutoSave unreadable (" + ex.Message + ")");
+                _autoSavePreview = null;
+            }
+        }
+
+        /// <summary>
+        /// Writes the snapshot to the autosave file. Thread-agnostic on purpose: it is called from the
+        /// AutoSaveService worker thread, so it touches only the dedicated store — no Core, no logging.
+        /// </summary>
+        public void WriteAutoSave(SaveData saveData)
+        {
+            _autoSaveStore.Save(GameConfig.AutoSaveFileName, saveData);
+        }
+
+        /// <summary>Publishes a successfully written autosave snapshot as the Load UI preview (main thread).</summary>
+        public void SetAutoSavePreview(SaveData saveData)
+        {
+            _autoSavePreview = saveData;
+            TimeAtSaveLoad = Time.TotalTime;
+        }
+
+        /// <summary>Loads game state from the autosave file. Returns null if there is no readable autosave.</summary>
+        public SaveData LoadFromAutoSave()
+        {
+            SaveData data;
+            try
+            {
+                data = new SaveData();
+                _autoSaveStore.Load(GameConfig.AutoSaveFileName, data);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Log("SaveLoadService: AutoSave unreadable (" + ex.Message + ")");
+                return null;
+            }
+
+            if (data.HeroName == null)
+            {
+                Debug.Log("SaveLoadService: AutoSave is empty");
+                return null;
+            }
+
+            TimeAtSaveLoad = Time.TotalTime;
+            LoadedTimePlayed = data.TotalTimePlayed;
+            TimeAtLoad = Time.TotalTime;
+            Debug.Log("SaveLoadService: Loaded from AutoSave");
+            return data;
+        }
+
         /// <summary>Gathers all current game state into a SaveData object for saving.</summary>
         public static SaveData GatherCurrentState()
         {
@@ -255,7 +353,6 @@ namespace PitHero.Services
                                 }
 
                                 data.InventoryItems.Add(savedItem);
-                                Debug.Log("[SaveLoadService] Saving item '" + item.Name + "' at slot " + i);
                             }
                         }
                     }

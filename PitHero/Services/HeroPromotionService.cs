@@ -23,6 +23,9 @@ namespace PitHero.Services
         private Scene _scene;
         private bool _isGrantingCrystal;
 
+        /// <summary>True while the crystal ceremony (statue walk + imbue) is running; saving is not allowed then.</summary>
+        public bool IsGrantingCrystal => _isGrantingCrystal;
+
         public HeroPromotionService(Scene scene)
         {
             _scene = scene;
@@ -175,9 +178,8 @@ namespace PitHero.Services
             // Reconnect UI
             ReconnectUIToHero(heroEntity);
 
-            // Re-enable the Save button now that the promotion ceremony is complete
-            Core.Services.GetService<SettingsUI>()?.SetSaveEnabled(true);
-
+            // Saving (manual and auto) is re-allowed by MainGameScene's per-frame gate once this
+            // flag clears and the hero no longer needs a crystal (SaveLoadService.SaveAllowed)
             _isGrantingCrystal = false;
             Debug.Log("[HeroPromotionService] *** HERO CRYSTAL CEREMONY COMPLETE ***");
         }

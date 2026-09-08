@@ -12,6 +12,7 @@ namespace PitHero.UI
         private Window _tooltipWindow;
         private bool _wasMouseOver;
         private bool _suppressed;
+        private bool _tooltipEnabled = true;
 
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
 
@@ -23,6 +24,33 @@ namespace PitHero.UI
 
             if (_stage != null && !string.IsNullOrEmpty(_tooltipText))
                 BuildTooltipWindow(skin);
+        }
+
+        /// <summary>Creates the button from an explicit style; the skin is still needed for the tooltip window.</summary>
+        public HoverableTextButton(string text, TextButtonStyle style, Skin skin, string tooltipText, Stage stage)
+            : base(text, style)
+        {
+            _tooltipText = tooltipText;
+            _stage = stage;
+
+            if (_stage != null && skin != null && !string.IsNullOrEmpty(_tooltipText))
+                BuildTooltipWindow(skin);
+        }
+
+        /// <summary>
+        /// Gates the tooltip without touching Touchable (the button must stay clickable when enabled).
+        /// Disabling hides an open tooltip immediately.
+        /// </summary>
+        public void SetTooltipEnabled(bool enabled)
+        {
+            if (_tooltipEnabled == enabled)
+                return;
+            _tooltipEnabled = enabled;
+            if (!enabled)
+            {
+                _tooltipWindow?.SetVisible(false);
+                _wasMouseOver = false;
+            }
         }
 
         private void BuildTooltipWindow(Skin skin)
@@ -46,8 +74,8 @@ namespace PitHero.UI
 
             if (_tooltipWindow == null) return;
 
-            // Hide whenever the button's own hierarchy is invisible
-            if (!IsVisible())
+            // Hide whenever the button's own hierarchy is invisible or the tooltip is gated off
+            if (!IsVisible() || !_tooltipEnabled)
             {
                 _tooltipWindow.SetVisible(false);
                 _wasMouseOver = false;

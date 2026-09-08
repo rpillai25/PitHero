@@ -680,6 +680,16 @@ namespace PitHero
         public const int ArtifactChronosTimepiecePrice = 1000000;     // Gold; unlocks Time Travel Here (requires the sphere first)
         public const int ArtifactKairosMetronomePrice = 50000;        // Gold; unlocks the 4X and 8X fast-forward rungs
 
+        // AutoSave (issue #409): the running session is written to a dedicated file on a wall-clock
+        // cadence from the presentation pass; the write itself runs on a worker thread (AutoSaveService)
+        public const float AutoSaveIntervalSeconds = 30f;             // Wall seconds between autosaves; a blocked stretch (death, ceremony, intro, replay) restarts the countdown
+        public const string AutoSaveFileName = "autosave.bin";        // Under the persistent data folder, beside the save slots
+        public const float AutoSaveIconMargin = 8f;                   // Stage pixels from the lower-right corner to the SaveIcon
+        public const float AutoSaveIconMinVisibleSeconds = 1.5f;      // The SaveIcon lingers at least this long so a fast write is still noticed
+        public const float AutoSaveIconPulseSpeed = 4f;               // Radians per second for the SaveIcon alpha pulse
+        public const int AutoSaveIconAlphaMin = 110;                  // Alpha floor of the pulse
+        public const int AutoSaveIconAlphaMax = 255;                  // Alpha ceiling of the pulse
+
         // TEMPORARY TEST HACK: floor the player's gold to this on every session start so the artifact
         // shop can be exercised end to end. Set back to 0 to disable (and delete the block that reads
         // it in MainGameScene.Begin).

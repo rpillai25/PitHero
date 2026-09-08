@@ -519,3 +519,8 @@ ConfirmContinueFutureMessage,Are you sure you want to time travel to the selecte
 ReplayInfoTitle,Replay Info
 ReplayInfoIntro,Save a replay and play it back, or replay the currently running session up to the current point in time without saving.
 ReplayInfoWarning,WARNING: The longer a play session is, the longer the replay takes to seek. It is intended for sessions of a few hours. If you leave a session on for several days, expect much longer seek times. A new session is started any time you load a save file or start a new game.
+
+# AutoSave (issue #409)
+SaveLoadAutoSave,AutoSave
+SettingsSaveAutosaveInProgressTooltip,Autosave in progress
+ConfirmLoadAutoSave,Load the AutoSave?

@@ -985,6 +985,132 @@ namespace PitHero.Tests
         }
 
         /// <summary>
+        /// Verifies the dedicated autosave file (issue #409): written through the autosave store beside
+        /// the slots, published as the preview, and read back from disk by a fresh service instance.
+        /// </summary>
+        [TestMethod]
+        public void SaveLoadService_AutoSave_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_autosave_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var slotStore = new FileDataStore(tempDir);
+                var autoSaveStore = new FileDataStore(tempDir);
+                var service = new SaveLoadService(slotStore, autoSaveStore);
+                Assert.IsFalse(service.AutoSaveHasData, "fresh directory has no autosave");
+                Assert.IsNull(service.GetAutoSavePreview());
+                Assert.IsNull(service.LoadFromAutoSave(), "missing autosave loads as null");
+
+                var snapshot = new SaveData();
+                snapshot.HeroName = "AutoHero";
+                snapshot.Level = 7;
+                snapshot.TotalTimePlayed = 90f;
+                snapshot.PitLevel = 12;
+
+                service.WriteAutoSave(snapshot);
+                Assert.IsTrue(File.Exists(Path.Combine(tempDir, GameConfig.AutoSaveFileName)), "autosave.bin written beside the slots");
+                Assert.IsFalse(File.Exists(Path.Combine(tempDir, GameConfig.AutoSaveFileName + ".tmp")), "no tmp file left behind");
+                Assert.IsFalse(service.SlotHasData(0), "autosave never touches a manual slot");
+
+                // The worker's snapshot is published by the main thread without re-reading the disk
+                service.SetAutoSavePreview(snapshot);
+                Assert.IsTrue(service.AutoSaveHasData);
+                Assert.AreSame(snapshot, service.GetAutoSavePreview());
+
+                // A fresh service (next launch) reads the preview and the full save from disk
+                var reloaded = new SaveLoadService(new FileDataStore(tempDir), new FileDataStore(tempDir));
+                Assert.IsTrue(reloaded.AutoSaveHasData);
+                Assert.AreEqual("AutoHero", reloaded.GetAutoSavePreview().HeroName);
+                Assert.AreEqual(7, reloaded.GetAutoSavePreview().Level);
+
+                var loaded = reloaded.LoadFromAutoSave();
+                Assert.IsNotNull(loaded);
+                Assert.AreEqual("AutoHero", loaded.HeroName);
+                Assert.AreEqual(12, loaded.PitLevel);
+                Assert.AreEqual(90f, loaded.TotalTimePlayed, 0.001f);
+                Assert.AreEqual(90f, reloaded.LoadedTimePlayed, 0.001f, "loading the autosave seeds the played-time accumulator");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>An autosave file from an unsupported version is treated as empty instead of crashing.</summary>
+        [TestMethod]
+        public void SaveLoadService_IncompatibleAutoSaveFile_TreatedAsEmpty()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_oldautosave_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var ms = new MemoryStream();
+                using (var writer = new BinaryPersistableWriter(ms))
+                {
+                    var original = new SaveData();
+                    original.HeroName = "OldHero";
+                    writer.Write(original);
+                }
+
+                byte[] bytes = ms.ToArray();
+                bytes[0] = (byte)(SaveData.MinSupportedVersion - 1);
+                bytes[1] = 0;
+                bytes[2] = 0;
+                bytes[3] = 0;
+                File.WriteAllBytes(Path.Combine(tempDir, GameConfig.AutoSaveFileName), bytes);
+
+                var service = new SaveLoadService(new FileDataStore(tempDir));
+
+                Assert.IsFalse(service.AutoSaveHasData, "Incompatible autosave should be treated as empty");
+                Assert.IsNull(service.LoadFromAutoSave(), "Loading an incompatible autosave should return null");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// FileDataStore.Save must leave the destination intact if a stale tmp file exists and must not
+        /// leave a tmp file behind (the autosave rewrites the same file every 30 s).
+        /// </summary>
+        [TestMethod]
+        public void FileDataStore_Save_ReplacesStaleTmpAndLeavesNoTmp()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_tmpfile_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                const string fileName = "save_slot_0.bin";
+                // Orphaned tmp much longer than any real save
+                File.WriteAllBytes(Path.Combine(tempDir, fileName + ".tmp"), new byte[64 * 1024]);
+
+                var store = new FileDataStore(tempDir);
+                var data = new SaveData();
+                data.HeroName = "TmpHero";
+                store.Save(fileName, data);
+
+                Assert.IsFalse(File.Exists(Path.Combine(tempDir, fileName + ".tmp")));
+                Assert.IsTrue(new FileInfo(Path.Combine(tempDir, fileName)).Length < 64 * 1024, "stale tmp bytes must not survive");
+
+                var back = new SaveData();
+                store.Load(fileName, back);
+                Assert.AreEqual("TmpHero", back.HeroName);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
         /// Verifies the v23 sections (gear sell types, auto-purchase items, auto-equip) round-trip
         /// through Persist/Recover with non-default values.
         /// </summary>

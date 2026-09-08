@@ -73,6 +73,7 @@ namespace PitHero.ECS.Scenes
         private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
+        private AutoSaveIndicator _autoSaveIndicator; // SaveIcon shown in the lower-right corner while an autosave writes (issue #409)
         private Rendering.ColorGradingController _colorGrading;
         private Rendering.CloudOverlayController _cloudOverlay;
         private Entity _cloudOverlayEntity;
@@ -314,6 +315,10 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.Replay.ReplayRecorder));
             // A new scene always starts unpaused; pending pause commands die with this scene
             Core.Services.GetService<PauseService>()?.ResetImmediate();
+            // No session on screen: nothing may be saved until the next MainGameScene re-arms the gate
+            var saveLoadService = Core.Services.GetService<SaveLoadService>();
+            if (saveLoadService != null)
+                saveLoadService.SaveAllowed = false;
         }
 
         public override void Begin()
@@ -339,6 +344,9 @@ namespace PitHero.ECS.Scenes
             _playerCommands = new Services.Replay.PlayerCommandService();
             Core.Services.AddService(_playerCommands);
             Debug.Log($"[MainGameScene] Session master seed {masterSeed}");
+
+            // A fresh session (new game, load, replay exit) starts the autosave countdown over
+            Core.Services.GetService<AutoSaveService>()?.ResetTimer();
 
             // ── Replay recorder: capture how this session starts ────────────────────────
             // A replay of a NEW game re-runs the new-game path, so the global services that the
@@ -1927,8 +1935,8 @@ namespace PitHero.ECS.Scenes
 
             CreateHeroEntity(34, 6, needsCrystal: true);
 
-            // Disable save while hero walks to statue — saving in this transitional state puts the game in an odd state
-            Core.Services.GetService<SettingsUI>()?.SetSaveEnabled(false);
+            // Saving is blocked while the hero walks to the statue (NeedsCrystal) by the per-frame
+            // save gate in PresentationUpdate — saving in this transitional state puts the game in an odd state
 
             // Unfreeze and reassign mercenaries to follow the new hero
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
@@ -2311,6 +2319,11 @@ namespace PitHero.ECS.Scenes
                 PositionEventConsolePanel();
                 _settingsUI?.SetEventConsolePanel(_eventConsolePanel);
             }
+
+            // AutoSave indicator (issue #409): lower-right corner, added after the console so it draws above it
+            _autoSaveIndicator = new AutoSaveIndicator();
+            uiCanvas.Stage.AddElement(_autoSaveIndicator);
+            _autoSaveIndicator.ToFront();
         }
 
         private void AddPitLevelTestComponent()
@@ -2893,6 +2906,26 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
+        /// Whether the session may be saved right now (manual or auto). False during replay playback,
+        /// the new-game intro, the death animation / respawn gap (no living hero), the statue walk
+        /// (NeedsCrystal) and the crystal ceremony — saving any of those captures a broken state.
+        /// </summary>
+        private bool ComputeSaveAllowed(bool replayActive)
+        {
+            if (!_isInitializationComplete || replayActive || IsIntroActive)
+                return false;
+            if (_heroPromotionService != null && _heroPromotionService.IsGrantingCrystal)
+                return false;
+
+            var heroComp = FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (heroComp?.LinkedHero == null)
+                return false;
+            if (heroComp.LinkedHero.CurrentHP <= 0 || heroComp.NeedsCrystal)
+                return false;
+            return true;
+        }
+
+        /// <summary>
         /// Positions the event console panel just to the right of the shortcut bar, with one-slot padding.
         /// Mirrors PositionShortcutBar()'s scale logic so both stay in sync across window modes.
         /// </summary>
@@ -3157,6 +3190,7 @@ namespace PitHero.ECS.Scenes
                     RepositionGraphicalHud();
                     PositionEventConsolePanel();
                     PositionReplayScrubber();
+                    _autoSaveIndicator?.Reposition();
                     if (_pauseOverlayRenderer != null)
                     {
                         _pauseOverlayRenderer.SetWidth(stageW * 2f);
@@ -3167,6 +3201,19 @@ namespace PitHero.ECS.Scenes
 
             _settingsUI?.Update();
             _eventConsolePanel?.Update();
+
+            // AutoSave (issue #409): wall-clock countdown, presentation-only. The gate also drives the
+            // Session → Save button, so manual saves obey the same transitional-state rules.
+            var saveLoadService = Core.Services.GetService<SaveLoadService>();
+            var autoSaveService = Core.Services.GetService<AutoSaveService>();
+            bool canSave = ComputeSaveAllowed(replayActive);
+            if (saveLoadService != null)
+                saveLoadService.SaveAllowed = canSave;
+            if (autoSaveService != null)
+            {
+                autoSaveService.Tick(Time.UnscaledDeltaTime, canSave);
+                _autoSaveIndicator?.Update(autoSaveService.IsSaving);
+            }
             // Remove duplicate HeroUI update since SettingsUI handles it
 
             // Update pause overlay visibility based on pause state. During free-move mode the

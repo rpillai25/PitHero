@@ -52,7 +52,16 @@ namespace PitHero
             // Register persistence services
             var fileDataStore = new FileDataStore(null);
             Services.AddService(fileDataStore);
-            Services.AddService(new SaveLoadService(fileDataStore));
+            // The autosave gets its own store: FileDataStore caches one binary writer per instance, and
+            // the autosave write runs on a worker thread while the slot store stays on the main thread
+            var autoSaveStore = new FileDataStore(null);
+            var saveLoadService = new SaveLoadService(fileDataStore, autoSaveStore);
+            Services.AddService(saveLoadService);
+            Services.AddService(new AutoSaveService(
+                SaveLoadService.GatherCurrentState,
+                saveLoadService.WriteAutoSave,
+                saveLoadService.SetAutoSavePreview,
+                GameConfig.AutoSaveIntervalSeconds));
             // System save: artifacts belong to the player, not to a hero or slot
             Services.AddService(new ArtifactService());
 
@@ -126,6 +135,9 @@ namespace PitHero
         {
             if (disposing)
             {
+                // Never let process exit kill an autosave write mid-flight
+                Services.GetService<AutoSaveService>()?.WaitForCompletion();
+
                 PitHero.Services.Analytics.AnalyticsService.LogSessionEnd();
                 PitHero.Services.Analytics.AnalyticsService.Shutdown();
 

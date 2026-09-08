@@ -42,9 +42,15 @@ namespace PitHero.UI
         private const float WindowWidth = 500f;
         private const float WindowHeight = 300f; // design height at GameConfig.VirtualHeight = 360; fitted to the stage at show time
         private const float SlotRowHeight = 50f;
+        private const float AutoSaveRowHeight = 72f; // tag line above the preview columns, block centered vertically
         private const float SlotPadding = 4f;
 
-        private static readonly Color TimeHeaderColor = new Color(100, 149, 237);
+        /// <summary>Sentinel slot index for the dedicated autosave file (issue #409); listed first in Load mode only.</summary>
+        public const int AutoSaveSlot = -1;
+
+        private static readonly Color TimeHeaderColor = new Color(172, 50, 50);
+        private static readonly Color AutoSaveRowTint = new Color(153, 229, 80);   // multiplies the row nine-patch only; labels keep their own colors
+        private static readonly Color AutoSaveLabelColor = new Color(251, 140, 0);      // "AutoSave" tag color (Skullboy font), chosen to contrast the row tint
 
         private Stage _stage;
         private Window _window;
@@ -113,6 +119,13 @@ namespace PitHero.UI
                 _actorsAtlas = null;
             }
 
+            // The autosave is only offered for loading; manual saves never overwrite it
+            if (_currentMode == Mode.Load)
+            {
+                BuildSlotRow(slotsTable, AutoSaveSlot, service?.GetAutoSavePreview());
+                slotsTable.Row();
+            }
+
             for (int i = 0; i < SaveLoadService.MaxSlots; i++)
             {
                 SaveData preview = service != null ? service.GetSlotPreview(i) : null;
@@ -151,9 +164,20 @@ namespace PitHero.UI
         private void BuildSlotRow(Table container, int slotIndex, SaveData preview)
         {
             var rowTable = new Table();
+            bool isAutoSave = slotIndex == AutoSaveSlot;
+            float rowHeight = isAutoSave ? AutoSaveRowHeight : SlotRowHeight;
 
             if (preview != null)
             {
+                // AutoSave tag: its own full-width line, centered over the three preview columns
+                if (isAutoSave)
+                {
+                    // The previous 2px bottom pad becomes +8 top / -6 bottom: the tag moves down 8px while the
+                    // block height stays the same, so the preview columns below keep their position
+                    rowTable.Add(CreateAutoSaveLabel()).SetColspan(3).Center().SetPadTop(8f).SetPadBottom(-6f);
+                    rowTable.Row();
+                }
+
                 // Left column: hero sprite preview
                 if (_actorsAtlas != null)
                 {
@@ -173,7 +197,9 @@ namespace PitHero.UI
                 var levelLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SaveLoadLevelLabel), preview.Level), _skin, "ph-default");
                 infoTable.Add(levelLabel).Left();
 
-                rowTable.Add(infoTable).Expand().Left().SetPadLeft(8f);
+                // Expand horizontally only: with no cell claiming the spare height, the table centers
+                // its rows as one block, so the AutoSave tag sits just above the name instead of at the top
+                rowTable.Add(infoTable).SetExpandX().Left().SetPadLeft(8f);
 
                 // Right column: time header and formatted time
                 var timeTable = new Table();
@@ -197,15 +223,28 @@ namespace PitHero.UI
             }
             else
             {
-                var emptyLabel = new Label(GetText(TextType.UI, UITextKey.SaveLoadEmptySlot), _skin, "ph-default");
-                rowTable.Add(emptyLabel).Expand().Center();
+                if (isAutoSave)
+                {
+                    var emptyTable = new Table();
+                    emptyTable.Add(CreateAutoSaveLabel());
+                    emptyTable.Row();
+                    emptyTable.Add(new Label(GetText(TextType.UI, UITextKey.SaveLoadEmptySlot), _skin, "ph-default"));
+                    rowTable.Add(emptyTable).Expand().Center();
+                }
+                else
+                {
+                    var emptyLabel = new Label(GetText(TextType.UI, UITextKey.SaveLoadEmptySlot), _skin, "ph-default");
+                    rowTable.Add(emptyLabel).Expand().Center();
+                }
             }
 
             // Wrap the row in a clickable TextButton to make the entire row clickable
             var slotButton = new TextButton("", _skin, "ph-default");
             slotButton.ClearChildren();
             slotButton.Add(rowTable).Expand().Fill();
-            slotButton.SetSize(WindowWidth - 40f, SlotRowHeight);
+            slotButton.SetSize(WindowWidth - 40f, rowHeight);
+            if (isAutoSave)
+                slotButton.SetColor(AutoSaveRowTint);
 
             // Capture the index for the closure
             int capturedIndex = slotIndex;
@@ -221,7 +260,24 @@ namespace PitHero.UI
                 slotButton.OnClicked += (button) => ShowConfirmDialog(capturedIndex);
             }
 
-            container.Add(slotButton).Width(WindowWidth - 40f).Height(SlotRowHeight).SetPadBottom(SlotPadding);
+            container.Add(slotButton).Width(WindowWidth - 40f).Height(rowHeight).SetPadBottom(SlotPadding);
+        }
+
+        /// <summary>
+        /// "AutoSave" tag label in the Skullboy HUD font. It gets its own LabelStyle so the font and color
+        /// never bleed into other labels.
+        /// </summary>
+        private Label CreateAutoSaveLabel()
+        {
+            // Core.Content caches the font, so this shares the instance with the HUD rather than loading a second copy
+            var ownStyle = new LabelStyle
+            {
+                Font = Core.Content.LoadBitmapFont(GameConfig.FontPathHud),
+                FontColor = AutoSaveLabelColor,
+                FontScaleX = 1f,
+                FontScaleY = 1f
+            };
+            return new Label(GetText(TextType.UI, UITextKey.SaveLoadAutoSave), ownStyle);
         }
 
         /// <summary>Shows a confirmation dialog before saving or loading.</summary>
@@ -242,7 +298,9 @@ namespace PitHero.UI
             else
             {
                 title = GetText(TextType.UI, UITextKey.DialogConfirmLoad);
-                message = string.Format(GetText(TextType.UI, UITextKey.ConfirmLoadSaveSlot), slotIndex + 1);
+                message = slotIndex == AutoSaveSlot
+                    ? GetText(TextType.UI, UITextKey.ConfirmLoadAutoSave)
+                    : string.Format(GetText(TextType.UI, UITextKey.ConfirmLoadSaveSlot), slotIndex + 1);
                 confirmText = GetText(TextType.UI, UITextKey.ButtonLoad);
             }
 
@@ -313,6 +371,8 @@ namespace PitHero.UI
                 var saveData = SaveLoadService.GatherCurrentState();
                 service.SaveToSlot(slotIndex, saveData);
                 service.RefreshSlotPreviews();
+                // A manual save restarts the autosave countdown (issue #409)
+                Core.Services.GetService<AutoSaveService>()?.ResetTimer();
                 Debug.Log("SaveLoadUI: Saved to slot " + slotIndex);
             }
 
@@ -325,7 +385,17 @@ namespace PitHero.UI
             var service = Core.Services.GetService<SaveLoadService>();
             if (service != null)
             {
-                var data = service.LoadFromSlot(slotIndex);
+                SaveData data;
+                if (slotIndex == AutoSaveSlot)
+                {
+                    // Never read the autosave while its worker may still be writing it
+                    Core.Services.GetService<AutoSaveService>()?.WaitForCompletion();
+                    data = service.LoadFromAutoSave();
+                }
+                else
+                {
+                    data = service.LoadFromSlot(slotIndex);
+                }
                 if (data != null)
                 {
                     SaveLoadService.ApplyLoadedState(data);

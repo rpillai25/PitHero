@@ -512,5 +512,10 @@ namespace PitHero
         public const string ConsoleThreatTarget = "ConsoleThreatTarget";
         public const string ConsoleBattleProvoke = "ConsoleBattleProvoke";
         public const string ConsoleBattleProvokeSolo = "ConsoleBattleProvokeSolo";
+
+        // AutoSave (issue #409)
+        public const string SaveLoadAutoSave = "SaveLoadAutoSave";
+        public const string SettingsSaveAutosaveInProgressTooltip = "SettingsSaveAutosaveInProgressTooltip";
+        public const string ConfirmLoadAutoSave = "ConfirmLoadAutoSave";
     }
 }
