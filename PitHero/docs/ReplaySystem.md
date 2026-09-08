@@ -317,6 +317,12 @@ gold and the artifact. With nothing to rewind there is nothing to exploit.
 - Per-step accumulators on `Time.DeltaTime` are deterministic. Coroutine `WaitForSeconds` is fine.
 - A stored "when did this happen" timestamp uses `SimulationClock.Now` (or `CurrentTick`), never
   `Time.TotalTime`.
+- A timer that must run in **real** time regardless of speed or pause, and whose effect the sim never
+  reads, belongs in `PresentationUpdate` on `Time.UnscaledDeltaTime`. The autosave countdown
+  (`AutoSaveService`, see `AutoSave.md`) is the reference example: ticked from
+  `MainGameScene.PresentationUpdate`, gated off while `ReplayPlaybackService.Current.IsActive` so a
+  replayed session never overwrites the real autosave, and dispatching no `PlayerCommand` because
+  saving mutates nothing the simulation reads.
 
 ### Add a cosmetic component
 

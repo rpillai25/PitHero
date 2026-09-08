@@ -12,7 +12,9 @@ matters, and the fix. The invariants are numbered as in `PitHero/docs/ReplaySyst
 - [ ] No `Time.TotalTime`, `Time.FrameCount`, `Time.TimeSinceSceneLoad`, `DateTime.Now/UtcNow`,
       `Stopwatch`, `Environment.TickCount` in sim code. Stored timestamps use `SimulationClock.Now`
       (seconds) or `SimulationClock.CurrentTick`. `Time.DeltaTime` accumulators are fine.
-- [ ] Wall-clock reads that remain are presentation-only (UI pulses, time-played counter, analytics).
+- [ ] Wall-clock reads that remain are presentation-only (UI pulses, time-played counter, analytics,
+      the autosave countdown in `AutoSaveService` — which must also stay gated off during replay
+      playback via `MainGameScene.ComputeSaveAllowed`; see `PitHero/docs/AutoSave.md`).
 
 ### Player mutations (invariant 2)
 - [ ] Every UI path that changes sim state dispatches a `PlayerCommand`
