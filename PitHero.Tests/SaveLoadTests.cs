@@ -972,7 +972,7 @@ namespace PitHero.Tests
                 File.WriteAllBytes(Path.Combine(tempDir, "save_slot_0.bin"), bytes);
 
                 // Constructor refreshes slot previews — must not throw on the incompatible file
-                var service = new SaveLoadService(new FileDataStore(tempDir));
+                var service = new SaveLoadService(new FileDataStore(tempDir), tempDir);
 
                 Assert.IsFalse(service.SlotHasData(0), "Incompatible slot should be treated as empty");
                 Assert.IsNull(service.LoadFromSlot(0), "Loading an incompatible slot should return null");
@@ -984,53 +984,215 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>The autosave file a hero's id maps to (mirrors SaveLoadService.GetAutoSaveFilename).</summary>
+        private static string AutoSaveFileNameFor(int heroId)
+        {
+            return GameConfig.AutoSaveFilePrefix + ((uint)heroId).ToString("X8") + GameConfig.AutoSaveFileExtension;
+        }
+
+        /// <summary>Builds a minimal autosave snapshot for a hero.</summary>
+        private static SaveData AutoSaveSnapshot(int heroId, string heroName, int level = 1)
+        {
+            var data = new SaveData();
+            data.HeroId = heroId;
+            data.HeroName = heroName;
+            data.Level = level;
+            return data;
+        }
+
         /// <summary>
-        /// Verifies the dedicated autosave file (issue #409): written through the autosave store beside
-        /// the slots, published as the preview, and read back from disk by a fresh service instance.
+        /// Verifies the per-hero autosave files (issue #409): each hero gets its own file beside the
+        /// slots, snapshots are published without re-reading the disk, and a fresh service instance
+        /// rediscovers every hero's autosave from disk.
         /// </summary>
         [TestMethod]
-        public void SaveLoadService_AutoSave_RoundTrip()
+        public void SaveLoadService_AutoSave_PerHero_RoundTrip()
         {
             var tempDir = Path.Combine(Path.GetTempPath(), "pithero_autosave_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempDir);
 
             try
             {
-                var slotStore = new FileDataStore(tempDir);
-                var autoSaveStore = new FileDataStore(tempDir);
-                var service = new SaveLoadService(slotStore, autoSaveStore);
-                Assert.IsFalse(service.AutoSaveHasData, "fresh directory has no autosave");
-                Assert.IsNull(service.GetAutoSavePreview());
-                Assert.IsNull(service.LoadFromAutoSave(), "missing autosave loads as null");
+                var service = new SaveLoadService(new FileDataStore(tempDir), new FileDataStore(tempDir), tempDir);
+                Assert.AreEqual(0, service.AutoSaveEntries.Count, "fresh directory has no autosaves");
+                Assert.IsNull(service.LoadFromAutoSave(111), "missing autosave loads as null");
 
-                var snapshot = new SaveData();
-                snapshot.HeroName = "AutoHero";
-                snapshot.Level = 7;
-                snapshot.TotalTimePlayed = 90f;
-                snapshot.PitLevel = 12;
+                var heroA = AutoSaveSnapshot(111, "Borin", 7);
+                heroA.TotalTimePlayed = 90f;
+                heroA.PitLevel = 12;
+                var heroB = AutoSaveSnapshot(-222, "Kaya", 3);
+                heroB.PitLevel = 4;
 
-                service.WriteAutoSave(snapshot);
-                Assert.IsTrue(File.Exists(Path.Combine(tempDir, GameConfig.AutoSaveFileName)), "autosave.bin written beside the slots");
-                Assert.IsFalse(File.Exists(Path.Combine(tempDir, GameConfig.AutoSaveFileName + ".tmp")), "no tmp file left behind");
-                Assert.IsFalse(service.SlotHasData(0), "autosave never touches a manual slot");
+                service.WriteAutoSave(heroA);
+                service.WriteAutoSave(heroB);
 
-                // The worker's snapshot is published by the main thread without re-reading the disk
-                service.SetAutoSavePreview(snapshot);
-                Assert.IsTrue(service.AutoSaveHasData);
-                Assert.AreSame(snapshot, service.GetAutoSavePreview());
+                Assert.IsTrue(File.Exists(Path.Combine(tempDir, AutoSaveFileNameFor(111))), "hero A's autosave written beside the slots");
+                Assert.IsTrue(File.Exists(Path.Combine(tempDir, AutoSaveFileNameFor(-222))), "a negative hero id still yields a valid filename");
+                Assert.IsFalse(File.Exists(Path.Combine(tempDir, AutoSaveFileNameFor(111) + ".tmp")), "no tmp file left behind");
+                Assert.IsFalse(service.SlotHasData(0), "autosaves never touch a manual slot");
 
-                // A fresh service (next launch) reads the preview and the full save from disk
-                var reloaded = new SaveLoadService(new FileDataStore(tempDir), new FileDataStore(tempDir));
-                Assert.IsTrue(reloaded.AutoSaveHasData);
-                Assert.AreEqual("AutoHero", reloaded.GetAutoSavePreview().HeroName);
-                Assert.AreEqual(7, reloaded.GetAutoSavePreview().Level);
+                // The worker's snapshots are published by the main thread without re-reading the disk
+                service.SetAutoSavePreview(heroA);
+                service.SetAutoSavePreview(heroB);
+                Assert.AreEqual(2, service.AutoSaveEntries.Count, "one entry per hero");
+                Assert.AreEqual(-222, service.AutoSaveEntries[0].HeroId, "most recently saved hero is listed first");
+                Assert.AreSame(heroB, service.AutoSaveEntries[0].Preview);
 
-                var loaded = reloaded.LoadFromAutoSave();
+                // A fresh service (next launch) rediscovers both heroes from disk
+                var reloaded = new SaveLoadService(new FileDataStore(tempDir), new FileDataStore(tempDir), tempDir);
+                Assert.AreEqual(2, reloaded.AutoSaveEntries.Count);
+
+                var loadedA = reloaded.LoadFromAutoSave(111);
+                Assert.IsNotNull(loadedA);
+                Assert.AreEqual("Borin", loadedA.HeroName);
+                Assert.AreEqual(12, loadedA.PitLevel);
+                Assert.AreEqual(90f, loadedA.TotalTimePlayed, 0.001f);
+                Assert.AreEqual(90f, reloaded.LoadedTimePlayed, 0.001f, "loading an autosave seeds the played-time accumulator");
+
+                var loadedB = reloaded.LoadFromAutoSave(-222);
+                Assert.IsNotNull(loadedB);
+                Assert.AreEqual("Kaya", loadedB.HeroName, "each hero loads its own autosave");
+                Assert.AreEqual(4, loadedB.PitLevel);
+
+                Assert.IsNull(reloaded.LoadFromAutoSave(999), "an unknown hero has no autosave");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// The regression this feature exists for: a second hero's autosave must not overwrite the
+        /// first hero's, and repeated autosaves of one hero must reuse that hero's single file.
+        /// </summary>
+        [TestMethod]
+        public void SaveLoadService_AutoSave_SecondHeroDoesNotOverwriteFirst()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_autosave2_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new SaveLoadService(new FileDataStore(tempDir), new FileDataStore(tempDir), tempDir);
+
+                var heroA = AutoSaveSnapshot(111, "Borin", 7);
+                service.WriteAutoSave(heroA);
+                service.SetAutoSavePreview(heroA);
+
+                // Same hero saves again (as it does every 30 s) — still exactly one file for that hero
+                var heroAgain = AutoSaveSnapshot(111, "Borin", 8);
+                service.WriteAutoSave(heroAgain);
+                service.SetAutoSavePreview(heroAgain);
+
+                var heroB = AutoSaveSnapshot(222, "Kaya", 3);
+                service.WriteAutoSave(heroB);
+                service.SetAutoSavePreview(heroB);
+
+                int files = Directory.GetFiles(tempDir, GameConfig.AutoSaveFilePrefix + "*" + GameConfig.AutoSaveFileExtension).Length;
+                Assert.AreEqual(2, files, "one autosave file per hero, regardless of how often each saves");
+                Assert.AreEqual(2, service.AutoSaveEntries.Count);
+
+                var stillHeroA = service.LoadFromAutoSave(111);
+                Assert.IsNotNull(stillHeroA, "hero A's autosave survives hero B autosaving");
+                Assert.AreEqual("Borin", stillHeroA.HeroName);
+                Assert.AreEqual(8, stillHeroA.Level, "hero A's autosave holds its latest snapshot");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// At the cap a further hero evicts the least recently written autosave, and the hero currently
+        /// playing is never the one evicted.
+        /// </summary>
+        [TestMethod]
+        public void SaveLoadService_AutoSave_CapEvictsLeastRecentlyWritten()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_autosavecap_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new SaveLoadService(new FileDataStore(tempDir), new FileDataStore(tempDir), tempDir);
+
+                // One more hero than the cap allows, each written a day further in the past than the last
+                int overCap = SaveLoadService.MaxAutoSaves + 1;
+                var now = DateTime.UtcNow;
+                for (int i = 0; i < overCap; i++)
+                {
+                    int heroId = 100 + i;
+                    service.WriteAutoSave(AutoSaveSnapshot(heroId, "Hero" + heroId));
+                    // Hero 100 is the least recently played, hero 105 the most recent
+                    File.SetLastWriteTimeUtc(Path.Combine(tempDir, AutoSaveFileNameFor(heroId)), now.AddDays(i - overCap));
+                }
+
+                service.RefreshAutoSavePreviews();
+                Assert.AreEqual(overCap, service.AutoSaveEntries.Count, "the scan finds every autosave on disk");
+                Assert.AreEqual(105, service.AutoSaveEntries[0].HeroId, "most recently written first");
+
+                // The most recent hero autosaves again, pushing the list over the cap
+                var current = AutoSaveSnapshot(105, "Hero105", 2);
+                service.WriteAutoSave(current);
+                service.SetAutoSavePreview(current);
+
+                Assert.AreEqual(SaveLoadService.MaxAutoSaves, service.AutoSaveEntries.Count, "the cap is enforced");
+                Assert.IsFalse(File.Exists(Path.Combine(tempDir, AutoSaveFileNameFor(100))), "the least recently played autosave file is deleted");
+                Assert.IsNull(service.LoadFromAutoSave(100));
+                for (int heroId = 101; heroId <= 105; heroId++)
+                    Assert.IsNotNull(service.LoadFromAutoSave(heroId), "hero " + heroId + " keeps its autosave");
+
+                // A brand new hero evicts the oldest of the others, never the one that just saved
+                File.SetLastWriteTimeUtc(Path.Combine(tempDir, AutoSaveFileNameFor(101)), now.AddDays(-99));
+                service.RefreshAutoSavePreviews();
+                var newcomer = AutoSaveSnapshot(200, "Newcomer");
+                service.WriteAutoSave(newcomer);
+                service.SetAutoSavePreview(newcomer);
+
+                Assert.AreEqual(SaveLoadService.MaxAutoSaves, service.AutoSaveEntries.Count);
+                Assert.IsNull(service.LoadFromAutoSave(101), "the least recently played autosave goes");
+                Assert.AreEqual(200, service.AutoSaveEntries[0].HeroId, "the hero that just saved is listed first");
+                Assert.IsNotNull(service.LoadFromAutoSave(200), "the hero currently playing keeps its autosave");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// The single pre-per-hero autosave.bin is adopted as its hero's autosave on the first scan and
+        /// then removed, so an existing autosave survives the upgrade.
+        /// </summary>
+        [TestMethod]
+        public void SaveLoadService_LegacyAutoSaveFile_MigratedToPerHeroFile()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_autosavelegacy_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var legacy = AutoSaveSnapshot(777, "Legacy", 9);
+                legacy.PitLevel = 21;
+                new FileDataStore(tempDir).Save(GameConfig.AutoSaveLegacyFileName, legacy);
+                Assert.IsTrue(File.Exists(Path.Combine(tempDir, GameConfig.AutoSaveLegacyFileName)));
+
+                var service = new SaveLoadService(new FileDataStore(tempDir), new FileDataStore(tempDir), tempDir);
+
+                Assert.IsFalse(File.Exists(Path.Combine(tempDir, GameConfig.AutoSaveLegacyFileName)), "the legacy file is removed once adopted");
+                Assert.IsTrue(File.Exists(Path.Combine(tempDir, AutoSaveFileNameFor(777))), "it is rewritten under its hero's name");
+                Assert.AreEqual(1, service.AutoSaveEntries.Count);
+                Assert.AreEqual(777, service.AutoSaveEntries[0].HeroId);
+
+                var loaded = service.LoadFromAutoSave(777);
                 Assert.IsNotNull(loaded);
-                Assert.AreEqual("AutoHero", loaded.HeroName);
-                Assert.AreEqual(12, loaded.PitLevel);
-                Assert.AreEqual(90f, loaded.TotalTimePlayed, 0.001f);
-                Assert.AreEqual(90f, reloaded.LoadedTimePlayed, 0.001f, "loading the autosave seeds the played-time accumulator");
+                Assert.AreEqual("Legacy", loaded.HeroName);
+                Assert.AreEqual(21, loaded.PitLevel);
             }
             finally
             {
@@ -1061,12 +1223,12 @@ namespace PitHero.Tests
                 bytes[1] = 0;
                 bytes[2] = 0;
                 bytes[3] = 0;
-                File.WriteAllBytes(Path.Combine(tempDir, GameConfig.AutoSaveFileName), bytes);
+                File.WriteAllBytes(Path.Combine(tempDir, AutoSaveFileNameFor(555)), bytes);
 
-                var service = new SaveLoadService(new FileDataStore(tempDir));
+                var service = new SaveLoadService(new FileDataStore(tempDir), tempDir);
 
-                Assert.IsFalse(service.AutoSaveHasData, "Incompatible autosave should be treated as empty");
-                Assert.IsNull(service.LoadFromAutoSave(), "Loading an incompatible autosave should return null");
+                Assert.AreEqual(0, service.AutoSaveEntries.Count, "Incompatible autosave should be treated as empty");
+                Assert.IsNull(service.LoadFromAutoSave(555), "Loading an incompatible autosave should return null");
             }
             finally
             {

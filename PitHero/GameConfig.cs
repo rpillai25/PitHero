@@ -683,7 +683,9 @@ namespace PitHero
         // AutoSave (issue #409): the running session is written to a dedicated file on a wall-clock
         // cadence from the presentation pass; the write itself runs on a worker thread (AutoSaveService)
         public const float AutoSaveIntervalSeconds = 30f;             // Wall seconds between autosaves; a blocked stretch (death, ceremony, intro, replay) restarts the countdown
-        public const string AutoSaveFileName = "autosave.bin";        // Under the persistent data folder, beside the save slots
+        public const string AutoSaveFilePrefix = "autosave_";         // + 8 hex digits of SaveData.HeroId; under the persistent data folder, beside the save slots
+        public const string AutoSaveFileExtension = ".bin";
+        public const string AutoSaveLegacyFileName = "autosave.bin";  // The single pre-per-hero autosave; adopted and removed on the first scan
         public const float AutoSaveIconMargin = 8f;                   // Stage pixels from the lower-right corner to the SaveIcon
         public const float AutoSaveIconMinVisibleSeconds = 1.5f;      // The SaveIcon lingers at least this long so a fast write is still noticed
         public const float AutoSaveIconPulseSpeed = 4f;               // Radians per second for the SaveIcon alpha pulse

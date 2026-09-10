@@ -523,4 +523,4 @@ ReplayInfoWarning,WARNING: The longer a play session is, the longer the replay t
 # AutoSave (issue #409)
 SaveLoadAutoSave,AutoSave
 SettingsSaveAutosaveInProgressTooltip,Autosave in progress
-ConfirmLoadAutoSave,Load the AutoSave?
+ConfirmLoadAutoSave,Load the AutoSave for {0}?

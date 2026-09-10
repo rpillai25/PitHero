@@ -9,11 +9,30 @@ using System.Collections.Generic;
 
 namespace PitHero.Services
 {
+    /// <summary>One hero's autosave, as listed by the Load UI (issue #409).</summary>
+    public sealed class AutoSaveEntry
+    {
+        /// <summary>The playthrough this autosave belongs to (SaveData.HeroId).</summary>
+        public int HeroId;
+
+        /// <summary>The saved state, used for the row preview and reused if that row is loaded.</summary>
+        public SaveData Preview;
+
+        /// <summary>When the file was last written; drives ordering and which autosave is evicted.</summary>
+        public System.DateTime LastWriteUtc;
+    }
+
     /// <summary>Service that manages saving and loading game state across 5 save slots.</summary>
     public class SaveLoadService
     {
         /// <summary>Maximum number of save slots available.</summary>
         public const int MaxSlots = 5;
+
+        /// <summary>
+        /// Maximum number of per-hero autosave files kept. When a further hero needs one the
+        /// least-recently-written autosave is deleted (never the hero currently playing).
+        /// </summary>
+        public const int MaxAutoSaves = 5;
 
         private const string SaveFilePrefix = "save_slot_";
         private const string SaveFileExtension = ".bin";
@@ -26,8 +45,16 @@ namespace PitHero.Services
         /// </summary>
         private readonly FileDataStore _autoSaveStore;
 
+        /// <summary>
+        /// Folder the save files live in. Nez's FileDataStore hides its own path and offers no
+        /// enumerate or delete, so per-hero autosave discovery and eviction need it explicitly.
+        /// </summary>
+        private readonly string _directory;
+
         private readonly SaveData[] _slotPreviews;
-        private SaveData _autoSavePreview;
+
+        /// <summary>One entry per hero that has an autosave file, most recently written first.</summary>
+        private readonly List<AutoSaveEntry> _autoSaves = new List<AutoSaveEntry>(MaxAutoSaves + 1);
 
         /// <summary>Pending save data to be applied when MainGameScene initializes.</summary>
         public static SaveData PendingLoadData { get; set; }
@@ -48,22 +75,24 @@ namespace PitHero.Services
         /// <summary>Time.TotalTime at the moment the save was loaded. Zero for a new game.</summary>
         public double TimeAtLoad { get; private set; }
 
-        /// <summary>Creates a new SaveLoadService that uses one FileDataStore for slots and the autosave (synchronous callers, tests).</summary>
-        public SaveLoadService(FileDataStore fileDataStore) : this(fileDataStore, fileDataStore)
+        /// <summary>Creates a new SaveLoadService that uses one FileDataStore for slots and the autosaves (synchronous callers, tests).</summary>
+        public SaveLoadService(FileDataStore fileDataStore, string directory) : this(fileDataStore, fileDataStore, directory)
         {
         }
 
         /// <summary>
         /// Creates a new SaveLoadService with a slot store (main thread) and a separate autosave store
-        /// (written from the AutoSaveService worker thread).
+        /// (written from the AutoSaveService worker thread). The directory is where both write, and is
+        /// required so a caller can never scan the real save folder by accident.
         /// </summary>
-        public SaveLoadService(FileDataStore fileDataStore, FileDataStore autoSaveStore)
+        public SaveLoadService(FileDataStore fileDataStore, FileDataStore autoSaveStore, string directory)
         {
             _fileDataStore = fileDataStore;
             _autoSaveStore = autoSaveStore ?? fileDataStore;
+            _directory = directory;
             _slotPreviews = new SaveData[MaxSlots];
             RefreshSlotPreviews();
-            RefreshAutoSavePreview();
+            RefreshAutoSavePreviews();
         }
 
         /// <summary>Resets time-tracking state so a new game begins with zero elapsed play time.</summary>
@@ -195,77 +224,198 @@ namespace PitHero.Services
             return data;
         }
 
-        /// <summary>Whether an autosave file with valid data exists.</summary>
-        public bool AutoSaveHasData => _autoSavePreview != null;
+        /// <summary>Every hero that currently has an autosave, most recently written first.</summary>
+        public System.Collections.Generic.IReadOnlyList<AutoSaveEntry> AutoSaveEntries => _autoSaves;
 
-        /// <summary>Gets the cached autosave preview (for the Load UI). Returns null if there is no autosave.</summary>
-        public SaveData GetAutoSavePreview()
+        /// <summary>
+        /// The file holding one hero's autosave. The id is written as hex because HeroId is an opaque
+        /// 32-bit value that is often negative, and "autosave_-1234567.bin" is a poor filename.
+        /// </summary>
+        private static string GetAutoSaveFilename(int heroId)
         {
-            return _autoSavePreview;
+            return GameConfig.AutoSaveFilePrefix + ((uint)heroId).ToString("X8") + GameConfig.AutoSaveFileExtension;
         }
 
         /// <summary>
-        /// Re-reads the autosave file from disk into the preview cache. Only the constructor needs this;
-        /// a completed autosave publishes its snapshot through SetAutoSavePreview instead of re-reading
-        /// a file that the worker may still be renaming.
+        /// Rebuilds the autosave list from disk. Call this before showing the Load UI: a completed
+        /// autosave republishes its own snapshot in memory, but only a scan discovers the autosaves of
+        /// heroes this process has not played.
         /// </summary>
-        public void RefreshAutoSavePreview()
+        public void RefreshAutoSavePreviews()
         {
-            try
+            _autoSaves.Clear();
+            if (string.IsNullOrEmpty(_directory) || !System.IO.Directory.Exists(_directory))
+                return;
+
+            var files = System.IO.Directory.GetFiles(
+                _directory, GameConfig.AutoSaveFilePrefix + "*" + GameConfig.AutoSaveFileExtension);
+            for (int i = 0; i < files.Length; i++)
             {
-                var data = new SaveData();
-                _autoSaveStore.Load(GameConfig.AutoSaveFileName, data);
-                _autoSavePreview = data.HeroName != null ? data : null;
+                var data = ReadAutoSaveFile(System.IO.Path.GetFileName(files[i]));
+                if (data != null)
+                    UpsertAutoSave(data, System.IO.File.GetLastWriteTimeUtc(files[i]), onlyIfNewer: true);
             }
-            catch (System.Exception ex)
-            {
-                // Incompatible version or corrupt file — treat the autosave as empty
-                Debug.Log("SaveLoadService: AutoSave unreadable (" + ex.Message + ")");
-                _autoSavePreview = null;
-            }
+
+            MigrateLegacyAutoSave();
+            _autoSaves.Sort(CompareNewestFirst);
         }
 
-        /// <summary>
-        /// Writes the snapshot to the autosave file. Thread-agnostic on purpose: it is called from the
-        /// AutoSaveService worker thread, so it touches only the dedicated store — no Core, no logging.
-        /// </summary>
-        public void WriteAutoSave(SaveData saveData)
-        {
-            _autoSaveStore.Save(GameConfig.AutoSaveFileName, saveData);
-        }
-
-        /// <summary>Publishes a successfully written autosave snapshot as the Load UI preview (main thread).</summary>
-        public void SetAutoSavePreview(SaveData saveData)
-        {
-            _autoSavePreview = saveData;
-            TimeAtSaveLoad = Time.TotalTime;
-        }
-
-        /// <summary>Loads game state from the autosave file. Returns null if there is no readable autosave.</summary>
-        public SaveData LoadFromAutoSave()
+        /// <summary>Reads one autosave file. Returns null when it is missing, empty or unreadable.</summary>
+        private SaveData ReadAutoSaveFile(string fileName)
         {
             SaveData data;
             try
             {
                 data = new SaveData();
-                _autoSaveStore.Load(GameConfig.AutoSaveFileName, data);
+                _autoSaveStore.Load(fileName, data);
             }
             catch (System.Exception ex)
             {
-                Debug.Log("SaveLoadService: AutoSave unreadable (" + ex.Message + ")");
+                // Incompatible version or corrupt file — treat that autosave as absent
+                Debug.Log("SaveLoadService: AutoSave " + fileName + " unreadable (" + ex.Message + ")");
                 return null;
             }
 
-            if (data.HeroName == null)
+            return data.HeroName != null ? data : null;
+        }
+
+        /// <summary>
+        /// Adopts the single pre-per-hero autosave.bin as its hero's autosave, then removes it. The id
+        /// inside the file decides which hero it belongs to.
+        /// </summary>
+        private void MigrateLegacyAutoSave()
+        {
+            var legacyPath = System.IO.Path.Combine(_directory, GameConfig.AutoSaveLegacyFileName);
+            if (!System.IO.File.Exists(legacyPath))
+                return;
+
+            var data = ReadAutoSaveFile(GameConfig.AutoSaveLegacyFileName);
+            if (data != null && UpsertAutoSave(data, System.IO.File.GetLastWriteTimeUtc(legacyPath), onlyIfNewer: true))
             {
-                Debug.Log("SaveLoadService: AutoSave is empty");
+                _autoSaveStore.Save(GetAutoSaveFilename(data.HeroId), data);
+                Debug.Log("SaveLoadService: Migrated the legacy AutoSave to hero " + data.HeroId);
+            }
+
+            try
+            {
+                System.IO.File.Delete(legacyPath);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Log("SaveLoadService: Could not remove the legacy AutoSave (" + ex.Message + ")");
+            }
+        }
+
+        /// <summary>
+        /// Records a hero's autosave snapshot. With onlyIfNewer the entry is left alone when it already
+        /// holds a more recent write. Returns whether the list now holds this snapshot.
+        /// </summary>
+        private bool UpsertAutoSave(SaveData data, System.DateTime whenUtc, bool onlyIfNewer)
+        {
+            for (int i = 0; i < _autoSaves.Count; i++)
+            {
+                if (_autoSaves[i].HeroId != data.HeroId)
+                    continue;
+
+                if (onlyIfNewer && _autoSaves[i].LastWriteUtc >= whenUtc)
+                    return false;
+
+                _autoSaves[i].Preview = data;
+                _autoSaves[i].LastWriteUtc = whenUtc;
+                return true;
+            }
+
+            _autoSaves.Add(new AutoSaveEntry { HeroId = data.HeroId, Preview = data, LastWriteUtc = whenUtc });
+            return true;
+        }
+
+        /// <summary>Most recently written first, with the hero id breaking ties so the order is total.</summary>
+        private static int CompareNewestFirst(AutoSaveEntry a, AutoSaveEntry b)
+        {
+            int byTime = b.LastWriteUtc.CompareTo(a.LastWriteUtc);
+            return byTime != 0 ? byTime : a.HeroId.CompareTo(b.HeroId);
+        }
+
+        /// <summary>
+        /// Writes the snapshot to its hero's autosave file. Thread-agnostic on purpose: it is called
+        /// from the AutoSaveService worker thread, so it touches only the dedicated store and the
+        /// detached snapshot — no Core, no logging, no list mutation.
+        /// </summary>
+        public void WriteAutoSave(SaveData saveData)
+        {
+            _autoSaveStore.Save(GetAutoSaveFilename(saveData.HeroId), saveData);
+        }
+
+        /// <summary>
+        /// Publishes a successfully written autosave snapshot for the Load UI and enforces the retention
+        /// cap (main thread — this is where files are deleted, never on the worker).
+        /// </summary>
+        public void SetAutoSavePreview(SaveData saveData)
+        {
+            UpsertAutoSave(saveData, System.DateTime.UtcNow, onlyIfNewer: false);
+            _autoSaves.Sort(CompareNewestFirst);
+            EnforceAutoSaveCap(saveData.HeroId);
+            TimeAtSaveLoad = Time.TotalTime;
+        }
+
+        /// <summary>
+        /// Keeps at most MaxAutoSaves autosaves by deleting the least recently written one, never the
+        /// hero currently playing.
+        /// </summary>
+        private void EnforceAutoSaveCap(int currentHeroId)
+        {
+            while (_autoSaves.Count > MaxAutoSaves)
+            {
+                int oldest = -1;
+                for (int i = 0; i < _autoSaves.Count; i++)
+                {
+                    if (_autoSaves[i].HeroId == currentHeroId)
+                        continue;
+                    if (oldest < 0 || _autoSaves[i].LastWriteUtc < _autoSaves[oldest].LastWriteUtc)
+                        oldest = i;
+                }
+
+                if (oldest < 0)
+                    return; // nothing left to give up but the hero being played
+
+                Debug.Log("SaveLoadService: Evicted the AutoSave for hero " + _autoSaves[oldest].HeroId);
+                DeleteAutoSaveFile(_autoSaves[oldest].HeroId);
+                _autoSaves.RemoveAt(oldest);
+            }
+        }
+
+        /// <summary>Deletes one hero's autosave file if it exists. Main thread only.</summary>
+        private void DeleteAutoSaveFile(int heroId)
+        {
+            if (string.IsNullOrEmpty(_directory))
+                return;
+
+            try
+            {
+                var path = System.IO.Path.Combine(_directory, GetAutoSaveFilename(heroId));
+                if (System.IO.File.Exists(path))
+                    System.IO.File.Delete(path);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Log("SaveLoadService: Could not delete an AutoSave (" + ex.Message + ")");
+            }
+        }
+
+        /// <summary>Loads a hero's autosave. Returns null when that hero has no readable autosave.</summary>
+        public SaveData LoadFromAutoSave(int heroId)
+        {
+            var data = ReadAutoSaveFile(GetAutoSaveFilename(heroId));
+            if (data == null)
+            {
+                Debug.Log("SaveLoadService: No AutoSave for hero " + heroId);
                 return null;
             }
 
             TimeAtSaveLoad = Time.TotalTime;
             LoadedTimePlayed = data.TotalTimePlayed;
             TimeAtLoad = Time.TotalTime;
-            Debug.Log("SaveLoadService: Loaded from AutoSave");
+            Debug.Log("SaveLoadService: Loaded the AutoSave for hero " + heroId);
             return data;
         }
 

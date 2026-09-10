@@ -55,7 +55,7 @@ namespace PitHero
             // The autosave gets its own store: FileDataStore caches one binary writer per instance, and
             // the autosave write runs on a worker thread while the slot store stays on the main thread
             var autoSaveStore = new FileDataStore(null);
-            var saveLoadService = new SaveLoadService(fileDataStore, autoSaveStore);
+            var saveLoadService = new SaveLoadService(fileDataStore, autoSaveStore, PersistentPaths.BaseDirectory());
             Services.AddService(saveLoadService);
             Services.AddService(new AutoSaveService(
                 SaveLoadService.GatherCurrentState,

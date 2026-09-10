@@ -119,11 +119,20 @@ namespace PitHero.UI
                 _actorsAtlas = null;
             }
 
-            // The autosave is only offered for loading; manual saves never overwrite it
-            if (_currentMode == Mode.Load)
+            // Autosaves are only offered for loading; manual saves never overwrite them. One row per
+            // hero, most recently played first, re-scanned from disk so heroes played in an earlier
+            // run of the game show up too.
+            if (_currentMode == Mode.Load && service != null)
             {
-                BuildSlotRow(slotsTable, AutoSaveSlot, service?.GetAutoSavePreview());
-                slotsTable.Row();
+                Core.Services.GetService<AutoSaveService>()?.WaitForCompletion();
+                service.RefreshAutoSavePreviews();
+
+                var autoSaves = service.AutoSaveEntries;
+                for (int i = 0; i < autoSaves.Count; i++)
+                {
+                    BuildSlotRow(slotsTable, AutoSaveSlot, autoSaves[i].Preview, autoSaves[i].HeroId);
+                    slotsTable.Row();
+                }
             }
 
             for (int i = 0; i < SaveLoadService.MaxSlots; i++)
@@ -160,8 +169,11 @@ namespace PitHero.UI
             _window.ToFront();
         }
 
-        /// <summary>Builds a single save slot row with preview data or an empty label.</summary>
-        private void BuildSlotRow(Table container, int slotIndex, SaveData preview)
+        /// <summary>
+        /// Builds a single save slot row with preview data or an empty label. For an autosave row
+        /// (slotIndex == AutoSaveSlot) autoSaveHeroId names the hero the row belongs to.
+        /// </summary>
+        private void BuildSlotRow(Table container, int slotIndex, SaveData preview, int autoSaveHeroId = 0)
         {
             var rowTable = new Table();
             bool isAutoSave = slotIndex == AutoSaveSlot;
@@ -223,19 +235,9 @@ namespace PitHero.UI
             }
             else
             {
-                if (isAutoSave)
-                {
-                    var emptyTable = new Table();
-                    emptyTable.Add(CreateAutoSaveLabel());
-                    emptyTable.Row();
-                    emptyTable.Add(new Label(GetText(TextType.UI, UITextKey.SaveLoadEmptySlot), _skin, "ph-default"));
-                    rowTable.Add(emptyTable).Expand().Center();
-                }
-                else
-                {
-                    var emptyLabel = new Label(GetText(TextType.UI, UITextKey.SaveLoadEmptySlot), _skin, "ph-default");
-                    rowTable.Add(emptyLabel).Expand().Center();
-                }
+                // Autosave rows only exist when that hero has one, so an empty row is always a manual slot
+                var emptyLabel = new Label(GetText(TextType.UI, UITextKey.SaveLoadEmptySlot), _skin, "ph-default");
+                rowTable.Add(emptyLabel).Expand().Center();
             }
 
             // Wrap the row in a clickable TextButton to make the entire row clickable
@@ -246,8 +248,10 @@ namespace PitHero.UI
             if (isAutoSave)
                 slotButton.SetColor(AutoSaveRowTint);
 
-            // Capture the index for the closure
+            // Capture the row's identity for the closure
             int capturedIndex = slotIndex;
+            int capturedHeroId = autoSaveHeroId;
+            string capturedHeroName = preview?.HeroName;
             bool hasData = preview != null;
 
             // In load mode, empty slots are not clickable
@@ -257,7 +261,7 @@ namespace PitHero.UI
             }
             else
             {
-                slotButton.OnClicked += (button) => ShowConfirmDialog(capturedIndex);
+                slotButton.OnClicked += (button) => ShowConfirmDialog(capturedIndex, capturedHeroId, capturedHeroName);
             }
 
             container.Add(slotButton).Width(WindowWidth - 40f).Height(rowHeight).SetPadBottom(SlotPadding);
@@ -281,7 +285,7 @@ namespace PitHero.UI
         }
 
         /// <summary>Shows a confirmation dialog before saving or loading.</summary>
-        private void ShowConfirmDialog(int slotIndex)
+        private void ShowConfirmDialog(int slotIndex, int autoSaveHeroId = 0, string autoSaveHeroName = null)
         {
             HideConfirmDialog();
 
@@ -298,8 +302,10 @@ namespace PitHero.UI
             else
             {
                 title = GetText(TextType.UI, UITextKey.DialogConfirmLoad);
+                // Several heroes can have an autosave, so the prompt names the one being loaded
                 message = slotIndex == AutoSaveSlot
-                    ? GetText(TextType.UI, UITextKey.ConfirmLoadAutoSave)
+                    ? string.Format(GetText(TextType.UI, UITextKey.ConfirmLoadAutoSave),
+                        autoSaveHeroName ?? GetText(TextType.UI, UITextKey.SaveLoadUnknown))
                     : string.Format(GetText(TextType.UI, UITextKey.ConfirmLoadSaveSlot), slotIndex + 1);
                 confirmText = GetText(TextType.UI, UITextKey.ButtonLoad);
             }
@@ -321,6 +327,7 @@ namespace PitHero.UI
             var buttonTable = new Table();
 
             int capturedSlot = slotIndex;
+            int capturedHeroId = autoSaveHeroId;
             var confirmButton = new TextButton(confirmText, _skin, "ph-default");
             confirmButton.OnClicked += (button) =>
             {
@@ -328,7 +335,7 @@ namespace PitHero.UI
                 if (_currentMode == Mode.Save)
                     PerformSave(capturedSlot);
                 else
-                    PerformLoad(capturedSlot);
+                    PerformLoad(capturedSlot, capturedHeroId);
             };
             buttonTable.Add(confirmButton).SetMinWidth(80f).Height(24f).SetPadRight(10f);
 
@@ -379,8 +386,11 @@ namespace PitHero.UI
             Hide();
         }
 
-        /// <summary>Loads game state from the specified slot and transitions to the game scene.</summary>
-        private void PerformLoad(int slotIndex)
+        /// <summary>
+        /// Loads game state from the specified slot and transitions to the game scene. For the autosave
+        /// sentinel, autoSaveHeroId names the hero whose autosave to load.
+        /// </summary>
+        private void PerformLoad(int slotIndex, int autoSaveHeroId = 0)
         {
             var service = Core.Services.GetService<SaveLoadService>();
             if (service != null)
@@ -388,9 +398,9 @@ namespace PitHero.UI
                 SaveData data;
                 if (slotIndex == AutoSaveSlot)
                 {
-                    // Never read the autosave while its worker may still be writing it
+                    // Never read an autosave while its worker may still be writing it
                     Core.Services.GetService<AutoSaveService>()?.WaitForCompletion();
-                    data = service.LoadFromAutoSave();
+                    data = service.LoadFromAutoSave(autoSaveHeroId);
                 }
                 else
                 {

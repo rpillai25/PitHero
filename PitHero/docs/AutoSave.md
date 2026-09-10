@@ -1,9 +1,10 @@
 # AutoSave System
 
-Issue #409. The running session is written to a dedicated `autosave.bin` every
-`GameConfig.AutoSaveIntervalSeconds` (30 s of **wall-clock** time) without stalling gameplay. This
-document is the reference for how the pieces fit, the rules that keep it safe, and the decisions
-that are not obvious from the code.
+Issue #409. The running session is written to that hero's own autosave file every
+`GameConfig.AutoSaveIntervalSeconds` (30 s of **wall-clock** time) without stalling gameplay. There
+is **one autosave per hero**, keyed by `HeroId`, so playing a second hero never overwrites the
+first's — see "Retention and file naming". This document is the reference for how the pieces fit,
+the rules that keep it safe, and the decisions that are not obvious from the code.
 
 ## At a glance
 
@@ -12,11 +13,12 @@ that are not obvious from the code.
 | `AutoSaveService` | `Services/AutoSaveService.cs`, registered in `Game1` (global) | Wall-clock countdown, gathers the snapshot on the main thread, writes it on a worker, publishes completion by polling |
 | `SaveLoadService.SaveAllowed` | `Services/SaveLoadService.cs` | The single save gate, written every presentation frame by `MainGameScene.ComputeSaveAllowed`; read by the autosave and the Session → Save button |
 | Autosave store | second `FileDataStore` passed to `SaveLoadService` in `Game1` | Dedicated writer for the worker thread; the slot store stays on the main thread |
+| `AutoSaveEntry` + `AutoSaveEntries` | `Services/SaveLoadService.cs` | One entry per hero that has an autosave (`HeroId`, `Preview`, `LastWriteUtc`), most recently written first |
 | `AutoSaveIndicator` | `UI/AutoSaveIndicator.cs`, on `_uiStage` | Pulsing `SaveIcon` in the lower-right corner while a write is in flight |
-| Load UI row | `UI/SaveLoadUI.cs` (`AutoSaveSlot = -1`) | First row in **Load** mode only; tinted row, Skullboy "AutoSave" tag |
+| Load UI rows | `UI/SaveLoadUI.cs` (`AutoSaveSlot = -1` + a hero id) | One row per hero's autosave, before the manual slots, in **Load** mode only; tinted row, Skullboy "AutoSave" tag |
 | Session → Save button | `UI/SettingsUI.RefreshSaveButtonState` | Greyed while `!SaveAllowed` or autosaving; "Autosave in progress" tooltip in the latter case |
 | Nez `FileDataStore.Save` | `Nez/Nez.Persistence/Binary/DataStore/FileDataStore.cs` | Crash-atomic: stale tmp deleted, then `File.Move(tmp, dest, overwrite: true)` |
-| Constants | `GameConfig.cs` → `// AutoSave (issue #409)` | Interval, file name, icon margin / linger / pulse |
+| Constants | `GameConfig.cs` → `// AutoSave (issue #409)` | Interval, file prefix/extension, legacy file name, icon margin / linger / pulse. The retention cap is `SaveLoadService.MaxAutoSaves`, beside `MaxSlots` |
 | Strings | `UITextKey` + `UI.txt` → `# AutoSave (issue #409)` | `SaveLoadAutoSave`, `SettingsSaveAutosaveInProgressTooltip`, `ConfirmLoadAutoSave` |
 
 ## The sequence, once per rendered frame
@@ -38,13 +40,15 @@ nothing the simulation reads, so it needs no `PlayerCommand`.
    detached `SaveData` (strings, ints, lists of structs, freshly allocated), which is safe to hand to
    a worker.
 4. `Task.Run` executes `SaveLoadService.WriteAutoSave(data)`: `Persist` + file write through the
-   dedicated autosave store. The worker body is `try { write } catch { record exception }` and
-   **never logs or touches `Core`**.
+   dedicated autosave store, into the file named for `data.HeroId`. The worker body is
+   `try { write } catch { record exception }` and **never logs, touches `Core`, or mutates the
+   entry list** — file deletion for the retention cap happens on the main thread.
 5. `PollCompletion()` (called from `Tick`, from the `IsSaving` getter and from `WaitForCompletion`)
    observes `Task.IsCompleted` on the main thread: clears `IsSaving`, then either `Debug.Warn`s and
-   raises `Failed`, or calls `SaveLoadService.SetAutoSavePreview(data)` so the Load UI preview is the
-   in-memory snapshot. **The disk is read only by the `SaveLoadService` constructor**
-   (`RefreshAutoSavePreview`), never after a write.
+   raises `Failed`, or calls `SaveLoadService.SetAutoSavePreview(data)`, which republishes that
+   hero's snapshot in memory and enforces the retention cap. **A completed write is never read back
+   from disk**; the disk is scanned only by `RefreshAutoSavePreviews()` (the constructor and when the
+   Load window opens).
 6. `AutoSaveIndicator.Update(autoSaveService.IsSaving)` shows the icon while in flight and for
    `AutoSaveIconMinVisibleSeconds` afterwards, with a `Time.TotalTime` alpha pulse (wall clock is fine
    here: presentation only).
@@ -82,18 +86,22 @@ or touch the button directly.
 2. **The autosave store is never shared.** Nez `FileDataStore` caches one `ReuseableBinaryWriter` and
    one reader per instance. The slot store is main-thread only; the autosave store is written by the
    worker and read by the main thread only when no write is in flight.
-3. **Anything that reads `autosave.bin` calls `AutoSaveService.WaitForCompletion()` first.** Today
-   that is `SaveLoadUI.PerformLoad` for the autosave row and `Game1.Dispose` (so process exit cannot
-   kill a write mid-flight). `File.Move` keeps the destination intact even without this; the wait
-   avoids an orphaned tmp and a stale preview.
+3. **Anything that reads an autosave file calls `AutoSaveService.WaitForCompletion()` first.** Today
+   that is `SaveLoadUI.PerformLoad` and `BuildWindow`'s Load-mode scan, plus `Game1.Dispose` (so
+   process exit cannot kill a write mid-flight). `File.Move` keeps the destination intact even
+   without this; the wait avoids an orphaned tmp and a stale preview.
 4. **Never call `FileDataStore.Clear()`** anywhere: it deletes every file in the persistent folder,
    including a tmp the worker is writing.
 5. **Presentation only.** No `PlayerCommand`, no `Nez.Random`, nothing the sim reads. The replay
    audit (`.claude/skills/replay-determinism/references/determinism-audit.md`) treats the autosave
    as a wall-clock consumer that must stay out of `Update()`.
-6. **Save format unchanged.** `autosave.bin` is an ordinary `SaveData` at `CurrentVersion`; every
-   backwards-compatibility rule in AGENTS.md applies to it unchanged. An unreadable or old-version
-   autosave is treated as empty, exactly like a slot.
+6. **Save format unchanged.** An autosave is an ordinary `SaveData` at `CurrentVersion` — the same
+   bytes a manual slot holds, just in a different file — so every backwards-compatibility rule in
+   AGENTS.md applies to it unchanged. An unreadable or old-version autosave is skipped, exactly like
+   a slot. Ordering uses the file's mtime rather than a saved timestamp, so per-hero autosaves needed
+   no version bump.
+7. **Files are deleted only on the main thread**, in `SetAutoSavePreview` → `EnforceAutoSaveCap`.
+   The worker writes and nothing else.
 
 ## Decisions that are not obvious from the code
 
@@ -114,8 +122,9 @@ or touch the button directly.
   second condition every mutation path must remember to set, and a missed autosave is the exact
   failure the feature exists to prevent; a redundant write of a small file costs nothing. Considered
   and rejected on 2026-09-07.
-- **The AutoSave row appears only in Load mode.** Save mode keeps the five manual slots so a player
-  can never overwrite the autosave by hand.
+- **AutoSave rows appear only in Load mode.** Save mode keeps the five manual slots so a player can
+  never overwrite an autosave by hand. When no hero has an autosave, no autosave row is shown at all
+  — an "empty" autosave row is meaningless once the rows are per-hero.
 - **Concurrent manual save during an autosave is safe by construction** (different file, different
   store), but the Session → Save button is greyed anyway per the issue, so the two never overlap in
   practice.
@@ -127,28 +136,64 @@ or touch the button directly.
   `FastFUI.UpdateButtonStyleIfNeeded`. Nez `Image.Draw` ignores scale, so the swap is
   `SetDrawable` + `SetSize`, with the 2x sprite coming from `ButtonSprite2xFactory.GetOrCreate2x`.
 
+## Retention and file naming
+
+One autosave per **hero**, not per save slot: three manual saves of the same hero still share one
+autosave, and a second hero gets its own file instead of overwriting the first's.
+
+- **The key is `GameStateService.HeroId`**, an `int` minted once per playthrough
+  (`GenerateHeroId()`, called only from `TitleMenuUI` on New Game), stored in `SaveData.HeroId` and
+  restored by `ApplyLoadedState`. It is stable across death, respawn, the crystal ceremony, job
+  changes and promotion — a "new hero" after permadeath is the *same* playthrough and keeps writing
+  to the same file. Files therefore accumulate once per **New Game**, never per death.
+- **Filename** `autosave_<8 hex digits>.bin` (`GameConfig.AutoSaveFilePrefix` + `((uint)heroId)
+  .ToString("X8")` + `AutoSaveFileExtension`). Hex because `HeroId` is an opaque 32-bit value that is
+  often negative, and `autosave_-1234567.bin` is a poor filename.
+- **The file's contents are authoritative.** `RefreshAutoSavePreviews()` globs the folder, loads each
+  file and takes `HeroId` from the loaded `SaveData` rather than parsing the name, so there is one
+  source of truth and no format/parse asymmetry.
+- **Retention: `SaveLoadService.MaxAutoSaves` (5), evicting the least recently written.** Enforced in
+  `SetAutoSavePreview` after a successful write, never on the worker. The hero currently playing is
+  never the one evicted. Since an autosave lands every 30 s of play, last-write time is a faithful
+  "last played" proxy. Chosen over protecting heroes that lack a manual save because it is
+  predictable; the trade-off is that a playthrough whose only copy was its autosave can age out.
+- **The legacy `autosave.bin`** from the original single-file implementation is adopted on the first
+  scan (rewritten under its hero's name) and then deleted — see `MigrateLegacyAutoSave`.
+- **Pre-v32 saves derive their id from the hero's design** (`SaveData.ComputeLegacyHeroId`: name,
+  gender, colors, hairstyle), so two old playthroughs with an identical name *and* appearance share
+  one id, and therefore one autosave. Accepted: it only affects saves written before `HeroId` existed.
+- **A `HeroId` of 0** ("unknown", only reachable through odd paths) is a bucket like any other rather
+  than a reason to skip autosaving — preserving the session beats tidy identity.
+- **The Load window re-scans on open.** In-memory publishing keeps the *current* hero's entry fresh
+  but can never discover files written by other heroes or in an earlier run, so `BuildWindow` calls
+  `RefreshAutoSavePreviews()` in Load mode, the way `ReplayTab.Refresh()` re-reads its directory.
+
 ## Tests
 
 | Area | Test file |
 |---|---|
 | Countdown, blocked reset, no overlapping write, thread affinity (gather/publish on caller, write on worker), faulting write recovery, null snapshot | `PitHero.Tests/AutoSaveServiceTests.cs` |
-| Autosave round-trip from disk, incompatible-version autosave treated as empty, stale tmp replaced and no tmp left behind | `PitHero.Tests/SaveLoadTests.cs` (`SaveLoadService_AutoSave_*`, `FileDataStore_Save_ReplacesStaleTmpAndLeavesNoTmp`) |
+| Per-hero round-trip and rediscovery from disk, a second hero not overwriting the first, cap eviction of the least recently written, legacy-file migration, incompatible-version autosave skipped, stale tmp replaced and no tmp left behind | `PitHero.Tests/SaveLoadTests.cs` (`SaveLoadService_AutoSave_*`, `SaveLoadService_LegacyAutoSaveFile_*`, `FileDataStore_Save_ReplacesStaleTmpAndLeavesNoTmp`) |
 
 The service takes its `gather` / `write` / `onSaved` delegates in the constructor, so tests run
 without `Core`. Production wiring is in `Game1`.
 
 ## Manual verification checklist
 
-1. New game, wait 30 s: the SaveIcon pulses lower-right for at least 1.5 s and
-   `%LOCALAPPDATA%\FeedTheHero\autosave.bin` appears with no `.tmp` beside it. No frame hitch.
+1. New game, wait 30 s: the SaveIcon pulses lower-right for at least 1.5 s and one
+   `%LOCALAPPDATA%\FeedTheHero\autosave_<hex>.bin` appears with no `.tmp` beside it. No frame hitch.
 2. Settings → Session while the icon shows: Save is greyed and hovering it reads "Autosave in
    progress"; it re-enables when the icon goes away.
 3. Window → Half size: the icon is the crisp 2x version and stays in the corner; opening any window
    swaps it to 1x live; Normal size restores 1x.
-4. Quit to Title → Load: the first row is the tinted AutoSave row with the Skullboy tag and a correct
-   hero preview; loading it restores the session. With no autosave file the row reads "- Empty -"
-   and is disabled.
-5. Hero death → respawn walk → ceremony: no autosave and Save stays greyed until the ceremony ends;
-   the next autosave lands 30 s after that.
-6. Replay: Settings → Replay → Replay Current Session, seek back and forth. Status stays **In sync**
+4. Quit to Title → Load: the tinted AutoSave rows come first, each with the Skullboy tag and its own
+   hero preview; loading one restores that hero. With no autosaves at all, only the manual slots show.
+5. **One per hero:** play hero A past an autosave, Quit to Title, New Game as hero B, autosave again.
+   Load lists **two** AutoSave rows (B on top) and loading A still gives A — before this change B's
+   autosave replaced A's. Three manual saves of one hero still leave that hero one autosave file.
+6. Hero death → respawn walk → ceremony: no autosave and Save stays greyed until the ceremony ends;
+   the next autosave lands 30 s after that, into the **same** file (no new one appears).
+7. Retention: with 5 autosaves on disk, start a 6th playthrough and let it autosave — the folder
+   still holds 5 and the least recently played one is gone.
+8. Replay: Settings → Replay → Replay Current Session, seek back and forth. Status stays **In sync**
    and no icon appears during playback. Repeat from a loaded autosave.

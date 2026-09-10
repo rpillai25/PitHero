@@ -175,7 +175,9 @@ namespace PitHero.Tests
         public void AutoSave_IntervalFromGameConfig_IsThirtySeconds()
         {
             Assert.AreEqual(30f, GameConfig.AutoSaveIntervalSeconds, 0.001f);
-            Assert.AreEqual("autosave.bin", GameConfig.AutoSaveFileName);
+            Assert.AreEqual("autosave_", GameConfig.AutoSaveFilePrefix);
+            Assert.AreEqual(".bin", GameConfig.AutoSaveFileExtension);
+            Assert.AreEqual("autosave.bin", GameConfig.AutoSaveLegacyFileName);
         }
     }
 }
