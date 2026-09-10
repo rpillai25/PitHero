@@ -298,23 +298,26 @@ UISortTypeInverse
 CharacterSelector
 	231,288,20,19
 	0.5,0.5
-UIRadioButton_Selected
-	116,412,18,18
+GoldIcon
+	116,412,19,21
 	0.5,0.5
-UIRadioButton_Unselected
+UIRadioButton_Selected
 	91,437,18,18
 	0.5,0.5
-UIRadioButton_Unselected_Highlight
+UIRadioButton_Unselected
 	149,379,18,18
 	0.5,0.5
-UICheckbox_Checked
-	482,50,16,16
+UIRadioButton_Unselected_Highlight
+	482,50,18,18
 	0.5,0.5
-UICheckbox_Unchecked
+UICheckbox_Checked
 	50,477,16,16
 	0.5,0.5
-UICheckbox_Unchecked_Highlight
+UICheckbox_Unchecked
 	182,354,16,16
+	0.5,0.5
+UICheckbox_Unchecked_Highlight
+	207,321,16,16
 	0.5,0.5
 UISliderKnob
 	0,493,14,14
@@ -341,13 +344,16 @@ UISortOrderArrow
 	326,117,10,13
 	0.5,0.5
 NinePatchScroll
-	207,321,9,9
+	223,308,9,9
 	0.5,0.5
 NinePatchScrollKnob
-	217,321,9,9
+	252,288,9,9
+	0.5,0.5
+UITextHudNinepatch
+	233,308,9,9
 	0.5,0.5
 SpeechBubbleTail
-	207,331,9,8
+	67,477,9,8
 	0.5,0.5
 HPUnit2x
 	124,362,2,8

@@ -104,7 +104,7 @@ ConfirmDiscardMessage,Send to Second Chance shop?
 ConfirmOverwriteSaveSlot,Overwrite save in slot {0}?
 ConfirmLoadSaveSlot,Load save from slot {0}?
 HudPitLevel,Pit Lv. {0}
-HudGold,Gold: {0}
+HudGold,{0}
 HudLevelPrefix,Lv 
 TabWindow,Window
 TabSession,Session

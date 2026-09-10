@@ -37,6 +37,10 @@ namespace PitHero.ECS.Scenes
         private Label _pitLevelLabel; // UI label showing pit level
         private Label _fundsLabel; // UI label showing total funds
         private Label _clockLabel; // UI label showing in-game time
+        private Image _pitHudPanel; // Translucent nine-patch behind the Pit Lv label
+        private Image _goldHudPanel; // Translucent nine-patch behind the gold icon + amount
+        private Image _clockHudPanel; // Translucent nine-patch behind the clock
+        private Image _goldIcon; // Coin sprite standing in for the word "Gold"
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private int _lastDisplayedPitTier = -1; // Track last displayed tier to avoid string churn
         private int _lastDisplayedFunds = -1; // Track last displayed funds to avoid string churn
@@ -120,11 +124,19 @@ namespace PitHero.ECS.Scenes
         // The hero/mercenary HUD panels sit bottom-left and the Pit Lv / Gold labels top-left; those
         // two swapped places, so the HUD's Y is now derived from the stage height and must be
         // re-applied whenever the stage resizes.
-        private const float PitLabelBaseX = 10f; // X position for Pit Lv label (top-left)
-        private const float PitLabelBaseY = 10f; // Y position for the Pit Lv / Gold labels (top-left)
-        private const float FundsLabelGapX = 16f; // Gap between the measured Pit Lv label text and the Funds label
-        private const float ClockLabelRightPadding = 32f; // Pixels from right edge for clock label
-        private const float ClockLabelBaseY = 16f; // Y position for clock label (top area, offset to avoid cutoff)
+        private const float FundsLabelGapX = 16f; // Gap between the Pit Lv panel and the Gold panel
+        // Backing panels for the top HUD text: one each for Pit Lv, Gold and the clock. All three
+        // share a top edge and height so they read as one strip; the labels sit centred in a content
+        // row sized off the gold icon, which is taller than the font line height. The panels hug the
+        // stage edges — these two margins are the only gap above them and outside the outer two.
+        private const float HudEdgeMarginX = 8f; // Gap from the stage's left/right edge to the outer panels
+        private const float HudEdgeMarginY = 4f; // Gap from the stage's top edge to the panels
+        private const float HudPanelPadX = 6f; // Horizontal gap between panel edge and its content
+        private const float HudPanelPadY = 4f; // Vertical gap between panel edge and the text row
+        private const float HudFallbackLineHeight = 16f; // Skullboy lineHeight, used before the font loads
+        private const float HudTextDescenderTrim = 4f; // Line-box descender space the HUD strings never use
+        private const float GoldIconGapX = 4f; // Gap between the gold icon and the gold amount
+        private static readonly Color HudPanelTint = new Color(255, 255, 255, 128); // See-through backing
         private const float GraphicalHudBaseX = 10f; // Base X position for graphical HUD (shifted left to fill space)
         private const float GraphicalHudHeight = 32f; // Height of the HUD template sprite (UI.atlas HudTemplate)
         private const float GraphicalHudBottomMargin = 8f; // Gap between the HUD panels and the stage bottom
@@ -1664,6 +1676,10 @@ namespace PitHero.ECS.Scenes
             _pitLevelLabel?.SetVisible(false);
             _fundsLabel?.SetVisible(false);
             _clockLabel?.SetVisible(false);
+            _pitHudPanel?.SetVisible(false);
+            _goldHudPanel?.SetVisible(false);
+            _clockHudPanel?.SetVisible(false);
+            _goldIcon?.SetVisible(false);
             _settingsUI?.EnterIntroMode();
 
             if (_cameraController != null)
@@ -1685,6 +1701,10 @@ namespace PitHero.ECS.Scenes
             _pitLevelLabel?.SetVisible(true);
             _fundsLabel?.SetVisible(true);
             _clockLabel?.SetVisible(true);
+            _pitHudPanel?.SetVisible(true);
+            _goldHudPanel?.SetVisible(true);
+            _clockHudPanel?.SetVisible(true);
+            _goldIcon?.SetVisible(true);
             _settingsUI?.ExitIntroMode();
             if (_cameraController != null)
                 _cameraController.InputSuspended = false;
@@ -2207,36 +2227,67 @@ namespace PitHero.ECS.Scenes
             // Position the Hero button in the bottom-left corner  
             // _heroUI.SetPosition(10f, Screen.Height - _heroUI.GetHeight() - 10f);
 
-            // Pit level label (bottom-left, always visible, no scaling)
+            // Translucent nine-patch backing for the top HUD text. Added before the labels so the
+            // stage's insertion-order draw puts them behind. Alpha lives in the drawable's TintColor
+            // rather than the element colour: Image.Draw folds colour.A in a second time, which would
+            // double-apply it. Each panel gets its own drawable — NinePatchDrawable caches its
+            // generated rects by size and the three panels are different widths.
+            SpriteAtlas hudAtlas = null;
+            try { hudAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas"); }
+            catch (System.Exception e) { Debug.Warn("[MainGameScene] Failed to load UI atlas for HUD panels: {0}", e.Message); }
+
+            var hudPanelSprite = hudAtlas != null && System.Array.IndexOf(hudAtlas.Names, "UITextHudNinepatch") >= 0
+                ? hudAtlas.GetSprite("UITextHudNinepatch") : null;
+            _pitHudPanel = CreateHudPanel(uiCanvas.Stage, hudPanelSprite);
+            _goldHudPanel = CreateHudPanel(uiCanvas.Stage, hudPanelSprite);
+            _clockHudPanel = CreateHudPanel(uiCanvas.Stage, hudPanelSprite);
+
+            // Gold coin icon — stands in for the word "Gold" ahead of the amount. Drawn at its native
+            // size; the HUD labels never rescale in half-height mode so no 2x variant is needed.
+            var goldIconSprite = hudAtlas != null && System.Array.IndexOf(hudAtlas.Names, "GoldIcon") >= 0
+                ? hudAtlas.GetSprite("GoldIcon") : null;
+            if (goldIconSprite != null)
+            {
+                _goldIcon = uiCanvas.Stage.AddElement(new Image(new SpriteDrawable(goldIconSprite), Scaling.None));
+                _goldIcon.SetSize(goldIconSprite.SourceRect.Width, goldIconSprite.SourceRect.Height);
+                _goldIcon.SetTouchable(Touchable.Disabled);
+            }
+
+            // Pit level label (top-left, always visible, no scaling)
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-            _pitLevelLabel.SetPosition(PitLabelBaseX, HudLabelY());
+            SizeHudLabel(_pitLevelLabel);
 
-            // Funds label (bottom-left next to Pit Lv, always visible, no scaling)
-            _fundsLabel = uiCanvas.Stage.AddElement(new Label("Gold: 0", _hudFontNormal));
+            // Funds label (top-left, after the gold icon; always visible, no scaling)
+            _fundsLabel = uiCanvas.Stage.AddElement(new Label("0", _hudFontNormal));
             _fundsLabel.SetStyle(_pitLevelStyleNormal);
-            RepositionFundsLabel();
+            SizeHudLabel(_fundsLabel);
+            LayoutLeftHudCluster();
 
             // Clock label (upper-right, position adjusted dynamically based on text width)
             _clockLabel = uiCanvas.Stage.AddElement(new Label("6:00 AM", _hudFontNormal));
             _clockLabel.SetStyle(_pitLevelStyleNormal);
+            SizeHudLabel(_clockLabel);
 
             // Tilling label (upper area, centered between button bar and clock — visible only in till mode)
             string tillingText = Core.Services.GetService<TextService>()?.DisplayText(TextType.UI, UITextKey.LabelTillingSoil) ?? "Tilling Soil";
             _tillingLabel = uiCanvas.Stage.AddElement(new Label(tillingText, _hudFontNormal));
             _tillingLabel.SetStyle(_modeStyleNormal);
+            SizeHudLabel(_tillingLabel);
             _tillingLabel.SetVisible(false);
 
             // Planting label (same area, visible only during the Placing sub-state of seed mode)
             string plantingText = Core.Services.GetService<TextService>()?.DisplayText(TextType.UI, UITextKey.LabelPlantingCrops) ?? "Planting Crops";
             _plantingCropsLabel = uiCanvas.Stage.AddElement(new Label(plantingText, _hudFontNormal));
             _plantingCropsLabel.SetStyle(_modeStyleNormal);
+            SizeHudLabel(_plantingCropsLabel);
             _plantingCropsLabel.SetVisible(false);
 
             // Restoring Grass label (same area, visible only in restore-grass mode)
             string restoringText = Core.Services.GetService<TextService>()?.DisplayText(TextType.UI, UITextKey.LabelRestoringGrass) ?? "Restoring Grass";
             _restoringGrassLabel = uiCanvas.Stage.AddElement(new Label(restoringText, _hudFontNormal));
             _restoringGrassLabel.SetStyle(_modeStyleNormal);
+            SizeHudLabel(_restoringGrassLabel);
             _restoringGrassLabel.SetVisible(false);
 
             // Create graphical HUD entity to display HP/MP/Level
@@ -2387,17 +2438,90 @@ namespace PitHero.ECS.Scenes
                     _pitLevelLabel.SetText($"Pit Lv. {currentLevel}({currentTier})");
                 else
                     _pitLevelLabel.SetText($"Pit Lv. {currentLevel}");
+                SizeHudLabel(_pitLevelLabel);
                 _lastDisplayedPitLevel = currentLevel;
                 _lastDisplayedPitTier = currentTier;
-                RepositionFundsLabel();
+                LayoutLeftHudCluster();
             }
         }
 
         /// <summary>
-        /// Y for the bottom-left HUD labels, derived from the live stage height so they follow the
-        /// configured design height (GameConfig.VirtualHeight) and every window/dock mode.
+        /// Y for the top HUD labels: the panel's top edge plus the padding above the text. The
+        /// panels wrap the text row itself, so the left cluster and the right clock share a baseline.
         /// </summary>
-        private float HudLabelY() => PitLabelBaseY;
+        private float HudLabelY() => HudEdgeMarginY + HudPanelPadY;
+
+        /// <summary>
+        /// Height of the visible HUD text row. The font's line box reserves descender space that the
+        /// HUD strings barely use, so HudTextDescenderTrim claws it back — without it the panels sit
+        /// ~4px low and read as bottom-heavy. Every Skullboy glyph shares one 18px cell
+        /// (yoffset -1, height 18), so the .fnt cannot supply the real ink extent; this is measured.
+        /// </summary>
+        private float HudTextRowHeight() =>
+            (_hudFontNormal != null ? _hudFontNormal.LineHeight : HudFallbackLineHeight) - HudTextDescenderTrim;
+
+        /// <summary>Shared panel height: the visible text row plus HudPanelPadY above and below it.</summary>
+        private float HudPanelHeight() => HudTextRowHeight() + HudPanelPadY * 2f;
+
+        /// <summary>
+        /// Y for the gold icon. The coin is taller than the text row, so it shares the text's
+        /// vertical centre and overhangs its panel evenly rather than inflating it. Rounded because
+        /// the centring term lands on a half pixel, which would blur the pixel-art coin.
+        /// </summary>
+        private float HudIconY()
+        {
+            float rowHeight = HudTextRowHeight();
+            float iconHeight = _goldIcon != null ? _goldIcon.GetHeight() : rowHeight;
+            return Mathf.Round(HudLabelY() + (rowHeight - iconHeight) * 0.5f);
+        }
+
+        /// <summary>
+        /// Builds one translucent HUD backing panel on the stage, or returns null when the sprite is
+        /// missing. Each call makes its own NinePatchDrawable — the drawable caches its generated
+        /// patch rects by size, and the panels are all different widths.
+        /// </summary>
+        private static Image CreateHudPanel(Nez.UI.Stage stage, Sprite panelSprite)
+        {
+            if (panelSprite == null)
+                return null;
+
+            var panel = stage.AddElement(new Image(
+                new NinePatchDrawable(new NinePatchSprite(panelSprite, 3, 3, 3, 3)) { TintColor = HudPanelTint },
+                Scaling.Stretch));
+            panel.SetTouchable(Touchable.Disabled);
+            return panel;
+        }
+
+        /// <summary>Places one HUD backing panel on the shared top edge at the given x and width.</summary>
+        private void PlaceHudPanel(Image panel, float x, float width)
+        {
+            if (panel == null)
+                return;
+            panel.SetPosition(x, HudEdgeMarginY);
+            panel.SetSize(width, HudPanelHeight());
+        }
+
+        /// <summary>
+        /// Give a stage-root Label its real size. Nez's default labelAlign is Left with no vertical
+        /// bit, so Label.Layout centres the text with (height - textHeight) / 2 — on a bare
+        /// AddElement'd label height is still 0 and the glyphs render half a line ABOVE the
+        /// position that was set. Sizing the label to its preferred size makes that term zero, so
+        /// SetPosition means what it says. Must be re-applied after any SetText, since the
+        /// preferred size tracks the string.
+        /// </summary>
+        private static void SizeHudLabel(Label label)
+        {
+            if (label == null)
+                return;
+            label.SetSize(label.PreferredWidth, label.PreferredHeight);
+        }
+
+        /// <summary>Left edge of the clock's backing panel, also the right bound for the mode labels.</summary>
+        private float ClockPanelLeftX(float clockTextWidth)
+        {
+            float stageW = _uiStage != null ? _uiStage.GetWidth() : GameConfig.VirtualWidth;
+            return stageW - HudEdgeMarginX - (clockTextWidth + HudPanelPadX * 2f);
+        }
 
         /// <summary>
         /// Y for the hero/mercenary HUD panels. Bottom-anchored, so unlike the old fixed top position
@@ -2414,21 +2538,40 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void RepositionHudLabels()
         {
-            if (_pitLevelLabel != null)
-                _pitLevelLabel.SetPosition(PitLabelBaseX, HudLabelY());
-            RepositionFundsLabel();
+            LayoutLeftHudCluster();
         }
 
         /// <summary>
-        /// Position the Funds label just right of the Pit Lv label based on its measured text width
+        /// Lay out the top-left HUD, left to right off measured text widths: the Pit Lv panel hugs
+        /// the stage's left edge, then the Gold panel wraps the coin icon and the amount. Re-run
+        /// whenever either string changes — the Pit Lv width sets where the Gold panel starts, and
+        /// the amount's width sets how wide it is.
         /// </summary>
-        private void RepositionFundsLabel()
+        private void LayoutLeftHudCluster()
         {
             if (_fundsLabel == null || _pitLevelLabel == null || _hudFontNormal == null)
                 return;
 
-            float pitLabelWidth = _hudFontNormal.MeasureString(_pitLevelLabel.GetText()).X;
-            _fundsLabel.SetPosition(PitLabelBaseX + pitLabelWidth + FundsLabelGapX, HudLabelY());
+            float labelY = HudLabelY();
+
+            // Pit Lv panel, flush against the left edge
+            float pitTextWidth = _hudFontNormal.MeasureString(_pitLevelLabel.GetText()).X;
+            float pitPanelWidth = pitTextWidth + HudPanelPadX * 2f;
+            _pitLevelLabel.SetPosition(HudEdgeMarginX + HudPanelPadX, labelY);
+            PlaceHudPanel(_pitHudPanel, HudEdgeMarginX, pitPanelWidth);
+
+            // Gold panel: coin icon then the amount, starting a gap after the Pit Lv panel
+            float goldPanelX = HudEdgeMarginX + pitPanelWidth + FundsLabelGapX;
+            float iconX = goldPanelX + HudPanelPadX;
+            float iconWidth = _goldIcon != null ? _goldIcon.GetWidth() + GoldIconGapX : 0f;
+            if (_goldIcon != null)
+                _goldIcon.SetPosition(iconX, HudIconY());
+
+            float fundsX = iconX + iconWidth;
+            _fundsLabel.SetPosition(fundsX, labelY);
+
+            float fundsTextWidth = _hudFontNormal.MeasureString(_fundsLabel.GetText()).X;
+            PlaceHudPanel(_goldHudPanel, goldPanelX, HudPanelPadX + iconWidth + fundsTextWidth + HudPanelPadX);
         }
 
         /// <summary>
@@ -2446,8 +2589,12 @@ namespace PitHero.ECS.Scenes
             var currentFunds = gameState.Funds;
             if (currentFunds != _lastDisplayedFunds)
             {
-                _fundsLabel.SetText($"Gold: {currentFunds}");
+                _fundsLabel.SetText($"{currentFunds}");
+                SizeHudLabel(_fundsLabel);
                 _lastDisplayedFunds = currentFunds;
+                // The amount's width sets the panel's right edge, so re-run the cluster layout
+                // whenever the number changes digits.
+                LayoutLeftHudCluster();
             }
         }
 
@@ -2458,8 +2605,11 @@ namespace PitHero.ECS.Scenes
             if (timeService == null) return;
             string text = timeService.FormatTime();
             _clockLabel.SetText(text);
+            SizeHudLabel(_clockLabel);
             float labelWidth = _hudFontNormal.MeasureString(text).X;
-            _clockLabel.SetPosition(_uiStage.GetWidth() - labelWidth - ClockLabelRightPadding, ClockLabelBaseY);
+            float panelLeft = ClockPanelLeftX(labelWidth);
+            _clockLabel.SetPosition(panelLeft + HudPanelPadX, HudLabelY());
+            PlaceHudPanel(_clockHudPanel, panelLeft, labelWidth + HudPanelPadX * 2f);
         }
 
         private void UpdateTillingLabel()
@@ -2479,14 +2629,14 @@ namespace PitHero.ECS.Scenes
             // Clock left edge
             string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
             float clockWidth = _hudFontNormal.MeasureString(timeText).X;
-            float clockX = _uiStage.GetWidth() - clockWidth - ClockLabelRightPadding;
+            float clockX = ClockPanelLeftX(clockWidth);
 
             // Button bar right edge (exposed by SettingsUI; falls back to 0 before first PositionUI)
             float barRight = _settingsUI?.UIBarRight ?? 0f;
 
             // Center the label in the gap between the button bar and the clock
             float midX = (barRight + clockX) / 2f;
-            _tillingLabel.SetPosition(midX - tillingWidth / 2f, ClockLabelBaseY);
+            _tillingLabel.SetPosition(midX - tillingWidth / 2f, HudLabelY());
         }
 
         /// <summary>Shows and animates the "Restoring Grass" label while restore-grass mode is active.</summary>
@@ -2504,10 +2654,10 @@ namespace PitHero.ECS.Scenes
             float labelWidth = _hudFontNormal.MeasureString(labelText).X;
             string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
             float clockWidth = _hudFontNormal.MeasureString(timeText).X;
-            float clockX = _uiStage.GetWidth() - clockWidth - ClockLabelRightPadding;
+            float clockX = ClockPanelLeftX(clockWidth);
             float barRight = _settingsUI?.UIBarRight ?? 0f;
             float midX = (barRight + clockX) / 2f;
-            _restoringGrassLabel.SetPosition(midX - labelWidth / 2f, ClockLabelBaseY);
+            _restoringGrassLabel.SetPosition(midX - labelWidth / 2f, HudLabelY());
         }
 
         /// <summary>Shows and animates the "Planting Crops" label while the player is in the placing sub-state.</summary>
@@ -2525,10 +2675,10 @@ namespace PitHero.ECS.Scenes
             float labelWidth = _hudFontNormal.MeasureString(labelText).X;
             string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
             float clockWidth = _hudFontNormal.MeasureString(timeText).X;
-            float clockX = _uiStage.GetWidth() - clockWidth - ClockLabelRightPadding;
+            float clockX = ClockPanelLeftX(clockWidth);
             float barRight = _settingsUI?.UIBarRight ?? 0f;
             float midX = (barRight + clockX) / 2f;
-            _plantingCropsLabel.SetPosition(midX - labelWidth / 2f, ClockLabelBaseY);
+            _plantingCropsLabel.SetPosition(midX - labelWidth / 2f, HudLabelY());
         }
 
         /// <summary>
