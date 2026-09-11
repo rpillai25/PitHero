@@ -70,7 +70,7 @@ namespace PitHero.UI
         private Stage _stage; // Reference to stage for tooltip management
 
         private static readonly Color MercenaryNameFontColor = new Color(71, 36, 7); // Brown, matches button font color (PitHeroSkin)
-        private static readonly Color HeroNameFontColor = new Color(0, 128, 255); // Brighter Blue for hero name
+        private static readonly Color HeroNameFontColor = PitHeroSkin.HeroNameFontColor; // Shared with the Hero Info and Mercenaries tabs
 
         /// <summary>When true, unviewed newly acquired gear draws a blue sparkle overlay. Grids that enable
         /// this must also MarkViewed on item hover so the player can acknowledge the gear.</summary>

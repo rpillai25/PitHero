@@ -121,7 +121,7 @@ namespace PitHero.UI
             // are not crammed together; the Change Job button keeps its own larger gap below them.
             var leftCol = new Table();
             leftCol.Defaults().SetPadBottom(InfoRowSpacing);
-            _heroNameLabel = new Label(GetText(TextType.UI, UITextKey.HeroNameLabel), skin, "ph-default");
+            _heroNameLabel = new Label("", skin, "ph-hero-name");
             leftCol.Add(_heroNameLabel).Left();
             leftCol.Row();
 
@@ -165,12 +165,11 @@ namespace PitHero.UI
             rightCol.Row();
 
             // Active meal buff: dish, time left and effects, refreshed alongside the stats line
-            var mealBuffsHeader = new Label(GetText(TextType.UI, UITextKey.MealBuffsHeader), skin, "ph-default");
+            var mealBuffsHeader = new Label(GetText(TextType.UI, UITextKey.MealBuffsHeader), skin, "ph-meal-header");
             rightCol.Add(mealBuffsHeader).Left().SetPadTop(4f);
             rightCol.Row();
 
             _mealBuffsLabel = new Label(GetText(TextType.UI, UITextKey.MealBuffsNone), skin, "ph-default");
-            _mealBuffsLabel.SetColor(Color.Gray);
             rightCol.Add(_mealBuffsLabel).Left();
 
             // Both label columns are top-aligned so Current JP lines up with Name; without this the
@@ -237,7 +236,7 @@ namespace PitHero.UI
             var hero = _heroComponent.LinkedHero;
 
             // Update info labels
-            _heroNameLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroNameLabel), hero.Name));
+            _heroNameLabel.SetText(hero.Name);
             _jobNameLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroJobLabel), hero.Job.Name));
             _levelLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroLevelLabel), hero.Level));
             _jobLevelLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroJobLevelLabel), hero.GetJobLevel()));

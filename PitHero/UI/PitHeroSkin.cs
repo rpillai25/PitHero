@@ -19,6 +19,12 @@ namespace PitHero.UI
         /// <summary>Washed-out version of the brown font color used by the "ph-grayed" styles.</summary>
         private static readonly Color GrayedFontColor = new Color(146, 128, 111);
 
+        /// <summary>Blue for party names: hero on the inventory equip slot, hero in Hero Info, mercs in the Mercenaries tab.</summary>
+        public static readonly Color HeroNameFontColor = new Color(0, 128, 255);
+
+        /// <summary>Deep green for buff text (the "Meal Buffs" header, Food tab dish effects). 5.3:1 contrast on the parchment window background.</summary>
+        public static readonly Color BuffFontColor = new Color(24, 90, 36);
+
         /// <summary>
         /// Creates or returns the cached PitHero skin with custom window background.
         /// </summary>
@@ -56,6 +62,11 @@ namespace PitHero.UI
 
             // Washed-out label style for controls that are visible but deactivated
             skin.Add("ph-grayed", new LabelStyle(defaultFont, GrayedFontColor));
+
+            // Colored label styles. Label.SetColor only tints a label's background, never its text,
+            // and SetFontColor would recolor the shared "ph-default" style, so each color needs its own style.
+            skin.Add("ph-hero-name", new LabelStyle(defaultFont, HeroNameFontColor));
+            skin.Add("ph-meal-header", new LabelStyle(defaultFont, BuffFontColor));
 
             // Create custom text button style to use brown color
             var textButtonStyle = new TextButtonStyle

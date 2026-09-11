@@ -105,7 +105,7 @@ namespace PitHero.UI
             _noMercLabels[index].SetColor(Color.Gray);
 
             // Labels
-            _nameLabels[index] = new Label("", skin, "ph-default");
+            _nameLabels[index] = new Label("", skin, "ph-hero-name");
             _levelLabels[index] = new Label("", skin, "ph-default");
             _jobLabels[index] = new Label("", skin, "ph-default");
             _statsLabels[index] = new Label("", skin, "ph-default");
@@ -138,11 +138,10 @@ namespace PitHero.UI
             leftCol.Row();
 
             // Active meal buff below the stats line, matching the Hero Info tab
-            _mealBuffsHeaderLabels[index] = new Label("", skin, "ph-default");
+            _mealBuffsHeaderLabels[index] = new Label("", skin, "ph-meal-header");
             leftCol.Add(_mealBuffsHeaderLabels[index]).Left().SetPadTop(4f);
             leftCol.Row();
             _mealBuffsLabels[index] = new Label("", skin, "ph-default");
-            _mealBuffsLabels[index].SetColor(Color.Gray);
             leftCol.Add(_mealBuffsLabels[index]).Left();
 
             infoSection.Add(leftCol).Left().Top().Expand().Pad(5f);

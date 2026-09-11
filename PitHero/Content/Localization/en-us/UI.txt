@@ -137,7 +137,6 @@ TabInventory,Inventory
 TabBehavior,Behavior
 TabHeroInfo,Hero Info
 TabMercenaries,Mercenaries
-HeroNameLabel,Name: {0}
 HeroJobLabel,Job: {0}
 HeroLevelLabel,Level: {0}
 HeroJobLevelLabel,Job Level: {0}

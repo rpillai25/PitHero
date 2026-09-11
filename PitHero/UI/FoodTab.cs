@@ -28,8 +28,15 @@ namespace PitHero.UI
         private bool _refreshing;
 
         private static readonly Color DimmedSpriteColor = new Color(110, 110, 110, 200);
-        private static readonly Color DimmedNameColor = Color.Gray;
-        private static readonly Color DimmedEffectsColor = new Color(110, 110, 110, 255);
+
+        // Label text colors. Label.SetColor only tints a label's background, never its text, so each dish
+        // label owns its LabelStyle and RefreshDishAvailability recolors it with SetFontColor. Dimmed text
+        // is lighter (washed out) because the window background is light parchment (230,204,135): effects are
+        // 5.3:1 contrast, dimmed effects 3.1:1 so they recede but stay legible.
+        private static readonly Color EffectsFontColor = PitHeroSkin.BuffFontColor;
+        private static readonly Color DimmedEffectsFontColor = new Color(70, 125, 75);
+        private Color _nameFontColor;
+        private Color _dimmedNameFontColor;
 
         /// <summary>Creates and returns the main container for this tab.</summary>
         public Table CreateContent(Skin skin, Stage stage)
@@ -64,6 +71,10 @@ namespace PitHero.UI
 
             var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
 
+            var labelFont = skin.Get<LabelStyle>("ph-default").Font;
+            _nameFontColor = skin.Get<LabelStyle>("ph-default").FontColor;
+            _dimmedNameFontColor = skin.Get<LabelStyle>("ph-grayed").FontColor;
+
             for (int i = 0; i < DishTypeInfo.Count; i++)
             {
                 var dish = (DishType)i;
@@ -93,14 +104,16 @@ namespace PitHero.UI
 
                 var infoTable = new Table();
                 infoTable.Left(); // table contents hug the left edge (Table centers by default)
-                var nameLabel = new Label(GetText(def.NameKey) + "  " + DishConfig.GetPrice(dish) + "g", skin, "ph-default");
+                // Own LabelStyle per label so RefreshDishAvailability can recolor it without touching "ph-default"
+                var nameLabel = new Label(GetText(def.NameKey) + "  " + DishConfig.GetPrice(dish) + "g",
+                    new LabelStyle(labelFont, _nameFontColor));
                 nameLabel.SetWrap(true);
                 _dishNameLabels[i] = nameLabel;
                 infoTable.Add(nameLabel).Left().SetExpandX().SetFillX();
                 infoTable.Row();
-                var effectsLabel = new Label(MealBuffDisplay.BuildEffectsText(def, false, int.MaxValue), skin, "ph-default");
+                var effectsLabel = new Label(MealBuffDisplay.BuildEffectsText(def, false, int.MaxValue),
+                    new LabelStyle(labelFont, EffectsFontColor));
                 effectsLabel.SetWrap(true);
-                effectsLabel.SetColor(Color.Gray);
                 _dishEffectsLabels[i] = effectsLabel;
                 infoTable.Add(effectsLabel).Left().SetExpandX().SetFillX();
 
@@ -172,8 +185,8 @@ namespace PitHero.UI
                 bool coverable = coordinator.CanCoverRecipe((DishType)i);
 
                 _dishImages[i]?.SetColor(coverable ? Color.White : DimmedSpriteColor);
-                _dishNameLabels[i]?.SetColor(coverable ? Color.White : DimmedNameColor);
-                _dishEffectsLabels[i]?.SetColor(coverable ? Color.Gray : DimmedEffectsColor);
+                _dishNameLabels[i]?.SetFontColor(coverable ? _nameFontColor : _dimmedNameFontColor);
+                _dishEffectsLabels[i]?.SetFontColor(coverable ? EffectsFontColor : DimmedEffectsFontColor);
                 _dishMissingCells[i]?.SetElement(coverable ? _dishMissingPlaceholders[i] : _dishMissingLabels[i]);
             }
         }

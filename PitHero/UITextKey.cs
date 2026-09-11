@@ -197,7 +197,6 @@ namespace PitHero
         public const string TabBehavior = "TabBehavior";
         public const string TabHeroInfo = "TabHeroInfo";
         public const string TabMercenaries = "TabMercenaries";
-        public const string HeroNameLabel = "HeroNameLabel";
         public const string HeroJobLabel = "HeroJobLabel";
         public const string HeroLevelLabel = "HeroLevelLabel";
         public const string HeroJobLevelLabel = "HeroJobLevelLabel";
