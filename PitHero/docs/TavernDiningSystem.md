@@ -430,6 +430,13 @@ mercs), adding each non-expired dish buff as `BattleBuff(type, magnitude, -1, "m
 ×1.5 rounded up. MagicUp feeds skill formulas via `ICombatant.GetSkillStats()`; HP/MP regen
 ticks at end of round. Food never restores HP/MP directly — that's the inn's job.
 
+**UI display:** the active meal shows read-only under the STR/AGI/VIT/MAG line in the Hero Info
+tab (`HeroCrystalTab`) and in each Mercenaries tab row (`MercenariesTab`) as `Meal Buffs` /
+`Dish (Deluxe) - Xh Ym` / effects (two per line), or `None`. Both call `MealBuffDisplay.BuildText`,
+which reads the 4-arg `MealBuffService.TryGetMeal` expiry against `InGameTimeService.AccumulatedSeconds`;
+`FoodTab` shares its `BuildEffectsText`. The text refreshes when the Hero window opens — the window
+pauses the game, so the countdown can't go stale while it is visible.
+
 ## Dish data
 
 16 dishes (`DishType` 0–15, persisted as int — **values must stay stable**). Each

@@ -98,7 +98,7 @@ namespace PitHero.UI
                 _dishNameLabels[i] = nameLabel;
                 infoTable.Add(nameLabel).Left().SetExpandX().SetFillX();
                 infoTable.Row();
-                var effectsLabel = new Label(BuildEffectsText(def), skin, "ph-default");
+                var effectsLabel = new Label(MealBuffDisplay.BuildEffectsText(def, false, int.MaxValue), skin, "ph-default");
                 effectsLabel.SetWrap(true);
                 effectsLabel.SetColor(Color.Gray);
                 _dishEffectsLabels[i] = effectsLabel;
@@ -176,32 +176,6 @@ namespace PitHero.UI
                 _dishEffectsLabels[i]?.SetColor(coverable ? Color.Gray : DimmedEffectsColor);
                 _dishMissingCells[i]?.SetElement(coverable ? _dishMissingPlaceholders[i] : _dishMissingLabels[i]);
             }
-        }
-
-        private string BuildEffectsText(DishDefinition def)
-        {
-            var sb = new System.Text.StringBuilder(64);
-            for (int b = 0; b < def.Buffs.Length; b++)
-            {
-                var buff = def.Buffs[b];
-                switch (buff.Type)
-                {
-                    case RolePlayingFramework.Combat.BuffType.AttackUp: Append(sb, "ATK +" + buff.Magnitude); break;
-                    case RolePlayingFramework.Combat.BuffType.DefenseUp: Append(sb, "DEF +" + buff.Magnitude); break;
-                    case RolePlayingFramework.Combat.BuffType.AgilityUp: Append(sb, "AGI +" + buff.Magnitude); break;
-                    case RolePlayingFramework.Combat.BuffType.MagicUp: Append(sb, "MAG +" + buff.Magnitude); break;
-                    case RolePlayingFramework.Combat.BuffType.EvasionUp: Append(sb, "EVA +" + buff.Magnitude); break;
-                    case RolePlayingFramework.Combat.BuffType.HPRegen: Append(sb, "HP +" + buff.Magnitude + "/round"); break;
-                    case RolePlayingFramework.Combat.BuffType.MPRegen: Append(sb, "MP +" + buff.Magnitude + "/round"); break;
-                }
-            }
-            return sb.Length > 0 ? sb.ToString() : "-";
-        }
-
-        private static void Append(System.Text.StringBuilder sb, string text)
-        {
-            if (sb.Length > 0) sb.Append(", ");
-            sb.Append(text);
         }
 
         private string GetText(string key) => _textService?.DisplayText(TextType.UI, key) ?? key;

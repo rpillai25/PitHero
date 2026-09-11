@@ -66,6 +66,13 @@ namespace PitHero.Services
 
         /// <summary>Returns true and the active meal for the combatant, if any.</summary>
         public bool TryGetMeal(ICombatant combatant, out DishType dish, out bool deluxe)
+            => TryGetMeal(combatant, out dish, out deluxe, out _);
+
+        /// <summary>
+        /// Returns true and the active meal for the combatant, if any, with its absolute expiry
+        /// (InGameTimeService.AccumulatedSeconds) for UI countdowns.
+        /// </summary>
+        public bool TryGetMeal(ICombatant combatant, out DishType dish, out bool deluxe, out float expiresAtSeconds)
         {
             for (int i = 0; i < _records.Count; i++)
             {
@@ -73,11 +80,13 @@ namespace PitHero.Services
                 {
                     dish = _records[i].Dish;
                     deluxe = _records[i].Deluxe;
+                    expiresAtSeconds = _records[i].ExpiresAtSeconds;
                     return true;
                 }
             }
             dish = default;
             deluxe = false;
+            expiresAtSeconds = 0f;
             return false;
         }
 

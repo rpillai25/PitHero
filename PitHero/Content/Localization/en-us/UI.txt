@@ -393,6 +393,10 @@ DishApplePie,Apple Pie
 DishPumpkinCreamSoup,Pumpkin Cream Soup
 DishChilledWatermelonSorbet,Chilled Watermelon Sorbet
 DishHarvestFeastPlatter,Harvest Feast Platter
+MealBuffsHeader,Meal Buffs
+MealBuffsNone,None
+MealBuffDeluxeName,{0} (Deluxe)
+MealBuffDishRemaining,{0} - {1}h {2}m
 SettingsAutoSellExcessItems,Auto-Sell Excess Items
 SettingsAutoSellExcessItemsTooltip,Auto-Sell items to make room for new loot
 SettingsSellPriority,Item Sell Priority

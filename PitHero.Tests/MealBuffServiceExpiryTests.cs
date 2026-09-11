@@ -35,6 +35,21 @@ namespace PitHero.Tests
             Assert.IsTrue(service.TryGetMeal(hero, out _, out _), "Record should be present after ApplyMeal");
         }
 
+        [TestMethod]
+        [TestCategory("MealBuff")]
+        public void TryGetMeal_ExpiryOverload_ReturnsStampedExpiry()
+        {
+            var service = new MealBuffService();
+            var hero = MakeHero();
+
+            service.ApplyMeal(hero, Dish, true, Expiry);
+
+            Assert.IsTrue(service.TryGetMeal(hero, out var dish, out var deluxe, out var expiresAtSeconds));
+            Assert.AreEqual(Dish, dish);
+            Assert.IsTrue(deluxe);
+            Assert.AreEqual(Expiry, expiresAtSeconds);
+        }
+
         // ── Prune before expiry ──────────────────────────────────────────────────
 
         [TestMethod]

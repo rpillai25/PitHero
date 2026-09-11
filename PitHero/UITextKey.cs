@@ -436,6 +436,10 @@ namespace PitHero
         public const string DishPumpkinCreamSoup = "DishPumpkinCreamSoup";
         public const string DishChilledWatermelonSorbet = "DishChilledWatermelonSorbet";
         public const string DishHarvestFeastPlatter = "DishHarvestFeastPlatter";
+        public const string MealBuffsHeader = "MealBuffsHeader";
+        public const string MealBuffsNone = "MealBuffsNone";
+        public const string MealBuffDeluxeName = "MealBuffDeluxeName";
+        public const string MealBuffDishRemaining = "MealBuffDishRemaining";
         public const string SettingsAutoSellExcessItems = "SettingsAutoSellExcessItems";
         public const string SettingsAutoSellExcessItemsTooltip = "SettingsAutoSellExcessItemsTooltip";
         public const string SettingsSellPriority = "SettingsSellPriority";

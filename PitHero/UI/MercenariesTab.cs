@@ -27,6 +27,8 @@ namespace PitHero.UI
         private readonly Label[] _levelLabels = new Label[2];
         private readonly Label[] _jobLabels = new Label[2];
         private readonly Label[] _statsLabels = new Label[2];
+        private readonly Label[] _mealBuffsHeaderLabels = new Label[2];
+        private readonly Label[] _mealBuffsLabels = new Label[2];
         private readonly Table[] _skillGrids = new Table[2];
         private readonly Label[] _skillsSectionLabels = new Label[2];
         private readonly Label[] _noMercLabels = new Label[2];
@@ -133,6 +135,15 @@ namespace PitHero.UI
             leftCol.Add(_jobLabels[index]).Left();
             leftCol.Row();
             leftCol.Add(_statsLabels[index]).Left();
+            leftCol.Row();
+
+            // Active meal buff below the stats line, matching the Hero Info tab
+            _mealBuffsHeaderLabels[index] = new Label("", skin, "ph-default");
+            leftCol.Add(_mealBuffsHeaderLabels[index]).Left().SetPadTop(4f);
+            leftCol.Row();
+            _mealBuffsLabels[index] = new Label("", skin, "ph-default");
+            _mealBuffsLabels[index].SetColor(Color.Gray);
+            leftCol.Add(_mealBuffsLabels[index]).Left();
 
             infoSection.Add(leftCol).Left().Top().Expand().Pad(5f);
 
@@ -182,6 +193,8 @@ namespace PitHero.UI
                     _levelLabels[m].SetText("");
                     _jobLabels[m].SetText("");
                     _statsLabels[m].SetText("");
+                    _mealBuffsHeaderLabels[m].SetText("");
+                    _mealBuffsLabels[m].SetText("");
                     _mercRows[m].SetVisible(m == 0);
                     _dismissButtons[m].SetVisible(false);
                     // The header would otherwise sit above the "no mercenaries" placeholder
@@ -204,6 +217,8 @@ namespace PitHero.UI
 
                 var stats = merc.GetTotalStats();
                 _statsLabels[m].SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.HeroStatsLabel), stats.Strength, stats.Agility, stats.Vitality, stats.Magic));
+                _mealBuffsHeaderLabels[m].SetText(_textService.DisplayText(TextType.UI, UITextKey.MealBuffsHeader));
+                _mealBuffsLabels[m].SetText(MealBuffDisplay.BuildText(merc, key => _textService.DisplayText(TextType.UI, key)));
 
                 // Update sprite preview
                 if (appearances != null && m < appearances.Count)

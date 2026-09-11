@@ -35,6 +35,7 @@ namespace PitHero.UI
         private Label _currentJPLabel;
         private Label _totalJPLabel;
         private Label _statsLabel;
+        private Label _mealBuffsLabel;
 
         // Hero sprite preview
         private Table _heroPreviewContainer;
@@ -161,6 +162,16 @@ namespace PitHero.UI
 
             _statsLabel = new Label(GetText(TextType.UI, UITextKey.HeroStatsLabel), skin, "ph-default");
             rightCol.Add(_statsLabel).Left();
+            rightCol.Row();
+
+            // Active meal buff: dish, time left and effects, refreshed alongside the stats line
+            var mealBuffsHeader = new Label(GetText(TextType.UI, UITextKey.MealBuffsHeader), skin, "ph-default");
+            rightCol.Add(mealBuffsHeader).Left().SetPadTop(4f);
+            rightCol.Row();
+
+            _mealBuffsLabel = new Label(GetText(TextType.UI, UITextKey.MealBuffsNone), skin, "ph-default");
+            _mealBuffsLabel.SetColor(Color.Gray);
+            rightCol.Add(_mealBuffsLabel).Left();
 
             // Both label columns are top-aligned so Current JP lines up with Name; without this the
             // shorter right column is centered against the taller left one and sits lower.
@@ -235,6 +246,7 @@ namespace PitHero.UI
 
             var stats = hero.GetTotalStats();
             _statsLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroStatsLabel), stats.Strength, stats.Agility, stats.Vitality, stats.Magic));
+            _mealBuffsLabel.SetText(MealBuffDisplay.BuildText(hero, key => GetText(TextType.UI, key)));
 
             // Hidden while a job change/respawn ceremony is already in flight
             _changeJobButton?.SetVisible(!_heroComponent.NeedsCrystal);
@@ -651,6 +663,7 @@ namespace PitHero.UI
             _currentJPLabel?.SetText("Current JP: 0");
             _totalJPLabel?.SetText("Total JP: 0");
             _statsLabel?.SetText("STR:0 AGI:0 VIT:0 MAG:0");
+            _mealBuffsLabel?.SetText(GetText(TextType.UI, UITextKey.MealBuffsNone));
 
             _jobSkillsGridContainer?.Clear();
             _synergySkillsGridContainer?.Clear();
