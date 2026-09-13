@@ -27,16 +27,9 @@ namespace PitHero.UI
 
         private void BuildTooltipWindow(Skin skin)
         {
-            _tooltipWindow = new Window("", skin);
-            _tooltipWindow.SetMovable(false);
-            _tooltipWindow.SetResizable(false);
-            _tooltipWindow.SetKeepWithinStage(false);
-            _tooltipWindow.SetColor(GameConfig.TransparentMenu);
-
-            var label = new Label(_tooltipText, new LabelStyle { Font = Nez.Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
-            _tooltipWindow.Add(label).Pad(6f);
-            _tooltipWindow.Pack();
-            _tooltipWindow.SetVisible(false);
+            // Self-hiding: the window watches this checkbox's hierarchy, since Draw below never
+            // runs once an ancestor (the Settings window) is hidden
+            _tooltipWindow = new HoverTooltipWindow(this, skin, _tooltipText, BrownFontColor);
             _stage.AddElement(_tooltipWindow);
         }
 

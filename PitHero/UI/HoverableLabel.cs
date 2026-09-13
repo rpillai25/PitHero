@@ -10,8 +10,8 @@ namespace PitHero.UI
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
 
         private readonly string _tooltipText;
-        private readonly Stage _stage;
-        private Window _tooltipWindow;
+        private new readonly Stage _stage;   // hides Element._stage on purpose: the stage the tooltip is parented to
+        private HoverTooltipWindow _tooltipWindow;
         private bool _hovered;
 
         public HoverableLabel(string text, Skin skin, string styleName, string tooltipText, Stage stage)
@@ -51,16 +51,9 @@ namespace PitHero.UI
 
         private void BuildTooltipWindow(Skin skin)
         {
-            _tooltipWindow = new Window("", skin);
-            _tooltipWindow.SetMovable(false);
-            _tooltipWindow.SetResizable(false);
-            _tooltipWindow.SetKeepWithinStage(false);
-            _tooltipWindow.SetColor(GameConfig.TransparentMenu);
-
-            var label = new Label(_tooltipText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
-            _tooltipWindow.Add(label).Pad(6f);
-            _tooltipWindow.Pack();
-            _tooltipWindow.SetVisible(false);
+            // Self-hiding: the window watches this label's hierarchy, since Draw below never runs
+            // once an ancestor (the Settings window) is hidden
+            _tooltipWindow = new HoverTooltipWindow(this, skin, _tooltipText, BrownFontColor);
             _stage.AddElement(_tooltipWindow);
         }
 
