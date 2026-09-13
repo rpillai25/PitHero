@@ -449,11 +449,11 @@ namespace PitHero.UI
         private void ShowArtifactPurchaseCard(PitHero.Artifacts.ArtifactType type)
         {
             if (_stage == null) return;
-            _artifactDialog?.Remove();
+            _artifactDialog?.Close();
             int price = PitHero.Artifacts.ArtifactCatalog.GetPrice(type);
             var gameState = Core.Services?.GetService<GameStateService>();
             bool canAfford = gameState != null && gameState.Funds >= price;
-            _artifactDialog = new ArtifactInfoDialog(type, _skin, price, onGrant: () => RequestArtifactGrant(type), canAfford);
+            _artifactDialog = new ArtifactInfoDialog(type, _skin, _stage, price, onGrant: () => RequestArtifactGrant(type), canAfford);
             _artifactDialog.Show(_stage);
         }
 

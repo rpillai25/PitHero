@@ -78,8 +78,8 @@ namespace PitHero.UI
         {
             if (_stage == null || _skin == null)
                 return;
-            _dialog?.Remove();
-            _dialog = new ArtifactInfoDialog(artifact, _skin);
+            _dialog?.Close();
+            _dialog = new ArtifactInfoDialog(artifact, _skin, _stage);
             _dialog.Show(_stage);
         }
     }

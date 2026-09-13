@@ -281,6 +281,8 @@ ArtifactHermesBootsName,Hermes Boots
 ArtifactHermesBootsDesc,Boots worn by Hermes. Workers move twice as fast.
 ArtifactScopeGlobal,Global
 ArtifactScopeLocal,Local
+ArtifactScopeGlobalTooltip,Affects all hero sessions
+ArtifactScopeLocalTooltip,Affects current hero session
 ArtifactBuyButtonFormat,Buy ({0}G)
 ArtifactGrantButtonFormat,Grant ({0}G)
 ArtifactShopHeader,Show proof of gold to be granted an artifact

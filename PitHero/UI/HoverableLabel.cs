@@ -39,6 +39,16 @@ namespace PitHero.UI
             _tooltipWindow?.SetVisible(false);
         }
 
+        /// <summary>
+        /// Takes the tooltip window off the stage. Call when the label's owner is removed (a
+        /// short-lived dialog), since a removed label never gets the OnMouseExit that hides it.
+        /// </summary>
+        public void RemoveTooltip()
+        {
+            _hovered = false;
+            _tooltipWindow?.Remove();
+        }
+
         private void BuildTooltipWindow(Skin skin)
         {
             _tooltipWindow = new Window("", skin);

@@ -384,6 +384,8 @@ namespace PitHero
         public const string ArtifactHermesBootsDesc = "ArtifactHermesBootsDesc";
         public const string ArtifactScopeGlobal = "ArtifactScopeGlobal";
         public const string ArtifactScopeLocal = "ArtifactScopeLocal";
+        public const string ArtifactScopeGlobalTooltip = "ArtifactScopeGlobalTooltip";
+        public const string ArtifactScopeLocalTooltip = "ArtifactScopeLocalTooltip";
         public const string ArtifactBuyButtonFormat = "ArtifactBuyButtonFormat";
         public const string ArtifactGrantButtonFormat = "ArtifactGrantButtonFormat";
         public const string ArtifactShopHeader = "ArtifactShopHeader";
