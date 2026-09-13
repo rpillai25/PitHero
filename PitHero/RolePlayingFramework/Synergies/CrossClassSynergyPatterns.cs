@@ -12,22 +12,22 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Sacred Blade - Ultimate Knight+Priest combination.</summary>
         public static SynergyPattern CreateSacredBlade()
         {
+            // 7 wide x 4 tall: the original 5 x 5 block's bottom row spilled into columns 5-6 so it
+            // fits the 4-row bag (same 25 cells and kinds)
             var offsets = new List<Point>
             {
-                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0),
-                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1),
-                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2),
-                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3), new Point(4, 3),
-                new Point(0, 4), new Point(1, 4), new Point(2, 4), new Point(3, 4), new Point(4, 4)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0), new Point(5, 0), new Point(6, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1), new Point(5, 1),
+                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2), new Point(5, 2),
+                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3), new Point(4, 3), new Point(5, 3)
             };
 
             var requiredKinds = new List<ItemKind>
             {
-                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.Accessory, ItemKind.Shield,
-                ItemKind.Accessory, ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory,
-                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.HatPriest, ItemKind.Accessory, ItemKind.HatHelm,
-                ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.Accessory, ItemKind.Shield, ItemKind.Accessory,
-                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.ArmorRobe
+                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.Accessory, ItemKind.Shield, ItemKind.WeaponSword, ItemKind.ArmorRobe,
+                ItemKind.Accessory, ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory, ItemKind.Accessory,
+                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.HatPriest, ItemKind.Accessory, ItemKind.HatHelm, ItemKind.ArmorMail,
+                ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.Accessory, ItemKind.Shield, ItemKind.Accessory, ItemKind.Accessory
             };
 
             var effects = new List<ISynergyEffect>
@@ -54,22 +54,21 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Flash Strike - Knight+Thief speed combination.</summary>
         public static SynergyPattern CreateFlashStrike()
         {
+            // 5 wide x 4 tall: the original 4 x 5 block rotated sideways so it fits the 4-row bag
             var offsets = new List<Point>
             {
-                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0),
-                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1),
-                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2),
-                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3),
-                new Point(0, 4), new Point(1, 4), new Point(2, 4), new Point(3, 4)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1),
+                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2),
+                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3), new Point(4, 3)
             };
 
             var requiredKinds = new List<ItemKind>
             {
-                ItemKind.WeaponSword, ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.ArmorGi,
-                ItemKind.Accessory, ItemKind.ArmorMail, ItemKind.Shield, ItemKind.Accessory,
-                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.HatHeadband, ItemKind.WeaponSword,
-                ItemKind.ArmorGi, ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatHelm,
-                ItemKind.Accessory, ItemKind.WeaponSword, ItemKind.Shield, ItemKind.Accessory
+                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.WeaponSword, ItemKind.ArmorGi, ItemKind.Accessory,
+                ItemKind.WeaponSword, ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.Accessory, ItemKind.WeaponSword,
+                ItemKind.Accessory, ItemKind.Shield, ItemKind.HatHeadband, ItemKind.Accessory, ItemKind.Shield,
+                ItemKind.ArmorGi, ItemKind.Accessory, ItemKind.WeaponSword, ItemKind.HatHelm, ItemKind.Accessory
             };
 
             var effects = new List<ISynergyEffect>
@@ -95,22 +94,22 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Soul Ward - Priest+Knight defensive ultimate.</summary>
         public static SynergyPattern CreateSoulWard()
         {
+            // 7 wide x 4 tall: the original 5 x 5 ward's bottom row spilled into columns 5-6 so it
+            // fits the 4-row bag (same 23 cells and kinds)
             var offsets = new List<Point>
             {
-                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0),
-                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1),
-                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2),
-                new Point(0, 3), new Point(2, 3), new Point(4, 3),
-                new Point(0, 4), new Point(1, 4), new Point(2, 4), new Point(3, 4), new Point(4, 4)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0), new Point(5, 0), new Point(6, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1), new Point(5, 1),
+                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2), new Point(5, 2),
+                new Point(0, 3), new Point(2, 3), new Point(4, 3), new Point(5, 3)
             };
 
             var requiredKinds = new List<ItemKind>
             {
-                ItemKind.Shield, ItemKind.WeaponStaff, ItemKind.ArmorMail, ItemKind.ArmorRobe, ItemKind.Shield,
-                ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatPriest, ItemKind.Accessory, ItemKind.Accessory,
-                ItemKind.ArmorMail, ItemKind.WeaponStaff, ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.ArmorRobe,
-                ItemKind.Accessory, ItemKind.HatHelm, ItemKind.Accessory,
-                ItemKind.Shield, ItemKind.Accessory, ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.Shield
+                ItemKind.Shield, ItemKind.WeaponStaff, ItemKind.ArmorMail, ItemKind.ArmorRobe, ItemKind.Shield, ItemKind.Shield, ItemKind.Shield,
+                ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatPriest, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory,
+                ItemKind.ArmorMail, ItemKind.WeaponStaff, ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.ArmorRobe, ItemKind.ArmorMail,
+                ItemKind.Accessory, ItemKind.HatHelm, ItemKind.Accessory, ItemKind.Accessory
             };
 
             var effects = new List<ISynergyEffect>
@@ -178,22 +177,22 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Elemental Storm - Ultimate Mage+Bowman combination.</summary>
         public static SynergyPattern CreateElementalStorm()
         {
+            // 8 wide x 4 tall: the original 6 x 5 block's bottom row (all accessories) spilled into
+            // columns 6-7 so it fits the 4-row bag (same 30 cells and kinds)
             var offsets = new List<Point>
             {
-                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0), new Point(5, 0),
-                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1), new Point(5, 1),
-                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2), new Point(5, 2),
-                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3), new Point(4, 3), new Point(5, 3),
-                new Point(0, 4), new Point(1, 4), new Point(2, 4), new Point(3, 4), new Point(4, 4), new Point(5, 4)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0), new Point(5, 0), new Point(6, 0), new Point(7, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1), new Point(5, 1), new Point(6, 1), new Point(7, 1),
+                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2), new Point(5, 2), new Point(6, 2),
+                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3), new Point(4, 3), new Point(5, 3), new Point(6, 3)
             };
 
             var requiredKinds = new List<ItemKind>
             {
-                ItemKind.Accessory, ItemKind.Accessory, ItemKind.WeaponRod, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory,
-                ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory, ItemKind.HatWizard, ItemKind.ArmorGi, ItemKind.Accessory,
-                ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatHeadband,
-                ItemKind.WeaponRod, ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory,
-                ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory
+                ItemKind.Accessory, ItemKind.Accessory, ItemKind.WeaponRod, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory,
+                ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory, ItemKind.HatWizard, ItemKind.ArmorGi, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory,
+                ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatHeadband, ItemKind.Accessory,
+                ItemKind.WeaponRod, ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory
             };
 
             var effects = new List<ISynergyEffect>
@@ -259,22 +258,21 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Holy Warrior - Knight+Priest balanced combination.</summary>
         public static SynergyPattern CreateHolyWarrior()
         {
+            // 5 wide x 4 tall: the original 4 x 5 block rotated sideways so it fits the 4-row bag
             var offsets = new List<Point>
             {
-                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0),
-                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1),
-                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2),
-                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3),
-                new Point(0, 4), new Point(1, 4), new Point(2, 4), new Point(3, 4)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1), new Point(4, 1),
+                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2),
+                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3), new Point(4, 3)
             };
 
             var requiredKinds = new List<ItemKind>
             {
-                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.Shield,
-                ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory,
-                ItemKind.WeaponSword, ItemKind.HatHelm, ItemKind.HatPriest, ItemKind.WeaponStaff,
-                ItemKind.Accessory, ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.Shield,
-                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory
+                ItemKind.WeaponSword, ItemKind.ArmorMail, ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.WeaponSword,
+                ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatHelm, ItemKind.ArmorMail, ItemKind.Accessory,
+                ItemKind.WeaponStaff, ItemKind.ArmorRobe, ItemKind.HatPriest, ItemKind.Accessory, ItemKind.ArmorRobe,
+                ItemKind.Shield, ItemKind.Accessory, ItemKind.WeaponStaff, ItemKind.Shield, ItemKind.Accessory
             };
 
             var effects = new List<ISynergyEffect>
@@ -337,22 +335,21 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Arcane Protector - Mage+Knight defensive magic.</summary>
         public static SynergyPattern CreateArcaneProtector()
         {
+            // 5 wide x 4 tall: the original 4 x 5 shape rotated sideways so it fits the 4-row bag
             var offsets = new List<Point>
             {
-                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0),
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0),
                 new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1),
-                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2),
-                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3),
-                new Point(0, 4), new Point(2, 4), new Point(3, 4)
+                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2),
+                new Point(0, 3), new Point(1, 3), new Point(2, 3), new Point(3, 3), new Point(4, 3)
             };
 
             var requiredKinds = new List<ItemKind>
             {
-                ItemKind.Shield, ItemKind.WeaponRod, ItemKind.Accessory, ItemKind.Shield,
-                ItemKind.Accessory, ItemKind.ArmorRobe, ItemKind.Accessory, ItemKind.ArmorMail,
-                ItemKind.WeaponRod, ItemKind.Accessory, ItemKind.HatWizard, ItemKind.Accessory,
-                ItemKind.Shield, ItemKind.Accessory, ItemKind.ArmorMail, ItemKind.HatHelm,
-                ItemKind.Accessory, ItemKind.Shield, ItemKind.Accessory
+                ItemKind.Shield, ItemKind.Accessory, ItemKind.WeaponRod, ItemKind.Shield, ItemKind.Accessory,
+                ItemKind.WeaponRod, ItemKind.ArmorRobe, ItemKind.Accessory, ItemKind.Accessory,
+                ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatWizard, ItemKind.ArmorMail, ItemKind.Shield,
+                ItemKind.Shield, ItemKind.ArmorMail, ItemKind.Accessory, ItemKind.HatHelm, ItemKind.Accessory
             };
 
             var effects = new List<ISynergyEffect>

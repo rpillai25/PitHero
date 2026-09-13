@@ -19,34 +19,35 @@ namespace PitHero.UI
     /// <summary>Grid layout container for inventory slots with interaction logic (single linear buffer version).</summary>
     public class InventoryGrid : Group
     {
-        private const int GRID_WIDTH = 24;
-        private const int GRID_HEIGHT = 8;  // 1 row for hero name space + 2 rows for equipment area + 5 rows for inventory
+        private const int GRID_WIDTH = 30;
+        private const int GRID_HEIGHT = 7;  // 1 row for hero name space + 2 rows for equipment area + 4 rows for inventory
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
         private const float HOVER_OFFSET_Y = -16f; // Offset in pixels when hovering over a slot while another is selected
 
-        // Pixel geometry of the grid. It is deliberately wide and short — 24 columns x 5 bag rows is
-        // the same 120 bag slots the old 20 x 6 layout had, but one row shorter so the whole grid
-        // fits the design height (GameConfig.VirtualHeight) without scrolling.
+        // Pixel geometry of the grid. It is deliberately wide and short — 30 columns x 4 bag rows is
+        // the same 120 bag slots the older 24 x 5 (and 20 x 6) layouts had, but one row shorter so
+        // the whole grid fits the design height (GameConfig.VirtualHeight) without scrolling.
+        // Saves written for the 24 x 5 layout are remapped on load (BagLayoutMigration).
         private const int BAG_START_ROW = 3;                                            // rows 0-2 are names + equipment
-        private const int BAG_ROW_COUNT = GRID_HEIGHT - BAG_START_ROW;                  // 5
+        private const int BAG_ROW_COUNT = GRID_HEIGHT - BAG_START_ROW;                  // 4
         private const float ROW_PITCH = SLOT_SIZE + SLOT_PADDING;                       // 33
         private const float X_OFFSET = 32f;                                             // left padding before column 0
         private const float Y_OFFSET = -8f;                                             // grid sits 8px higher (the name row holds two text lines)
 
         /// <summary>Bag columns — also the widest a synergy stencil may be.</summary>
-        public const int BagColumns = GRID_WIDTH;                                       // 24
+        public const int BagColumns = GRID_WIDTH;                                       // 30
         /// <summary>Bag rows — also the tallest a synergy stencil may be.</summary>
-        public const int BagRows = BAG_ROW_COUNT;                                       // 5
+        public const int BagRows = BAG_ROW_COUNT;                                       // 4
         /// <summary>First grid row backed by a bag slot (rows above it are names and equipment).</summary>
         public const int BagRowStart = BAG_START_ROW;                                   // 3
-        /// <summary>Bag slot count (rows 3..7 across every column).</summary>
+        /// <summary>Bag slot count (rows 3..6 across every column).</summary>
         public const int BagCapacity = GRID_WIDTH * BAG_ROW_COUNT;                      // 120
         /// <summary>Width of the whole grid, which a host must give it in full.</summary>
-        public const float ContentWidth = GRID_WIDTH * ROW_PITCH + X_OFFSET;            // 824
+        public const float ContentWidth = GRID_WIDTH * ROW_PITCH + X_OFFSET;            // 1022
         /// <summary>Height of the whole grid, which a host must give it in full.</summary>
-        public const float ContentHeight = GRID_HEIGHT * ROW_PITCH + Y_OFFSET;          // 256
+        public const float ContentHeight = GRID_HEIGHT * ROW_PITCH + Y_OFFSET;          // 223
         /// <summary>Height of the name row above the equip slots. It must fit two lines of the UI
         /// font, since a character name stacks first name over last name.</summary>
         public const float NameRowHeight = ROW_PITCH + Y_OFFSET;                        // 25
@@ -273,7 +274,7 @@ namespace PitHero.UI
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
 
-            // Rows 3-7: Pure inventory (5 rows × 24 columns = 120 inventory slots)
+            // Rows 3-6: Pure inventory (4 rows × 30 columns = 120 inventory slots)
             return new InventorySlotData(x, y, InventorySlotType.Inventory);
         }
 
@@ -375,8 +376,8 @@ namespace PitHero.UI
 
         /// <summary>
         /// Clamps a restored stencil anchor so the whole pattern lands on bag slots. Saves written for
-        /// the older, taller grid (20 columns x 6 bag rows) can carry anchors on a row that no longer
-        /// exists. Returns false when the pattern cannot fit the bag area at all.
+        /// the older, taller grids (24 x 5 and 20 x 6 bag rows) can carry anchors on a row that no
+        /// longer exists. Returns false when the pattern cannot fit the bag area at all.
         /// </summary>
         private static bool TryFitStencilAnchor(SynergyPattern pattern, ref Point anchor)
         {
@@ -675,8 +676,8 @@ namespace PitHero.UI
         /// <summary>Sets the explicit size of the grid so every slot is drawn and clickable.</summary>
         private void SetGridSize()
         {
-            // Width:  (24 columns * 33px per slot) + 32px left padding = 824px
-            // Height: (8 rows * 33px per slot) - 8px top offset = 256px, the real content extent
+            // Width:  (30 columns * 33px per slot) + 32px left padding = 1022px
+            // Height: (7 rows * 33px per slot) - 8px top offset = 223px, the real content extent
             SetSize(ContentWidth, ContentHeight);
         }
 

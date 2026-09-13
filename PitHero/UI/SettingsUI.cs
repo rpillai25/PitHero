@@ -152,7 +152,7 @@ namespace PitHero.UI
         private bool _isDockedTop = false;
         private bool _isDockedBottom = true; // Default to bottom dock
         private bool _isDockedCenter = false;
-        private bool _alwaysOnTop = true; // Track current always-on-top state
+        private bool _alwaysOnTop = GameConfig.AlwaysOnTop; // Track current always-on-top state (defaults off)
 
         // Track previous shrink mode so we can restore it after closing settings
         private bool _prevWasHalfShrink = false;

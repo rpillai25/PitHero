@@ -12,6 +12,21 @@ namespace PitHero.UI
     /// </summary>
     public static class JobChangeFlow
     {
+        // The dialog most recently shown by ShowChangeJobDialog. Both dialog types Remove()
+        // themselves when dismissed. Nez's Group.RemoveElement clears the parent but NOT the
+        // stage reference, so "has a parent" is the visibility signal (the same test the
+        // dialogs' own IUIPrompt.IsPromptVisible uses) — GetStage() would stay non-null forever
+        // and leave the window-size gate in MainGameScene stuck open.
+        private static Element _activeDialog;
+
+        /// <summary>
+        /// True while the job change confirmation (or the "no crystal queued" notice) is open.
+        /// MainGameScene watches this so a half-size window temporarily restores to full size
+        /// while the dialog is up, exactly like the building context menu.
+        /// </summary>
+        public static bool IsDialogVisible =>
+            _activeDialog != null && _activeDialog.GetParent() != null && _activeDialog.IsVisible();
+
         /// <summary>True while a job change may be requested: a living hero with a crystal and
         /// no ceremony already in flight (covers both respawn and a pending manual change).</summary>
         public static bool CanRequestJobChange()
@@ -41,6 +56,7 @@ namespace PitHero.UI
                     GetText(UITextKey.DialogNoCrystalQueued), skin);
                 notice.OkButton.SuppressGlobalClick = true;
                 notice.Show(stage);
+                _activeDialog = notice;
                 return;
             }
 
@@ -49,6 +65,7 @@ namespace PitHero.UI
                 onYes: BeginManualJobChange);
             dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(stage);
+            _activeDialog = dialog;
         }
 
         /// <summary>

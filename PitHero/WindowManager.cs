@@ -10,6 +10,10 @@ namespace PitHero
     {
         private static uint _currentDisplayID;
         private static SDL.SDL_Rect _currentDisplayBounds;
+        // The display's work area: the bounds minus the OS taskbar/dock (SDL_GetDisplayUsableBounds).
+        // Vertical docking anchors to this so a bottom-docked strip never covers the taskbar; the
+        // strip's width and height still come from the full bounds so GetStripHeight stays 1:1.
+        private static SDL.SDL_Rect _currentUsableBounds;
         private static bool _haveBounds;
 
         private static int _originalWindowWidth;
@@ -21,7 +25,7 @@ namespace PitHero
         private static ShrinkMode _currentShrinkMode = ShrinkMode.Normal;
 
         // track docking mode so shrink/restore can honor it
-        private enum DockMode { None, Top, Bottom, Center }
+        public enum DockMode { None, Top, Bottom, Center }
         private static DockMode _currentDockMode = DockMode.None;
         private static int _currentDockYOffset = 0;
 
@@ -43,6 +47,7 @@ namespace PitHero
                     var dm = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
                     _currentDisplayBounds = new SDL.SDL_Rect { x = 0, y = 0, w = dm.Width, h = dm.Height };
                 }
+                _currentUsableBounds = GetUsableBounds(_currentDisplayID, _currentDisplayBounds);
                 _haveBounds = true;
             }
         }
@@ -51,7 +56,43 @@ namespace PitHero
         {
             _currentDisplayID = displayID;
             _currentDisplayBounds = bounds;
+            _currentUsableBounds = GetUsableBounds(displayID, bounds);
             _haveBounds = true;
+        }
+
+        /// <summary>
+        /// The display's usable area (bounds minus the taskbar/dock) in global desktop coordinates.
+        /// Falls back to the full bounds when SDL can't report it. An auto-hide taskbar reports the
+        /// full area, which is fine — the strip may cover the hidden strip.
+        /// </summary>
+        private static SDL.SDL_Rect GetUsableBounds(uint displayID, SDL.SDL_Rect fallback)
+        {
+            if (displayID != 0 && SDL.SDL_GetDisplayUsableBounds(displayID, out var usable)
+                && usable.w > 0 && usable.h > 0)
+            {
+                return usable;
+            }
+            return fallback;
+        }
+
+        /// <summary>
+        /// Vertical position of a docked window inside the display's usable (taskbar-free) area.
+        /// Pure math shared by the dock, shrink/restore and monitor-swap paths; None docks bottom.
+        /// The offset is a fine-tuning nudge (negative or zero for Bottom).
+        /// </summary>
+        public static int DockedY(DockMode mode, int usableY, int usableH, int windowHeight, int yOffset)
+        {
+            switch (mode)
+            {
+                case DockMode.Top:
+                    return usableY + yOffset;
+                case DockMode.Center:
+                    return usableY + (usableH - windowHeight) / 2 + yOffset;
+                case DockMode.Bottom:
+                case DockMode.None:
+                default:
+                    return usableY + usableH - windowHeight + yOffset;
+            }
         }
 
         /// <summary>Returns true if window is at least half shrink</summary>
@@ -87,32 +128,16 @@ namespace PitHero
             // Default horizontal behavior: center relative to previous
             int newX = prevX + (prevW - newWidth) / 2;
 
-            // Determine Y based on docking mode (fix: keep top-docked windows at top when shrinking)
+            // Determine Y based on docking mode (fix: keep top-docked windows at top when shrinking).
+            // Docked modes anchor inside the usable (taskbar-free) area.
             int newY;
             switch (_currentDockMode)
             {
                 case DockMode.Top:
-                    newY = _currentDisplayBounds.y + _currentDockYOffset;
-                    if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y;
-                    break;
                 case DockMode.Center:
-                    {
-                        int centerY = _currentDisplayBounds.y + (_currentDisplayBounds.h - newHeight) / 2 + _currentDockYOffset;
-                        newY = centerY;
-                        if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y;
-                        if (newY + newHeight > _currentDisplayBounds.y + _currentDisplayBounds.h)
-                            newY = _currentDisplayBounds.y + _currentDisplayBounds.h - newHeight;
-                        break;
-                    }
                 case DockMode.Bottom:
-                    {
-                        int baseBottomY = _currentDisplayBounds.y + _currentDisplayBounds.h - newHeight;
-                        newY = baseBottomY + _currentDockYOffset; // offset expected negative/zero for bottom
-                        if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y; // clamp top
-                        if (newY + newHeight > _currentDisplayBounds.y + _currentDisplayBounds.h)
-                            newY = _currentDisplayBounds.y + _currentDisplayBounds.h - newHeight;
-                        break;
-                    }
+                    newY = DockedY(_currentDockMode, _currentUsableBounds.y, _currentUsableBounds.h, newHeight, _currentDockYOffset);
+                    break;
                 case DockMode.None:
                 default:
                     // legacy behavior: anchor bottom edge as before
@@ -153,13 +178,9 @@ namespace PitHero
             switch (_currentDockMode)
             {
                 case DockMode.Top:
-                    newY = _currentDisplayBounds.y + _currentDockYOffset;
-                    break;
                 case DockMode.Center:
-                    newY = _currentDisplayBounds.y + (_currentDisplayBounds.h - _originalWindowHeight) / 2 + _currentDockYOffset;
-                    break;
                 case DockMode.Bottom:
-                    newY = _currentDisplayBounds.y + _currentDisplayBounds.h - _originalWindowHeight + _currentDockYOffset;
+                    newY = DockedY(_currentDockMode, _currentUsableBounds.y, _currentUsableBounds.h, _originalWindowHeight, _currentDockYOffset);
                     break;
                 case DockMode.None:
                 default:
@@ -200,7 +221,8 @@ namespace PitHero
 
         /// <summary>
         /// Configures the game window as a horizontal strip docked at the bottom of the screen,
-        /// sized by GetStripHeight (the design height scaled to the monitor).
+        /// sized by GetStripHeight (the design height scaled to the monitor). The strip sits on the
+        /// top edge of the taskbar (the display's usable area), not the bottom of the monitor.
         /// </summary>
         public static void ConfigureHorizontalStrip(Game game, bool alwaysOnTop = true)
         {
@@ -212,15 +234,13 @@ namespace PitHero
                 return;
             }
 
-            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
-            int displayWidth = displayMode.Width;
-            int displayHeight = displayMode.Height;
+            EnsureCurrentDisplay(sdlWindow);
 
-            int windowWidth = displayWidth;
-            int windowHeight = GetStripHeight(displayHeight);
+            int windowWidth = _currentDisplayBounds.w;
+            int windowHeight = GetStripHeight(_currentDisplayBounds.h);
 
-            int x = 0;
-            int y = displayHeight - windowHeight;
+            int x = _currentDisplayBounds.x;
+            int y = DockedY(DockMode.Bottom, _currentUsableBounds.y, _currentUsableBounds.h, windowHeight, 0);
 
             if (window is Microsoft.Xna.Framework.GameWindow gw)
                 gw.IsBorderlessEXT = true;
@@ -232,7 +252,7 @@ namespace PitHero
             _currentDockMode = DockMode.Bottom;
             _currentDockYOffset = 0;
 
-            Debug.Log($"Window configured as bottom docked strip {windowWidth}x{windowHeight} at ({x},{y}) - Always on top: {alwaysOnTop}");
+            Debug.Log($"Window configured as bottom docked strip {windowWidth}x{windowHeight} at ({x},{y}) usable=({_currentUsableBounds.x},{_currentUsableBounds.y},{_currentUsableBounds.w},{_currentUsableBounds.h}) - Always on top: {alwaysOnTop}");
         }
 
         /// <summary>
@@ -338,7 +358,8 @@ namespace PitHero
             int windowHeight = GetStripHeight(_currentDisplayBounds.h);
 
             int x = _currentDisplayBounds.x;
-            int y = _currentDisplayBounds.y + Math.Max(0, Math.Min(yOffset, _currentDisplayBounds.h - 100));
+            int y = DockedY(DockMode.Top, _currentUsableBounds.y, _currentUsableBounds.h, windowHeight,
+                Math.Max(0, Math.Min(yOffset, _currentUsableBounds.h - 100)));
 
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
@@ -361,8 +382,8 @@ namespace PitHero
             int windowWidth = _currentDisplayBounds.w;
             int windowHeight = GetStripHeight(_currentDisplayBounds.h);
 
-            int baseY = _currentDisplayBounds.y + _currentDisplayBounds.h - windowHeight;
-            int y = Math.Max(_currentDisplayBounds.y + 100, Math.Min(baseY + yOffset, _currentDisplayBounds.y + _currentDisplayBounds.h - 100));
+            int baseY = DockedY(DockMode.Bottom, _currentUsableBounds.y, _currentUsableBounds.h, windowHeight, yOffset);
+            int y = Math.Max(_currentUsableBounds.y + 100, Math.Min(baseY, _currentUsableBounds.y + _currentUsableBounds.h - 100));
             int x = _currentDisplayBounds.x;
 
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
@@ -386,8 +407,8 @@ namespace PitHero
             int windowWidth = _currentDisplayBounds.w;
             int windowHeight = GetStripHeight(_currentDisplayBounds.h);
 
-            int centerY = _currentDisplayBounds.y + (_currentDisplayBounds.h - windowHeight) / 2;
-            int y = Math.Max(_currentDisplayBounds.y + 100, Math.Min(centerY + yOffset, _currentDisplayBounds.y + _currentDisplayBounds.h - 100));
+            int centerY = DockedY(DockMode.Center, _currentUsableBounds.y, _currentUsableBounds.h, windowHeight, yOffset);
+            int y = Math.Max(_currentUsableBounds.y + 100, Math.Min(centerY, _currentUsableBounds.y + _currentUsableBounds.h - 100));
             int x = _currentDisplayBounds.x;
 
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
@@ -449,25 +470,13 @@ namespace PitHero
                 return;
             }
 
-            // Use docking mode to decide target position/size
+            // Use docking mode to decide target position/size; dock inside the new display's usable
+            // (taskbar-free) area
+            var nextUsable = GetUsableBounds(nextDisplayID, nextBounds);
             int targetWidth = nextBounds.w;
             int targetHeight = GetStripHeight(nextBounds.h);
             int targetX = nextBounds.x;
-            int targetY;
-            switch (_currentDockMode)
-            {
-                case DockMode.Top:
-                    targetY = nextBounds.y + _currentDockYOffset;
-                    break;
-                case DockMode.Center:
-                    targetY = nextBounds.y + (nextBounds.h - targetHeight) / 2 + _currentDockYOffset;
-                    break;
-                case DockMode.Bottom:
-                case DockMode.None:
-                default:
-                    targetY = nextBounds.y + nextBounds.h - targetHeight + _currentDockYOffset;
-                    break;
-            }
+            int targetY = DockedY(_currentDockMode, nextUsable.y, nextUsable.h, targetHeight, _currentDockYOffset);
 
             // Move first, then resize: a resize issued while the window is still on the old monitor
             // gets processed in that monitor's context (DPI/resolution) and comes out wrong after

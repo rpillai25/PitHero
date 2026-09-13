@@ -15,9 +15,11 @@ namespace PitHero
         // runtime layout/camera code must use Stage.GetWidth()/Scene.SceneRenderTargetSize instead.
         // VirtualHeight is the single knob for the strip's height: the OS window height follows it
         // (WindowManager.GetStripHeight scales it by the monitor height), and every tall UI window
-        // fits itself to Stage.GetHeight() at show time, so it can be flipped (e.g. 360 <-> 296).
+        // fits itself to Stage.GetHeight() at show time, so it can be flipped (360 -> 296 -> 264).
+        // 264 is one tile shorter than 296 so the strip covers less of the desktop; the Party
+        // inventory grid is 30 columns x 4 bag rows to keep its 120 slots at this height.
         public const int VirtualWidth = 1920;
-        public const int VirtualHeight = 296;
+        public const int VirtualHeight = 264;
         public const int InternalWorldWidth = 1920;
         public const int InternalWorldHeight = 800;
 
@@ -33,7 +35,7 @@ namespace PitHero
         public const float HudBottomLabelOffsetY = 10f;
 
         // Window Configuration
-        public const bool AlwaysOnTop = true;
+        public const bool AlwaysOnTop = false;   // off by default: the strip should not sit over other apps unless the player opts in (Settings > Session)
         public const bool ClickThrough = false;
         public const bool BorderlessWindow = true;
 
@@ -706,18 +708,28 @@ namespace PitHero
         // Composed for a 1920x360 stage; SecondChanceShopUI centers the whole composition on
         // wider stages by shifting all X positions right by (stageWidth - VirtualWidth) / 2, and fits
         // the panel heights/Y to the live stage height when VirtualHeight is shorter than 360.
-        // Shop window (vault grid + tabs) positioned near left-center
-        public const float SecondChanceShopWindowX = 509f;
-        public const float SecondChanceShopWindowY = 12f;
-        public const float SecondChanceShopWindowWidth = 350f;
-        public const float SecondChanceShopWindowHeight = 310f;
+        //
+        // The composition is anchored on the hero panel, which is sized around the inventory grid
+        // and right-aligned to the 1920 reference stage. Everything to its left (the merchant span
+        // and the shop window) is derived from it, so a wider grid shifts the whole shop left
+        // without any of these needing to be retyped.
 
-        // Hero panel (inventory/crystal) sized around the 824px inventory grid and right-aligned to
-        // the 1920 reference stage (1068 + 852 = 1920); the shop and merchant shift left to match.
-        public const float SecondChanceHeroPanelX = 1068f;
+        // Hero panel (inventory/crystal): the grid plus a little slack (scroll pane + right edge)
+        public const float SecondChanceHeroPanelGridSlack = 28f;
+        public const float SecondChanceHeroPanelWidth = PitHero.UI.InventoryGrid.ContentWidth + SecondChanceHeroPanelGridSlack; // 1050
+        public const float SecondChanceHeroPanelX = VirtualWidth - SecondChanceHeroPanelWidth;   // 870
         public const float SecondChanceHeroPanelY = 12f;
-        public const float SecondChanceHeroPanelWidth = 852f;
         public const float SecondChanceHeroPanelHeight = 340f;
+
+        // Gap between the shop window's right edge and the hero panel; the merchant stands in it
+        public const float SecondChanceMerchantSpanWidth = 209f;
+
+        // Shop window (vault grid + tabs) sits left of the merchant span
+        public const float SecondChanceShopWindowWidth = 350f;
+        public const float SecondChanceShopWindowX =
+            SecondChanceHeroPanelX - SecondChanceMerchantSpanWidth - SecondChanceShopWindowWidth; // 311
+        public const float SecondChanceShopWindowY = 12f;
+        public const float SecondChanceShopWindowHeight = 310f;
 
         // Merchant sprite centered in the span between the shop window and the hero panel. Only the
         // span center is a constant - SecondChanceShopUI measures the atlas frame at load time and

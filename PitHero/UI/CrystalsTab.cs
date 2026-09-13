@@ -82,7 +82,7 @@ namespace PitHero.UI
             mainTable.Top().Left();
             mainTable.PadLeft(32f);
 
-            // ── Forge section (spans both columns) ───────────────────────────────
+            // ── Forge section (top of the left column) ───────────────────────────
             var forgeSection = new Table();
             forgeSection.Add(new HoverableLabel(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default", GetText(UITextKey.CrystalForgeTitleTooltip), _stage)).Left().Pad(2);
             forgeSection.Row();
@@ -143,11 +143,13 @@ namespace PitHero.UI
 
             forgeSection.Add(forgeRow).Left().Pad(2);
 
-            // Forge spans both columns of mainTable so queue label and inv label share the same row
-            mainTable.Add(forgeSection).Left().SetColspan(2).Pad(5);
-            mainTable.Row();
+            // ── Left column: forge above inventory. The queue column sits beside the whole stack
+            // so its label lines up with the Forge label and its first slot with the forge slots.
+            var leftCol = new Table();
+            leftCol.Add(forgeSection).Left().Pad(5);
+            leftCol.Row();
 
-            // ── Inventory section (left) ──────────────────────────────────────────
+            // ── Inventory section (left, below the forge) ─────────────────────────
             var invCol = new Table();
             invCol.Add(new Label(GetText(UITextKey.CrystalInventoryTitle), skin, "ph-default")).Left().Pad(2);
             invCol.Row();
@@ -168,13 +170,16 @@ namespace PitHero.UI
                 invGrid.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
                 if ((i + 1) % INVENTORY_COLS == 0) invGrid.Row();
             }
-            invCol.Add(invGrid).Left().Pad(2);
-            invCol.Row();
-
+            // The Create button sits to the left of the grid's top-left slot (not under the grid), so
+            // the whole tab fits the design height without a scroll pane
             _createButton = new HoverableTextButton(GetText(UITextKey.CrystalCreateButton), skin, "ph-default", GetText(UITextKey.CrystalCreateButtonTooltip), _stage);
             _createButton.OnClicked += OnCreateClicked;
             _createButton.OnClicked += (_) => _createButton.HideTooltip();
-            invCol.Add(_createButton).Height(24).Left().Pad(2);
+
+            var invRow = new Table();
+            invRow.Add(_createButton).Height(24).Top().Left().Pad(SLOT_PAD + 4f, 2, 2, 6);
+            invRow.Add(invGrid).Top().Left();
+            invCol.Add(invRow).Left().Pad(2);
 
             // ── Queue section (right) ─────────────────────────────────────────────
             var queueCol = new Table();
@@ -198,12 +203,17 @@ namespace PitHero.UI
                 var slotRow = new Table();
                 slotRow.Add(numLabel).Width(14f).Right().Pad(0, 0, 0, 3);
                 slotRow.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
-                queueCol.Add(slotRow).Left();
+                // The forge slots sit 4px under their label (row pad 2 + slot pad 2); the queue slot
+                // only has its 1px slot pad, so the first row gets 3px more to land on the same Y
+                queueCol.Add(slotRow).Left().SetPadTop(i == 0 ? 3f : 0f);
                 queueCol.Row();
             }
 
-            mainTable.Add(invCol).Top().Left().Pad(2);
-            mainTable.Add(queueCol).Top().Left().Pad(2, 16, 2, 5);
+            leftCol.Add(invCol).Left().Pad(2);
+
+            // Same top pad as the forge section (5) so both labels start on the same Y
+            mainTable.Add(leftCol).Top().Left();
+            mainTable.Add(queueCol).Top().Left().Pad(5, 16, 2, 5);
 
             RefreshAll();
             return mainTable;

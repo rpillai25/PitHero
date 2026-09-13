@@ -97,10 +97,15 @@ namespace PitHero.UI
         // Mercenaries tab component
         private MercenariesTab _mercenariesTabComponent;
         private FoodTab _foodTabComponent;
-
-        // Inventory tab width: the grid cell plus the stencil button column and its padding
-        private const float HERO_WINDOW_WIDTH = InventoryGrid.ContentWidth + 178f; // 1002
-        private const float COMPACT_WINDOW_WIDTH = 490f;
+        // Inventory tab width: the grid cell plus the stencil button column and its padding. The
+        // other tabs shrink the window to the tab strip (_minTabStripWidth); only the right edge moves.
+        // tab uses this width so the window never resizes when switching tabs.
+        private const float HERO_WINDOW_WIDTH = InventoryGrid.ContentWidth + 178f; // 1200
+        // The non-inventory tabs were designed for a 490px window; their content keeps that width
+        // and is centered inside the tab-strip-wide window (see AddCentered).
+        private const float COMPACT_CONTENT_WIDTH = 490f;
+        private const float MERCENARIES_CONTENT_WIDTH = 580f;
+        private const float CRYSTALS_CONTENT_WIDTH = 560f; // Create button + 10-column grid + queue column
         private const float HERO_WINDOW_HEIGHT = GameConfig.VirtualHeight; // full stage height: the window is flush with the top and bottom edges
         private const float TAB_STRIP_MARGIN = 24f; // breathing room beside the tab button strip
         private float _minTabStripWidth; // computed from the real tab buttons so new tabs can't overflow
@@ -190,8 +195,7 @@ namespace PitHero.UI
         {
             _heroWindow = new Window("", skin); // Empty title since tabs provide context
             _heroWindow.Pad(0); // Remove all window padding so tabs are flush with edges
-            // Start at the inventory tab width; the width follows the active tab and the height is
-            // fitted to the live stage in PositionHeroWindow.
+            // Start at the inventory width; HandleTabChanged narrows the compact tabs to the tab strip and the height is fitted to the live stage in PositionHeroWindow.
             _heroWindow.SetSize(HERO_WINDOW_WIDTH, HERO_WINDOW_HEIGHT);
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
@@ -244,48 +248,54 @@ namespace PitHero.UI
                 GetText(TextType.UI, UITextKey.ButtonClose), ToggleHeroWindow);
         }
 
-        /// <summary>Adjusts window width when tabs are changed.</summary>
+        /// <summary>
+        /// Refreshes tab content and sizes the window for the selected tab. The Inventory tab needs
+        /// the full grid width; every other tab's content fits inside the tab button strip, so the
+        /// window shrinks to the strip (its right edge sits just past the last tab). Only the right
+        /// edge moves: PositionHeroWindow anchors X off the full width, so the window and its tabs
+        /// never shift horizontally.
+        /// </summary>
         private void HandleTabChanged(Tab selectedTab)
         {
             if (_heroWindow == null) return;
 
             _stencilLibraryPanel?.SetVisible(false);
 
-            float newWidth;
-            if (selectedTab == _inventoryTab)
+            if (selectedTab == _crystalsCollectionTab)
             {
-                // Inventory tab needs full width for 20-column grid
-                newWidth = HERO_WINDOW_WIDTH;
-            }
-            else if (selectedTab == _crystalsCollectionTab)
-            {
-                newWidth = COMPACT_WINDOW_WIDTH;
                 // Refresh crystal slots so any crystals loaded from save are visible
                 _crystalsTabComponent?.RefreshAll();
             }
             else if (selectedTab == _foodTab)
             {
-                newWidth = COMPACT_WINDOW_WIDTH;
                 // Sync favorite/checkbox state in case a save was loaded after UI creation
                 _foodTabComponent?.RefreshFromService();
             }
             else if (selectedTab == _artifactsTab)
             {
-                newWidth = COMPACT_WINDOW_WIDTH;
                 _artifactsTabComponent?.Refresh(); // a purchase may have landed since the tab was built
             }
-            else
-            {
-                // All other tabs share the compact width so the window looks consistent
-                newWidth = COMPACT_WINDOW_WIDTH;
-            }
 
-            // The window must never be narrower than the tab button strip
-            if (newWidth < _minTabStripWidth)
-                newWidth = _minTabStripWidth;
+            // Compact tabs: the tab strip width (measured from the real buttons). Inventory: the
+            // full width, which can never be narrower than the strip either.
+            float newWidth = selectedTab == _inventoryTab
+                ? System.Math.Max(HERO_WINDOW_WIDTH, _minTabStripWidth)
+                : _minTabStripWidth;
 
             _heroWindow.SetWidth(newWidth); // PositionHeroWindow fits the height to the stage
             PositionHeroWindow(); // Reposition after resize to keep it on screen
+        }
+
+        /// <summary>
+        /// Adds tab content designed for the old compact (490px) window, centered horizontally inside
+        /// the window (the tab strip width for these tabs). The content keeps its design width and the
+        /// full tab height, so the compact tabs lay out exactly as before, just centered.
+        /// </summary>
+        private static void AddCentered(Tab tab, Element content, float pad = 0f, float width = COMPACT_CONTENT_WIDTH)
+        {
+            var wrapper = new Table();
+            wrapper.Add(content).Width(width).Expand().SetFillY().Pad(pad);
+            tab.Add(wrapper).Expand().Fill();
         }
 
         private void CreateItemCards(Skin skin)
@@ -337,7 +347,7 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
 
             // Add scroll pane to left side with explicit width to ensure rightmost column is clickable.
-            // The grid never scrolls: it is 824px wide and 256px tall (24 columns x 5 bag rows), which
+            // The grid never scrolls: it is 1022px wide and 223px tall (30 columns x 4 bag rows), which
             // fits the window, which spans the full design height (see PositionHeroWindow).
             inventoryContainer.Add(scrollPane).Width(InventoryGrid.ContentWidth + 8f).Expand().Fill().Pad(0f);
 
@@ -725,14 +735,14 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
             scrollPane.SetFadeScrollBars(false);
 
-            prioritiesTab.Add(scrollPane).Expand().Fill().Pad(15f);
+            AddCentered(prioritiesTab, scrollPane, 15f);
         }
 
         private void PopulateCrystalTab(Tab crystalTab, Skin skin)
         {
             _heroCrystalTab = new HeroCrystalTab();
             var content = _heroCrystalTab.CreateContent(skin, _stage);
-            crystalTab.Add(content).Expand().Fill();
+            AddCentered(crystalTab, content);
         }
 
         /// <summary>Populates the Crystals collection tab with the CrystalsTab component.</summary>
@@ -740,10 +750,8 @@ namespace PitHero.UI
         {
             _crystalsTabComponent = new CrystalsTab();
             var content = _crystalsTabComponent.CreateContent(skin, _stage, _heroWindow);
-            // The card list is taller than the window at short design heights, so it scrolls vertically
-            var scrollPane = new ScrollPane(content, skin, "ph-default");
-            scrollPane.SetScrollingDisabled(true, false);
-            tab.Add(scrollPane).Expand().Fill();
+            // Forge + 4-row inventory + queue fit the design height, so no scroll pane
+            AddCentered(tab, content, 0f, CRYSTALS_CONTENT_WIDTH);
         }
 
         private void PopulateMercenariesTab(Tab mercenariesTab, Skin skin)
@@ -751,21 +759,23 @@ namespace PitHero.UI
             _mercenariesTabComponent = new MercenariesTab();
             _mercenariesTabComponent.OnDismissRequested += OnMercenaryDismissRequested;
             var content = _mercenariesTabComponent.CreateContent(skin, _stage);
-            mercenariesTab.Add(content).Expand().Fill();
+            // The two mercenary rows (labels, skills, portrait, Dismiss) run a little wider than the
+            // compact column and would clip on the left, so they get a wider centered column
+            AddCentered(mercenariesTab, content, 0f, MERCENARIES_CONTENT_WIDTH);
         }
 
         private void PopulateFoodTab(Tab foodTab, Skin skin)
         {
             _foodTabComponent = new FoodTab();
             var content = _foodTabComponent.CreateContent(skin, _stage);
-            foodTab.Add(content).Expand().Fill();
+            AddCentered(foodTab, content);
         }
 
         private void PopulateArtifactsTab(Tab artifactsTab, Skin skin)
         {
             _artifactsTabComponent = new ArtifactsTab();
             var content = _artifactsTabComponent.CreateContent(skin, _stage);
-            artifactsTab.Add(content).Expand().Fill();
+            AddCentered(artifactsTab, content);
         }
 
         private void InitializePriorityItems()

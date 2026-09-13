@@ -172,7 +172,7 @@ The shop owner is a UI `Image`, not a world entity, so it uses its own view:
   fast-forward scales `Time.TimeScale`; unscaled time keeps the reveal speed constant.
 - Greeting text comes from `SpeechBubbleDialogue.GetSecondChanceGreeting()` (3-variant bag,
   re-drawn on every shop open; returns the localized string since there's no entity).
-- Tail anchor = merchant sprite position + `GameConfig.SecondChanceMerchantBubbleAnchorX/Y`
+- Tail anchor = the merchant sprite's horizontal center, `GameConfig.SecondChanceMerchantBubbleHeadTopY` below its top
   (plus the shop's stage-centering `xOffset`). The bubble is in `GetWindowBoundsElements()`
   so clicking it doesn't dismiss the shop, and it's `Touchable.Disabled`.
 

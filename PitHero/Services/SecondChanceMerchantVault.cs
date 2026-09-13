@@ -31,10 +31,10 @@ namespace PitHero.Services
         // ── Capacity constants ────────────────────────────────────────────────────
 
         /// <summary>Maximum number of pages the vault item grid can display.</summary>
-        public const int MaxPages = 10;
+        public const int MaxPages = 12;
 
-        /// <summary>Number of item slots per page (9 columns × 6 rows).</summary>
-        public const int SlotsPerPage = 54;
+        /// <summary>Number of item slots per page (9 columns × 5 rows, VaultItemGrid.MaxVisible).</summary>
+        public const int SlotsPerPage = 45;
 
         /// <summary>Maximum number of distinct item stacks the vault will hold (MaxPages × SlotsPerPage).</summary>
         public const int MaxStacks = MaxPages * SlotsPerPage; // 540
