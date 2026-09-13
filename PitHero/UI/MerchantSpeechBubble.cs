@@ -46,6 +46,7 @@ namespace PitHero.UI
         private int _revealed;
         private float _accumulated;
         private float _bubbleHeight;
+        private float _bodyShiftY; // downward shift keeping the body on the stage (see Show)
 
         public MerchantSpeechBubble()
         {
@@ -107,9 +108,15 @@ namespace PitHero.UI
             _accumulated = 0f;
             _active = true;
 
-            // Real bounds so OutsideClickDismissal's envelope math sees the bubble
+            // The bubble body grows upward from the tail. When the anchor sits close to the top of
+            // the stage (the merchant's head is only ~40px below it at the 264 design height) a
+            // long greeting would poke above the stage, so push the body down until its top is at
+            // y=0; the tail keeps pointing at the head and the body simply overlaps it.
             float totalHeight = _bubbleHeight + TailSpriteH - GameConfig.SpeechBubbleTailOverlap;
-            SetBounds(_anchorX - GameConfig.SpeechBubbleWidth / 2f, _anchorY - totalHeight,
+            _bodyShiftY = System.Math.Max(0f, totalHeight - _anchorY);
+
+            // Real bounds so OutsideClickDismissal's envelope math sees the bubble
+            SetBounds(_anchorX - GameConfig.SpeechBubbleWidth / 2f, _anchorY - totalHeight + _bodyShiftY,
                 GameConfig.SpeechBubbleWidth, totalHeight);
             SetVisible(true);
         }
@@ -151,7 +158,7 @@ namespace PitHero.UI
             //   tail bottom = anchor (tail tip), bubble bottom overlaps the tail top by 2 px
             float tailTopY      = _anchorY - TailSpriteH;
             float bubbleBottomY = tailTopY + GameConfig.SpeechBubbleTailOverlap;
-            float bubbleTopY    = bubbleBottomY - _bubbleHeight;
+            float bubbleTopY    = bubbleBottomY - _bubbleHeight + _bodyShiftY;
             float bubbleX       = _anchorX - GameConfig.SpeechBubbleWidth / 2f;
             float tailX         = _anchorX - TailSpriteW / 2f;
 

@@ -12,22 +12,19 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Dragon Claw - Claws and fire orbs for draconic power.</summary>
         public static SynergyPattern CreateDragonClaw()
         {
+            // 5 wide x 3 tall: the original 3 x 5 claw rotated sideways so it fits the 4-row bag
             var offsets = new List<Point>
             {
-                new Point(0, 0), new Point(1, 0), new Point(2, 0),
-                new Point(0, 1), new Point(1, 1), new Point(2, 1),
-                new Point(0, 2), new Point(1, 2), new Point(2, 2),
-                new Point(0, 3), new Point(1, 3), new Point(2, 3),
-                new Point(0, 4), new Point(2, 4)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0), new Point(4, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(3, 1),
+                new Point(0, 2), new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2)
             };
 
             var requiredKinds = new List<ItemKind>
             {
-                ItemKind.WeaponKnuckle, ItemKind.Accessory, ItemKind.Accessory,
-                ItemKind.Accessory, ItemKind.ArmorGi, ItemKind.Accessory,
-                ItemKind.WeaponKnuckle, ItemKind.Accessory, ItemKind.HatHeadband,
-                ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory,
-                ItemKind.Accessory, ItemKind.Accessory
+                ItemKind.WeaponKnuckle, ItemKind.Accessory, ItemKind.WeaponKnuckle, ItemKind.Accessory, ItemKind.Accessory,
+                ItemKind.Accessory, ItemKind.ArmorGi, ItemKind.Accessory, ItemKind.Accessory,
+                ItemKind.Accessory, ItemKind.Accessory, ItemKind.HatHeadband, ItemKind.Accessory, ItemKind.Accessory
             };
 
             var effects = new List<ISynergyEffect>

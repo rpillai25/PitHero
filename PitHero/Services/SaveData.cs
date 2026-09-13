@@ -273,7 +273,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 32;
+        public const int CurrentVersion = 33; // v33: same bytes as v32; bag indices are remapped from the 24x5 grid to 30x4 on read
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -1200,6 +1200,10 @@ namespace PitHero.Services
                 item.IsConsumable = reader.ReadBool();
                 item.StackCount = item.IsConsumable ? reader.ReadInt() : 0;
                 item.SlotIndex = reader.ReadInt();
+                // Saves before v33 laid the bag out 24 x 5; the grid is now 30 x 4 (issue: shorter
+                // window). Remap so the player's arrangement keeps its rows and columns.
+                if (fileVersion < 33)
+                    item.SlotIndex = BagLayoutMigration.RemapPre33(item.SlotIndex);
                 InventoryItems.Add(item);
             }
 
@@ -1304,6 +1308,9 @@ namespace PitHero.Services
                 if (slot.SlotType == 1) // Item
                 {
                     slot.ItemBagIndex = reader.ReadInt();
+                    // Shortcuts point at bag slots; follow the same pre-v33 grid remap as the items
+                    if (fileVersion < 33 && slot.ItemBagIndex >= 0)
+                        slot.ItemBagIndex = BagLayoutMigration.RemapPre33(slot.ItemBagIndex);
                 }
                 else if (slot.SlotType == 2) // Skill
                 {

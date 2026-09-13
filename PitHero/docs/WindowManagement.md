@@ -1,88 +1,76 @@
 # PitHero Window Management
 
-This document describes the window management features that configure PitHero as a horizontal strip docked at the bottom of the screen.
+This document describes how PitHero configures its OS window as a horizontal strip docked at the
+bottom of the screen, and how the strip can be re-docked, shrunk, moved between monitors and dragged
+freely. All window work goes through `PitHero/WindowManager.cs`, which is pure **SDL3** (via the
+SDL3-CS binding that ships with FNA) — there is no Win32 interop.
 
-## Features
+## The strip
 
-### Horizontal Strip Display
-- **Resolution**: 1920×`GameConfig.VirtualHeight` virtual resolution (currently 296). `WindowManager.GetStripHeight` scales the design height to the monitor (1:1 at 1080p, 2x at 4K) so the FixedHeight render target maps to whole pixels
-- **Position**: Automatically positioned at the bottom center of the screen
-- **Borderless**: Removes window border, title bar, and system controls
-- **Always on Top**: Stays above other applications (configurable)
-- **Click-through**: Optional ability to make window transparent to mouse events
-
-### Configuration
-
-Window behavior can be configured in `GameConfig.cs`:
-
-```csharp
-// Window Configuration
-public const bool AlwaysOnTop = true;      // Keep window above other apps
-public const bool ClickThrough = false;    // Allow clicks to pass through
-public const bool BorderlessWindow = true; // Remove window decorations
-```
-
-### Platform Support
-
-- **Windows**: Full window management support using Win32 API
-- **Other Platforms**: Falls back to normal windowed mode with console notification
-
-### Usage
-
-The window is automatically configured when the game starts:
+- **Design resolution**: 1920×`GameConfig.VirtualHeight` (currently **264**; was 360, then 296).
+  Scenes use `SceneResolutionPolicy.FixedHeight`, so the render target is always `VirtualHeight`
+  tall and its width follows the window aspect (ultrawide monitors see more world).
+- **Physical height**: `WindowManager.GetStripHeight(displayHeight)` scales the design height to
+  the monitor — `displayHeight * VirtualHeight / ReferenceDisplayHeight` — so the strip renders 1:1
+  at 1080p and 2× at 4K and the render target always maps to whole pixels. The width is the full
+  display width.
+- **Borderless, always-on-top** (`GameConfig.AlwaysOnTop`), so the game keeps running while the
+  player works in other apps. The window is configured once from `Game1.LoadContent()`:
 
 ```csharp
-// In Game1.LoadContent()
-WindowManager.ConfigureHorizontalStrip(this,
-    alwaysOnTop: GameConfig.AlwaysOnTop);
+WindowManager.ConfigureHorizontalStrip(this, alwaysOnTop: GameConfig.AlwaysOnTop);
 ```
 
-### Manual Control
+### Why 264
 
-You can also manually control window behavior:
+`VirtualHeight` is the single knob for the strip's height. Every tall UI window fits itself to
+`Stage.GetHeight()` at show time (`PitHero/UI/UILayout.cs`), and the Party inventory grid was
+reshaped to 30 columns × 4 bag rows (still 120 slots, `InventoryGrid`) so the whole grid fits the tab
+area without scrolling. See `PitHero/docs/SynergySystem.md` for what that means for stencils and
+`BagLayoutMigration` for how older saves keep their item arrangement.
 
-```csharp
-// Toggle always on top
-WindowManager.SetAlwaysOnTop(game.Window.Handle, true);
+## Taskbar awareness
 
-// Toggle click-through
-WindowManager.SetClickThrough(game.Window.Handle, true);
+Vertical docking anchors to the display's **usable area** — `SDL_GetDisplayUsableBounds`, the
+monitor bounds minus the OS taskbar/dock — rather than the raw monitor bounds:
 
-// Update position after screen changes
-WindowManager.UpdatePosition(game);
-```
+- A bottom-docked strip sits on the top edge of the taskbar instead of covering it.
+- A top-docked strip starts below a taskbar that has been moved to the top edge.
+- Center docking centers inside the usable area.
 
-## Implementation Details
+`WindowManager.DockedY(mode, usableY, usableH, windowHeight, yOffset)` is the pure helper every
+dock, shrink/restore and monitor-swap path uses (`PitHero.Tests/WindowDockTests.cs`). The strip's
+width and height still come from the full display bounds, so `GetStripHeight` stays 1:1. If SDL
+cannot report a usable area the full bounds are used, which reproduces the old behavior. An
+auto-hide taskbar reports the full area, so the strip may cover its hidden edge.
 
-### WindowManager Class
+## Docking, shrinking and monitors
 
-The `WindowManager` class provides static methods for window manipulation:
+`WindowManager` tracks a `DockMode` (`None`, `Top`, `Bottom`, `Center`) plus a fine-tuning Y offset
+so later operations honor the player's choice:
 
-- `ConfigureHorizontalStrip()`: Main setup method (full-width strip, `GetStripHeight` tall, docked bottom)
-- `GetStripHeight()`: Physical window height for a monitor height, derived from `GameConfig.VirtualHeight`
-- `SetAlwaysOnTop()`: Control topmost behavior
-- `SetClickThrough()`: Control mouse transparency
-- `UpdatePosition()`: Reposition after screen changes
+| Method | What it does |
+|---|---|
+| `ConfigureHorizontalStrip(game, alwaysOnTop)` | Startup: full-width strip, `GetStripHeight` tall, docked bottom on the window's display |
+| `DockTop / DockBottom / DockCenter(game, yOffset)` | Re-dock on the current display (Settings → Window tab) |
+| `ShrinkToNextLevel(game)` / `RestoreOriginalSize(game)` | Toggle Normal ↔ Half size (both axes), keeping the dock anchor |
+| `SwapToNextMonitor(game)` | Move to the next SDL display, re-sizing for that monitor and re-applying the dock |
+| `ClearDockMode()` | Forget the dock so shrink/restore anchor to the window's current position (free-move mode) |
+| `MoveWindowClampedToCurrentDisplay(game, x, y)` / `ClampRectToBounds(...)` | Move the window, clamped inside the current display's full bounds (display-origin aware) |
+| `SetAlwaysOnTop(game, bool)` | Toggle topmost |
 
-### Win32 API Integration
+SDL3 window operations are asynchronous and DPI-context sensitive: when changing monitors, position
+onto the target display first, `SDL_SyncWindow`, then resize, then re-assert the position.
 
-Uses P/Invoke to call Win32 functions:
-- `SetWindowPos()`: Position and layer management
-- `SetWindowLong()`: Style and extended style changes
-- `GetWindowRect()`: Screen dimension queries
+### Free move mode
 
-### Error Handling
+Settings → "Free Move Window" (issue #364) lets the player drag the strip anywhere with the mouse.
+It clears the dock mode on entry, polls the global mouse position each frame, and clamps the rect to
+the current display's full bounds — so a dragged window may cover the taskbar by choice. Docking or
+swapping monitors afterwards re-applies taskbar-aware placement.
 
-- Graceful fallback to normal window mode if APIs fail
-- Console logging for debugging window management issues
-- Platform detection to avoid Win32 calls on non-Windows systems
+## Related
 
-## Design Goals
-
-This implementation fulfills the Copilot instruction requirements:
-- ✅ Horizontal strip at bottom of screen
-- ✅ Borderless window
-- ✅ Always-on-top capability
-- ✅ Optional click-through
-- ✅ 1920×`GameConfig.VirtualHeight` virtual resolution (single configurable knob)
-- ✅ Continues running while user interacts with other apps
+- `AGENTS.md` — project rules (design height, FixedHeight policy).
+- `PitHero/docs/ReplaySystem.md` — window size/dock is view-only and is not recorded.
+- `PitHero.Tests/UILayoutTests.cs`, `WindowClampTests.cs`, `WindowDockTests.cs` — the pure math.

@@ -136,13 +136,13 @@ var pattern = new SynergyPattern(
 var detector = new SynergyDetector();
 detector.RegisterPattern(pattern);
 
-// Create inventory grid (24 wide x 8 tall in PitHero; rows 3-7 are the 120 bag slots)
-var grid = new IItem[24, 8];
+// Create inventory grid (30 wide x 7 tall in PitHero; rows 3-6 are the 120 bag slots)
+var grid = new IItem[30, 7];
 grid[0, 3] = GearItems.ShortSword();
 grid[1, 3] = GearItems.WoodenShield();
 
 // Detect active synergies
-var synergies = detector.DetectSynergies(grid, 24, 8);
+var synergies = detector.DetectSynergies(grid, 30, 7);
 
 // Apply to hero
 hero.UpdateActiveSynergies(synergies);
@@ -163,9 +163,9 @@ hero.EarnSynergyPoints(10);
 ### 1. Pattern Size
 - Keep patterns compact (2-4 items typically)
 - Larger patterns = more powerful effects but harder to achieve
-- **Hard limit:** a pattern must fit the bag area — at most `InventoryGrid.BagRows` tall (5) and
-  `InventoryGrid.BagColumns` wide (24). The bag is wide and short, so grow patterns sideways, not
-  down: the two biggest ones are Dragon Bolt (6×4) and Elemental Champion (9×4).
+- **Hard limit:** a pattern must fit the bag area — at most `InventoryGrid.BagRows` tall (4) and
+  `InventoryGrid.BagColumns` wide (30). The bag is wide and short, so grow patterns sideways, not
+  down: the widest ones are Elemental Champion (9×4) and Elemental Storm (8×4); the seven stencils that were five rows tall were rotated or reflowed to four rows when the bag lost a row (2026-09).
   `SynergyPatternFitTests` fails the build if a pattern stops fitting.
 
 ### 2. Item Requirements
@@ -439,7 +439,7 @@ bag items toward the first empty stencil cell whose `RequiredKind` matches the i
    The first cell whose kind matches and whose bag slot is empty is returned.
 3. **Out-of-bounds cells are skipped.** Only cells in the bag rows (the 120 bag slots,
    `bagIndex = (gridY - InventoryGrid.BagRowStart) * InventoryGrid.BagColumns + gridX`) and
-   columns `0 .. BagColumns-1` are valid. The grid is currently 24 columns × 5 bag rows (rows 3–7);
+   columns `0 .. BagColumns-1` are valid. The grid is currently 30 columns × 4 bag rows (rows 3–6);
    `StencilBagSlotPreferenceProvider` reads those constants, so resizing the grid cannot desync it.
 4. **Occupied cells are skipped.** If the preferred slot is already taken the provider returns -1
    for that candidate and the next valid candidate is tried.

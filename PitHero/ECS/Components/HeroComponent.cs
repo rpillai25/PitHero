@@ -651,8 +651,8 @@ namespace PitHero.ECS.Components
             // Cache PitWidthManager service for dynamic pit sizing
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
-            // Initialize hero's item bag with full 120 capacity (20x6 grid)
-            Bag = new RolePlayingFramework.Inventory.ItemBag("Inventory", 120);
+            // Initialize hero's item bag; capacity follows the Party inventory grid (30x4 = 120 slots)
+            Bag = new RolePlayingFramework.Inventory.ItemBag("Inventory", PitHero.UI.InventoryGrid.BagCapacity);
             Bag.SlotPreferenceProvider = new PitHero.Services.StencilBagSlotPreferenceProvider();
 
             // Restore pending inventory items from save data (must happen after Bag is created)

@@ -5,8 +5,8 @@ using PitHero.UI;
 namespace PitHero.Tests.UI
 {
     /// <summary>
-    /// Layout guards for the wide, non-scrolling inventory grid: 24 columns x 5 bag rows keeps the
-    /// old 120-slot capacity while fitting the configured design height.
+    /// Layout guards for the wide, non-scrolling inventory grid: 30 columns x 4 bag rows keeps the
+    /// old 120-slot capacity while fitting the configured design height (264).
     /// </summary>
     [TestClass]
     public class InventoryGridLayoutTests

@@ -6,14 +6,23 @@ using RolePlayingFramework.Heroes;
 
 namespace PitHero.UI
 {
-    /// <summary>A 9x6 scrollable grid showing crystals from the Second Chance Merchant Vault.</summary>
+    /// <summary>A 9x5 scrollable grid showing one page of crystals from the Second Chance Merchant Vault.</summary>
     public class VaultCrystalGrid : Group
     {
+        // One page of the vault. Five rows (not six) so the grid, its pager and the tab strip fit the
+        // shop window at the 264px design height; SecondChanceMerchantVault.SlotsPerPage must match.
         private const int COLS = 9;
-        private const int ROWS = 6;
-        private const int MAX_VISIBLE = COLS * ROWS; // 54
+        private const int ROWS = 5;
+        private const int MAX_VISIBLE = COLS * ROWS; // 45
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PAD = 1f;
+
+        /// <summary>Slots shown per page (COLS x ROWS).</summary>
+        public const int MaxVisible = MAX_VISIBLE;
+        /// <summary>Pixel width of the whole grid; hosts size their scroll cell to it.</summary>
+        public const float ContentWidth = COLS * (SLOT_SIZE + SLOT_PAD);   // 297
+        /// <summary>Pixel height of the whole grid; hosts size their scroll cell to it.</summary>
+        public const float ContentHeight = ROWS * (SLOT_SIZE + SLOT_PAD);  // 165
 
         private readonly VaultCrystalSlot[] _slots;
         private Stage _tooltipStage;

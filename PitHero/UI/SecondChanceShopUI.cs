@@ -277,7 +277,7 @@ namespace PitHero.UI
 
             var content = new Table();
             content.Top().Left().Pad(8f).PadLeft(24f);
-            content.Add(scrollPane).Size(297f, 198f).Top().Left();
+            content.Add(scrollPane).Size(VaultItemGrid.ContentWidth, VaultItemGrid.ContentHeight).Top().Left();
             content.Row();
             content.Add(_itemsPager).SetPadTop(10f);
 
@@ -314,7 +314,7 @@ namespace PitHero.UI
 
             var content = new Table();
             content.Top().Left().Pad(8f).PadLeft(24f);
-            content.Add(scrollPane).Size(297f, 198f).Top().Left();
+            content.Add(scrollPane).Size(VaultItemGrid.ContentWidth, VaultItemGrid.ContentHeight).Top().Left();
             content.Row();
             content.Add(_crystalsPager).SetPadTop(10f);
 
@@ -364,7 +364,7 @@ namespace PitHero.UI
 
             var content = new Table();
             content.Top().Left().Pad(8f).PadLeft(24f);
-            content.Add(scrollPane).Size(297f, 198f).Top().Left();
+            content.Add(scrollPane).Size(VaultItemGrid.ContentWidth, VaultItemGrid.ContentHeight).Top().Left();
 
             tab.ClearChildren();
             tab.Add(content).Expand().Fill();

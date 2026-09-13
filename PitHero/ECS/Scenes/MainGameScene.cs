@@ -103,6 +103,8 @@ namespace PitHero.ECS.Scenes
         private BuildingContextMenu _buildingContextMenu; // Popup shown when a placed building is clicked
         private bool _wasBuildingMenuVisible;
         private bool _buildingMenuRestoreHalfZoom;
+        private bool _wasStatueDialogVisible;     // Hero Statue click dialog (JobChangeFlow)
+        private bool _statueDialogRestoreHalfZoom;
         private AddMonsterDialog _addMonsterDialog; // Dialog for manually adding monsters to a house (issue #283)
         private Services.PlacedBuilding _hoveredBuilding; // Building currently under the cursor (hover outline)
         private Entity _buildingHoverOutlineEntity; // Entity rendering the white hover outline
@@ -3544,6 +3546,7 @@ namespace PitHero.ECS.Scenes
             _refrigeratorDialog?.Update();
             UpdateFridgeDialogGate();
             UpdateBuildingMenuGate();
+            UpdateStatueDialogGate();
         }
 
         /// <summary>
@@ -3583,7 +3586,8 @@ namespace PitHero.ECS.Scenes
             // open, exactly like SettingsUI's own windows — otherwise the bar can slide away at
             // Normal-window scale and come back parked half off-screen after the half restore.
             if (_settingsUI != null)
-                _settingsUI.ExternalUIWindowOpen = fridgeDialogVisible || (_buildingContextMenu?.IsVisible ?? false);
+                _settingsUI.ExternalUIWindowOpen = fridgeDialogVisible || (_buildingContextMenu?.IsVisible ?? false)
+                    || UI.JobChangeFlow.IsDialogVisible;
             _wasFridgeDialogVisible = fridgeDialogVisible;
         }
 
@@ -3619,11 +3623,50 @@ namespace PitHero.ECS.Scenes
                 _buildingMenuRestoreHalfZoom = false;
             }
             // Keep the top bar shown while the menu is open, exactly like the Refrigerator window.
-            // Both gates share ExternalUIWindowOpen, so each sets the OR of both windows'
-            // visibility to keep one gate closing edge from clearing the other open window.
+            // The gates share ExternalUIWindowOpen, so each sets the OR of every gated window's
+            // visibility to keep one gate's closing edge from clearing another open window.
             if (_settingsUI != null)
-                _settingsUI.ExternalUIWindowOpen = menuVisible || (_refrigeratorDialog?.IsVisible() ?? false);
+                _settingsUI.ExternalUIWindowOpen = menuVisible || (_refrigeratorDialog?.IsVisible() ?? false)
+                    || UI.JobChangeFlow.IsDialogVisible;
             _wasBuildingMenuVisible = menuVisible;
+        }
+
+        /// <summary>
+        /// Mirrors the building context menu treatment for the Hero Statue click dialog (the job
+        /// change confirmation or the "no crystal queued" notice): while it is open, a half-size
+        /// window temporarily restores to normal so the dialog is readable. Watching the
+        /// visibility edge covers every close path (Yes, No, OK, outside click).
+        /// The dialog is not exclusive to the statue - the Hero Info tab's Change Job button opens
+        /// the same one - and the open/close refcount in UIWindowManager makes that nesting safe.
+        /// </summary>
+        private void UpdateStatueDialogGate()
+        {
+            bool dialogVisible = UI.JobChangeFlow.IsDialogVisible;
+            if (dialogVisible == _wasStatueDialogVisible)
+                return;
+
+            if (dialogVisible)
+            {
+                bool wasHalfSize = WindowManager.IsHalfHeightMode();
+                _statueDialogRestoreHalfZoom = wasHalfSize;
+                UI.UIWindowManager.OnUIWindowOpening();
+                if (wasHalfSize)
+                    _cameraController?.ResetZoomToDefault();
+            }
+            else
+            {
+                UI.UIWindowManager.OnUIWindowClosing();
+                // Restore the half-window default zoom that was reset when the dialog opened
+                // (skip if the persistent size changed to Normal while it was open).
+                if (_statueDialogRestoreHalfZoom
+                    && UI.UIWindowManager.PersistentWindowSize == UI.UIWindowManager.WindowSizeMode.Half)
+                    _cameraController?.ApplyHalfWindowZoom();
+                _statueDialogRestoreHalfZoom = false;
+            }
+            if (_settingsUI != null)
+                _settingsUI.ExternalUIWindowOpen = dialogVisible || (_buildingContextMenu?.IsVisible ?? false)
+                    || (_refrigeratorDialog?.IsVisible() ?? false);
+            _wasStatueDialogVisible = dialogVisible;
         }
 
         /// <summary>
