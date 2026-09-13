@@ -443,8 +443,8 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Opens the artifact card with a Grant button (the required wealth is on the button, so no
-        /// confirmation). The button is grayed and dead when the player cannot show that much gold.
+        /// Opens the artifact card with a Grant (Global) or Buy (Local) button — the amount is on the
+        /// button, so no confirmation. The button is grayed and dead when the player cannot show that much gold.
         /// </summary>
         private void ShowArtifactPurchaseCard(PitHero.Artifacts.ArtifactType type)
         {
@@ -457,7 +457,7 @@ namespace PitHero.UI
             _artifactDialog.Show(_stage);
         }
 
-        /// <summary>Dispatches the grant; the command handler re-checks the wealth on the tick it applies. No gold changes hands.</summary>
+        /// <summary>Dispatches the grant; the command handler re-checks the wealth on the tick it applies (and deducts it for a Local artifact).</summary>
         private void RequestArtifactGrant(PitHero.Artifacts.ArtifactType type)
         {
             var gameState = Core.Services?.GetService<GameStateService>();

@@ -6,9 +6,10 @@ using PitHero.Services;
 namespace PitHero.UI
 {
     /// <summary>
-    /// The artifact card: the artifact's sprite, name and description. From the Party tab it closes
-    /// with OK; from the shop it also offers a Buy button that hands the purchase back to the caller.
-    /// Registered as a UI prompt so outside-click dismissal of the parent window waits for it.
+    /// The artifact card: the artifact's name (title), its Global/Local scope, sprite and description.
+    /// From the Party tab it closes with OK; from the shop it also offers a Grant (Global) or Buy (Local)
+    /// button that hands the purchase back to the caller. Registered as a UI prompt so outside-click
+    /// dismissal of the parent window waits for it.
     /// </summary>
     public class ArtifactInfoDialog : Window, IUIPrompt
     {
@@ -25,10 +26,10 @@ namespace PitHero.UI
         void IUIPrompt.CancelPrompt() => Remove();
 
         /// <summary>
-        /// Builds the card. When <paramref name="grantPrice"/> is set a Grant button is shown and
-        /// <paramref name="onGrant"/> runs (after the card closes) when it is clicked; with
-        /// <paramref name="canAfford"/> false the button is grayed and dead. The price is the wealth
-        /// the player must show, not a cost.
+        /// Builds the card. When <paramref name="grantPrice"/> is set a Grant (Global) or Buy (Local)
+        /// button is shown and <paramref name="onGrant"/> runs (after the card closes) when it is
+        /// clicked; with <paramref name="canAfford"/> false the button is grayed and dead. For a Global
+        /// artifact the price is the wealth the player must show, for a Local one it is the cost.
         /// </summary>
         public ArtifactInfoDialog(ArtifactType artifact, Skin skin, int? grantPrice = null, System.Action onGrant = null, bool canAfford = true)
             : base(GetText(ArtifactCatalog.GetNameKey(artifact)), skin)
@@ -36,12 +37,19 @@ namespace PitHero.UI
             string effectKey = ArtifactCatalog.GetEffectKey(artifact);
             string effectText = string.IsNullOrEmpty(effectKey) ? null : GetText(effectKey);
             bool hasEffectLine = !string.IsNullOrEmpty(effectText);
+            bool isLocal = ArtifactCatalog.IsLocal(artifact);
 
-            SetSize(DialogWidth, hasEffectLine ? DialogHeightWithEffect : DialogHeight);
+            SetSize(DialogWidth, (hasEffectLine ? DialogHeightWithEffect : DialogHeight) + GameConfig.ArtifactDialogScopeLineHeight);
             SetMovable(false);
 
             var table = new Table();
             table.Pad(12f);
+
+            // Scope line right under the title: Global (every hero) or Local (this hero only)
+            var scope = new Label(GetText(isLocal ? UITextKey.ArtifactScopeLocal : UITextKey.ArtifactScopeGlobal), skin, "ph-default");
+            scope.SetAlignment(Nez.UI.Align.Center);
+            table.Add(scope).SetPadBottom(6f);
+            table.Row();
 
             if (Core.Content != null)
             {
@@ -73,7 +81,7 @@ namespace PitHero.UI
             var buttons = new Table();
             if (grantPrice.HasValue)
             {
-                string grantText = string.Format(GetText(UITextKey.ArtifactGrantButtonFormat),
+                string grantText = string.Format(GetText(isLocal ? UITextKey.ArtifactBuyButtonFormat : UITextKey.ArtifactGrantButtonFormat),
                     grantPrice.Value.ToString("N0", System.Globalization.CultureInfo.InvariantCulture));
                 var grantButton = new TextButton(grantText, skin, canAfford ? "ph-default" : "ph-grayed");
                 if (canAfford)

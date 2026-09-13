@@ -1,4 +1,5 @@
-﻿using RolePlayingFramework.Synergies;
+﻿using PitHero.Artifacts;
+using RolePlayingFramework.Synergies;
 using System.Collections.Generic;
 
 namespace PitHero.Services
@@ -110,6 +111,103 @@ namespace PitHero.Services
         public void ClearPlacedStencils()
         {
             PlacedStencils.Clear();
+        }
+
+        // ── Local artifacts (issue #411) ─────────────────────────────────────────
+        // Hero-specific artifacts live here (session save), not in the system save. The simulation
+        // reads them every fixed step (crop growth, worker speed), so they are restored by
+        // ApplyLoadedState — which replay start also runs — and cleared only for a new hero.
+
+        private readonly bool[] _localArtifacts = new bool[ArtifactCatalog.Count];
+        private readonly List<int> _localArtifactOrder = new List<int>(ArtifactCatalog.Count);
+
+        /// <summary>Incremented on every local-artifact change (grant, load, clear) so version-cached UI refreshes.</summary>
+        public int LocalArtifactVersion { get; private set; }
+
+        /// <summary>Bit per owned local artifact ordinal; hashed into the replay divergence tripwire.</summary>
+        public int LocalArtifactMask
+        {
+            get
+            {
+                int mask = 0;
+                for (int i = 0; i < _localArtifacts.Length; i++)
+                {
+                    if (_localArtifacts[i])
+                        mask |= 1 << i;
+                }
+                return mask;
+            }
+        }
+
+        /// <summary>True when this hero owns the local artifact.</summary>
+        public bool OwnsLocalArtifact(ArtifactType type)
+        {
+            int i = (int)type;
+            return i >= 0 && i < _localArtifacts.Length && _localArtifacts[i];
+        }
+
+        /// <summary>Grants a local artifact to this hero. Idempotent: returns false when already owned or invalid.</summary>
+        public bool GrantLocalArtifact(ArtifactType type)
+        {
+            int i = (int)type;
+            if (i < 0 || i >= _localArtifacts.Length || _localArtifacts[i])
+                return false;
+            _localArtifacts[i] = true;
+            if (!_localArtifactOrder.Contains(i))
+                _localArtifactOrder.Add(i);
+            LocalArtifactVersion++;
+            return true;
+        }
+
+        /// <summary>Appends the owned local artifacts to <paramref name="result"/> in the order they were granted.</summary>
+        public void GetLocalArtifactsInOrder(List<ArtifactType> result)
+        {
+            for (int i = 0; i < _localArtifactOrder.Count; i++)
+            {
+                int ordinal = _localArtifactOrder[i];
+                if (ArtifactCatalog.IsValid(ordinal))
+                    result.Add((ArtifactType)ordinal);
+            }
+        }
+
+        /// <summary>Appends the owned local artifact ordinals (grant order, unknown ordinals included) for saving.</summary>
+        public void CopyLocalArtifactOrdinals(List<int> result)
+        {
+            for (int i = 0; i < _localArtifactOrder.Count; i++)
+                result.Add(_localArtifactOrder[i]);
+        }
+
+        /// <summary>
+        /// Replaces the owned local artifacts from a save (slot, autosave or replay start state).
+        /// Ordinals this build does not know are kept so a save/load cycle never drops a purchase.
+        /// </summary>
+        public void SetLocalArtifacts(List<int> ordinals)
+        {
+            for (int i = 0; i < _localArtifacts.Length; i++)
+                _localArtifacts[i] = false;
+            _localArtifactOrder.Clear();
+            if (ordinals != null)
+            {
+                for (int i = 0; i < ordinals.Count; i++)
+                {
+                    int ordinal = ordinals[i];
+                    if (_localArtifactOrder.Contains(ordinal))
+                        continue;
+                    _localArtifactOrder.Add(ordinal);
+                    if (ArtifactCatalog.IsValid(ordinal))
+                        _localArtifacts[ordinal] = true;
+                }
+            }
+            LocalArtifactVersion++;
+        }
+
+        /// <summary>Forgets every local artifact (a new hero starts with none).</summary>
+        public void ClearLocalArtifacts()
+        {
+            for (int i = 0; i < _localArtifacts.Length; i++)
+                _localArtifacts[i] = false;
+            _localArtifactOrder.Clear();
+            LocalArtifactVersion++;
         }
     }
 }

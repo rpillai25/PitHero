@@ -81,6 +81,8 @@ namespace PitHero.UI
         private HoverableLabel _sellPriorityLabel;
         private ReorderableTableList<string> _sellPriorityList;
         private List<string> _sellPriorityItems;
+        private HoverableLabel _inventorySellPercentLabel;
+        private EnhancedSlider _inventorySellPercentSlider;
         private TextButton _gearSellOptionsButton;
         private GearFilterOptionsDialog _gearSellOptionsDialog;
         private TextButton _consumableSellOptionsButton;
@@ -1093,6 +1095,27 @@ namespace PitHero.UI
             autoShopTable.Add(_sellPriorityList).Left().Width(240f).SetPadBottom(8f);
             autoShopTable.Row();
 
+            // Inventory Sell % (issue #411): the pre-jump sweep sells once the bag is this full
+            _inventorySellPercentLabel = new HoverableLabel(
+                string.Format(GetText(TextType.UI, UITextKey.SettingsInventorySellPercent), GameConfig.AutoSellInventoryPercentDefault),
+                skin, "ph-default", GetText(TextType.UI, UITextKey.SettingsInventorySellPercentTooltip), _stage);
+            autoShopTable.Add(_inventorySellPercentLabel).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _inventorySellPercentSlider = new EnhancedSlider(GameConfig.AutoSellInventoryPercentMin, GameConfig.AutoSellInventoryPercentMax, 1, false, skin, null, false);
+            _inventorySellPercentSlider.SetValueAndCommit(GameConfig.AutoSellInventoryPercentDefault);
+            _inventorySellPercentSlider.OnChanged += (value) =>
+            {
+                _inventorySellPercentLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsInventorySellPercent), (int)value));
+            };
+            _inventorySellPercentSlider.OnValueCommitted += (value) =>
+            {
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetInventorySellPercent, (int)value));
+            };
+            autoShopTable.Add(_inventorySellPercentSlider).Width(240).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
             _gearSellOptionsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonGearSellOptions), skin, "ph-default");
             _gearSellOptionsButton.OnClicked += (_) =>
             {
@@ -1116,6 +1139,8 @@ namespace PitHero.UI
             {
                 if (_consumableSellOptionsDialog == null)
                     _consumableSellOptionsDialog = new ConsumableSellOptionsDialog(_stage);
+                // One Keep Stacks value per consumable: never two sliders for it on screen at once
+                _consumablePurchaseOptionsDialog?.Hide();
                 _consumableSellOptionsDialog.Show();
             };
             autoShopTable.Add(_consumableSellOptionsButton).Left().SetMinWidth(180f).SetMinHeight(16f);
@@ -1213,6 +1238,8 @@ namespace PitHero.UI
             {
                 if (_consumablePurchaseOptionsDialog == null)
                     _consumablePurchaseOptionsDialog = new ConsumablePurchaseOptionsDialog(_stage);
+                // One Keep Stacks value per consumable: never two sliders for it on screen at once
+                _consumableSellOptionsDialog?.Hide();
                 _consumablePurchaseOptionsDialog.Show();
             };
             autoShopTable.Add(_consumablePurchaseOptionsButton).Left().SetMinWidth(180f).SetMinHeight(16f);
@@ -1537,6 +1564,17 @@ namespace PitHero.UI
             }
 
             _sellPriorityList?.SetGrayed(!active);
+            if (_inventorySellPercentLabel != null)
+            {
+                _inventorySellPercentLabel.SetStyle(labelStyle);
+                _inventorySellPercentLabel.SetTooltipEnabled(active);
+            }
+            if (_inventorySellPercentSlider != null)
+            {
+                // Sliders have no grayed style: Disabled paints it, Touchable is what stops dragging
+                _inventorySellPercentSlider.Disabled = !active;
+                _inventorySellPercentSlider.SetTouchable(active ? Touchable.Enabled : Touchable.Disabled);
+            }
             SetButtonActive(_gearSellOptionsButton, active, skin);
             SetButtonActive(_consumableSellOptionsButton, active, skin);
         }
@@ -1646,6 +1684,8 @@ namespace PitHero.UI
                     _sellPriorityItems.Add(excessSvc.ConsumablesFirst ? gearText : consumablesText);
                     _sellPriorityList?.Rebuild();
                 }
+                _inventorySellPercentSlider?.SetValueAndCommit(excessSvc.InventorySellPercent);
+                _inventorySellPercentLabel?.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsInventorySellPercent), excessSvc.InventorySellPercent));
                 _gearSellOptionsDialog?.SyncFromService();
                 _consumableSellOptionsDialog?.SyncFromService();
                 SetExcessItemControlsActive(excessSvc.Enabled);
@@ -1747,6 +1787,32 @@ namespace PitHero.UI
             });
         }
 
+        /// <summary>
+        /// Runs before Quit to Title / Exit Game leave the session (issue #411): a synchronous autosave
+        /// (only when the save gate allows one) followed by a synchronous save of the current replay
+        /// recording under the normal replay naming. Nothing is written while a replay is playing back —
+        /// the recorder then holds the playback, not the live session. The autosave comes first so the
+        /// file on disk is the state the player saw; the pause release that follows only exists so the
+        /// recording does not end frozen.
+        /// </summary>
+        private void SaveSessionBeforeLeaving()
+        {
+            var saveLoad = Core.Services?.GetService<SaveLoadService>();
+            var autoSave = Core.Services?.GetService<AutoSaveService>();
+            if (saveLoad != null && saveLoad.SaveAllowed && autoSave != null)
+                autoSave.SaveNow();
+
+            if (Services.Replay.ReplayPlaybackService.IsPlaybackActive)
+                return;
+            var recorder = Services.Replay.ReplayRecorder.Current;
+            var files = Core.Services?.GetService<Services.Replay.ReplayFileService>();
+            if (recorder == null || files == null)
+                return;
+            ReplayTab.ReleasePausesOnRecord();
+            string fileName = files.Save(recorder.Snapshot(SimulationClock.CurrentTick));
+            Debug.Log($"[SettingsUI] Session replay saved on exit: {fileName}");
+        }
+
         private void CreateConfirmationDialogs(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>("ph-default");
@@ -1767,6 +1833,7 @@ namespace PitHero.UI
             exitYesButton.OnClicked += (button) =>
             {
                 HideConfirmationDialog(_exitConfirmationDialog);
+                SaveSessionBeforeLeaving();
                 Core.Exit();
             };
             exitButtonTable.Add(exitYesButton).Width(80).Height(24).SetPadRight(10);
@@ -1802,6 +1869,7 @@ namespace PitHero.UI
             quitToTitleYesButton.OnClicked += (button) =>
             {
                 HideConfirmationDialog(_quitToTitleConfirmationDialog);
+                SaveSessionBeforeLeaving();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.Unpause();

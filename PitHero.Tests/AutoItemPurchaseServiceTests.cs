@@ -294,6 +294,58 @@ namespace PitHero.Tests
             Assert.AreEqual(10000, gameState.Funds);
         }
 
+        [TestMethod]
+        public void Consumables_KeepStacksZero_BuysNothing()
+        {
+            var gameState = new GameStateService { Funds = 10000 };
+            var vault = new SecondChanceMerchantVault();
+            var stocked = ConsumableCatalog.CreateFresh(0);
+            stocked.StackCount = stocked.StackSize * 5;
+            vault.AddItem(stocked);
+
+            var svc = MakeService(gameState, vault);
+            svc.ConsumableSelected[0] = true;
+            svc.ConsumableStackTargets[0] = 0;
+
+            Assert.AreEqual(0, RunPass(svc, MakeHero(), new ItemBag("Test", 10)), "Keep 0 stacks buys none");
+            Assert.AreEqual(10000, gameState.Funds);
+        }
+
+        [TestMethod]
+        public void Gear_ExcludedNames_SkipsJustSoldUpgrade()
+        {
+            var gameState = new GameStateService { Funds = 1000 };
+            var vault = new SecondChanceMerchantVault();
+            vault.AddItem(MakeGear("GreatSword", ItemKind.WeaponSword, 50, price: 200));
+
+            var svc = MakeService(gameState, vault);
+            var bag = new ItemBag("Test", 10);
+            var excluded = new List<string> { "GreatSword" };
+
+            Assert.AreEqual(0, svc.RunPurchasePass(MakeHero(), bag, null, new List<IItem>(), excluded),
+                "A name the sell sweep just parted with is never bought back in the same pass");
+            Assert.AreEqual(1000, gameState.Funds);
+
+            Assert.AreEqual(1, svc.RunPurchasePass(MakeHero(), bag, null, new List<IItem>()),
+                "Without the exclusion the same upgrade is bought");
+        }
+
+        [TestMethod]
+        public void Gear_NotReboughtAfterSellDown()
+        {
+            // The sweep only parts with gear that upgrades nobody; purchase only buys upgrades — so a
+            // sold piece landing in the vault is never a candidate
+            var hero = MakeHero();
+            hero.SetEquipmentSlot(EquipmentSlot.WeaponShield1, MakeGear("HeroSword", ItemKind.WeaponSword, 50));
+            var gameState = new GameStateService { Funds = 1000 };
+            var vault = new SecondChanceMerchantVault();
+            vault.AddItem(MakeGear("WornSword", ItemKind.WeaponSword, 20, price: 50));
+
+            var svc = MakeService(gameState, vault);
+            Assert.AreEqual(0, RunPass(svc, hero, new ItemBag("Test", 10)));
+            Assert.AreEqual(1000, gameState.Funds);
+        }
+
         // ── Priority ──────────────────────────────────────────────────────────────
 
         [TestMethod]
@@ -358,6 +410,8 @@ namespace PitHero.Tests
                 Assert.AreEqual(1, svc.ConsumableStackTargets[i], $"Consumable {i} should default to one stack");
             }
             Assert.AreEqual(0, svc.GoldBuffer, "A null gold-buffer source reads as no floor");
+            Assert.AreEqual(0, AutoItemPurchaseService.MinStackTarget, "Keep Stacks may be 0 (issue #411: shared with auto-sell)");
+            Assert.AreEqual(3, AutoItemPurchaseService.MaxStackTarget);
         }
     }
 }

@@ -18,8 +18,13 @@ namespace PitHero.ECS.Components
         private int _index;
         private ActorFacingComponent _facing;
         private PauseService _pauseService;
+        private GameStateService _gameState;
 
-        /// <summary>Movement speed in pixels per second.</summary>
+        /// <summary>
+        /// Base movement speed in pixels per second (the runner sprint writes this). The Hermes Boots
+        /// artifact multiplier is applied on top at step time, read from the session state every
+        /// update so a replay moves workers exactly as the live session did.
+        /// </summary>
         public float MoveSpeed = GameConfig.HeroMovementSpeed;
 
         public bool ShouldPause => true;
@@ -36,6 +41,7 @@ namespace PitHero.ECS.Components
         {
             _facing = Entity.GetComponent<ActorFacingComponent>();
             _pauseService = Core.Services.GetService<PauseService>();
+            _gameState = Core.Services.GetService<GameStateService>();
         }
 
         /// <summary>Replaces the current path with the given tile waypoints (converted to tile centers).</summary>
@@ -84,7 +90,7 @@ namespace PitHero.ECS.Components
             var pos = Entity.Transform.Position;
             var target = _waypoints[_index];
             var delta = target - pos;
-            float step = MoveSpeed * Time.DeltaTime;
+            float step = MoveSpeed * PitHero.Artifacts.LocalArtifactEffects.GetWorkerMoveSpeedMultiplier(_gameState) * Time.DeltaTime;
             float distance = delta.Length();
 
             if (distance <= step)

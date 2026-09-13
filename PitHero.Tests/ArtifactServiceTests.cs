@@ -48,6 +48,128 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void LocalArtifact_GrantGoesToSessionStore_NotSystemSave()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var service = new ArtifactService(dir, "system.bin");
+                var session = new GameStateService();
+                service.AttachLocalStore(session);
+                int versionBefore = service.Version;
+
+                Assert.IsTrue(service.Grant(ArtifactType.FastGrowFertilizer));
+                Assert.IsFalse(service.Grant(ArtifactType.FastGrowFertilizer), "Idempotent");
+                Assert.IsTrue(service.Owns(ArtifactType.FastGrowFertilizer));
+                Assert.IsTrue(session.OwnsLocalArtifact(ArtifactType.FastGrowFertilizer), "Ownership lives on the session state");
+                Assert.AreEqual(versionBefore + 1, service.Version, "A local grant refreshes version-cached UI");
+                Assert.IsFalse(File.Exists(Path.Combine(dir, "system.bin")), "A Local grant never touches the system save");
+                Assert.AreEqual(1, service.OwnedCount);
+
+                var owned = new List<ArtifactType>();
+                service.GetOwnedInOrder(owned);
+                CollectionAssert.AreEqual(new List<ArtifactType> { ArtifactType.FastGrowFertilizer }, owned);
+                service.Detach();
+
+                var restarted = new ArtifactService(dir, "system.bin");
+                Assert.IsFalse(restarted.Owns(ArtifactType.FastGrowFertilizer), "Without the session store nothing Local is owned");
+                restarted.AttachLocalStore(session);
+                Assert.IsTrue(restarted.Owns(ArtifactType.FastGrowFertilizer), "The session store carries it");
+                restarted.Detach();
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [TestMethod]
+        public void LocalArtifact_NotOwnedWithoutLocalStore()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var service = new ArtifactService(dir, "system.bin");
+                Assert.IsFalse(service.Grant(ArtifactType.HermesBoots), "No session store: nothing to grant into");
+                Assert.IsFalse(service.Owns(ArtifactType.HermesBoots));
+                Assert.IsFalse(File.Exists(Path.Combine(dir, "system.bin")));
+                service.Detach();
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [TestMethod]
+        public void Version_BumpsWhenLocalStoreLoads()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var service = new ArtifactService(dir, "system.bin");
+                var session = new GameStateService();
+                service.AttachLocalStore(session);
+                int before = service.Version;
+
+                session.SetLocalArtifacts(new List<int> { (int)ArtifactType.HermesBoots });
+                Assert.IsTrue(service.Version > before, "A load must invalidate the Party tab / shop caches");
+                Assert.IsTrue(service.Owns(ArtifactType.HermesBoots));
+
+                int afterLoad = service.Version;
+                session.ClearLocalArtifacts();
+                Assert.IsTrue(service.Version > afterLoad, "So must a new hero");
+                Assert.IsFalse(service.Owns(ArtifactType.HermesBoots));
+                service.Detach();
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [TestMethod]
+        public void Catalog_ScopesAndPrices()
+        {
+            Assert.AreEqual(6, ArtifactCatalog.Count);
+            Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.SphereOfForesight));
+            Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.ChronosTimepiece));
+            Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.KairosMetronome));
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.FastGrowFertilizer));
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.LightningGrowFertilizer));
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.HermesBoots));
+            Assert.AreEqual(250000, ArtifactCatalog.GetPrice(ArtifactType.FastGrowFertilizer));
+            Assert.AreEqual(1000000, ArtifactCatalog.GetPrice(ArtifactType.LightningGrowFertilizer));
+            Assert.AreEqual(500000, ArtifactCatalog.GetPrice(ArtifactType.HermesBoots));
+            Assert.AreEqual("FastGrowFertilizer", ArtifactCatalog.GetSpriteName(ArtifactType.FastGrowFertilizer));
+            Assert.AreEqual("LightningGrowFertilizer", ArtifactCatalog.GetSpriteName(ArtifactType.LightningGrowFertilizer));
+            Assert.AreEqual("HermesBoots", ArtifactCatalog.GetSpriteName(ArtifactType.HermesBoots));
+        }
+
+        [TestMethod]
+        public void Lightning_RequiresFastGrow()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var service = new ArtifactService(dir, "system.bin");
+                service.AttachLocalStore(new GameStateService());
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.FastGrowFertilizer));
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.HermesBoots));
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.LightningGrowFertilizer), "Lightning needs the fast fertilizer first");
+
+                service.Grant(ArtifactType.FastGrowFertilizer);
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.LightningGrowFertilizer));
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.FastGrowFertilizer), "Owned artifacts leave the shop");
+                service.Detach();
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [TestMethod]
         public void ShopAvailability_FollowsPrerequisiteChain()
         {
             var dir = NewTempDir();

@@ -7,9 +7,9 @@ using System.Collections.Generic;
 namespace PitHero.UI
 {
     /// <summary>
-    /// The Party window's Artifacts tab: a small fixed grid of system-level artifacts the player owns
-    /// (they belong to the player, not the hero, so the grid is the same for every save). Clicking an
-    /// artifact opens its card.
+    /// The Party window's Artifacts tab: a small fixed grid of the artifacts owned — the player's Global
+    /// ones (same for every save) followed by this hero's Local ones (issue #411). Clicking an artifact
+    /// opens its card.
     /// </summary>
     public class ArtifactsTab
     {

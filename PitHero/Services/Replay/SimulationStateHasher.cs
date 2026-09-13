@@ -144,7 +144,12 @@ namespace PitHero.Services.Replay
             var services = Core.Services;
             var gameState = services.GetService<GameStateService>();
             if (gameState != null)
+            {
                 h = ReplayIO.Hash(h, gameState.Funds);
+                // Local artifacts drive crop growth and worker speed: a drift here would otherwise be a
+                // silent speed mismatch rather than a reported world divergence
+                h = ReplayIO.Hash(h, gameState.LocalArtifactMask);
+            }
             var pit = services.GetService<PitWidthManager>();
             if (pit != null)
             {

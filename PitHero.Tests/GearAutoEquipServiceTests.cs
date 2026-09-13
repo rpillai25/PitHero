@@ -15,6 +15,71 @@ namespace PitHero.Tests
     [TestClass]
     public class GearAutoEquipServiceTests
     {
+        #region IsUpgradeFor Tests (issue #411)
+
+        private static Gear UpgradeTestGear(string name, ItemKind kind, int atk, JobType? jobs = null)
+            => new Gear(name, kind, ItemRarity.Normal, "Test", 100, new StatBlock(0, 0, 0, 0), atk: atk, allowedJobs: jobs);
+
+        [TestMethod]
+        public void IsUpgradeFor_EmptySlot_True()
+        {
+            var hero = new Hero("TestHero", new Knight(), 10, new StatBlock(12, 10, 12, 5));
+            Assert.IsTrue(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("Sword", ItemKind.WeaponSword, 1)));
+        }
+
+        [TestMethod]
+        public void IsUpgradeFor_WorseThanEquipped_False()
+        {
+            var hero = new Hero("TestHero", new Knight(), 10, new StatBlock(12, 10, 12, 5));
+            hero.SetEquipmentSlot(EquipmentSlot.WeaponShield1, UpgradeTestGear("Good", ItemKind.WeaponSword, 30));
+
+            Assert.IsFalse(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("Worse", ItemKind.WeaponSword, 10)));
+            Assert.IsFalse(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("Same", ItemKind.WeaponSword, 30)), "Equal is not an upgrade");
+            Assert.IsTrue(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("Better", ItemKind.WeaponSword, 31)));
+        }
+
+        [TestMethod]
+        public void IsUpgradeFor_Accessory_OneSlotEmpty_True()
+        {
+            var hero = new Hero("TestHero", new Knight(), 10, new StatBlock(12, 10, 12, 5));
+            hero.SetEquipmentSlot(EquipmentSlot.Accessory1, UpgradeTestGear("Ring", ItemKind.Accessory, 50));
+
+            Assert.IsTrue(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("Trinket", ItemKind.Accessory, 1)),
+                "An empty second accessory slot makes anything an upgrade");
+
+            hero.SetEquipmentSlot(EquipmentSlot.Accessory2, UpgradeTestGear("Band", ItemKind.Accessory, 20));
+            Assert.IsFalse(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("Trinket", ItemKind.Accessory, 1)));
+            Assert.IsTrue(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("Charm", ItemKind.Accessory, 25)), "Beats the weaker of the two");
+        }
+
+        [TestMethod]
+        public void IsUpgradeFor_CannotEquip_False()
+        {
+            var hero = new Hero("TestHero", new Knight(), 10, new StatBlock(12, 10, 12, 5));
+            Assert.IsFalse(GearAutoEquipService.IsUpgradeFor(hero, UpgradeTestGear("MageStaff", ItemKind.WeaponStaff, 99, JobType.Mage)));
+            Assert.IsFalse(GearAutoEquipService.IsUpgradeFor((Hero)null, UpgradeTestGear("Sword", ItemKind.WeaponSword, 1)));
+            Assert.IsFalse(GearAutoEquipService.IsUpgradeFor(hero, null));
+        }
+
+        [TestMethod]
+        public void IsUpgradeForAnyone_MercOnly_True()
+        {
+            var hero = new Hero("TestHero", new Knight(), 10, new StatBlock(12, 10, 12, 5));
+            hero.SetEquipmentSlot(EquipmentSlot.WeaponShield1, UpgradeTestGear("HeroSword", ItemKind.WeaponSword, 50));
+            var merc = new Mercenary("TestMerc", new Knight(), 5, new StatBlock(10, 10, 10, 5));
+            var mercs = new List<Mercenary> { merc };
+
+            var sword = UpgradeTestGear("Sword", ItemKind.WeaponSword, 20);
+            Assert.IsFalse(GearAutoEquipService.IsUpgradeFor(hero, sword));
+            Assert.IsTrue(PartyGearUpgradeCheck.IsUpgradeForAnyone(hero, mercs, sword), "The merc's empty weapon slot wants it");
+
+            merc.SetEquipmentSlot(EquipmentSlot.WeaponShield1, UpgradeTestGear("MercSword", ItemKind.WeaponSword, 40));
+            Assert.IsFalse(PartyGearUpgradeCheck.IsUpgradeForAnyone(hero, mercs, sword));
+            Assert.IsFalse(PartyGearUpgradeCheck.IsUpgradeForAnyone(hero, null, sword), "No mercs, hero alone decides");
+        }
+
+        #endregion
+
         #region GetGearScore Tests
 
         [TestMethod]

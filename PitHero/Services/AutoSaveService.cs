@@ -147,6 +147,22 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// Writes an autosave synchronously: waits for any in-flight write, gathers and writes a fresh
+        /// one, waits for that to land, then restarts the countdown. Used by Quit to Title / Exit Game
+        /// (issue #411) so the session on disk is the one the player just left. Returns true when a
+        /// snapshot was written.
+        /// </summary>
+        public bool SaveNow()
+        {
+            WaitForCompletion();
+            bool started = TryStartAutoSave();
+            if (started)
+                WaitForCompletion();
+            ResetTimer();
+            return started;
+        }
+
+        /// <summary>
         /// Blocks until any in-flight write has finished and its completion has been observed.
         /// Used before reading the autosave file (load) and on process exit.
         /// </summary>

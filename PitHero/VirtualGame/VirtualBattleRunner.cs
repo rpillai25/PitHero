@@ -284,7 +284,10 @@ namespace PitHero.VirtualGame
                 bool added = false;
                 if (AutoSellExcessItems)
                 {
-                    var selection = ExcessItemSellSelector.Select(bag, item, null, null, AutoSellConsumablesFirst);
+                    // Hero-only upgrade tier: the virtual layer has no mercenary equipment model
+                    var partyHero = _partyView.Hero;
+                    var selection = ExcessItemSellSelector.Select(bag, item, null, null, AutoSellConsumablesFirst,
+                        gearIsUpgrade: g => GearAutoEquipService.IsUpgradeFor(partyHero, g));
                     if (selection.SellIncoming)
                     {
                         ItemsAutoSold++;

@@ -335,12 +335,13 @@ namespace PitHero.AI
 
             }
 
-            // When the bag is full, auto-sell the weakest excess item to make room (if enabled).
+            // When the bag is full, auto-sell the weakest excess item to make room (if enabled) — the
+            // in-pit safety net under the pre-jump sweep. Gear somebody could still wear sells last.
             // SoldIncoming means the new item itself was the weakest and was sold directly.
             if (hero.Bag != null && hero.Bag.IsFull)
             {
                 var autoSellSvc = Core.Services.GetService<Services.AutoSellExcessItemsService>();
-                if (autoSellSvc?.TryMakeRoom(hero.Bag, containedItem) == Services.AutoSellOutcome.SoldIncoming)
+                if (autoSellSvc?.TryMakeRoom(hero.Bag, containedItem, PrePitAutomationPass.CreateGearUpgradeCheck(hero)) == Services.AutoSellOutcome.SoldIncoming)
                 {
                     treasureComponent.ContainedItem = null;
                     return;

@@ -147,6 +147,7 @@ namespace PitHero
         public const string ReplayListEmpty = "ReplayListEmpty";
         public const string ReplayListEmptyFiltered = "ReplayListEmptyFiltered";
         public const string ReplayFilterCurrentHero = "ReplayFilterCurrentHero";
+        public const string ReplayListShowingRecentFormat = "ReplayListShowingRecentFormat";
         public const string ReplayRowTitleFormat = "ReplayRowTitleFormat";
         public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";
         public const string ReplaySelectedNone = "ReplaySelectedNone";
@@ -375,6 +376,15 @@ namespace PitHero
         public const string ArtifactKairosMetronomeName = "ArtifactKairosMetronomeName";
         public const string ArtifactKairosMetronomeDesc = "ArtifactKairosMetronomeDesc";
         public const string ArtifactKairosMetronomeEffect = "ArtifactKairosMetronomeEffect";
+        public const string ArtifactFastGrowFertilizerName = "ArtifactFastGrowFertilizerName";
+        public const string ArtifactFastGrowFertilizerDesc = "ArtifactFastGrowFertilizerDesc";
+        public const string ArtifactLightningGrowFertilizerName = "ArtifactLightningGrowFertilizerName";
+        public const string ArtifactLightningGrowFertilizerDesc = "ArtifactLightningGrowFertilizerDesc";
+        public const string ArtifactHermesBootsName = "ArtifactHermesBootsName";
+        public const string ArtifactHermesBootsDesc = "ArtifactHermesBootsDesc";
+        public const string ArtifactScopeGlobal = "ArtifactScopeGlobal";
+        public const string ArtifactScopeLocal = "ArtifactScopeLocal";
+        public const string ArtifactBuyButtonFormat = "ArtifactBuyButtonFormat";
         public const string ArtifactGrantButtonFormat = "ArtifactGrantButtonFormat";
         public const string ArtifactShopHeader = "ArtifactShopHeader";
         public const string ArtifactPriceFormat = "ArtifactPriceFormat";
@@ -464,8 +474,11 @@ namespace PitHero
         public const string WindowConsumableSellOptions = "WindowConsumableSellOptions";
         public const string LabelConsumablesAutoSold = "LabelConsumablesAutoSold";
         public const string LabelConsumablesAutoPurchased = "LabelConsumablesAutoPurchased";
-        public const string SettingsConsumableMinStacks = "SettingsConsumableMinStacks";
-        public const string SettingsConsumableMinStacksTooltip = "SettingsConsumableMinStacksTooltip";
+        public const string SettingsConsumableKeepStacks = "SettingsConsumableKeepStacks";
+        public const string SettingsConsumableKeepStacksSellTooltip = "SettingsConsumableKeepStacksSellTooltip";
+        public const string SettingsConsumableKeepStacksPurchaseTooltip = "SettingsConsumableKeepStacksPurchaseTooltip";
+        public const string SettingsInventorySellPercent = "SettingsInventorySellPercent";
+        public const string SettingsInventorySellPercentTooltip = "SettingsInventorySellPercentTooltip";
         public const string GearTypeWeapon = "GearTypeWeapon";
         public const string GearTypeHelm = "GearTypeHelm";
         public const string GearTypeShield = "GearTypeShield";
@@ -485,8 +498,6 @@ namespace PitHero
         public const string SettingsBuyGearTypesTooltip = "SettingsBuyGearTypesTooltip";
         public const string ButtonConsumablePurchaseOptions = "ButtonConsumablePurchaseOptions";
         public const string WindowConsumablePurchaseOptions = "WindowConsumablePurchaseOptions";
-        public const string SettingsConsumableStacks = "SettingsConsumableStacks";
-        public const string SettingsConsumableStacksTooltip = "SettingsConsumableStacksTooltip";
         public const string SettingsAutoEquipOptionsTooltip = "SettingsAutoEquipOptionsTooltip";
         public const string ConsoleAutoPurchasedItem = "ConsoleAutoPurchasedItem";
         public const string SettingsAutoHireMercenaries = "SettingsAutoHireMercenaries";

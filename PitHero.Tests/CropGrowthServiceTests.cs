@@ -24,6 +24,12 @@ namespace PitHero.Tests
             _growth       = new CropGrowthService(_cropPlanting);
         }
 
+        [TestMethod]
+        public void GrowthSpeedMultiplier_DefaultsToOne()
+        {
+            Assert.AreEqual(1f, _growth.GrowthSpeedMultiplier, "Headless hosts never set the fertilizer multiplier");
+        }
+
         // ── Helper: Restore a crop into the service without a Scene or SpriteAtlas ──
 
         private void RestoreCrop(Point tile, CropType type, float accumulatedHours,

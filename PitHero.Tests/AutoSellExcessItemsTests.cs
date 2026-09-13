@@ -367,7 +367,7 @@ namespace PitHero.Tests
             for (int i = 0; i < svc.ConsumableSellAllowed.Length; i++)
             {
                 Assert.IsTrue(svc.ConsumableSellAllowed[i], $"Consumable {i} should be sellable by default");
-                Assert.AreEqual(1, svc.ConsumableMinStacks[i], $"Consumable {i} should keep one stack by default");
+                Assert.AreEqual(1, svc.ConsumableKeepStacks[i], $"Consumable {i} should keep one stack by default");
             }
         }
 
@@ -478,7 +478,7 @@ namespace PitHero.Tests
         {
             var svc = new AutoSellExcessItemsService();
             svc.ConsumableSellAllowed[0] = false;
-            svc.ConsumableMinStacks[0] = 0;                          // even with no floor…
+            svc.ConsumableKeepStacks[0] = 0;                          // even with no floor…
             var bag = new ItemBag("Test", 2);
             bag.SetSlotItem(0, ConsumableCatalog.CreateFresh(0));
             bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 2));
@@ -491,32 +491,243 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Service_EffectiveMinStacks_RaisedToPurchaseTarget()
+        public void Service_KeepStacks_SharedWithPurchaseService()
         {
             var sellSvc = new AutoSellExcessItemsService();
-            sellSvc.ConsumableMinStacks[0] = 1;
-
             var gameState = new GameStateService();
             var seedSvc = new AutoSeedPurchaseService(null, null, gameState, null);
-            var purchaseSvc = new AutoItemPurchaseService(gameState, new SecondChanceMerchantVault(), seedSvc) { Enabled = true };
-            purchaseSvc.ConsumableSelected[0] = true;
+            var purchaseSvc = new AutoItemPurchaseService(gameState, new SecondChanceMerchantVault(), seedSvc, sellSvc) { Enabled = true };
+
+            Assert.IsTrue(ReferenceEquals(sellSvc.ConsumableKeepStacks, purchaseSvc.ConsumableStackTargets),
+                "One Keep Stacks array serves both services — they can never disagree");
+
             purchaseSvc.ConsumableStackTargets[0] = 3;
+            Assert.AreEqual(3, sellSvc.GetKeepStacks(ConsumableCatalog.CreateFresh(0)), "A purchase-side write is the sell floor");
+            sellSvc.ConsumableKeepStacks[0] = 2;
+            Assert.AreEqual(2, purchaseSvc.ConsumableStackTargets[0], "A sell-side write is the purchase target");
+            Assert.AreEqual(AutoSellExcessItemsService.MinKeepStacks, AutoItemPurchaseService.MinStackTarget);
+            Assert.AreEqual(AutoSellExcessItemsService.MaxKeepStacks, AutoItemPurchaseService.MaxStackTarget);
+        }
 
-            var potion = ConsumableCatalog.CreateFresh(0);
-            Assert.AreEqual(3, sellSvc.GetEffectiveMinStacks(potion, purchaseSvc),
-                "Selling below the purchase target would just be bought back at a loss");
+        [TestMethod]
+        public void Service_KeepStacksZero_DrainsConsumable()
+        {
+            var svc = new AutoSellExcessItemsService();
+            svc.ConsumableKeepStacks[0] = 0;
+            var bag = new ItemBag("Test", 1);
+            bag.SetSlotItem(0, ConsumableCatalog.CreateFresh(0));
 
-            purchaseSvc.Enabled = false;
-            Assert.AreEqual(1, sellSvc.GetEffectiveMinStacks(potion, purchaseSvc),
-                "A disabled purchase service cannot raise the floor");
+            var outcome = svc.TryMakeRoom(bag, MakeGear("NewArmor", ItemKind.ArmorMail, 20));
 
-            purchaseSvc.Enabled = true;
-            purchaseSvc.ConsumableSelected[0] = false;
-            Assert.AreEqual(1, sellSvc.GetEffectiveMinStacks(potion, purchaseSvc),
-                "An unselected consumable cannot raise the floor");
+            Assert.AreEqual(AutoSellOutcome.SoldBagItem, outcome, "Keep 0 means the last stack may go");
+            Assert.IsNull(bag.GetSlotItem(0));
+        }
 
-            Assert.AreEqual(1, sellSvc.GetEffectiveMinStacks(potion, null),
-                "No purchase service leaves the player's floor untouched");
+        [TestMethod]
+        public void Service_InventorySellPercent_Clamps()
+        {
+            var svc = new AutoSellExcessItemsService();
+            Assert.AreEqual(GameConfig.AutoSellInventoryPercentDefault, svc.InventorySellPercent);
+            svc.InventorySellPercent = -5;
+            Assert.AreEqual(GameConfig.AutoSellInventoryPercentMin, svc.InventorySellPercent);
+            svc.InventorySellPercent = 150;
+            Assert.AreEqual(GameConfig.AutoSellInventoryPercentMax, svc.InventorySellPercent);
+        }
+
+        // ── Upgrade gear: the last sell tier ─────────────────────────────────────
+
+        private static bool IsUpgradeByName(IGear g) => g.Name.StartsWith("Up");
+
+        [TestMethod]
+        public void Selector_UpgradeGear_SoldOnlyWhenNothingElseSellable()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, MakeGear("UpSword", ItemKind.WeaponSword, 1));       // an upgrade, though the weakest by score
+            bag.SetSlotItem(1, MakeGear("OldShield", ItemKind.Shield, 40));         // ordinary gear, much stronger
+
+            var selection = ExcessItemSellSelector.Select(bag, null, null, null, gearIsUpgrade: IsUpgradeByName);
+            Assert.AreEqual(1, selection.BagIndex, "Ordinary gear sells before an upgrade whatever the scores");
+            Assert.IsFalse(selection.IsUpgrade);
+
+            bag.SetSlotItem(1, null);
+            selection = ExcessItemSellSelector.Select(bag, null, null, null, gearIsUpgrade: IsUpgradeByName);
+            Assert.AreEqual(0, selection.BagIndex, "With nothing else left the upgrade goes — inventory must always clear");
+            Assert.IsTrue(selection.IsUpgrade);
+        }
+
+        [TestMethod]
+        public void Selector_UpgradeGear_WeakestUpgradeFirst()
+        {
+            var bag = new ItemBag("Test", 3);
+            bag.SetSlotItem(0, MakeGear("UpStrong", ItemKind.WeaponSword, 30));
+            bag.SetSlotItem(1, MakeGear("UpWeak", ItemKind.Shield, 5));
+            bag.SetSlotItem(2, MakeGear("UpMid", ItemKind.ArmorMail, 12));
+
+            var selection = ExcessItemSellSelector.Select(bag, null, null, null, gearIsUpgrade: IsUpgradeByName);
+
+            Assert.AreEqual(1, selection.BagIndex, "Among upgrades the weakest by score sells first");
+            Assert.IsTrue(selection.IsUpgrade);
+        }
+
+        [TestMethod]
+        public void Selector_UpgradeGear_AfterBothCategories()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, MakeGear("UpSword", ItemKind.WeaponSword, 1));
+            bag.SetSlotItem(1, new TestPotion("Potion", 20, 30));
+
+            // Gear-first priority: the ordinary gear pass is empty, so the consumable still sells before the upgrade
+            var selection = ExcessItemSellSelector.Select(bag, null, null, null, consumablesFirst: false, gearIsUpgrade: IsUpgradeByName);
+            Assert.AreEqual(1, selection.BagIndex, "An upgrade sells after BOTH categories, whatever the priority");
+        }
+
+        [TestMethod]
+        public void Selector_UpgradeIncoming_IsLastResortToo()
+        {
+            var bag = new ItemBag("Test", 1);
+            bag.SetSlotItem(0, MakeGear("OldShield", ItemKind.Shield, 40));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("UpSword", ItemKind.WeaponSword, 1), null, null, gearIsUpgrade: IsUpgradeByName);
+            Assert.AreEqual(0, selection.BagIndex, "The bag's ordinary gear goes before an incoming upgrade");
+            Assert.IsFalse(selection.SellIncoming);
+        }
+
+        [TestMethod]
+        public void Selector_NullIncoming_PicksWeakestBagItem()
+        {
+            var bag = new ItemBag("Test", 3);
+            bag.SetSlotItem(0, MakeGear("Mid", ItemKind.WeaponSword, 10));
+            bag.SetSlotItem(1, MakeGear("Weak", ItemKind.Shield, 2));
+            bag.SetSlotItem(2, MakeGear("Strong", ItemKind.ArmorMail, 50));
+
+            var selection = ExcessItemSellSelector.Select(bag, null, null, null);
+
+            Assert.AreEqual(1, selection.BagIndex);
+            Assert.IsFalse(selection.SellIncoming);
+        }
+
+        [TestMethod]
+        public void TryMakeRoom_UpgradeGear_LastResort()
+        {
+            var svc = new AutoSellExcessItemsService();
+            var bag = new ItemBag("Test", 1);
+            bag.SetSlotItem(0, MakeGear("UpSword", ItemKind.WeaponSword, 1));
+
+            var outcome = svc.TryMakeRoom(bag, MakeGear("Junk", ItemKind.Shield, 3), IsUpgradeByName);
+
+            Assert.AreEqual(AutoSellOutcome.SoldIncoming, outcome, "Junk sells before the upgrade even though it scores higher");
+            Assert.IsNotNull(bag.GetSlotItem(0));
+        }
+
+        // ── Pre-jump sell-down sweep ─────────────────────────────────────────────
+
+        private static ItemBag MakeGearBag(int capacity, int items)
+        {
+            var bag = new ItemBag("Test", capacity);
+            for (int i = 0; i < items; i++)
+                bag.SetSlotItem(i, MakeGear("Gear" + i, ItemKind.Shield, 10 + i));   // Gear0 is the weakest
+            return bag;
+        }
+
+        [TestMethod]
+        public void Service_SellDown_StopsOnceBelowThreshold()
+        {
+            var svc = new AutoSellExcessItemsService { InventorySellPercent = 60 };
+            var bag = MakeGearBag(10, 8);
+
+            int sold = svc.TrySellDownToThreshold(bag, null, null);
+
+            Assert.AreEqual(3, sold, "8/10 → sells until 5/10, the first count under 60%");
+            Assert.AreEqual(5, bag.Count);
+            Assert.IsFalse(svc.IsAtOrAboveSellThreshold(bag));
+        }
+
+        [TestMethod]
+        public void Service_SellDown_WeakestFirst()
+        {
+            var svc = new AutoSellExcessItemsService { InventorySellPercent = 60 };
+            var bag = MakeGearBag(10, 8);
+
+            svc.TrySellDownToThreshold(bag, null, null);
+
+            Assert.IsNull(bag.GetSlotItem(0), "Gear0 (weakest) sold");
+            Assert.IsNull(bag.GetSlotItem(1));
+            Assert.IsNull(bag.GetSlotItem(2));
+            Assert.IsNotNull(bag.GetSlotItem(3), "Gear3 and stronger survive");
+        }
+
+        [TestMethod]
+        public void Service_SellDown_Percent100_OnlyWhenFull()
+        {
+            var svc = new AutoSellExcessItemsService { InventorySellPercent = 100 };
+            Assert.AreEqual(0, svc.TrySellDownToThreshold(MakeGearBag(10, 9), null, null), "Nine of ten is not full");
+
+            var full = MakeGearBag(10, 10);
+            Assert.AreEqual(1, svc.TrySellDownToThreshold(full, null, null), "A full bag sells exactly one to drop below");
+            Assert.AreEqual(9, full.Count);
+        }
+
+        [TestMethod]
+        public void Service_SellDown_Percent0_AlwaysRuns()
+        {
+            var svc = new AutoSellExcessItemsService { InventorySellPercent = 0 };
+            var bag = MakeGearBag(10, 3);
+
+            Assert.AreEqual(3, svc.TrySellDownToThreshold(bag, null, null), "0% never drops below the threshold: everything eligible sells");
+            Assert.AreEqual(0, bag.Count);
+        }
+
+        [TestMethod]
+        public void Service_SellDown_SellsUpgradeGearLast()
+        {
+            var svc = new AutoSellExcessItemsService { InventorySellPercent = 0 };
+            var bag = new ItemBag("Test", 3);
+            bag.SetSlotItem(0, MakeGear("UpSword", ItemKind.WeaponSword, 1));
+            bag.SetSlotItem(1, MakeGear("Old", ItemKind.Shield, 40));
+            bag.SetSlotItem(2, new TestPotion("Potion", 20, 30));
+            svc.ConsumableKeepStacks[0] = 0;
+            var soldNames = new List<string>();
+
+            svc.TrySellDownToThreshold(bag, IsUpgradeByName, soldNames);
+
+            Assert.AreEqual(3, soldNames.Count);
+            Assert.AreEqual("UpSword", soldNames[2], "The upgrade is the last thing to go");
+        }
+
+        [TestMethod]
+        public void Service_SellDown_Disabled_SellsNothing()
+        {
+            var svc = new AutoSellExcessItemsService { Enabled = false, InventorySellPercent = 0 };
+            var bag = MakeGearBag(10, 5);
+
+            Assert.AreEqual(0, svc.TrySellDownToThreshold(bag, null, null));
+            Assert.AreEqual(5, bag.Count);
+        }
+
+        [TestMethod]
+        public void Service_SellDown_ReportsSoldNames()
+        {
+            var svc = new AutoSellExcessItemsService { InventorySellPercent = 60 };
+            var bag = MakeGearBag(10, 8);
+            var soldNames = new List<string>();
+
+            svc.TrySellDownToThreshold(bag, null, soldNames);
+
+            CollectionAssert.AreEqual(new List<string> { "Gear0", "Gear1", "Gear2" }, soldNames,
+                "The purchase pass uses these names to avoid buying anything straight back");
+        }
+
+        [TestMethod]
+        public void Service_SellDown_RespectsKeepStacks()
+        {
+            var svc = new AutoSellExcessItemsService { InventorySellPercent = 0 };
+            svc.ConsumableKeepStacks[0] = 1;
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, ConsumableCatalog.CreateFresh(0));
+            bag.SetSlotItem(1, ConsumableCatalog.CreateFresh(0));
+
+            Assert.AreEqual(1, svc.TrySellDownToThreshold(bag, null, null), "Only the stack above Keep Stacks sells");
+            Assert.AreEqual(1, bag.Count);
         }
 
         [TestMethod]
@@ -526,7 +737,7 @@ namespace PitHero.Tests
             var potion = new TestPotion("Potion", 20, 30);
 
             Assert.IsTrue(svc.IsConsumableSellAllowed(potion));
-            Assert.AreEqual(0, svc.GetEffectiveMinStacks(potion, null));
+            Assert.AreEqual(0, svc.GetKeepStacks(potion));
         }
 
         // ── Virtual layer (VirtualBattleRunner.CollectChestItem) ──────────────────

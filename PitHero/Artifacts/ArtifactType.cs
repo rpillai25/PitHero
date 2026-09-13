@@ -1,9 +1,9 @@
 namespace PitHero.Artifacts
 {
     /// <summary>
-    /// System-level artifacts: one-time purchases that, once owned, are available forever across every
-    /// hero and save slot (persisted in the system save file, not the game save). Values are persisted;
-    /// append only, never renumber.
+    /// Artifacts are one-time purchases. Global artifacts belong to the player and are available forever
+    /// across every hero and save slot (system save file); Local artifacts belong to the current hero and
+    /// live in the regular session save (issue #411). Values are persisted; append only, never renumber.
     /// </summary>
     public enum ArtifactType
     {
@@ -15,13 +15,32 @@ namespace PitHero.Artifacts
 
         /// <summary>Unlocks the 4X and 8X fast-forward rungs.</summary>
         KairosMetronome = 2,
+
+        /// <summary>Local: crops grow twice as fast.</summary>
+        FastGrowFertilizer = 3,
+
+        /// <summary>Local: crops grow three times as fast. Requires the Fast Grow Fertilizer first.</summary>
+        LightningGrowFertilizer = 4,
+
+        /// <summary>Local: farm and kitchen workers move twice as fast.</summary>
+        HermesBoots = 5,
     }
 
-    /// <summary>Static facts about each artifact: sprite, text keys, price and purchase prerequisite.</summary>
+    /// <summary>
+    /// Where an artifact's ownership lives. Global = the player (system save, every hero, proof of wealth,
+    /// nothing deducted). Local = this hero only (session save, a real purchase that deducts gold).
+    /// </summary>
+    public enum ArtifactScope
+    {
+        Global = 0,
+        Local = 1,
+    }
+
+    /// <summary>Static facts about each artifact: sprite, text keys, price, scope and purchase prerequisite.</summary>
     public static class ArtifactCatalog
     {
         /// <summary>Number of artifact kinds (the enum is dense from 0).</summary>
-        public const int Count = 3;
+        public const int Count = 6;
 
         /// <summary>Sprite name in the Items atlas.</summary>
         public static string GetSpriteName(ArtifactType type)
@@ -31,6 +50,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.SphereOfForesight: return "SphereOfForesight";
                 case ArtifactType.ChronosTimepiece: return "ChronosTimepiece";
                 case ArtifactType.KairosMetronome: return "KairosMetronome";
+                case ArtifactType.FastGrowFertilizer: return "FastGrowFertilizer";
+                case ArtifactType.LightningGrowFertilizer: return "LightningGrowFertilizer";
+                case ArtifactType.HermesBoots: return "HermesBoots";
                 default: return string.Empty;
             }
         }
@@ -43,6 +65,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.SphereOfForesight: return UITextKey.ArtifactSphereOfForesightName;
                 case ArtifactType.ChronosTimepiece: return UITextKey.ArtifactChronosTimepieceName;
                 case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeName;
+                case ArtifactType.FastGrowFertilizer: return UITextKey.ArtifactFastGrowFertilizerName;
+                case ArtifactType.LightningGrowFertilizer: return UITextKey.ArtifactLightningGrowFertilizerName;
+                case ArtifactType.HermesBoots: return UITextKey.ArtifactHermesBootsName;
                 default: return string.Empty;
             }
         }
@@ -55,6 +80,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.SphereOfForesight: return UITextKey.ArtifactSphereOfForesightDesc;
                 case ArtifactType.ChronosTimepiece: return UITextKey.ArtifactChronosTimepieceDesc;
                 case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeDesc;
+                case ArtifactType.FastGrowFertilizer: return UITextKey.ArtifactFastGrowFertilizerDesc;
+                case ArtifactType.LightningGrowFertilizer: return UITextKey.ArtifactLightningGrowFertilizerDesc;
+                case ArtifactType.HermesBoots: return UITextKey.ArtifactHermesBootsDesc;
                 default: return string.Empty;
             }
         }
@@ -72,7 +100,7 @@ namespace PitHero.Artifacts
             }
         }
 
-        /// <summary>Gold price in the Second Chance shop.</summary>
+        /// <summary>Gold price in the Second Chance shop (wealth to show for Global, the cost for Local).</summary>
         public static int GetPrice(ArtifactType type)
         {
             switch (type)
@@ -80,8 +108,31 @@ namespace PitHero.Artifacts
                 case ArtifactType.SphereOfForesight: return GameConfig.ArtifactSphereOfForesightPrice;
                 case ArtifactType.ChronosTimepiece: return GameConfig.ArtifactChronosTimepiecePrice;
                 case ArtifactType.KairosMetronome: return GameConfig.ArtifactKairosMetronomePrice;
+                case ArtifactType.FastGrowFertilizer: return GameConfig.ArtifactFastGrowFertilizerPrice;
+                case ArtifactType.LightningGrowFertilizer: return GameConfig.ArtifactLightningGrowFertilizerPrice;
+                case ArtifactType.HermesBoots: return GameConfig.ArtifactHermesBootsPrice;
                 default: return 0;
             }
+        }
+
+        /// <summary>Whether the artifact belongs to the player (Global) or to the current hero (Local).</summary>
+        public static ArtifactScope GetScope(ArtifactType type)
+        {
+            switch (type)
+            {
+                case ArtifactType.FastGrowFertilizer:
+                case ArtifactType.LightningGrowFertilizer:
+                case ArtifactType.HermesBoots:
+                    return ArtifactScope.Local;
+                default:
+                    return ArtifactScope.Global;
+            }
+        }
+
+        /// <summary>True for a hero-specific artifact (session save, price deducted).</summary>
+        public static bool IsLocal(ArtifactType type)
+        {
+            return GetScope(type) == ArtifactScope.Local;
         }
 
         private static readonly ArtifactType[] NoPrerequisites = new ArtifactType[0];
@@ -89,16 +140,20 @@ namespace PitHero.Artifacts
         private static readonly ArtifactType[] TimepiecePrerequisites =
             { ArtifactType.SphereOfForesight, ArtifactType.KairosMetronome };
 
+        private static readonly ArtifactType[] LightningPrerequisites =
+            { ArtifactType.FastGrowFertilizer };
+
         /// <summary>
         /// Every artifact that must be owned before this one is offered, or an empty array. The
         /// timepiece is the capstone: seeing the future and hurrying it along both come before
-        /// changing it.
+        /// changing it. The lightning fertilizer builds on the fast one.
         /// </summary>
         public static ArtifactType[] GetPrerequisites(ArtifactType type)
         {
             switch (type)
             {
                 case ArtifactType.ChronosTimepiece: return TimepiecePrerequisites;
+                case ArtifactType.LightningGrowFertilizer: return LightningPrerequisites;
                 default: return NoPrerequisites;
             }
         }

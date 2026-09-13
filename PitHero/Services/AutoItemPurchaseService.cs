@@ -13,31 +13,23 @@ namespace PitHero.Services
 {
     /// <summary>
     /// Buys gear and consumables back from the Second Chance shop right before the party jumps into
-    /// the pit (issue #345). Call-driven (no update loop): <see cref="AI.JumpIntoPitAction"/> invokes
-    /// <see cref="TryPurchasePass(HeroComponent)"/> on the frame the jump starts.
+    /// the pit (issue #345). Call-driven (no update loop): <see cref="AI.PrePitAutomationPass"/> invokes
+    /// <see cref="TryPurchasePass"/> on the frame the jump starts, right after the auto-sell sweep.
     ///
     /// Gear is only bought when it beats everything the party already possesses for that member and
     /// category — equipped or sitting in the bag — and only for rarities/categories the player left
-    /// checked. Consumables are topped up to a per-item stack target. Every purchase honors the
+    /// checked. Consumables are topped up to the shared Keep Stacks value (issue #411), the very array
+    /// auto-sell floors on, so a stack is never sold and bought back. Every purchase honors the
     /// shared Gold Buffer and needs a free bag slot.
     /// </summary>
     public class AutoItemPurchaseService
     {
         private const string PurchaseSource = "auto_prepit";
 
-        /// <summary>The five gear categories mapped onto the equipment slot each one occupies.</summary>
-        private static readonly EquipmentSlot[] CategorySlots =
-        {
-            EquipmentSlot.WeaponShield1,   // Weapon
-            EquipmentSlot.Hat,             // Helm
-            EquipmentSlot.WeaponShield2,   // Shield
-            EquipmentSlot.Armor,           // Armor
-            EquipmentSlot.Accessory1       // Accessory (handled specially — both slots considered)
-        };
-
         private readonly GameStateService _gameState;
         private readonly SecondChanceMerchantVault _vault;
         private readonly AutoSeedPurchaseService _goldBufferSource;
+        private readonly int[] _keepStacks;
 
         // Reused across passes so a purchase pass allocates nothing during gameplay
         private readonly List<Mercenary> _members = new List<Mercenary>(2);
@@ -61,18 +53,23 @@ namespace PitHero.Services
         /// <summary>Which catalog consumables are auto-purchased, indexed by ConsumableCatalog index. All false by default.</summary>
         public bool[] ConsumableSelected { get; } = new bool[ConsumableCatalog.Count];
 
-        /// <summary>How many stacks of each selected consumable to hold, indexed by ConsumableCatalog index. 1 by default.</summary>
-        public int[] ConsumableStackTargets { get; } = new int[ConsumableCatalog.Count];
+        /// <summary>
+        /// Keep Stacks per selected consumable, indexed by ConsumableCatalog index: the pass buys exactly
+        /// up to this many stacks. This is <see cref="AutoSellExcessItemsService.ConsumableKeepStacks"/>
+        /// itself when a sell service was injected (one value, never out of sync); a private all-1 array otherwise.
+        /// </summary>
+        public int[] ConsumableStackTargets => _keepStacks;
 
-        /// <summary>Lowest and highest stack target the options slider offers.</summary>
-        public const int MinStackTarget = 1;
-        public const int MaxStackTarget = 3;
+        /// <summary>Lowest and highest stack target the options slider offers (shared with auto-sell; 0 buys nothing).</summary>
+        public const int MinStackTarget = AutoSellExcessItemsService.MinKeepStacks;
+        public const int MaxStackTarget = AutoSellExcessItemsService.MaxKeepStacks;
 
         /// <summary>
         /// Initialises the service. <paramref name="goldBufferSource"/> owns the single shared
-        /// Gold Buffer setting, so this service must be registered after it.
+        /// Gold Buffer setting and <paramref name="keepStacksSource"/> the shared Keep Stacks array, so
+        /// this service must be registered after both.
         /// </summary>
-        public AutoItemPurchaseService(GameStateService gameState, SecondChanceMerchantVault vault, AutoSeedPurchaseService goldBufferSource)
+        public AutoItemPurchaseService(GameStateService gameState, SecondChanceMerchantVault vault, AutoSeedPurchaseService goldBufferSource, AutoSellExcessItemsService keepStacksSource = null)
         {
             _gameState = gameState;
             _vault = vault;
@@ -82,8 +79,17 @@ namespace PitHero.Services
                 BuyRarityAllowed[i] = true;
             for (int i = 0; i < BuyGearTypeAllowed.Length; i++)
                 BuyGearTypeAllowed[i] = true;
-            for (int i = 0; i < ConsumableStackTargets.Length; i++)
-                ConsumableStackTargets[i] = MinStackTarget;
+
+            if (keepStacksSource != null)
+            {
+                _keepStacks = keepStacksSource.ConsumableKeepStacks;
+            }
+            else
+            {
+                _keepStacks = new int[ConsumableCatalog.Count];
+                for (int i = 0; i < _keepStacks.Length; i++)
+                    _keepStacks[i] = 1;
+            }
         }
 
         /// <summary>Gold floor shared with seed auto-purchasing; no buy may take funds below it.</summary>
@@ -105,8 +111,10 @@ namespace PitHero.Services
         /// <summary>
         /// Runs one purchase pass for the party and auto-equips whatever was bought.
         /// Safe to call on every jump attempt: it is a no-op when disabled or when nothing qualifies.
+        /// <paramref name="excludedNames"/> (may be null) lists items the sell sweep just parted with;
+        /// they are never bought back in the same pass.
         /// </summary>
-        public void TryPurchasePass(HeroComponent heroComp)
+        public void TryPurchasePass(HeroComponent heroComp, IReadOnlyList<string> excludedNames = null)
         {
             if (!Enabled || heroComp?.LinkedHero == null || heroComp.Bag == null)
                 return;
@@ -127,7 +135,7 @@ namespace PitHero.Services
             }
 
             _purchased.Clear();
-            RunPurchasePass(heroComp.LinkedHero, heroComp.Bag, _members, _purchased);
+            RunPurchasePass(heroComp.LinkedHero, heroComp.Bag, _members, _purchased, excludedNames);
 
             if (_purchased.Count == 0)
                 return;
@@ -147,9 +155,10 @@ namespace PitHero.Services
         /// <summary>
         /// Executes one purchase pass against the vault and appends every purchased item to
         /// <paramref name="purchasedOut"/>. Contains no Nez dependencies so tests can drive it
-        /// directly. Returns the number of items bought.
+        /// directly. Gear whose name is in <paramref name="excludedNames"/> (may be null) is skipped —
+        /// the sell sweep just parted with it. Returns the number of items bought.
         /// </summary>
-        public int RunPurchasePass(Hero hero, ItemBag bag, IReadOnlyList<Mercenary> mercenaries, List<IItem> purchasedOut)
+        public int RunPurchasePass(Hero hero, ItemBag bag, IReadOnlyList<Mercenary> mercenaries, List<IItem> purchasedOut, IReadOnlyList<string> excludedNames = null)
         {
             if (!Enabled || hero == null || bag == null || _gameState == null || _vault == null)
                 return 0;
@@ -158,18 +167,18 @@ namespace PitHero.Services
             if (ConsumablesFirst)
             {
                 bought = BuyConsumables(bag, purchasedOut);
-                bought += BuyGear(hero, bag, mercenaries, purchasedOut);
+                bought += BuyGear(hero, bag, mercenaries, purchasedOut, excludedNames);
             }
             else
             {
-                bought = BuyGear(hero, bag, mercenaries, purchasedOut);
+                bought = BuyGear(hero, bag, mercenaries, purchasedOut, excludedNames);
                 bought += BuyConsumables(bag, purchasedOut);
             }
             return bought;
         }
 
         /// <summary>Buys at most one upgrade per party member per gear category.</summary>
-        private int BuyGear(Hero hero, ItemBag bag, IReadOnlyList<Mercenary> mercenaries, List<IItem> purchasedOut)
+        private int BuyGear(Hero hero, ItemBag bag, IReadOnlyList<Mercenary> mercenaries, List<IItem> purchasedOut, IReadOnlyList<string> excludedNames)
         {
             int bought = 0;
 
@@ -178,7 +187,7 @@ namespace PitHero.Services
                 if (!BuyGearTypeAllowed[c])
                     continue;
 
-                if (BuyBestForCategory(hero, null, bag, (GearCategory)c, purchasedOut))
+                if (BuyBestForCategory(hero, null, bag, (GearCategory)c, purchasedOut, excludedNames))
                     bought++;
 
                 if (mercenaries == null)
@@ -186,7 +195,7 @@ namespace PitHero.Services
 
                 for (int m = 0; m < mercenaries.Count; m++)
                 {
-                    if (BuyBestForCategory(null, mercenaries[m], bag, (GearCategory)c, purchasedOut))
+                    if (BuyBestForCategory(null, mercenaries[m], bag, (GearCategory)c, purchasedOut, excludedNames))
                         bought++;
                 }
             }
@@ -194,11 +203,23 @@ namespace PitHero.Services
             return bought;
         }
 
+        private static bool IsExcluded(IReadOnlyList<string> excludedNames, string name)
+        {
+            if (excludedNames == null || name == null)
+                return false;
+            for (int i = 0; i < excludedNames.Count; i++)
+            {
+                if (excludedNames[i] == name)
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Buys the single best vault upgrade for one member and one category, or nothing.
         /// Exactly one of <paramref name="hero"/> / <paramref name="merc"/> is non-null.
         /// </summary>
-        private bool BuyBestForCategory(Hero hero, Mercenary merc, ItemBag bag, GearCategory category, List<IItem> purchasedOut)
+        private bool BuyBestForCategory(Hero hero, Mercenary merc, ItemBag bag, GearCategory category, List<IItem> purchasedOut, IReadOnlyList<string> excludedNames)
         {
             if (bag.Capacity - bag.Count < 1)
                 return false;
@@ -219,6 +240,8 @@ namespace PitHero.Services
                 if (!GearCategoryUtils.TryGetCategory(candidate.Kind, out GearCategory candidateCategory) || candidateCategory != category)
                     continue;
                 if (!IsRarityAllowed(candidate.Rarity))
+                    continue;
+                if (IsExcluded(excludedNames, candidate.Name))
                     continue;
                 if (!CanMemberEquip(hero, merc, candidate))
                     continue;
@@ -249,31 +272,12 @@ namespace PitHero.Services
         }
 
         /// <summary>Best gear the party already has available to this member for this category (equipped or in the bag).</summary>
-        private IGear GetBaselineGear(Hero hero, Mercenary merc, ItemBag bag, GearCategory category)
+        private static IGear GetBaselineGear(Hero hero, Mercenary merc, ItemBag bag, GearCategory category)
         {
-            IGear baseline = null;
-
-            // Accessories occupy two slots: an empty one means anything is an upgrade, so the
-            // baseline stays null. Otherwise the weaker of the two is the one worth replacing.
-            if (category == GearCategory.Accessory)
-            {
-                var acc1 = hero != null
-                    ? GearAutoEquipService.GetHeroItemInSlot(hero, EquipmentSlot.Accessory1)
-                    : GearAutoEquipService.GetMercItemInSlot(merc, EquipmentSlot.Accessory1);
-                var acc2 = hero != null
-                    ? GearAutoEquipService.GetHeroItemInSlot(hero, EquipmentSlot.Accessory2)
-                    : GearAutoEquipService.GetMercItemInSlot(merc, EquipmentSlot.Accessory2);
-
-                if (acc1 != null && acc2 != null)
-                    baseline = GearAutoEquipService.IsNewGearBetter(acc1, acc2) ? acc2 : acc1;
-            }
-            else
-            {
-                var slot = CategorySlots[(int)category];
-                baseline = hero != null
-                    ? GearAutoEquipService.GetHeroItemInSlot(hero, slot)
-                    : GearAutoEquipService.GetMercItemInSlot(merc, slot);
-            }
+            // Equipped baseline (accessories: null when a slot is empty, else the weaker of the two)
+            IGear baseline = hero != null
+                ? GearAutoEquipService.GetEquippedBaseline(hero, category)
+                : GearAutoEquipService.GetEquippedBaseline(merc, category);
 
             // Gear already carried in the bag counts as "possessed" — never buy a duplicate upgrade
             for (int i = 0; i < bag.Capacity; i++)
