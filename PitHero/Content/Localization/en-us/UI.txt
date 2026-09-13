@@ -269,7 +269,7 @@ TabArtifacts,Artifacts
 ArtifactSphereOfForesightName,Sphere of Foresight
 ArtifactSphereOfForesightDesc,Seer's crystal which allows one to see the future in replays
 ArtifactChronosTimepieceName,Chronos Timepiece
-ArtifactChronosTimepieceDesc,Powerful timepiece once owned by master of time. Allows for time travel in replays
+ArtifactChronosTimepieceDesc,Powerful timepiece once owned by the master of time. Allows for time travel in replays
 ArtifactKairosMetronomeName,Kairos Metronome
 ArtifactKairosMetronomeDesc,The bob slides, and the world hurries to keep up.
 ArtifactKairosMetronomeEffect,Unlocks 4X and 8X game speed. (Shift+Click the Fast Forward Button)

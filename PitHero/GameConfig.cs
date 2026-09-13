@@ -679,8 +679,8 @@ namespace PitHero
         // Artifacts: one-time system-level purchases persisted in the system save (see ArtifactService)
         public const string SystemSaveFileName = "system.bin";       // Under the persistent data folder, beside the save slots
         public const int ArtifactSphereOfForesightPrice = 100000;     // Gold; unlocks future simulation in replays
-        public const int ArtifactChronosTimepiecePrice = 1000000;     // Gold; unlocks Time Travel Here (requires the sphere first)
-        public const int ArtifactKairosMetronomePrice = 50000;        // Gold; unlocks the 4X and 8X fast-forward rungs
+        public const int ArtifactChronosTimepiecePrice = 4000000;     // Gold; unlocks Time Travel Here (requires the sphere first)
+        public const int ArtifactKairosMetronomePrice = 2000000;        // Gold; unlocks the 4X and 8X fast-forward rungs
 
         // AutoSave (issue #409): the running session is written to a dedicated file on a wall-clock
         // cadence from the presentation pass; the write itself runs on a worker thread (AutoSaveService)
