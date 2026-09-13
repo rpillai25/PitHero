@@ -46,6 +46,31 @@ namespace PitHero.UI
             return true;
         }
 
+        /// <summary>
+        /// True when the stage cursor lies inside the element's bounds. Owners use this to clear a
+        /// stale hover flag: Nez only clears its own on a mouse-exit event, which never fires for a
+        /// widget hidden under the cursor (Settings closed with ESC) and re-shown later, so without
+        /// this the tooltip comes back on the next draw and never goes away.
+        /// </summary>
+        public static bool MouseIsOver(Element element)
+        {
+            var stage = element?.GetStage();
+            if (stage == null)
+                return false;
+            var mouse = stage.GetMousePosition();
+            float x = element.GetX();
+            float y = element.GetY();
+            var p = element.GetParent();
+            while (p != null)
+            {
+                x += p.GetX();
+                y += p.GetY();
+                p = p.GetParent();
+            }
+            return mouse.X >= x && mouse.X <= x + element.GetWidth()
+                && mouse.Y >= y && mouse.Y <= y + element.GetHeight();
+        }
+
         public override void Draw(Batcher batcher, float parentAlpha)
         {
             if (!IsShowingInHierarchy(_owner))

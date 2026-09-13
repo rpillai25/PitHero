@@ -63,6 +63,11 @@ namespace PitHero.UI
 
         public override void Draw(Batcher batcher, float parentAlpha)
         {
+            // Nez only clears _mouseOver on a mouse-exit event, which never fires for a button
+            // hidden under the cursor and re-shown later; correct it before base.Draw styles from it
+            if (_mouseOver && !HoverTooltipWindow.MouseIsOver(this))
+                _mouseOver = _mouseDown = false;
+
             base.Draw(batcher, parentAlpha);
 
             if (_tooltipWindow == null) return;

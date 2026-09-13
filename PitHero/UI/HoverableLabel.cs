@@ -92,6 +92,15 @@ namespace PitHero.UI
                 return;
             }
 
+            // A hover that ended while this label was hidden never got its OnMouseExit: drop it
+            // as soon as the cursor is seen outside the label, or the tooltip sticks on re-show
+            if (_hovered && !HoverTooltipWindow.MouseIsOver(this))
+            {
+                _hovered = false;
+                _tooltipWindow.SetVisible(false);
+                return;
+            }
+
             // Follow the cursor each frame while hovered
             if (_hovered && _tooltipWindow.IsVisible())
                 PositionTooltip(_stage.GetMousePosition());
