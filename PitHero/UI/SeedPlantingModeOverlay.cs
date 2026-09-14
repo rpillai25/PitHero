@@ -408,7 +408,7 @@ namespace PitHero.UI
             {
                 var cropType = (CropType)i;
                 var sprite   = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(cropType));
-                var slot     = new CropSlotButton(sprite, GetText(CropConfig.GetDisplayNameKey(cropType)), _seedInventory, i);
+                var slot     = new CropSlotButton(sprite, GetText(CropConfig.GetDisplayNameKey(cropType)), GetText(UITextKey.LabelCropUnknown), _seedInventory, i);
                 slot.OnClicked += () => OnCropSlotClicked(cropType);
                 _slotTable.Add(slot).Size(SlotSize, SlotSize).Pad(2f);
                 col++;
@@ -608,6 +608,7 @@ namespace PitHero.UI
 
             private readonly Sprite     _sprite;
             private readonly string     _tooltipText;
+            private readonly string     _lockedTooltipText;   // "???" while the crop is locked (issue #413)
             private readonly int[]      _inventory;
             private readonly int        _inventoryIndex;
             private readonly SpriteDrawable _draw;
@@ -617,10 +618,11 @@ namespace PitHero.UI
 
             public event System.Action OnClicked;
 
-            public CropSlotButton(Sprite sprite, string tooltipText, int[] inventory, int inventoryIndex)
+            public CropSlotButton(Sprite sprite, string tooltipText, string lockedTooltipText, int[] inventory, int inventoryIndex)
             {
                 _sprite         = sprite;
                 _tooltipText    = tooltipText;
+                _lockedTooltipText = lockedTooltipText;
                 _inventory      = inventory;
                 _inventoryIndex = inventoryIndex;
                 _draw           = sprite != null ? new SpriteDrawable(sprite) : null;
@@ -686,17 +688,18 @@ namespace PitHero.UI
             void IInputListener.OnMouseEnter()
             {
                 _hovered = true;
-                if (!string.IsNullOrEmpty(_tooltipText))
+                string tooltip = CropUnlockTracker.IsUnlocked((CropType)_inventoryIndex) ? _tooltipText : _lockedTooltipText;
+                if (!string.IsNullOrEmpty(tooltip))
                 {
                     var stage = GetStage();
                     if (stage != null)
                     {
                         var mp = stage.GetMousePosition();
-                        HoverTextManager.ShowHoverText(_tooltipText, mp.X + 12f, mp.Y - 4f);
+                        HoverTextManager.ShowHoverText(tooltip, mp.X + 12f, mp.Y - 4f);
                     }
                     else
                     {
-                        HoverTextManager.ShowHoverText(_tooltipText, GetX(), GetY() + GetHeight() + 4f);
+                        HoverTextManager.ShowHoverText(tooltip, GetX(), GetY() + GetHeight() + 4f);
                     }
                 }
             }

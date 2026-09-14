@@ -483,7 +483,7 @@ ConsoleAutoLearnedSkill,{0} learned {1}!
 # Refrigerator (issue #386)
 WindowRefrigerator,Refrigerator
 WindowUnlockRequirements,Unlock Requirements
-LabelCropLocked,Locked
+LabelCropUnknown,???
 LabelUnlockRequirementsHint,Harvest these crops to unlock {0}:
 WindowFarmStats,Farm Stats
 HeadingFarmStatsField,Field

@@ -529,7 +529,7 @@ namespace PitHero
         public const string WindowRefrigerator = "WindowRefrigerator";
         // Issue #413: crop unlocks, farm stats, monster job levels
         public const string WindowUnlockRequirements = "WindowUnlockRequirements";
-        public const string LabelCropLocked = "LabelCropLocked";
+        public const string LabelCropUnknown = "LabelCropUnknown";
         public const string LabelUnlockRequirementsHint = "LabelUnlockRequirementsHint";
         public const string WindowFarmStats = "WindowFarmStats";
         public const string HeadingFarmStatsField = "HeadingFarmStatsField";

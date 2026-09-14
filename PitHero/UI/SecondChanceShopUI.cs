@@ -345,7 +345,7 @@ namespace PitHero.UI
                 string cropName = GetText(TextType.UI, CropConfig.GetDisplayNameKey(crop));
                 int price       = CropConfig.GetSeedPrice(crop);
                 string tooltip  = cropName + " - " + price + "G";
-                string lockedTooltip = cropName + " - " + GetText(TextType.UI, UITextKey.LabelCropLocked);
+                string lockedTooltip = GetText(TextType.UI, UITextKey.LabelCropUnknown);
 
                 var slot = new SeedShopSlot(sprite, crop, cropPlantingService, cropGrowthService, tooltip, lockedTooltip);
                 slot.OnBuyClicked += HandleSeedBuyClicked;

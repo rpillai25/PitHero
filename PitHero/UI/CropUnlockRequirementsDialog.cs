@@ -10,7 +10,8 @@ namespace PitHero.UI
 {
     /// <summary>
     /// "Unlock Requirements" card for a locked crop (issue #413): one cell per required crop showing
-    /// its harvest sprite with a "harvested/required" badge, the crop name underneath, and a Close
+    /// its harvest sprite with a "harvested/required" badge, the crop name underneath (dimmed with
+    /// "???" while that crop is itself still locked), and a Close
     /// button. Opened from the shop Seeds tab and the Farm > Seeds planting palette. Registered as a
     /// UI prompt so the parent window's outside-click dismissal waits for it.
     /// </summary>
@@ -56,12 +57,18 @@ namespace PitHero.UI
                 var req = requirements[i];
                 Sprite sprite = cropsAtlas?.GetSprite(CropConfig.GetHarvestSpriteName(req.Crop));
                 int have = CropUnlockTracker.GetHarvestedTotal(req.Crop);
+                // A required crop that is itself still locked stays a mystery: dimmed sprite, "???" name,
+                // but the have/required badge is still shown.
+                bool reqLocked = !CropUnlockTracker.IsUnlocked(req.Crop);
 
                 var cell = new Table();
-                cell.Add(new RequirementCell(sprite, have, req.Required))
+                cell.Add(new RequirementCell(sprite, have, req.Required, reqLocked))
                     .Size(GameConfig.CropUnlockRequirementCellSize, GameConfig.CropUnlockRequirementCellSize);
                 cell.Row();
-                var nameLabel = new Label(GetText(CropConfig.GetHarvestDisplayNameKey(req.Crop)), skin, "ph-default");
+                string nameText = reqLocked
+                    ? GetText(UITextKey.LabelCropUnknown)
+                    : GetText(CropConfig.GetHarvestDisplayNameKey(req.Crop));
+                var nameLabel = new Label(nameText, skin, reqLocked ? "ph-grayed" : "ph-default");
                 nameLabel.SetAlignment(Nez.UI.Align.Center);
                 cell.Add(nameLabel).SetPadTop(2f);
                 grid.Add(cell).Pad(CellPad).Top();
@@ -108,17 +115,20 @@ namespace PitHero.UI
         private class RequirementCell : Element
         {
             private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
+            private static readonly Color LockedSpriteColor = new Color(255, 255, 255, GameConfig.SeedShopLockedAlpha);
 
             private readonly SpriteDrawable _draw;
             private readonly SpriteDrawable _background;
             private readonly string _badge;
             private readonly Color _badgeColor;
+            private readonly Color _spriteColor;
 
-            public RequirementCell(Sprite sprite, int have, int required)
+            public RequirementCell(Sprite sprite, int have, int required, bool locked)
             {
                 _draw = sprite != null ? new SpriteDrawable(sprite) : null;
                 _badge = have + "/" + required;
                 _badgeColor = have >= required ? MetColor : Color.White;
+                _spriteColor = locked ? LockedSpriteColor : Color.White;
                 SetTouchable(Touchable.Disabled);
                 SetSize(GameConfig.CropUnlockRequirementCellSize, GameConfig.CropUnlockRequirementCellSize);
 
@@ -131,7 +141,7 @@ namespace PitHero.UI
             public override void Draw(Batcher batcher, float parentAlpha)
             {
                 _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
-                _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), _spriteColor);
 
                 var font = Nez.Graphics.Instance?.BitmapFont;
                 if (font == null)
