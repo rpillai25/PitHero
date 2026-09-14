@@ -104,7 +104,7 @@ namespace PitHero.UI
         // The non-inventory tabs were designed for a 490px window; their content keeps that width
         // and is centered inside the tab-strip-wide window (see AddCentered).
         private const float COMPACT_CONTENT_WIDTH = 490f;
-        private const float MERCENARIES_CONTENT_WIDTH = 580f;
+        private const float MERCENARIES_CONTENT_WIDTH = MercenariesTab.ContentWidth;
         private const float CRYSTALS_CONTENT_WIDTH = 560f; // Create button + 10-column grid + queue column
         private const float HERO_WINDOW_HEIGHT = GameConfig.VirtualHeight; // full stage height: the window is flush with the top and bottom edges
         private const float TAB_STRIP_MARGIN = 24f; // breathing room beside the tab button strip

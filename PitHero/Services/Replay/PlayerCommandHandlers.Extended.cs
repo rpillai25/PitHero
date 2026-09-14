@@ -101,6 +101,9 @@ namespace PitHero.Services.Replay
                     }
                     return true;
                 }
+                case PlayerCommandType.DismissMonster:
+                    ApplyDismissMonster(in cmd);
+                    return true;
                 case PlayerCommandType.SetMonsterJob:
                     ApplySetMonsterJob(in cmd);
                     return true;
@@ -492,26 +495,49 @@ namespace PitHero.Services.Replay
             return mc?.LinkedMercenary != null && mc.LinkedMercenary.Name == name;
         }
 
+        /// <summary>
+        /// Resolves an allied monster from a command payload: by roster index when the name still
+        /// matches, otherwise by name scan (the roster may have shifted since the command was recorded).
+        /// </summary>
+        private static AlliedMonster ResolveAlliedMonster(AlliedMonsterManager mgr, int index, string name)
+        {
+            var roster = mgr.AlliedMonsters;
+            if (index >= 0 && index < roster.Count && (string.IsNullOrEmpty(name) || roster[index].Name == name))
+                return roster[index];
+            for (int i = 0; i < roster.Count; i++)
+            {
+                if (roster[i].Name == name)
+                    return roster[i];
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Dismisses an allied monster (issue #413): it leaves the roster immediately; its live worker
+        /// entity, if any, walks home through the coordinators' normal return path.
+        /// </summary>
+        private static void ApplyDismissMonster(in PlayerCommand cmd)
+        {
+            var mgr = Services?.GetService<AlliedMonsterManager>();
+            if (mgr == null)
+                return;
+            var monster = ResolveAlliedMonster(mgr, cmd.A, cmd.S);
+            if (monster == null)
+            {
+                Debug.Log($"[PlayerCommandHandlers] Allied monster {cmd.S} not found for dismissal (index {cmd.A})");
+                return;
+            }
+            AnalyticsService.LogMonsterDismissed(monster.Name, monster.MonsterTypeName, monster.Job.ToString());
+            mgr.RemoveAlliedMonster(monster);
+            GetSettingsUI()?.MonsterUI?.RefreshMonsterList();
+        }
+
         private static void ApplySetMonsterJob(in PlayerCommand cmd)
         {
             var mgr = Services?.GetService<AlliedMonsterManager>();
             if (mgr == null)
                 return;
-            var roster = mgr.AlliedMonsters;
-            AlliedMonster monster = null;
-            if (cmd.A >= 0 && cmd.A < roster.Count && (string.IsNullOrEmpty(cmd.S) || roster[cmd.A].Name == cmd.S))
-                monster = roster[cmd.A];
-            else
-            {
-                for (int i = 0; i < roster.Count; i++)
-                {
-                    if (roster[i].Name == cmd.S)
-                    {
-                        monster = roster[i];
-                        break;
-                    }
-                }
-            }
+            var monster = ResolveAlliedMonster(mgr, cmd.A, cmd.S);
             if (monster == null)
             {
                 Debug.Log($"[PlayerCommandHandlers] Allied monster {cmd.S} not found (index {cmd.A})");

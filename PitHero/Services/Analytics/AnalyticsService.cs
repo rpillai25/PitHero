@@ -1029,6 +1029,22 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs an allied monster being dismissed from the workforce (issue #413).</summary>
+        [Conditional("DEBUG")]
+        public static void LogMonsterDismissed(string monster, string monsterType, string job)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("monster_dismissed"))
+                return;
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            _json.Field("job", job);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs a crop becoming purchasable through the harvest progression (issue #413).</summary>
         [Conditional("DEBUG")]
         public static void LogCropUnlocked(string crop)

@@ -49,6 +49,7 @@ namespace PitHero.Services.Replay
         DismissPartyMercenary = 52,  // A = hired index, S = merc name
         SetMonsterJob = 53,          // A = allied monster index, B = MonsterJob ordinal, S = monster name
         PurchaseMonster = 54,        // A = house id, S = enemy type name, B = cost
+        DismissMonster = 55,         // A = allied monster index, S = monster name (issue #413)
 
         // Automation
         SetAutomation = 60,          // A = AutomationKind ordinal, B = 0/1

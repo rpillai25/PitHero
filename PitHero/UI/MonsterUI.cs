@@ -50,10 +50,14 @@ namespace PitHero.UI
         // Pre-allocated so the per-frame dismissal poll never allocates.
         private System.Collections.Generic.List<Element> _dismissEnvelope;
 
+        // Job-levels card opened from a portrait click (issue #413); closed with the roster window.
+        private MonsterJobLevelsDialog _jobLevelsDialog;
+
         private const float SpriteSize = 32f;
         // Gap between the roster window and the info card, matching HeroCrystalCard's dock spacing.
         private const float InfoPanelGap = 10f;
-        private const float MonsterWindowWidth = 460f;
+        // Wide enough for [portrait][name + levels][Dismiss][Job: x + 4 icons] on one row (issue #413)
+        private const float MonsterWindowWidth = 560f;
         private const float MonsterWindowHeight = 340f; // design height at GameConfig.VirtualHeight = 360
         private static readonly Color BrownColor = new Color(71, 36, 7);
         private static LabelStyle BrownStyle() => new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownColor };
@@ -245,6 +249,7 @@ namespace PitHero.UI
             else
             {
                 UIWindowManager.OnUIWindowClosing();
+                CloseJobLevels();
                 _monsterWindow.SetVisible(false);
                 _monsterWindow.Remove();
                 _infoPanel.SetVisible(false);
@@ -407,15 +412,12 @@ namespace PitHero.UI
                     catch (System.Exception) { monsterSprite = null; }
                 }
 
-                if (monsterSprite != null)
-                {
-                    var spriteImage = new Image(new SpriteDrawable(monsterSprite), Nez.UI.Scaling.Fit);
-                    rowTable.Add(spriteImage).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
-                }
-                else
-                {
-                    rowTable.Add(new Label("?", BrownStyle())).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
-                }
+                // The portrait is clickable (issue #413): white outline on hover, opens the job-levels card
+                var portraitMonster = monster;
+                var portrait = new MonsterPortraitButton(monsterSprite,
+                    GetText(TextType.UI, UITextKey.MonsterPortraitTooltip), CellSize);
+                portrait.OnClicked += () => ShowJobLevels(portraitMonster);
+                rowTable.Add(portrait).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
 
                 // --- Middle: textTable with name, stats, job ---
                 var textTable = new Table();
@@ -432,7 +434,8 @@ namespace PitHero.UI
                 }
 
                 var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", BrownStyle());
-                var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", BrownStyle());
+                var statsLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MonsterJobLevelsSummary),
+                    monster.FishingProficiency, monster.CookingProficiency, monster.FarmingProficiency), BrownStyle());
 
                 textTable.Add(nameLabel).Left();
                 textTable.Row();
@@ -448,6 +451,12 @@ namespace PitHero.UI
                 }
 
                 rowTable.Add(textTable).Left().Pad(2f, 0f, 2f, 4f);
+
+                // --- Dismiss (issue #413): between the text column and the job icons ---
+                var dismissMonster = monster;
+                var dismissBtn = new TextButton(GetText(TextType.UI, UITextKey.ButtonDismiss), _skin, "ph-default");
+                dismissBtn.OnClicked += (_) => ShowDismissConfirmation(dismissMonster);
+                rowTable.Add(dismissBtn).Left().SetMinWidth(72f).SetMinHeight(GameConfig.DialogButtonMinHeight).Pad(2f, 4f, 2f, 4f);
 
                 // --- Right: jobTable with current job label + 4 job buttons ---
                 var jobTable = new Table();
@@ -545,6 +554,43 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Asks "Really dismiss [Type] [Name]?" and, on Yes, dispatches the DismissMonster command
+        /// (the handler re-resolves the monster and removes it; the roster refreshes from there).
+        /// </summary>
+        private void ShowDismissConfirmation(AlliedMonster monster)
+        {
+            if (ConfirmationDialog.AnyVisible)
+                return;
+            string typeName = GetText(TextType.Monster, monster.MonsterTypeName);
+            string title = GetText(TextType.UI, UITextKey.DialogConfirmDismissMonster);
+            string message = string.Format(GetText(TextType.UI, UITextKey.ConfirmDismissMonsterMessage), typeName, monster.Name);
+            var dialog = new ConfirmationDialog(title, message, _skin, onYes: () =>
+            {
+                int rosterIndex = IndexOfAlliedMonster(monster);
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
+                    Services.Replay.PlayerCommandType.DismissMonster, monster.Name, rosterIndex));
+            });
+            dialog.Show(_stage);
+        }
+
+        /// <summary>Opens the job-levels card for a monster (portrait click, issue #413).</summary>
+        private void ShowJobLevels(AlliedMonster monster)
+        {
+            if (ConfirmationDialog.AnyVisible)
+                return;
+            CloseJobLevels();
+            _jobLevelsDialog = new MonsterJobLevelsDialog(monster, _skin);
+            _jobLevelsDialog.Show(_stage);
+        }
+
+        /// <summary>Closes the job-levels card if one is open.</summary>
+        private void CloseJobLevels()
+        {
+            _jobLevelsDialog?.Close();
+            _jobLevelsDialog = null;
+        }
+
+        /// <summary>
         /// Sizes the roster window to fit the live stage height and places it (with the info card
         /// docked beside it) under the Monsters button.
         /// </summary>
@@ -603,6 +649,7 @@ namespace PitHero.UI
             {
                 _windowVisible = false;
                 UIWindowManager.OnUIWindowClosing();
+                CloseJobLevels();
                 _monsterWindow?.SetVisible(false);
                 _monsterWindow?.Remove();
                 _infoPanel?.SetVisible(false);

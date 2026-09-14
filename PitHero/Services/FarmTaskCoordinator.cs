@@ -178,6 +178,14 @@ namespace PitHero.Services
                 }
             }
 
+            // Dismissed monsters (issue #413) are gone from the roster, so the loop above never sees
+            // them: their live worker must still be sent home, which releases any claimed task.
+            for (int i = 0; i < _workers.Count; i++)
+            {
+                if (!_alliedMonsters.Contains(_workers[i].Monster))
+                    _workers[i].Fsm.RequestReturnHome();
+            }
+
             // Reap workers whose entities finished despawning
             for (int i = _workers.Count - 1; i >= 0; i--)
             {
