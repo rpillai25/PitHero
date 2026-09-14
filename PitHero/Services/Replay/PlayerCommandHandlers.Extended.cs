@@ -316,19 +316,24 @@ namespace PitHero.Services.Replay
             return value;
         }
 
-        /// <summary>Sorts the hero bag (items in placed stencil cells stay put), then refreshes every inventory view.</summary>
+        /// <summary>
+        /// Sorts the hero bag, then refreshes every inventory view. Items in placed stencil cells stay put; active
+        /// synergies not bound to a stencil are set back down intact to the right of the sorted items.
+        /// </summary>
         private static void ApplySortBag(int orderOrdinal)
         {
             if (orderOrdinal < (int)PitHero.UI.InventorySortOrder.Time || orderOrdinal > (int)PitHero.UI.InventorySortOrder.Name)
                 return;
-            var bag = GetHeroComponent()?.Bag;
+            var heroComponent = GetHeroComponent();
+            var bag = heroComponent?.Bag;
             if (bag == null)
                 return;
 
             var mask = new bool[bag.Capacity];
-            StencilBagMask.Build(Services?.GetService<GameStateService>()?.PlacedStencils, mask);
+            BagSortLockMask.AddPlacedStencils(Services?.GetService<GameStateService>()?.PlacedStencils, mask);
+            var synergyGroups = BagSortLockMask.AddActiveSynergies(heroComponent.LinkedHero?.ActiveSynergies, mask);
             RolePlayingFramework.Inventory.BagSorter.Sort(bag, (PitHero.UI.InventorySortOrder)orderOrdinal, mask,
-                PitHero.UI.InventoryGrid.BagColumns, PitHero.UI.InventoryGrid.BagRows);
+                PitHero.UI.InventoryGrid.BagColumns, PitHero.UI.InventoryGrid.BagRows, synergyGroups);
             PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
         }
 

@@ -1,9 +1,11 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Xna.Framework;
 using PitHero.Services;
 using PitHero.UI;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Stats;
+using RolePlayingFramework.Synergies;
 using System.Collections.Generic;
 
 namespace PitHero.Tests
@@ -170,21 +172,178 @@ namespace PitHero.Tests
             Assert.IsTrue(bag.GetAcquireSequence(later) > 1000, "restored sequences push the counter forward");
         }
 
+        private static int CountLocked(bool[] mask)
+        {
+            int marked = 0;
+            for (int i = 0; i < mask.Length; i++) if (mask[i]) marked++;
+            return marked;
+        }
+
         [TestMethod]
-        public void StencilBagMask_MarksEveryPlacedCell()
+        public void BagSortLockMask_LocksEveryPlacedStencilCell()
         {
             var svc = new GameStateService();
             // ShieldMastery: [Sword](0,0) [Shield](1,0); anchor at grid (5, BagRowStart + 2) → bag row 2
             svc.SetPlacedStencil("knight.shield_mastery", 5, InventoryGrid.BagRowStart + 2);
 
             var mask = new bool[InventoryGrid.BagCapacity];
-            StencilBagMask.Build(svc.PlacedStencils, mask);
+            BagSortLockMask.AddPlacedStencils(svc.PlacedStencils, mask);
 
-            int marked = 0;
-            for (int i = 0; i < mask.Length; i++) if (mask[i]) marked++;
-            Assert.AreEqual(2, marked);
+            Assert.AreEqual(2, CountLocked(mask));
             Assert.IsTrue(mask[2 * Cols + 5]);
             Assert.IsTrue(mask[2 * Cols + 6]);
+        }
+
+        /// <summary>Synergy whose cells are given as (bag row, bag column) pairs.</summary>
+        private static ActiveSynergy MakeSynergy(params (int row, int col)[] cells)
+        {
+            var points = new List<Point>();
+            for (int i = 0; i < cells.Length; i++) points.Add(new Point(cells[i].col, InventoryGrid.BagRowStart + cells[i].row));
+            return new ActiveSynergy(SynergyPatternRegistry.GetById("knight.shield_mastery"), points[0], points);
+        }
+
+        [TestMethod]
+        public void BagSortLockMask_SynergyTouchingEquipmentRow_IsLocked()
+        {
+            var synergies = new List<ActiveSynergy>
+            {
+                // One cell in bag row 1, one in an equipment row (not a bag slot)
+                new ActiveSynergy(SynergyPatternRegistry.GetById("knight.shield_mastery"), new Point(10, InventoryGrid.BagRowStart + 1),
+                    new List<Point> { new Point(10, InventoryGrid.BagRowStart + 1), new Point(11, InventoryGrid.BagRowStart - 1) }),
+            };
+
+            var mask = new bool[InventoryGrid.BagCapacity];
+            var groups = BagSortLockMask.AddActiveSynergies(synergies, mask);
+
+            Assert.AreEqual(0, groups.Count, "cannot move a synergy that uses an equipment slot");
+            Assert.AreEqual(1, CountLocked(mask));
+            Assert.IsTrue(mask[1 * Cols + 10]);
+        }
+
+        [TestMethod]
+        public void BagSortLockMask_SynergyOnStencilCell_IsLocked_UnboundIsMovable()
+        {
+            var svc = new GameStateService();
+            svc.SetPlacedStencil("knight.shield_mastery", 5, InventoryGrid.BagRowStart);  // bag row 0, cols 5-6
+            var mask = new bool[InventoryGrid.BagCapacity];
+            BagSortLockMask.AddPlacedStencils(svc.PlacedStencils, mask);
+
+            var synergies = new List<ActiveSynergy>
+            {
+                MakeSynergy((0, 6), (1, 6)),    // shares a stencil cell: bound
+                MakeSynergy((3, 20), (3, 21)),  // unbound
+            };
+            var groups = BagSortLockMask.AddActiveSynergies(synergies, mask);
+
+            Assert.AreEqual(1, groups.Count);
+            CollectionAssert.AreEqual(new[] { 3 * Cols + 20, 3 * Cols + 21 }, new List<int>(groups[0]));
+            Assert.IsTrue(mask[1 * Cols + 6], "the bound synergy's other cell is locked too");
+        }
+
+        [TestMethod]
+        public void BagSortLockMask_OverlappingSynergies_FormOneGroup()
+        {
+            var synergies = new List<ActiveSynergy>
+            {
+                MakeSynergy((0, 10), (0, 11)),
+                MakeSynergy((0, 11), (1, 11)),
+                MakeSynergy((2, 25), (2, 26)),
+            };
+            var groups = BagSortLockMask.AddActiveSynergies(synergies, new bool[InventoryGrid.BagCapacity]);
+
+            Assert.AreEqual(2, groups.Count);
+            CollectionAssert.AreEqual(new[] { 10, 11, Cols + 11 }, new List<int>(groups[0]));
+        }
+
+        [TestMethod]
+        public void Sort_UnboundSynergy_MovesIntactRightOfSortedItems()
+        {
+            var bag = MakeBag();
+            // L-shaped synergy blocking the leftmost columns
+            var s1 = MakeGear("S1", ItemKind.WeaponSword);
+            var s2 = MakeGear("S2", ItemKind.Shield);
+            var s3 = MakeGear("S3", ItemKind.HatHelm);
+            bag.SetSlotItem(0 * Cols + 0, s1);
+            bag.SetSlotItem(1 * Cols + 0, s2);
+            bag.SetSlotItem(1 * Cols + 1, s3);
+            // Five loose items on the far right
+            var loose = new List<IItem>();
+            for (int i = 0; i < 5; i++)
+            {
+                var g = MakeGear("L" + i, ItemKind.Accessory);
+                loose.Add(g);
+                bag.SetSlotItem(Cols - 1 - i, g);
+            }
+
+            var mask = new bool[bag.Capacity];
+            var groups = BagSortLockMask.AddActiveSynergies(new List<ActiveSynergy> { MakeSynergy((0, 0), (1, 0), (1, 1)) }, mask);
+            BagSorter.Sort(bag, InventorySortOrder.Name, mask, Cols, Rows, groups);
+
+            // Loose items take column 0 (4 rows) and the top of column 1
+            for (int i = 0; i < 5; i++)
+                Assert.AreSame(loose[i], bag.GetSlotItem(ColumnMajor(i)), "loose item " + i);
+            // The synergy keeps its shape, anchored in column 2 (first column right of the sorted items)
+            Assert.AreSame(s1, bag.GetSlotItem(0 * Cols + 2));
+            Assert.AreSame(s2, bag.GetSlotItem(1 * Cols + 2));
+            Assert.AreSame(s3, bag.GetSlotItem(1 * Cols + 3));
+            Assert.AreEqual(8, bag.Count);
+        }
+
+        [TestMethod]
+        public void Sort_RepeatedSorts_KeepSortedItemsOnTheLeft()
+        {
+            var bag = MakeBag();
+            var sword = MakeGear("Sword", ItemKind.WeaponSword);
+            var shield = MakeGear("Shield", ItemKind.Shield);
+            bag.SetSlotItem(0, sword);
+            bag.SetSlotItem(1, shield);
+            var loose = MakeGear("Ring", ItemKind.Accessory);
+            bag.SetSlotItem(50, loose);
+
+            for (int pass = 0; pass < 3; pass++)
+            {
+                int swordIndex = -1, shieldIndex = -1;
+                for (int i = 0; i < bag.Capacity; i++)
+                {
+                    if (bag.GetSlotItem(i) == sword) swordIndex = i;
+                    if (bag.GetSlotItem(i) == shield) shieldIndex = i;
+                }
+                var mask = new bool[bag.Capacity];
+                var groups = new List<IReadOnlyList<int>> { new List<int> { swordIndex, shieldIndex } };
+                BagSorter.Sort(bag, (InventorySortOrder)(pass % 3), mask, Cols, Rows, groups);
+
+                Assert.AreSame(loose, bag.GetSlotItem(0), "pass " + pass + ": the loose item stays leftmost");
+                Assert.AreSame(sword, bag.GetSlotItem(1), "pass " + pass + ": synergy sits just right of it");
+                Assert.AreSame(shield, bag.GetSlotItem(2));
+            }
+        }
+
+        [TestMethod]
+        public void Sort_GroupThatDoesNotFit_StaysWhereItWas()
+        {
+            // 2x2 bag: a vertical 2-cell group in column 0, a loose item and a stencil item in column 1.
+            // After packing the loose item no 2-tall column is free, so the group must not be broken up.
+            var bag = new ItemBag("Tiny", 4);
+            var a = MakeGear("A", ItemKind.Shield);
+            var b = MakeGear("B", ItemKind.Shield);
+            var top = MakeGear("Top", ItemKind.Accessory);
+            var bottom = MakeGear("Bottom", ItemKind.Accessory);
+            bag.SetSlotItem(0, top);     // row 0 col 0
+            bag.SetSlotItem(2, bottom);  // row 1 col 0
+            bag.SetSlotItem(1, a);
+            bag.SetSlotItem(3, b);
+
+            var locked = new bool[4];
+            locked[3] = true; // b is a stencil item, so column 1 never has two free cells
+            var groups = new List<IReadOnlyList<int>> { new List<int> { 0, 2 } };
+            BagSorter.Sort(bag, InventorySortOrder.Name, locked, 2, 2, groups);
+
+            Assert.AreEqual(4, bag.Count, "no item is lost");
+            Assert.AreSame(b, bag.GetSlotItem(3));
+            Assert.AreSame(top, bag.GetSlotItem(0), "the synergy stays exactly where it was");
+            Assert.AreSame(bottom, bag.GetSlotItem(2));
+            Assert.AreSame(a, bag.GetSlotItem(1), "the loose item packs around it");
+            Assert.AreEqual(bag.GetAcquireSequence(top) > 0, true, "pinned items keep their acquisition order");
         }
     }
 }
