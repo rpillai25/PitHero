@@ -78,7 +78,7 @@ namespace PitHero.Services.Replay
         BuyVaultItem = 90,           // A = vault stack index, B = quantity, C,D = packed dest SlotRef, S = item name
         BuyVaultCrystal = 91,        // A = vault crystal index, B = dest slot type, C = dest index
         BuySeeds = 92,               // A = crop type, B = quantity
-        GrantArtifact = 93,          // A = ArtifactType ordinal; proof of gold, nothing is deducted (system-level one-time grant)
+        GrantArtifact = 93,          // A = ArtifactType ordinal; Global: proof of gold, nothing deducted (system save). Local: price deducted (session save)
 
         // Crystals
         CreateCrystal = 100,         // A = job index, B = STR, C = AGI, D = VIT, L = MAG
@@ -96,6 +96,7 @@ namespace PitHero.Services.Replay
         SetGearFilterFlag = 114,         // A = owner (0 sell, 1 purchase), B = kind (0 rarity, 1 type), C = index, D = 0/1
         SetCropDesignation = 115,        // A = crop index, B = 0/1
         SetCropKeepStacks = 116,         // A = stacks
+        SetInventorySellPercent = 117,   // A = percent 0-100 (issue #411: pre-jump auto-sell threshold)
 
         // Debug
         DebugQueuePitLevel = 200,    // A = level

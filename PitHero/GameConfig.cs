@@ -669,6 +669,7 @@ namespace PitHero
         public const string ReplayDirectoryName = "replays";     // Under the persistent data folder
         public const string ReplayFilePrefix = "replay_";
         public const string ReplayFileExtension = ".bin";
+        public const int ReplayListMaxShown = 10;                // Replay tab lists at most this many recordings (newest first, after the hero filter)
         public const int ReplaySpeechSeedSalt = 0x5BEEC4;        // XOR'd with the master seed for the cosmetic speech-bubble RNG
 
         // Future simulation: the replay timeline extends past the session end and the player can drag
@@ -681,6 +682,13 @@ namespace PitHero
         public const int ArtifactSphereOfForesightPrice = 100000;     // Gold; unlocks future simulation in replays
         public const int ArtifactChronosTimepiecePrice = 4000000;     // Gold; unlocks Time Travel Here (requires the sphere first)
         public const int ArtifactKairosMetronomePrice = 2000000;        // Gold; unlocks the 4X and 8X fast-forward rungs
+        // Local artifacts (issue #411): hero-specific, kept in the session save, price deducted on purchase
+        public const int ArtifactFastGrowFertilizerPrice = 250000;       // Gold; crops grow 2x
+        public const int ArtifactLightningGrowFertilizerPrice = 1000000; // Gold; crops grow 3x (requires the fast fertilizer first)
+        public const int ArtifactHermesBootsPrice = 500000;              // Gold; workers move 2x
+        public const float FastGrowFertilizerCropGrowthMultiplier = 2f;
+        public const float LightningGrowFertilizerCropGrowthMultiplier = 3f; // Wins over the fast fertilizer; the two never stack
+        public const float HermesBootsWorkerMoveSpeedMultiplier = 2f;    // Every FarmMonsterMover (farm + kitchen staff); stacks with the runner sprint
 
         // AutoSave (issue #409): the running session is written to a dedicated file on a wall-clock
         // cadence from the presentation pass; the write itself runs on a worker thread (AutoSaveService)
@@ -703,6 +711,12 @@ namespace PitHero
         public const int ArtifactGridRows = 3;
         public const float ArtifactSlotSize = 40f;                    // Stage pixels, matches the seed shop slots
         public const float ArtifactDialogSpriteSize = 64f;            // Sprite size in the artifact card (2x the 32px art)
+        public const float ArtifactDialogScopeLineHeight = 20f;       // Extra card height for the Global/Local line under the title
+
+        // Auto-sell excess items: the pre-jump sweep runs once the bag is this full (issue #411)
+        public const int AutoSellInventoryPercentDefault = 60;        // Leaves room for stencils by default
+        public const int AutoSellInventoryPercentMin = 0;             // 0 = every jump sells everything eligible
+        public const int AutoSellInventoryPercentMax = 100;           // 100 = only a completely full bag
 
         // Second Chance Shop layout positions
         // Composed for a 1920x360 stage; SecondChanceShopUI centers the whole composition on

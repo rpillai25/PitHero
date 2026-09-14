@@ -112,7 +112,7 @@ TabButtons,UI Buttons
 SettingsAlwaysOnTop,Always On Top
 SettingsAlwaysOnTopTooltip,Game window is always on top of everything
 SettingsAutoScrollToHero,Auto-scroll to Hero
-SettingsAutoScrollToHeroTooltip,Window follows hero and auto-scrolls back after being scrolled elsewhere
+SettingsAutoScrollToHeroTooltip,Camera follows hero and auto-scrolls back after being scrolled elsewhere
 SettingsSwapMonitor,Swap Monitor
 SettingsZoom,Zoom: {0}x
 SettingsWindowSize,Window Size:
@@ -273,6 +273,17 @@ ArtifactChronosTimepieceDesc,Powerful timepiece once owned by the master of time
 ArtifactKairosMetronomeName,Kairos Metronome
 ArtifactKairosMetronomeDesc,The bob slides, and the world hurries to keep up.
 ArtifactKairosMetronomeEffect,Unlocks 4X and 8X game speed. (Shift+Click the Fast Forward Button)
+ArtifactFastGrowFertilizerName,Fast Grow Fertilizer
+ArtifactFastGrowFertilizerDesc,Crops grow twice as fast with this special fertilizer
+ArtifactLightningGrowFertilizerName,Lightning Grow Fertilizer
+ArtifactLightningGrowFertilizerDesc,Crops grow three times as fast with this legendary fertilizer
+ArtifactHermesBootsName,Hermes Boots
+ArtifactHermesBootsDesc,Boots worn by Hermes. Workers move twice as fast.
+ArtifactScopeGlobal,Global
+ArtifactScopeLocal,Local
+ArtifactScopeGlobalTooltip,Affects all hero sessions
+ArtifactScopeLocalTooltip,Affects current hero session
+ArtifactBuyButtonFormat,Buy ({0}G)
 ArtifactGrantButtonFormat,Grant ({0}G)
 ArtifactShopHeader,Show proof of gold to be granted an artifact
 ArtifactPriceFormat,{0}G
@@ -423,8 +434,11 @@ ButtonConsumableSellOptions,Consumable Sell Options
 WindowConsumableSellOptions,Consumable Sell Options
 LabelConsumablesAutoSold,Selected items are auto-sold
 LabelConsumablesAutoPurchased,Selected items are auto-purchased
-SettingsConsumableMinStacks,Min Stacks: {0}
-SettingsConsumableMinStacksTooltip,Minimum stacks to keep in inventory; never auto-sold below this
+SettingsConsumableKeepStacks,Keep Stacks: {0}
+SettingsConsumableKeepStacksSellTooltip,Keep exactly this many stacks. Anything above this count will be sold.
+SettingsConsumableKeepStacksPurchaseTooltip,Keep exactly this many stacks. Nothing above this count is purchased.
+SettingsInventorySellPercent,Inventory Sell %: {0}
+SettingsInventorySellPercentTooltip,Auto-sell items when inventory is this full
 GearTypeWeapon,Weapon
 GearTypeHelm,Helm
 GearTypeShield,Shield
@@ -444,8 +458,6 @@ SettingsBuyGearTypes,Gear Types to Buy
 SettingsBuyGearTypesTooltip,Gear of unchecked types will never be auto-purchased
 ButtonConsumablePurchaseOptions,Consumable Purchase Options
 WindowConsumablePurchaseOptions,Consumable Purchase Options
-SettingsConsumableStacks,Stacks: {0}
-SettingsConsumableStacksTooltip,Minimum stacks to maintain in inventory if space allows
 SettingsAutoEquipOptionsTooltip,Auto-equip gear after finding in chest or auto-purchased
 ConsoleAutoPurchasedItem,Auto-purchased {0} for {1}G.
 SettingsAutoHireMercenaries,Auto-Hire Mercenaries
@@ -494,6 +506,7 @@ ButtonReplayPlaySelected,Play Selected
 ReplayListEmpty,No saved replays yet. Use Save Session Replay to keep the current session.
 ReplayListEmptyFiltered,No saved replays for the current hero. Untick Filter to current hero to see all replays.
 ReplayFilterCurrentHero,Filter to current hero
+ReplayListShowingRecentFormat,Showing the {0} most recent of {1} replays
 ReplayRowTitleFormat,{0} the {1}
 ReplayRowDetailFormat,{0}  -  {1}  -  Pit {2}
 ReplaySelectedNone,No replay selected

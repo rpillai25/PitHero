@@ -163,6 +163,13 @@ something the player does that changes the world and it is not one of these, it 
 folder's `replays/` directory and enumerates them header-only. A few hours of play is a few hundred
 KB. Bumping `ReplayData.CurrentVersion` is allowed to break old recordings (they are not user saves).
 
+Recordings are written by the Replay tab's "Save Session Replay" button and **automatically on Quit to
+Title / Exit Game** (`SettingsUI.SaveSessionBeforeLeaving`, issue #411: synchronous autosave first,
+then the pause release and the replay snapshot; nothing is written while a replay is playing back).
+Because of the auto-save the Replay tab lists only the `GameConfig.ReplayListMaxShown` (10) newest
+recordings **after** the current-hero filter, with a "Showing the N most recent of M" note; deleting
+one re-enumerates the folder, so the next most recent slides in.
+
 ## Playback (`ReplayPlaybackService`, global)
 
 `Start(data, isCurrentSession)` sets aside the live recording (`_returnSession`), restores the start
@@ -226,38 +233,54 @@ player had, which is all a replay ever is.
   watch-only. Saves older than v32 derive a stable id from the hero design
   (`SaveData.ComputeLegacyHeroId`); v2 replay files carry id 0 and never qualify.
 
-## Artifacts (system-level unlocks)
+## Artifacts (Global and Local)
 
-`ArtifactType` / `ArtifactCatalog` (`PitHero/Artifacts/`) define one-time grants that belong to the
-**player**, not to a hero or save slot: once granted they are owned forever, across every hero. They
-live in the **system save** (`SystemSaveData`, `%LOCALAPPDATA%\FeedTheHero\system.bin`, own format
-version) managed by the global `ArtifactService`, which writes the file the moment an artifact is
-granted. New Game and loading a slot never touch it.
+`ArtifactType` / `ArtifactCatalog` (`PitHero/Artifacts/`) define one-time purchases in two scopes
+(`ArtifactScope`, issue #411):
 
-**Artifacts are not bought, they are granted on proof of wealth.** The merchant only needs to see
-that the hero holds the required gold; nothing is deducted. This is deliberate: an artifact lives
-outside the save, so deducting gold would let the player reload an older save and keep both the
-gold and the artifact. With nothing to rewind there is nothing to exploit.
+| Scope | Belongs to | Persisted in | Price | Read by |
+|---|---|---|---|---|
+| **Global** | the player — owned forever, across every hero and slot | the **system save** (`SystemSaveData`, `%LOCALAPPDATA%\FeedTheHero\system.bin`, own format version), written the moment one is granted; New Game and loading a slot never touch it | **proof of wealth** — the merchant only needs to see the gold, nothing is deducted | presentation only (replay gates, speed rungs, tabs) |
+| **Local** | the current hero | the regular session save (`SaveData.LocalArtifacts`, v34) — cleared by New Game (`TitleMenuUI.StartGame`), restored by `SaveLoadService.ApplyLoadedState` | **deducted** — a real purchase | the **simulation** (crop growth, worker speed) |
 
-| Artifact | Wealth to show | Unlocks | Prerequisites |
-|---|---|---|---|
-| Sphere of Foresight | `ArtifactSphereOfForesightPrice` | Future simulation (blue region) | none |
-| Kairos Metronome | `ArtifactKairosMetronomePrice` | The 4X and 8X live fast-forward rungs (`FastFUI.HighSpeedRungsUnlocked`) | none |
-| Chronos Timepiece | `ArtifactChronosTimepiecePrice` | Time Travel Here | Sphere of Foresight **and** Kairos Metronome |
+Global artifacts are granted rather than bought on purpose: they live outside the save, so deducting
+gold would let the player reload an older save and keep both the gold and the artifact. Local
+artifacts rewind with the save, so charging for them is safe.
 
-- **Shop:** Second Chance → Artifacts tab (header "Show proof of gold to be granted an artifact")
-  lists what `ArtifactService.IsAvailableInShop` allows (not owned, every prerequisite owned); rows
-  disappear once granted. Clicking a slot opens `ArtifactInfoDialog` (sprite + description) with a
-  Grant button that acts at once, grayed and dead when the hero cannot show that much gold. The
-  merchant bubble says the Dialogue.txt line `SecondChanceProveWealth` while the tab is in front.
-- **Party → Artifacts tab:** a fixed `ArtifactGridColumns` x `ArtifactGridRows` grid of owned artifacts;
-  clicking one opens the same card without Grant.
+| Artifact | Scope | Price constant | Effect | Prerequisites |
+|---|---|---|---|---|
+| Sphere of Foresight | Global | `ArtifactSphereOfForesightPrice` | Future simulation (blue region) | none |
+| Kairos Metronome | Global | `ArtifactKairosMetronomePrice` | The 4X and 8X live fast-forward rungs (`FastFUI.HighSpeedRungsUnlocked`) | none |
+| Chronos Timepiece | Global | `ArtifactChronosTimepiecePrice` | Time Travel Here | Sphere of Foresight **and** Kairos Metronome |
+| Fast Grow Fertilizer | Local | `ArtifactFastGrowFertilizerPrice` | Crops grow 2x (`FastGrowFertilizerCropGrowthMultiplier`) | none |
+| Lightning Grow Fertilizer | Local | `ArtifactLightningGrowFertilizerPrice` | Crops grow 3x (wins over Fast; never stacks). Supersedes Fast in the owned grid (`ArtifactCatalog.GetSupersededBy`): Fast stays owned underneath, just not shown | Fast Grow Fertilizer |
+| Hermes Boots | Local | `ArtifactHermesBootsPrice` | Farm and kitchen workers move 2x (`HermesBootsWorkerMoveSpeedMultiplier`; the runner sprint stacks on top) | none |
+
+- **One query surface.** `ArtifactService` (global, Game1) answers `Owns` / `GetOwnedInOrder` /
+  `IsAvailableInShop` / `Grant` for both scopes: Global from the system file, Local from the attached
+  `GameStateService` (`AttachLocalStore`). Its `Version` is a composite of the two counters, so a Local
+  grant, a load or a New Game refreshes every version-cached UI (Party tab, shop rows) for free.
+- **Shop:** Second Chance → Artifacts tab lists what `IsAvailableInShop` allows (not owned, every
+  prerequisite owned); rows disappear once granted. Clicking a slot opens `ArtifactInfoDialog` — title,
+  a **Global / Local** line, sprite, description — with a Grant (Global) or Buy (Local) button that
+  acts at once, grayed and dead when the hero cannot show that much gold.
+- **Party → Artifacts tab:** a fixed `ArtifactGridColumns` x `ArtifactGridRows` grid: the player's
+  Global artifacts, then this hero's Local ones; clicking one opens the same card without the button.
 - **Replay-safe grant:** `PlayerCommandType.GrantArtifact` (A = ordinal). The handler re-checks the
-  wealth and calls the idempotent `Grant`; no simulation state changes, so a replayed grant is
-  harmless. Ownership is read only by presentation code (replay gates, tabs).
-- **Adding an artifact:** append to `ArtifactType` (persisted ordinal), fill in the catalog switches
-  (sprite name in the Items atlas, name/description/effect keys, price constant, prerequisites), bump
-  `ArtifactCatalog.Count`. The system save keeps unknown ordinals, so older builds never drop a purchase.
+  wealth and calls the idempotent `Grant`; for a Local artifact it then deducts the price. A Global
+  grant changes no simulation state; a Local one does, but as a command it replays at its recorded tick.
+- **Local effects are sim-read every fixed step**, never cached across ticks:
+  `LocalArtifactEffects.GetCropGrowthMultiplier` is written into `CropGrowthService.GrowthSpeedMultiplier`
+  right before its update in `MainGameScene.Update`, and `FarmMonsterMover` reads
+  `GetWorkerMoveSpeedMultiplier` per update. A replay's start blob is a `SaveData` (so it carries
+  `LocalArtifacts`), mid-session purchases are commands, and `SimulationStateHasher.HashWorld` hashes
+  `GameStateService.LocalArtifactMask` — a drift shows up as a `world` divergence, not a silent speed
+  mismatch. Recordings whose blob predates v34 read an empty list, which is correct.
+- **Adding an artifact:** append to `ArtifactType` (persisted ordinal), pick its scope in
+  `ArtifactCatalog.GetScope`, fill in the catalog switches (sprite name in the Items atlas,
+  name/description/effect keys, price constant, prerequisites), bump `ArtifactCatalog.Count`. For a
+  Local artifact with a simulation effect, add the read to `LocalArtifactEffects` and consume it inside
+  the fixed step. Both stores keep unknown ordinals, so older builds never drop a purchase.
 
 ## Invariants (and why)
 

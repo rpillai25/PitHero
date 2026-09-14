@@ -9,8 +9,9 @@ namespace PitHero.UI
 {
     /// <summary>
     /// The "Consumable Purchase Options" window opened from the Automation tab (issue #345).
-    /// Shows every catalog consumable with its sprite, a selection checkbox, and a 1-3 "Stacks"
-    /// slider naming how many stacks of that item the party should hold. Changes commit immediately
+    /// Shows every catalog consumable with its sprite, a selection checkbox, and a 0-3 "Keep Stacks"
+    /// slider naming how many stacks of that item the party should hold — the same value auto-sell
+    /// floors on (issue #411), so the two dialogs always agree. Changes commit immediately
     /// to <see cref="AutoItemPurchaseService.ConsumableSelected"/> /
     /// <see cref="AutoItemPurchaseService.ConsumableStackTargets"/>.
     /// </summary>
@@ -22,7 +23,7 @@ namespace PitHero.UI
         private const float GridMaxHeight = 200f;
         // Window chrome around the grid (title bar, label, button row, padding) — the grid cap is the
         // stage height minus this, so the dialog always fits the configured design height.
-        private const float GridChromeHeight = 109f;
+        private const float GridChromeHeight = 141f;
         private const float SliderWidth = 120f;
 
         private readonly Stage _stage;
@@ -96,18 +97,18 @@ namespace PitHero.UI
                 cell.Row();
 
                 var stackLabel = new HoverableLabel(
-                    string.Format(GetText(UITextKey.SettingsConsumableStacks), AutoItemPurchaseService.MinStackTarget),
-                    skin, "ph-default", GetText(UITextKey.SettingsConsumableStacksTooltip), _stage);
+                    string.Format(GetText(UITextKey.SettingsConsumableKeepStacks), 1),
+                    skin, "ph-default", GetText(UITextKey.SettingsConsumableKeepStacksPurchaseTooltip), _stage);
                 _stackLabels[i] = stackLabel;
                 cell.Add(stackLabel).Left().SetPadTop(2f);
                 cell.Row();
 
                 var slider = new EnhancedSlider(
                     AutoItemPurchaseService.MinStackTarget, AutoItemPurchaseService.MaxStackTarget, 1, false, skin, null, false);
-                slider.SetValueAndCommit(AutoItemPurchaseService.MinStackTarget);
+                slider.SetValueAndCommit(1);
                 slider.OnChanged += (value) =>
                 {
-                    _stackLabels[index].SetText(string.Format(GetText(UITextKey.SettingsConsumableStacks), (int)value));
+                    _stackLabels[index].SetText(string.Format(GetText(UITextKey.SettingsConsumableKeepStacks), (int)value));
                 };
                 slider.OnValueCommitted += (value) =>
                 {
@@ -247,7 +248,7 @@ namespace PitHero.UI
             {
                 int target = svc.ConsumableStackTargets[i];
                 _stackSliders[i]?.SetValueAndCommit(target);
-                _stackLabels[i]?.SetText(string.Format(GetText(UITextKey.SettingsConsumableStacks), target));
+                _stackLabels[i]?.SetText(string.Format(GetText(UITextKey.SettingsConsumableKeepStacks), target));
             }
 
             for (int i = 0; i < _stackSliders.Length; i++)

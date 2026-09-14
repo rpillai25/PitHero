@@ -122,6 +122,13 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// Global growth speed multiplier (Local fertilizer artifacts, issue #411). Scales the wet-time
+        /// accumulation only, so progress and regrowth math stay untouched. The scene sets it from the
+        /// session state every fixed step before <see cref="Update"/> so replays honor it tick for tick.
+        /// </summary>
+        public float GrowthSpeedMultiplier { get; set; } = 1f;
+
+        /// <summary>
         /// Per-frame update: accumulates wet growth time and advances crop frames. Call only when
         /// not paused.
         /// </summary>
@@ -141,7 +148,7 @@ namespace PitHero.Services
                     continue;
 
                 if (tileState.HasFlag(tile, TileStateFlag.Wet))
-                    data.AccumulatedHours += Time.DeltaTime / SecondsPerInGameHour;
+                    data.AccumulatedHours += Time.DeltaTime * GrowthSpeedMultiplier / SecondsPerInGameHour;
 
                 int maxFrame = CropConfig.GetFrameCount(data.Type);
                 float multiplier = data.RegrowthRateMultiplier <= 0f ? 1f : data.RegrowthRateMultiplier;

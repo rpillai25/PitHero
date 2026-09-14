@@ -10,6 +10,8 @@ namespace RolePlayingFramework.Equipment
         public int BagIndex;
         /// <summary>True when the incoming item itself is the weakest candidate and should be sold directly.</summary>
         public bool SellIncoming;
+        /// <summary>True when the pick came from the last-resort tier: gear that is an upgrade for someone in the party.</summary>
+        public bool IsUpgrade;
         /// <summary>True when either a bag item or the incoming item was selected.</summary>
         public bool HasSelection => SellIncoming || BagIndex >= 0;
 
@@ -19,13 +21,16 @@ namespace RolePlayingFramework.Equipment
     }
 
     /// <summary>
-    /// Pure selection logic for auto-selling excess items when the bag is full (issue: auto-sell excess items).
+    /// Pure selection logic for auto-selling excess items (issue: auto-sell excess items; issue #411).
     /// The player chooses whether consumables or gear sell first; within the second category items are only
     /// considered when the first category has no sellable candidate. Among gear, weakness is compared across
     /// ALL gear types at once so a lone strong item of one type never sells before a weak item of another.
-    /// The incoming item participates in the comparison so junk loot never displaces better items.
-    /// Consumables can additionally be excluded outright or protected by a minimum-stacks floor
+    /// The incoming item (when given) participates in the comparison so junk loot never displaces better items.
+    /// Consumables can additionally be excluded outright or protected by a keep-stacks floor
     /// (the "Consumable Sell Options" dialog) so auto-sell never drains the party's potions to zero.
+    /// Gear that is an upgrade for someone in the party (<paramref name="gearIsUpgrade"/>) is the absolute
+    /// last tier: it is skipped by both category passes and only picked — weakest upgrade first — when
+    /// nothing else can clear the space, because inventory must always be clearable.
     /// </summary>
     public static class ExcessItemSellSelector
     {
@@ -33,30 +38,49 @@ namespace RolePlayingFramework.Equipment
         private const int IncomingIndex = int.MaxValue;
 
         /// <summary>
-        /// Selects the item to sell to free a bag slot for <paramref name="incoming"/>.
-        /// Consumable pass: weakest-effect unprotected consumable stack (HP+MP restore, then sell price, then stack count),
-        /// filtered by <paramref name="consumableSellAllowed"/> and <paramref name="consumableKeepStacks"/>
-        /// (minimum stacks of that consumable that must remain in the bag; null means "no floor").
-        /// Gear pass: weakest unprotected gear across all types by gear score (then rarity, then sell price),
-        /// filtered by <paramref name="rarityAllowed"/> and <paramref name="gearTypeAllowed"/> (gear only;
-        /// null means "allow everything"). <paramref name="consumablesFirst"/> picks
-        /// which pass runs first; the other pass only runs when the first finds no candidate.
-        /// Bag items win ties against the incoming item.
+        /// Selects the item to sell to free a bag slot for <paramref name="incoming"/> (null for a plain
+        /// sweep of the bag). Consumable pass: weakest-effect unprotected consumable stack (HP+MP restore,
+        /// then sell price, then stack count), filtered by <paramref name="consumableSellAllowed"/> and
+        /// <paramref name="consumableKeepStacks"/> (stacks of that consumable that must remain in the bag;
+        /// null means "no floor"). Gear pass: weakest unprotected gear across all types by gear score (then
+        /// rarity, then sell price), filtered by <paramref name="rarityAllowed"/> and
+        /// <paramref name="gearTypeAllowed"/> (gear only; null means "allow everything") and skipping gear
+        /// for which <paramref name="gearIsUpgrade"/> is true. <paramref name="consumablesFirst"/> picks
+        /// which pass runs first; the other pass only runs when the first finds no candidate. When both come
+        /// up empty the upgrade gear is considered as a last resort. Bag items win ties against the incoming item.
         /// </summary>
-        public static SellSelection Select(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, bool consumablesFirst = true, Func<ItemKind, bool> gearTypeAllowed = null, Func<Consumable, bool> consumableSellAllowed = null, Func<Consumable, int> consumableKeepStacks = null)
+        public static SellSelection Select(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, bool consumablesFirst = true, Func<ItemKind, bool> gearTypeAllowed = null, Func<Consumable, bool> consumableSellAllowed = null, Func<Consumable, int> consumableKeepStacks = null, Func<IGear, bool> gearIsUpgrade = null)
         {
             if (bag == null)
                 return SellSelection.None;
 
             var first = consumablesFirst
                 ? SelectConsumable(bag, incoming, isProtectedBagIndex, consumableSellAllowed, consumableKeepStacks)
-                : SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed, gearTypeAllowed);
+                : SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed, gearTypeAllowed, gearIsUpgrade, UpgradeTier.Exclude);
             if (first.HasSelection)
                 return first;
 
-            return consumablesFirst
-                ? SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed, gearTypeAllowed)
+            var second = consumablesFirst
+                ? SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed, gearTypeAllowed, gearIsUpgrade, UpgradeTier.Exclude)
                 : SelectConsumable(bag, incoming, isProtectedBagIndex, consumableSellAllowed, consumableKeepStacks);
+            if (second.HasSelection)
+                return second;
+
+            // Last resort: the weakest piece of gear somebody could still use
+            if (gearIsUpgrade == null)
+                return SellSelection.None;
+            var upgrade = SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed, gearTypeAllowed, gearIsUpgrade, UpgradeTier.Only);
+            upgrade.IsUpgrade = upgrade.HasSelection;
+            return upgrade;
+        }
+
+        /// <summary>Which gear the gear pass looks at with respect to the upgrade test.</summary>
+        private enum UpgradeTier
+        {
+            /// <summary>Everything the filters allow except upgrades (no test ⇒ everything).</summary>
+            Exclude,
+            /// <summary>Only upgrades.</summary>
+            Only
         }
 
         /// <summary>Picks the weakest-effect unprotected consumable stack, or none.</summary>
@@ -112,17 +136,19 @@ namespace RolePlayingFramework.Equipment
             return count;
         }
 
-        /// <summary>Picks the weakest unprotected gear across all gear types (rarity- and type-filtered), or none.</summary>
-        private static SellSelection SelectGear(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, Func<ItemKind, bool> gearTypeAllowed)
+        /// <summary>Picks the weakest unprotected gear across all gear types (rarity-, type- and tier-filtered), or none.</summary>
+        private static SellSelection SelectGear(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, Func<ItemKind, bool> gearTypeAllowed, Func<IGear, bool> gearIsUpgrade, UpgradeTier tier)
         {
             int bestIndex = -1;
             long bestKeyA = 0, bestKeyB = 0, bestKeyC = 0;
             for (int i = 0; i < bag.Capacity; i++)
             {
-                if (bag.GetSlotItem(i) is IGear g && RarityOk(rarityAllowed, g.Rarity) && GearTypeOk(gearTypeAllowed, g.Kind) && !IsProtected(isProtectedBagIndex, i))
+                if (bag.GetSlotItem(i) is IGear g && RarityOk(rarityAllowed, g.Rarity) && GearTypeOk(gearTypeAllowed, g.Kind) &&
+                    TierOk(gearIsUpgrade, g, tier) && !IsProtected(isProtectedBagIndex, i))
                     ConsiderGear(g, i, ref bestIndex, ref bestKeyA, ref bestKeyB, ref bestKeyC);
             }
-            if (incoming is IGear incomingGear && RarityOk(rarityAllowed, incomingGear.Rarity) && GearTypeOk(gearTypeAllowed, incomingGear.Kind))
+            if (incoming is IGear incomingGear && RarityOk(rarityAllowed, incomingGear.Rarity) && GearTypeOk(gearTypeAllowed, incomingGear.Kind) &&
+                TierOk(gearIsUpgrade, incomingGear, tier))
                 ConsiderGear(incomingGear, IncomingIndex, ref bestIndex, ref bestKeyA, ref bestKeyB, ref bestKeyC);
 
             return ToSelection(bestIndex);
@@ -144,6 +170,15 @@ namespace RolePlayingFramework.Equipment
         private static bool GearTypeOk(Func<ItemKind, bool> gearTypeAllowed, ItemKind kind)
             => gearTypeAllowed == null || gearTypeAllowed(kind);
 
+        /// <summary>With no upgrade test every piece is ordinary gear; otherwise the tier decides which side is wanted.</summary>
+        private static bool TierOk(Func<IGear, bool> gearIsUpgrade, IGear gear, UpgradeTier tier)
+        {
+            if (gearIsUpgrade == null)
+                return tier == UpgradeTier.Exclude;
+            bool isUpgrade = gearIsUpgrade(gear);
+            return tier == UpgradeTier.Only ? isUpgrade : !isUpgrade;
+        }
+
         /// <summary>Weakness key: restore effect, then sell price, then stack count. Lower wins; bag index breaks final ties.</summary>
         private static void ConsiderConsumable(Consumable c, int index, ref int bestIndex, ref long keyA, ref long keyB, ref long keyC)
         {
@@ -163,8 +198,5 @@ namespace RolePlayingFramework.Equipment
                 bestIndex = index; keyA = a; keyB = b; keyC = c;
             }
         }
-
-        private static bool IsWeaker(long a, long b, long c, int index, long bestA, long bestB, long bestC, int bestIndex)
-            => ItemWeaknessRanking.IsWeaker(a, b, c, index, bestA, bestB, bestC, bestIndex);
     }
 }

@@ -102,6 +102,10 @@ or touch the button directly.
    no version bump.
 7. **Files are deleted only on the main thread**, in `SetAutoSavePreview` → `EnforceAutoSaveCap`.
    The worker writes and nothing else.
+8. **Quit to Title and Exit Game autosave synchronously first** (`AutoSaveService.SaveNow()` from
+   `SettingsUI.SaveSessionBeforeLeaving`, issue #411): wait for any in-flight write, gather, write,
+   wait, reset the countdown — gated on `SaveAllowed` like every other save. The current replay
+   recording is saved right after it under the normal replay naming.
 
 ## Decisions that are not obvious from the code
 

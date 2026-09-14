@@ -145,9 +145,11 @@ namespace PitHero.Services.Replay
                 }
                 case PlayerCommandType.SetConsumableStackTarget:
                 {
+                    // Writes the Keep Stacks array shared with auto-sell (issue #411); kept as its own
+                    // command so recordings made before the unification still replay
                     var svc = Services?.GetService<AutoItemPurchaseService>();
                     if (svc != null && cmd.A >= 0 && cmd.A < svc.ConsumableStackTargets.Length)
-                        svc.ConsumableStackTargets[cmd.A] = cmd.B;
+                        svc.ConsumableStackTargets[cmd.A] = ClampKeepStacks(cmd.B);
                     return true;
                 }
                 case PlayerCommandType.SetConsumableSellAllowed:
@@ -160,8 +162,15 @@ namespace PitHero.Services.Replay
                 case PlayerCommandType.SetConsumableMinStacks:
                 {
                     var svc = Services?.GetService<AutoSellExcessItemsService>();
-                    if (svc != null && cmd.A >= 0 && cmd.A < svc.ConsumableMinStacks.Length)
-                        svc.ConsumableMinStacks[cmd.A] = cmd.B;
+                    if (svc != null && cmd.A >= 0 && cmd.A < svc.ConsumableKeepStacks.Length)
+                        svc.ConsumableKeepStacks[cmd.A] = ClampKeepStacks(cmd.B);
+                    return true;
+                }
+                case PlayerCommandType.SetInventorySellPercent:
+                {
+                    var svc = Services?.GetService<AutoSellExcessItemsService>();
+                    if (svc != null)
+                        svc.InventorySellPercent = cmd.A; // the setter clamps
                     return true;
                 }
                 case PlayerCommandType.SetGearFilterFlag:
@@ -293,6 +302,14 @@ namespace PitHero.Services.Replay
         /// <summary>The main game scene, or null.</summary>
         private static PitHero.ECS.Scenes.MainGameScene MainScene => CurrentScene as PitHero.ECS.Scenes.MainGameScene;
 
+        /// <summary>Clamps a Keep Stacks command payload to the slider range (old recordings may carry any value).</summary>
+        private static int ClampKeepStacks(int value)
+        {
+            if (value < AutoSellExcessItemsService.MinKeepStacks) return AutoSellExcessItemsService.MinKeepStacks;
+            if (value > AutoSellExcessItemsService.MaxKeepStacks) return AutoSellExcessItemsService.MaxKeepStacks;
+            return value;
+        }
+
         /// <summary>Resolves the inventory grid a command targets: 0 = Party window, 1 = Second Chance shop.</summary>
         private static PitHero.UI.InventoryGrid GetGrid(int gridId)
         {
@@ -325,9 +342,11 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>
-        /// Grants an artifact at the system level on proof of wealth: the merchant only needs to see
-        /// the required gold, nothing is deducted (so reloading an older save cannot rewind a payment).
-        /// The simulation is untouched; the grant is idempotent, so a replayed grant is harmless.
+        /// Grants an artifact. Global: on proof of wealth — the merchant only needs to see the required
+        /// gold, nothing is deducted (so reloading an older save cannot rewind a payment) and the
+        /// simulation is untouched. Local (issue #411): a real purchase — the price is deducted and the
+        /// ownership lands on the session state the simulation reads. Both grants are idempotent, so a
+        /// replayed grant is harmless; the local deduction replays because this is a command.
         /// </summary>
         private static void ApplyGrantArtifact(int ordinal)
         {
@@ -338,10 +357,14 @@ namespace PitHero.Services.Replay
             if (gameState == null)
                 return;
             var type = (PitHero.Artifacts.ArtifactType)ordinal;
-            if (gameState.Funds < PitHero.Artifacts.ArtifactCatalog.GetPrice(type))
+            int price = PitHero.Artifacts.ArtifactCatalog.GetPrice(type);
+            if (gameState.Funds < price)
                 return;
-            if (ArtifactService.Current?.Grant(type) == true)
-                Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
+            if (ArtifactService.Current?.Grant(type) != true)
+                return;
+            if (PitHero.Artifacts.ArtifactCatalog.IsLocal(type))
+                gameState.Funds -= price;
+            Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
         }
 
         private static void ApplyRemoveBuilding(int uniqueId)

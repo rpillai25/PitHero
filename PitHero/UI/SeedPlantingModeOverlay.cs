@@ -462,24 +462,11 @@ namespace PitHero.UI
             // before the plan is carried out. Invalid only when the same plan type already exists
             // here (a no-op); a plan-less tile is fair game even while a crop grows on it, and a
             // same-type placement over a plan-less crop re-plans it (cancels a pending destroy).
+            // Neighboring plans never matter: any crop may be planted next to any other (issue #411),
+            // the field layout is entirely the player's call.
             var planType = cropService?.GetPlanType(tile);
             if (planType.HasValue && planType.Value == _selectedCrop)
                 return false;
-
-            // Reject if any of the 8 neighboring tiles has a PLANNED crop of a different type.
-            // Real growing crops are ignored: a plan-less crop is pending destroy/no-replant, so
-            // it doesn't constrain the planned layout.
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    if (dx == 0 && dy == 0) continue;
-                    var neighbor = new Microsoft.Xna.Framework.Point(tx + dx, ty + dy);
-                    var neighborType = cropService?.GetPlanType(neighbor);
-                    if (neighborType.HasValue && neighborType.Value != _selectedCrop)
-                        return false;
-                }
-            }
 
             return true;
         }

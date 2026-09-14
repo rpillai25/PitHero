@@ -27,21 +27,19 @@ namespace PitHero.UI
 
         private void BuildTooltipWindow(Skin skin)
         {
-            _tooltipWindow = new Window("", skin);
-            _tooltipWindow.SetMovable(false);
-            _tooltipWindow.SetResizable(false);
-            _tooltipWindow.SetKeepWithinStage(false);
-            _tooltipWindow.SetColor(GameConfig.TransparentMenu);
-
-            var label = new Label(_tooltipText, new LabelStyle { Font = Nez.Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
-            _tooltipWindow.Add(label).Pad(6f);
-            _tooltipWindow.Pack();
-            _tooltipWindow.SetVisible(false);
+            // Self-hiding: the window watches this checkbox's hierarchy, since Draw below never
+            // runs once an ancestor (the Settings window) is hidden
+            _tooltipWindow = new HoverTooltipWindow(this, skin, _tooltipText, BrownFontColor);
             _stage.AddElement(_tooltipWindow);
         }
 
         public override void Draw(Batcher batcher, float parentAlpha)
         {
+            // Nez only clears _mouseOver on a mouse-exit event, which never fires for a checkbox
+            // hidden under the cursor and re-shown later; correct it before base.Draw styles from it
+            if (_mouseOver && !HoverTooltipWindow.MouseIsOver(this))
+                _mouseOver = _mouseDown = false;
+
             base.Draw(batcher, parentAlpha);
 
             if (_tooltipWindow == null) return;

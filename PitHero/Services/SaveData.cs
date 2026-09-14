@@ -273,7 +273,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 33; // v33: same bytes as v32; bag indices are remapped from the 24x5 grid to 30x4 on read
+        public const int CurrentVersion = 34; // v34: local artifacts + inventory sell percent appended (issue #411); keep-stacks arrays unified on read of older files
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -601,8 +601,20 @@ namespace PitHero.Services
         /// <summary>Which catalog consumables may be auto-sold, indexed by ConsumableCatalog index. Null until Recover normalizes it.</summary>
         public bool[] AutoSellConsumableSelected;
 
-        /// <summary>Minimum stacks to keep per catalog consumable, indexed by ConsumableCatalog index. Null until Recover normalizes it.</summary>
+        /// <summary>
+        /// Keep Stacks per catalog consumable, indexed by ConsumableCatalog index. Since v34 this is the
+        /// single value shared by auto-sell and auto-purchase (AutoPurchaseConsumableStacks is written
+        /// from the same array). Null until Recover normalizes it.
+        /// </summary>
         public int[] AutoSellConsumableMinStacks;
+
+        // Inventory sell percent (v34, issue #411)
+        /// <summary>Bag fill percentage at which the pre-jump auto-sell sweep runs (0-100).</summary>
+        public int AutoSellInventorySellPercent = GameConfig.AutoSellInventoryPercentDefault;
+
+        // Local artifacts (v34, issue #411)
+        /// <summary>Hero-specific artifact ordinals in grant order. Null until Recover normalizes it.</summary>
+        public List<int> LocalArtifacts;
 
         // Placed stencils (v27)
         /// <summary>Stencils currently placed on the inventory grid.</summary>
@@ -1130,6 +1142,15 @@ namespace PitHero.Services
 
             // 47. Hero identity (v32)
             writer.Write(HeroId);
+
+            // 48. Local artifacts (v34)
+            int localArtifactCount = LocalArtifacts != null ? LocalArtifacts.Count : 0;
+            writer.Write(localArtifactCount);
+            for (int i = 0; i < localArtifactCount; i++)
+                writer.Write(LocalArtifacts[i]);
+
+            // 49. Inventory sell percent (v34)
+            writer.Write(AutoSellInventorySellPercent);
         }
 
         /// <summary>
@@ -1696,6 +1717,45 @@ namespace PitHero.Services
             HeroId = fileVersion >= 32
                 ? reader.ReadInt()
                 : ComputeLegacyHeroId(HeroName, HeroGender, SkinColor, HairColor, HairstyleIndex, ShirtColor);
+
+            // 48. Local artifacts (section added in v34). Ordinals a newer build wrote are kept so a
+            // save/load cycle on this build never drops a purchase.
+            LocalArtifacts = new List<int>();
+            if (fileVersion >= 34)
+            {
+                int localArtifactCount = reader.ReadInt();
+                for (int i = 0; i < localArtifactCount; i++)
+                {
+                    int ordinal = reader.ReadInt();
+                    if (!LocalArtifacts.Contains(ordinal))
+                        LocalArtifacts.Add(ordinal);
+                }
+            }
+
+            // 49. Inventory sell percent (section added in v34).
+            AutoSellInventorySellPercent = GameConfig.AutoSellInventoryPercentDefault;
+            if (fileVersion >= 34)
+            {
+                int percent = reader.ReadInt();
+                if (percent < GameConfig.AutoSellInventoryPercentMin) percent = GameConfig.AutoSellInventoryPercentMin;
+                if (percent > GameConfig.AutoSellInventoryPercentMax) percent = GameConfig.AutoSellInventoryPercentMax;
+                AutoSellInventorySellPercent = percent;
+            }
+
+            // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
+            // value. Older files carried two; reproduce the old EFFECTIVE sell floor (raised to the
+            // purchase target only while purchasing was on and the item selected) and make both
+            // arrays identical so the shared value is well defined.
+            if (fileVersion < 34)
+            {
+                for (int i = 0; i < AutoSellConsumableMinStacks.Length && i < AutoPurchaseConsumableStacks.Length; i++)
+                {
+                    if (AutoPurchaseItems && AutoPurchaseConsumableSelected[i] &&
+                        AutoPurchaseConsumableStacks[i] > AutoSellConsumableMinStacks[i])
+                        AutoSellConsumableMinStacks[i] = AutoPurchaseConsumableStacks[i];
+                    AutoPurchaseConsumableStacks[i] = AutoSellConsumableMinStacks[i];
+                }
+            }
         }
 
         /// <summary>

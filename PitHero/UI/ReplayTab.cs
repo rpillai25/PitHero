@@ -185,18 +185,34 @@ namespace PitHero.UI
             // known hero (id 0) the filter has nothing to match and the full list shows.
             int heroId = Core.Services?.GetService<GameStateService>()?.HeroId ?? 0;
             bool filtered = _filterCheckBox != null && _filterCheckBox.IsChecked && heroId != 0;
+            List<ReplayFileInfo> matching;
             if (filtered)
             {
-                _entries = new List<ReplayFileInfo>(all.Count);
+                matching = new List<ReplayFileInfo>(all.Count);
                 for (int i = 0; i < all.Count; i++)
                 {
                     if (all[i].HeroId == heroId)
-                        _entries.Add(all[i]);
+                        matching.Add(all[i]);
                 }
             }
             else
             {
-                _entries = all;
+                matching = all;
+            }
+
+            // Replays are saved automatically on every Quit/Exit (issue #411), so the list is capped to
+            // the newest few AFTER the filter: Enumerate is newest-first, and a delete re-enumerates, so
+            // the next most recent recording slides in when one of the shown ones goes.
+            int shown = matching.Count < GameConfig.ReplayListMaxShown ? matching.Count : GameConfig.ReplayListMaxShown;
+            if (shown == matching.Count)
+            {
+                _entries = matching;
+            }
+            else
+            {
+                _entries = new List<ReplayFileInfo>(shown);
+                for (int i = 0; i < shown; i++)
+                    _entries.Add(matching[i]);
             }
 
             _rowsTable.ClearChildren();
@@ -212,6 +228,13 @@ namespace PitHero.UI
                 for (int i = 0; i < _entries.Count; i++)
                 {
                     BuildRow(_entries[i], i);
+                    _rowsTable.Row();
+                }
+                if (matching.Count > _entries.Count)
+                {
+                    var note = new Label(string.Format(GetText(UITextKey.ReplayListShowingRecentFormat), _entries.Count, matching.Count), _skin, "ph-default");
+                    note.SetWrap(true);
+                    _rowsTable.Add(note).Width(RowWidth).SetPadTop(4f).SetPadBottom(RowPad);
                     _rowsTable.Row();
                 }
             }
@@ -297,7 +320,7 @@ namespace PitHero.UI
         }
 
         /// <summary>Applies and records pause releases immediately (the normal drain will not run before the scene swap).</summary>
-        private static void ReleasePausesOnRecord()
+        public static void ReleasePausesOnRecord()
         {
             var commands = PlayerCommandService.Current;
             if (commands == null)

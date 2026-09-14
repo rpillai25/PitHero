@@ -1970,5 +1970,145 @@ namespace PitHero.Tests
             Assert.AreEqual(first.HeroId, second.HeroId, "Every load of the same old save must agree on the hero");
             Assert.AreEqual("LegacyHero", first.HeroName);
         }
+
+        // ── v34: local artifacts, inventory sell percent, unified keep stacks (issue #411) ──
+
+        private static SaveData RoundTrip(SaveData original)
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+                writer.Write(original);
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+                rdr.ReadPersistableInto(loaded);
+            return loaded;
+        }
+
+        [TestMethod]
+        public void SaveData_V34_LocalArtifacts_RoundTrip()
+        {
+            var original = new SaveData();
+            original.LocalArtifacts = new List<int> { 5, 3, 99, 3 };   // grant order, an unknown ordinal, a duplicate
+
+            var loaded = RoundTrip(original);
+
+            CollectionAssert.AreEqual(new List<int> { 5, 3, 99 }, loaded.LocalArtifacts,
+                "Order kept, unknown ordinal kept for a newer build, duplicate dropped");
+        }
+
+        [TestMethod]
+        public void SaveData_V34_InventorySellPercent_RoundTrip()
+        {
+            var original = new SaveData { AutoSellInventorySellPercent = 25 };
+            Assert.AreEqual(25, RoundTrip(original).AutoSellInventorySellPercent);
+
+            var clamped = new SaveData { AutoSellInventorySellPercent = 250 };
+            Assert.AreEqual(100, RoundTrip(clamped).AutoSellInventorySellPercent, "Out-of-range bytes clamp on read");
+        }
+
+        [TestMethod]
+        public void SaveData_V34_Defaults()
+        {
+            var loaded = RoundTrip(new SaveData());
+            Assert.IsNotNull(loaded.LocalArtifacts);
+            Assert.AreEqual(0, loaded.LocalArtifacts.Count);
+            Assert.AreEqual(GameConfig.AutoSellInventoryPercentDefault, loaded.AutoSellInventorySellPercent);
+        }
+
+        /// <summary>Strips the v34 tail (local artifacts count + ordinals, then the percent) and patches the version to 33.</summary>
+        private static byte[] ToV33Bytes(SaveData original, int localArtifactCount)
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+                writer.Write(original);
+            byte[] v34 = ms.ToArray();
+            int tail = 4 + 4 * localArtifactCount + 4;
+            var v33 = new byte[v34.Length - tail];
+            Array.Copy(v34, 0, v33, 0, v33.Length);
+            v33[0] = 33;
+            v33[1] = 0;
+            v33[2] = 0;
+            v33[3] = 0;
+            return v33;
+        }
+
+        [TestMethod]
+        public void SaveData_V33_File_ReadsWithV34Defaults()
+        {
+            var original = new SaveData();
+            original.HeroId = 777;
+            original.LocalArtifacts = new List<int> { 3, 5 };
+            original.AutoSellInventorySellPercent = 25;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ToV33Bytes(original, 2))))
+                rdr.ReadPersistableInto(loaded);
+
+            Assert.AreEqual(777, loaded.HeroId, "The v33 read consumed exactly the v33 bytes");
+            Assert.AreEqual(0, loaded.LocalArtifacts.Count, "A v33 file has no local artifacts");
+            Assert.AreEqual(GameConfig.AutoSellInventoryPercentDefault, loaded.AutoSellInventorySellPercent);
+        }
+
+        [TestMethod]
+        public void SaveData_V33_File_ReconcilesKeepStacks()
+        {
+            int count = RolePlayingFramework.Equipment.ConsumableCatalog.Count;
+
+            // Purchase on + item selected + target above the sell floor: the old EFFECTIVE floor was the target
+            var original = new SaveData();
+            original.AutoPurchaseItems = true;
+            original.AutoPurchaseConsumableSelected = new bool[count];
+            original.AutoPurchaseConsumableStacks = new int[count];
+            original.AutoSellConsumableSelected = new bool[count];
+            original.AutoSellConsumableMinStacks = new int[count];
+            for (int i = 0; i < count; i++)
+            {
+                original.AutoPurchaseConsumableSelected[i] = i == 0;
+                original.AutoPurchaseConsumableStacks[i] = 3;
+                original.AutoSellConsumableSelected[i] = true;
+                original.AutoSellConsumableMinStacks[i] = 1;
+            }
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ToV33Bytes(original, 0))))
+                rdr.ReadPersistableInto(loaded);
+            Assert.AreEqual(3, loaded.AutoSellConsumableMinStacks[0], "Selected + purchasing: the floor was effectively the target");
+            Assert.AreEqual(3, loaded.AutoPurchaseConsumableStacks[0]);
+            Assert.AreEqual(1, loaded.AutoSellConsumableMinStacks[1], "Unselected: the sell floor stands");
+            Assert.AreEqual(1, loaded.AutoPurchaseConsumableStacks[1], "…and the purchase target follows it");
+
+            // Purchasing off: the sell floor is the single value everywhere
+            original.AutoPurchaseItems = false;
+            loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ToV33Bytes(original, 0))))
+                rdr.ReadPersistableInto(loaded);
+            Assert.AreEqual(1, loaded.AutoSellConsumableMinStacks[0]);
+            Assert.AreEqual(1, loaded.AutoPurchaseConsumableStacks[0]);
+
+            // A v34 file is never reconciled: what was written is what is read
+            var current = new SaveData();
+            current.AutoPurchaseItems = true;
+            current.AutoPurchaseConsumableSelected = new bool[count];
+            current.AutoPurchaseConsumableStacks = new int[count];
+            current.AutoSellConsumableSelected = new bool[count];
+            current.AutoSellConsumableMinStacks = new int[count];
+            current.AutoPurchaseConsumableSelected[0] = true;
+            current.AutoPurchaseConsumableStacks[0] = 3;
+            current.AutoSellConsumableMinStacks[0] = 1;
+            loaded = RoundTrip(current);
+            Assert.AreEqual(1, loaded.AutoSellConsumableMinStacks[0]);
+            Assert.AreEqual(3, loaded.AutoPurchaseConsumableStacks[0]);
+        }
+
+        [TestMethod]
+        public void ReplayIO_SaveDataBlob_RoundTripsLocalArtifacts()
+        {
+            var original = new SaveData();
+            original.LocalArtifacts = new List<int> { 3 };
+
+            var loaded = PitHero.Services.Replay.ReplayIO.DeserializeSaveData(PitHero.Services.Replay.ReplayIO.SerializeSaveData(original));
+
+            Assert.IsNotNull(loaded);
+            CollectionAssert.AreEqual(new List<int> { 3 }, loaded.LocalArtifacts, "A replay's start state carries the hero's local artifacts");
+        }
     }
 }

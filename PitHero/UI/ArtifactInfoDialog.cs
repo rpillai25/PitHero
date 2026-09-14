@@ -6,9 +6,10 @@ using PitHero.Services;
 namespace PitHero.UI
 {
     /// <summary>
-    /// The artifact card: the artifact's sprite, name and description. From the Party tab it closes
-    /// with OK; from the shop it also offers a Buy button that hands the purchase back to the caller.
-    /// Registered as a UI prompt so outside-click dismissal of the parent window waits for it.
+    /// The artifact card: the artifact's name (title), its Global/Local scope, sprite and description.
+    /// From the Party tab it closes with OK; from the shop it also offers a Grant (Global) or Buy (Local)
+    /// button that hands the purchase back to the caller. Registered as a UI prompt so outside-click
+    /// dismissal of the parent window waits for it.
     /// </summary>
     public class ArtifactInfoDialog : Window, IUIPrompt
     {
@@ -19,29 +20,50 @@ namespace PitHero.UI
         private const float TextWidth = 300f;
 
         private readonly TextButton _closeButton;
+        private readonly HoverableLabel _scopeLabel;
 
         bool IUIPrompt.IsPromptVisible => GetParent() != null && IsVisible();
 
-        void IUIPrompt.CancelPrompt() => Remove();
+        void IUIPrompt.CancelPrompt() => Close();
+
+        /// <summary>Removes the card and the scope tooltip it put on the stage.</summary>
+        public void Close()
+        {
+            _scopeLabel?.RemoveTooltip();
+            Remove();
+        }
 
         /// <summary>
-        /// Builds the card. When <paramref name="grantPrice"/> is set a Grant button is shown and
-        /// <paramref name="onGrant"/> runs (after the card closes) when it is clicked; with
-        /// <paramref name="canAfford"/> false the button is grayed and dead. The price is the wealth
-        /// the player must show, not a cost.
+        /// Builds the card. When <paramref name="grantPrice"/> is set a Grant (Global) or Buy (Local)
+        /// button is shown and <paramref name="onGrant"/> runs (after the card closes) when it is
+        /// clicked; with <paramref name="canAfford"/> false the button is grayed and dead. For a Global
+        /// artifact the price is the wealth the player must show, for a Local one it is the cost.
         /// </summary>
-        public ArtifactInfoDialog(ArtifactType artifact, Skin skin, int? grantPrice = null, System.Action onGrant = null, bool canAfford = true)
+        public ArtifactInfoDialog(ArtifactType artifact, Skin skin, Stage stage, int? grantPrice = null, System.Action onGrant = null, bool canAfford = true)
             : base(GetText(ArtifactCatalog.GetNameKey(artifact)), skin)
         {
             string effectKey = ArtifactCatalog.GetEffectKey(artifact);
             string effectText = string.IsNullOrEmpty(effectKey) ? null : GetText(effectKey);
             bool hasEffectLine = !string.IsNullOrEmpty(effectText);
+            bool isLocal = ArtifactCatalog.IsLocal(artifact);
 
-            SetSize(DialogWidth, hasEffectLine ? DialogHeightWithEffect : DialogHeight);
+            SetSize(DialogWidth, (hasEffectLine ? DialogHeightWithEffect : DialogHeight) + GameConfig.ArtifactDialogScopeLineHeight);
             SetMovable(false);
 
             var table = new Table();
             table.Pad(12f);
+
+            // Scope line right under the title: Global (every hero) or Local (this hero only). Buff-green
+            // ("ph-meal-header", its own style so no shared label recolors), left-aligned in a cell as
+            // wide as the description so the two start on the same column, with a hover tooltip.
+            _scopeLabel = new HoverableLabel(
+                GetText(isLocal ? UITextKey.ArtifactScopeLocal : UITextKey.ArtifactScopeGlobal),
+                skin, "ph-meal-header",
+                GetText(isLocal ? UITextKey.ArtifactScopeLocalTooltip : UITextKey.ArtifactScopeGlobalTooltip),
+                stage);
+            _scopeLabel.SetAlignment(Nez.UI.Align.Left);
+            table.Add(_scopeLabel).Width(TextWidth).Left().SetPadBottom(6f);
+            table.Row();
 
             if (Core.Content != null)
             {
@@ -73,14 +95,14 @@ namespace PitHero.UI
             var buttons = new Table();
             if (grantPrice.HasValue)
             {
-                string grantText = string.Format(GetText(UITextKey.ArtifactGrantButtonFormat),
+                string grantText = string.Format(GetText(isLocal ? UITextKey.ArtifactBuyButtonFormat : UITextKey.ArtifactGrantButtonFormat),
                     grantPrice.Value.ToString("N0", System.Globalization.CultureInfo.InvariantCulture));
                 var grantButton = new TextButton(grantText, skin, canAfford ? "ph-default" : "ph-grayed");
                 if (canAfford)
                 {
                     grantButton.OnClicked += (_) =>
                     {
-                        Remove();
+                        Close();
                         onGrant?.Invoke();
                     };
                 }
@@ -98,7 +120,7 @@ namespace PitHero.UI
                 _closeButton = new TextButton(GetText(UITextKey.ButtonOK), skin, "ph-default");
             }
             _closeButton.ClickSoundCategory = ButtonClickCategory.Cancel;
-            _closeButton.OnClicked += (_) => Remove();
+            _closeButton.OnClicked += (_) => Close();
             buttons.Add(_closeButton).Width(80f).SetMinHeight(GameConfig.DialogButtonMinHeight);
             table.Add(buttons);
 

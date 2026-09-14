@@ -8,11 +8,14 @@ using System.IO;
 namespace PitHero.Services
 {
     /// <summary>
-    /// Owns the player's artifacts (see <see cref="ArtifactType"/>) and persists them in the system save
-    /// file the moment one is granted. Global service: registered in Game1 and never reset by New Game
-    /// or by loading a slot. Ownership is read by presentation code only (replay gates, shop and party
-    /// tabs); the simulation touches it solely through the BuyArtifact command handler, whose grant is
-    /// idempotent so replaying a purchase never differs from the live one.
+    /// The single query surface for artifact ownership (see <see cref="ArtifactType"/>). Global
+    /// artifacts belong to the player: they are persisted in the system save file the moment one is
+    /// granted, and are never reset by New Game or by loading a slot. Local artifacts (issue #411)
+    /// belong to the current hero: their ownership lives on the attached <see cref="GameStateService"/>
+    /// (session save) and IS read by the simulation (crop growth, worker speed), so it travels with the
+    /// save and with every replay's start state. Global service registered in Game1; grants arrive only
+    /// through the GrantArtifact command handler and are idempotent, so a replayed purchase never
+    /// differs from the live one.
     /// </summary>
     public sealed class ArtifactService
     {
@@ -24,9 +27,14 @@ namespace PitHero.Services
         private readonly FileDataStore _store;
         private readonly SystemSaveData _data = new SystemSaveData();
         private readonly bool[] _owned = new bool[ArtifactCatalog.Count];
+        private GameStateService _local;
+        private int _globalVersion;
 
-        /// <summary>Incremented on every grant so UI that caches ownership can refresh cheaply.</summary>
-        public int Version { get; private set; }
+        /// <summary>
+        /// Changes on every grant, and on every local-artifact load/clear, so UI that caches ownership
+        /// can refresh cheaply. Composite of the global counter and the local store's own version.
+        /// </summary>
+        public int Version => _globalVersion + (_local != null ? _local.LocalArtifactVersion : 0);
 
         /// <summary>Creates the service on the default persistent data folder.</summary>
         public ArtifactService() : this(PersistentPaths.BaseDirectory(), GameConfig.SystemSaveFileName)
@@ -51,33 +59,69 @@ namespace PitHero.Services
                 Current = null;
         }
 
-        /// <summary>True when the player owns the artifact.</summary>
+        /// <summary>Points Local-scope ownership at the session state (Game1 registration, tests).</summary>
+        public void AttachLocalStore(GameStateService store)
+        {
+            _local = store;
+        }
+
+        /// <summary>Forgets the local store; Local artifacts then read as not owned.</summary>
+        public void DetachLocalStore()
+        {
+            _local = null;
+        }
+
+        /// <summary>True when the player (Global) or the current hero (Local) owns the artifact.</summary>
         public bool Owns(ArtifactType type)
         {
+            if (ArtifactCatalog.IsLocal(type))
+                return _local != null && _local.OwnsLocalArtifact(type);
             int i = (int)type;
             return i >= 0 && i < _owned.Length && _owned[i];
         }
 
-        /// <summary>Number of artifacts owned.</summary>
+        /// <summary>Number of artifacts owned, Global and Local together.</summary>
         public int OwnedCount
         {
             get
             {
                 int n = 0;
                 for (int i = 0; i < _owned.Length; i++)
-                    if (_owned[i]) n++;
+                    if (Owns((ArtifactType)i)) n++;
                 return n;
             }
         }
 
-        /// <summary>Appends the owned artifacts to <paramref name="result"/> in the order they were granted.</summary>
+        /// <summary>
+        /// True when the artifact is owned but a straight upgrade of it is owned too, so the owned
+        /// grid shows only the upgrade (Fast Grow Fertilizer once the Lightning one is bought).
+        /// </summary>
+        public bool IsSuperseded(ArtifactType type)
+        {
+            var upgrade = ArtifactCatalog.GetSupersededBy(type);
+            return upgrade.HasValue && Owns(upgrade.Value);
+        }
+
+        /// <summary>
+        /// Appends the artifacts to show as owned to <paramref name="result"/>: the player's Global
+        /// artifacts in grant order, then this hero's Local artifacts in grant order, minus any piece
+        /// whose upgrade is also owned (<see cref="IsSuperseded"/>).
+        /// </summary>
         public void GetOwnedInOrder(List<ArtifactType> result)
         {
+            int start = result.Count;
             for (int i = 0; i < _data.OwnedArtifacts.Count; i++)
             {
                 int ordinal = _data.OwnedArtifacts[i];
                 if (ArtifactCatalog.IsValid(ordinal))
                     result.Add((ArtifactType)ordinal);
+            }
+            _local?.GetLocalArtifactsInOrder(result);
+
+            for (int i = result.Count - 1; i >= start; i--)
+            {
+                if (IsSuperseded(result[i]))
+                    result.RemoveAt(i);
             }
         }
 
@@ -98,18 +142,22 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Grants the artifact and writes the system save. Idempotent: granting an owned artifact
-        /// changes nothing, which is what lets a replayed purchase apply safely.
+        /// Grants the artifact. Global: records it and writes the system save. Local: records it on the
+        /// session state (saved with the game, never the system file). Idempotent: granting an owned
+        /// artifact changes nothing, which is what lets a replayed purchase apply safely.
         /// </summary>
         public bool Grant(ArtifactType type)
         {
+            if (ArtifactCatalog.IsLocal(type))
+                return _local != null && _local.GrantLocalArtifact(type);
+
             int i = (int)type;
             if (i < 0 || i >= _owned.Length || _owned[i])
                 return false;
             _owned[i] = true;
             if (!_data.OwnedArtifacts.Contains(i))
                 _data.OwnedArtifacts.Add(i);
-            Version++;
+            _globalVersion++;
             Save();
             return true;
         }
@@ -131,7 +179,9 @@ namespace PitHero.Services
             for (int i = 0; i < _data.OwnedArtifacts.Count; i++)
             {
                 int ordinal = _data.OwnedArtifacts[i];
-                if (ArtifactCatalog.IsValid(ordinal))
+                // Only Global ordinals belong in the system file; a Local one written by mistake stays
+                // in the list (never dropped) but is not treated as owned
+                if (ArtifactCatalog.IsValid(ordinal) && !ArtifactCatalog.IsLocal((ArtifactType)ordinal))
                     _owned[ordinal] = true;
             }
         }

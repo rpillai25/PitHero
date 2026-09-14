@@ -9,6 +9,65 @@ namespace RolePlayingFramework.Equipment
     /// <summary>Service for automatically equipping optimal gear when looted from chests.</summary>
     public static class GearAutoEquipService
     {
+        /// <summary>The five gear categories mapped onto the equipment slot each one occupies (accessories use both slots).</summary>
+        public static readonly EquipmentSlot[] CategorySlots =
+        {
+            EquipmentSlot.WeaponShield1,   // Weapon
+            EquipmentSlot.Hat,             // Helm
+            EquipmentSlot.WeaponShield2,   // Shield
+            EquipmentSlot.Armor,           // Armor
+            EquipmentSlot.Accessory1       // Accessory (handled specially — both slots considered)
+        };
+
+        /// <summary>
+        /// The equipped gear a new item of the category would have to beat for the hero: the slot's
+        /// item, or for accessories the weaker of the two (null when either accessory slot is empty,
+        /// since anything fills a hole).
+        /// </summary>
+        public static IGear GetEquippedBaseline(Hero hero, GearCategory category)
+        {
+            if (hero == null) return null;
+            if (category == GearCategory.Accessory)
+                return WeakerAccessory(GetHeroItemInSlot(hero, EquipmentSlot.Accessory1), GetHeroItemInSlot(hero, EquipmentSlot.Accessory2));
+            return GetHeroItemInSlot(hero, CategorySlots[(int)category]);
+        }
+
+        /// <summary>The equipped gear a new item of the category would have to beat for the mercenary (see the hero overload).</summary>
+        public static IGear GetEquippedBaseline(Mercenary merc, GearCategory category)
+        {
+            if (merc == null) return null;
+            if (category == GearCategory.Accessory)
+                return WeakerAccessory(GetMercItemInSlot(merc, EquipmentSlot.Accessory1), GetMercItemInSlot(merc, EquipmentSlot.Accessory2));
+            return GetMercItemInSlot(merc, CategorySlots[(int)category]);
+        }
+
+        private static IGear WeakerAccessory(IGear acc1, IGear acc2)
+        {
+            if (acc1 == null || acc2 == null)
+                return null;
+            return IsNewGearBetter(acc1, acc2) ? acc2 : acc1;
+        }
+
+        /// <summary>True when the hero can equip the gear and it beats what the hero has equipped in that category.</summary>
+        public static bool IsUpgradeFor(Hero hero, IGear gear)
+        {
+            if (hero == null || gear == null || !hero.CanEquipItem(gear))
+                return false;
+            if (!GearCategoryUtils.TryGetCategory(gear.Kind, out GearCategory category))
+                return false;
+            return IsNewGearBetter(gear, GetEquippedBaseline(hero, category));
+        }
+
+        /// <summary>True when the mercenary can equip the gear and it beats what they have equipped in that category.</summary>
+        public static bool IsUpgradeFor(Mercenary merc, IGear gear)
+        {
+            if (merc == null || gear == null || !merc.CanEquipItem(gear))
+                return false;
+            if (!GearCategoryUtils.TryGetCategory(gear.Kind, out GearCategory category))
+                return false;
+            return IsNewGearBetter(gear, GetEquippedBaseline(merc, category));
+        }
+
         /// <summary>Maps gear Kind to the equipment slot it occupies.</summary>
         public static bool TryGetSlotForGear(IGear gear, out EquipmentSlot slot)
         {

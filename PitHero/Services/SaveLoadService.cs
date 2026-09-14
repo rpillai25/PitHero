@@ -584,6 +584,8 @@ namespace PitHero.Services
                 data.Funds = gameState.Funds;
                 data.RunnerCarryLevel = gameState.RunnerCarryLevel;
                 data.HeroId = gameState.HeroId;
+                data.LocalArtifacts = new List<int>();
+                gameState.CopyLocalArtifactOrdinals(data.LocalArtifacts);
 
                 // Copy stencils (enum to int)
                 data.DiscoveredStencils = new Dictionary<string, int>(gameState.DiscoveredStencils.Count);
@@ -1105,14 +1107,17 @@ namespace PitHero.Services
                 for (int i = 0; i < data.AutoSellGearTypeAllowed.Length; i++)
                     data.AutoSellGearTypeAllowed[i] = autoSellExcessService.GearTypeAllowed[i];
 
-                // Consumable sell options (v26+)
+                // Consumable sell options (v26+); Keep Stacks is the value shared with auto-purchase (v34)
                 data.AutoSellConsumableSelected = new bool[autoSellExcessService.ConsumableSellAllowed.Length];
-                data.AutoSellConsumableMinStacks = new int[autoSellExcessService.ConsumableMinStacks.Length];
+                data.AutoSellConsumableMinStacks = new int[autoSellExcessService.ConsumableKeepStacks.Length];
                 for (int i = 0; i < data.AutoSellConsumableSelected.Length; i++)
                 {
                     data.AutoSellConsumableSelected[i] = autoSellExcessService.ConsumableSellAllowed[i];
-                    data.AutoSellConsumableMinStacks[i] = autoSellExcessService.ConsumableMinStacks[i];
+                    data.AutoSellConsumableMinStacks[i] = autoSellExcessService.ConsumableKeepStacks[i];
                 }
+
+                // Inventory sell percent (v34+)
+                data.AutoSellInventorySellPercent = autoSellExcessService.InventorySellPercent;
             }
 
             // Auto-purchase items (v23+)
@@ -1189,6 +1194,8 @@ namespace PitHero.Services
                 gameState.Funds = data.Funds;
                 gameState.RunnerCarryLevel = data.RunnerCarryLevel;
                 gameState.HeroId = data.HeroId;
+                // Local artifacts ride with the session: slot, autosave and replay start state alike
+                gameState.SetLocalArtifacts(data.LocalArtifacts);
 
                 // Restore stencils (int back to enum)
                 gameState.DiscoveredStencils.Clear();

@@ -62,8 +62,11 @@ namespace PitHero
                 saveLoadService.WriteAutoSave,
                 saveLoadService.SetAutoSavePreview,
                 GameConfig.AutoSaveIntervalSeconds));
-            // System save: artifacts belong to the player, not to a hero or slot
-            Services.AddService(new ArtifactService());
+            // System save: Global artifacts belong to the player, not to a hero or slot; Local artifacts
+            // (issue #411) are read through the same service but live on the session GameStateService
+            var artifactService = new ArtifactService();
+            artifactService.AttachLocalStore(Services.GetService<GameStateService>());
+            Services.AddService(artifactService);
 
             // Register global managers
             SoundEffectManager soundEffectManager = new SoundEffectManager();

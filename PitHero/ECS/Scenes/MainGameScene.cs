@@ -438,16 +438,19 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.GameStateService>());
             Core.Services.AddService(autoCropSellService);
 
-            // Auto-sell excess items service frees a bag slot when a chest item arrives and the bag is full
-            Core.Services.AddService(new Services.AutoSellExcessItemsService());
+            // Auto-sell excess items service: the pre-jump sell-down sweep plus the full-bag chest safety net
+            var autoSellExcessItemsService = new Services.AutoSellExcessItemsService();
+            Core.Services.AddService(autoSellExcessItemsService);
 
             // Auto item purchase service buys gear/consumables back from the Second Chance shop before
             // the party jumps into the pit. Registered after AutoSeedPurchaseService, which owns the
-            // shared Gold Buffer setting it reads (issue #345).
+            // shared Gold Buffer setting it reads (issue #345), and after AutoSellExcessItemsService,
+            // whose Keep Stacks array it shares (issue #411).
             Core.Services.AddService(new Services.AutoItemPurchaseService(
                 Core.Services.GetService<Services.GameStateService>(),
                 Core.Services.GetService<Services.SecondChanceMerchantVault>(),
-                autoSeedPurchaseService));
+                autoSeedPurchaseService,
+                autoSellExcessItemsService));
 
             // Auto-hire mercenary service hires tavern mercenaries matching the configured job slots.
             // Registered after AutoSeedPurchaseService, which owns the shared Gold Buffer setting it
@@ -872,12 +875,13 @@ namespace PitHero.ECS.Scenes
                 }
                 if (pendingData.AutoSellConsumableMinStacks != null)
                 {
-                    int count = pendingData.AutoSellConsumableMinStacks.Length < autoSellExcessSvc.ConsumableMinStacks.Length
+                    int count = pendingData.AutoSellConsumableMinStacks.Length < autoSellExcessSvc.ConsumableKeepStacks.Length
                         ? pendingData.AutoSellConsumableMinStacks.Length
-                        : autoSellExcessSvc.ConsumableMinStacks.Length;
+                        : autoSellExcessSvc.ConsumableKeepStacks.Length;
                     for (int i = 0; i < count; i++)
-                        autoSellExcessSvc.ConsumableMinStacks[i] = pendingData.AutoSellConsumableMinStacks[i];
+                        autoSellExcessSvc.ConsumableKeepStacks[i] = pendingData.AutoSellConsumableMinStacks[i];
                 }
+                autoSellExcessSvc.InventorySellPercent = pendingData.AutoSellInventorySellPercent;
             }
             var autoItemPurchaseSvc = Core.Services.GetService<Services.AutoItemPurchaseService>();
             if (autoItemPurchaseSvc != null)
@@ -909,14 +913,8 @@ namespace PitHero.ECS.Scenes
                     for (int i = 0; i < count; i++)
                         autoItemPurchaseSvc.ConsumableSelected[i] = pendingData.AutoPurchaseConsumableSelected[i];
                 }
-                if (pendingData.AutoPurchaseConsumableStacks != null)
-                {
-                    int count = pendingData.AutoPurchaseConsumableStacks.Length < autoItemPurchaseSvc.ConsumableStackTargets.Length
-                        ? pendingData.AutoPurchaseConsumableStacks.Length
-                        : autoItemPurchaseSvc.ConsumableStackTargets.Length;
-                    for (int i = 0; i < count; i++)
-                        autoItemPurchaseSvc.ConsumableStackTargets[i] = pendingData.AutoPurchaseConsumableStacks[i];
-                }
+                // ConsumableStackTargets is the auto-sell Keep Stacks array itself (issue #411), already
+                // applied above; SaveData.Recover unified the two arrays for pre-v34 files
             }
             var autoHireSvc = Core.Services.GetService<Services.AutoHireMercenaryService>();
             if (autoHireSvc != null)
@@ -3269,8 +3267,14 @@ namespace PitHero.ECS.Scenes
             if (!isPaused)
             {
                 var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-                Core.Services.GetService<Services.CropGrowthService>()?.Update(
-                    Core.Services.GetService<TileStateService>(), cropsAtlas);
+                var cropGrowthService = Core.Services.GetService<Services.CropGrowthService>();
+                if (cropGrowthService != null)
+                {
+                    // Read inside the fixed step from saved session state, so replays honor the fertilizer tick for tick
+                    cropGrowthService.GrowthSpeedMultiplier = Artifacts.LocalArtifactEffects.GetCropGrowthMultiplier(
+                        Core.Services.GetService<Services.GameStateService>());
+                    cropGrowthService.Update(Core.Services.GetService<TileStateService>(), cropsAtlas);
+                }
                 Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
                 Core.Services.GetService<Services.AutoCropSellService>()?.Update();
                 Core.Services.GetService<Services.AutoJobAssignmentService>()?.Update();

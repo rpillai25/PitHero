@@ -22,14 +22,15 @@ do not try to keep the tab short**.
 | **Gold Buffer** (label + slider) | `AutoSeedPurchaseService.GoldBuffer` | — (read by others) | 30 (v15) |
 | Auto-Purchase Seeds | `AutoSeedPurchaseService` | Ticked (1s throttle) | 30 (v15) |
 | Auto-Sell Crops + "Choose Crops to Sell" | `AutoCropSellService` | Ticked | 31–32 (v16/v17) |
-| Auto-Sell Excess Items + priority + "Gear Sell Options" + "Consumable Sell Options" | `AutoSellExcessItemsService` | Call-driven | 36–38, 43 (v21/v22/v23/v26) |
-| Auto-Purchase Items + priority + merc opt-in + "Gear Purchase Options" + "Consumable Purchase Options" | `AutoItemPurchaseService` | Call-driven | 39 (v23) |
+| Auto-Sell Excess Items + priority + **Inventory Sell %** slider + "Gear Sell Options" + "Consumable Sell Options" | `AutoSellExcessItemsService` | Call-driven (pre-jump sweep + full-bag chest safety net) | 36–38, 43, 49 (v21/v22/v23/v26/v34) |
+| Auto-Purchase Items + priority + merc opt-in + "Gear Purchase Options" + "Consumable Purchase Options" | `AutoItemPurchaseService` (Keep Stacks array shared with auto-sell) | Call-driven (pre-jump, after the sweep) | 39 (v23) |
 | Auto-Equip Options | `HeroComponent.AutoEquipHero` / `.AutoEquipMercenaries` (**no service**) | Call-driven | 40 (v23) |
 | Auto-Learn Hero Skills + "Learn Mode" cycler | `AutoLearnSkillsService` | Ticked (1s throttle) | 42 (v25) |
 | Auto-Hire Mercenaries + two "MercenaryN Job" cyclers | `AutoHireMercenaryService` | Call-driven | 41 (v24) |
 | Placed stencils (inventory grid snapshot) | `GameStateService.PlacedStencils` | — (save/load only) | 44 (v27) |
 | Refrigerator contents + Pre-Stock Stack Size (window opened by clicking the kitchen fridge, not from this tab) | `FridgeInventoryService` | — (runners tick via `KitchenTaskCoordinator`) | 45 (v28) |
 | Runner carry level (no UI yet — raised by future one-of-a-kind items; 1/5/10 units per crop per trip) | `GameStateService.RunnerCarryLevel` | — (read by runner trips) | 46 (v29) |
+| Local artifacts (bought in the Second Chance shop, not from this tab; crop growth and worker speed multipliers) | `GameStateService` local-artifact store, read via `LocalArtifactEffects` | — (sim reads every fixed step) | 48 (v34) |
 
 Dialogs opened from the tab:
 
@@ -37,8 +38,15 @@ Dialogs opened from the tab:
 |---|---|---|
 | Auto-Sell Crop Types | `PitHero/UI/AutoSellCropTypesDialog.cs` | Per-crop checkboxes + keep-stacks slider |
 | Gear Sell Options / Gear Purchase Options | `PitHero/UI/GearFilterOptionsDialog.cs` | **One class, two instances** — rarity + gear-type filters, parameterized by title/label keys and `Func<bool[]>` accessors |
-| Consumable Purchase Options | `PitHero/UI/ConsumablePurchaseOptionsDialog.cs` | Sprite + checkbox + per-item 1–3 "Stacks" slider; nothing selected by default |
-| Consumable Sell Options | `PitHero/UI/ConsumableSellOptionsDialog.cs` | Sprite + checkbox + per-item 0–3 "Min Stacks" floor; everything selected by default, floor 1 — auto-sell never drains a potion to zero unless asked |
+| Consumable Purchase Options | `PitHero/UI/ConsumablePurchaseOptionsDialog.cs` | Sprite + checkbox + per-item 0–3 "Keep Stacks" slider; nothing selected by default |
+| Consumable Sell Options | `PitHero/UI/ConsumableSellOptionsDialog.cs` | Sprite + checkbox + per-item 0–3 "Keep Stacks" slider; everything selected by default, keep 1 — auto-sell never drains a potion to zero unless asked |
+
+**Keep Stacks is one value per consumable** (issue #411): `AutoItemPurchaseService.ConsumableStackTargets`
+*is* `AutoSellExcessItemsService.ConsumableKeepStacks` (the same array instance, injected at
+registration). Auto-sell never sells a stack below it, auto-purchase buys exactly up to it, so the two
+dialogs can never disagree; opening one hides the other so a single slider is on screen. The two
+dialogs keep their own `PlayerCommandType`s (`SetConsumableMinStacks`, `SetConsumableStackTarget`) so
+recordings made before the unification still replay — both handlers write the shared array.
 
 All dialogs follow the same shape: a plain class owning a `Nez.UI.Window`, built once in the
 constructor, `SetVisible(false)`, added to the stage; `Show()` syncs from the service, packs,
@@ -53,7 +61,8 @@ setting predates item purchasing and kept its home, so `AutoItemPurchaseService`
 `GoldBuffer => _goldBufferSource?.GoldBuffer ?? 0`. Consequences:
 
 - `AutoItemPurchaseService` and `AutoHireMercenaryService` **must be registered after**
-  `AutoSeedPurchaseService` in `MainGameScene.Begin()`.
+  `AutoSeedPurchaseService` in `MainGameScene.Begin()`; `AutoItemPurchaseService` also after
+  `AutoSellExcessItemsService`, whose Keep Stacks array it is handed.
 - There is exactly one slider in the UI and one persisted field (`SaveData.AutoShopGoldBuffer`).
   Do not add a second buffer; route new automated spending through the same property.
 
@@ -75,13 +84,31 @@ Two distinct patterns — pick deliberately:
   Each exposes a public, throttle-free pass method (`TryPurchasePass()`, `TrySellPass()`,
   `ReassessNow()`, `TryLearnPass()`) so tests can drive it directly.
 - **Call-driven** — no update loop; invoked from the game action that creates the situation.
-  - `AutoSellExcessItemsService.TryMakeRoom(bag, incoming)` ← `OpenChestAction`, before adding a
-    chest item to a full bag.
-  - `AutoItemPurchaseService.TryPurchasePass(heroComp)` ← `JumpIntoPitAction`, in the first-frame
-    branch **after** the landing tile is validated and **before** `StartJumpMovement`. Placing it
-    after validation means an aborted jump never spends gold; the branch runs once per jump.
-  - `PartyAutoEquipHelper.TryAutoEquipForParty(heroComp, item)` ← `OpenChestAction` (chest loot) and
-    `AutoItemPurchaseService` (each purchased item).
+  - `PrePitAutomationPass.Run(heroComp)` (`AI/PrePitAutomationPass.cs`) ← `JumpIntoPitAction`, in the
+    first-frame branch **after** the landing tile is validated and **before** `StartJumpMovement`
+    (an aborted jump never sells or buys; the branch runs once per jump). It runs, in this order:
+    1. an **auto-equip sweep** — every gear item in the bag is offered to the party through
+       `PartyAutoEquipHelper` (honoring both auto-equip flags), so upgrades are worn before anything
+       is judged excess;
+    2. `AutoSellExcessItemsService.TrySellDownToThreshold(bag, gearIsUpgrade, soldNames)` — while the
+       bag is at or above **Inventory Sell %** (`IsAtOrAboveSellThreshold`, integer math: 100 = only a
+       full bag, 0 = every jump sells everything eligible), sell the weakest eligible item and stop
+       the moment the bag drops below the line;
+    3. `AutoItemPurchaseService.TryPurchasePass(heroComp, soldNames)`.
+  - `AutoSellExcessItemsService.TryMakeRoom(bag, incoming, gearIsUpgrade)` ← `OpenChestAction`, before
+    adding a chest item to a full bag — the in-pit safety net under the sweep, same rules.
+  - `PartyAutoEquipHelper.TryAutoEquipForParty(heroComp, item)` ← `OpenChestAction` (chest loot),
+    `AutoItemPurchaseService` (each purchased item) and the pre-jump equip sweep.
+
+  **Upgrade gear is the last sell tier, never exempt.** `ExcessItemSellSelector.Select` runs the two
+  category passes with gear that `PartyGearUpgradeCheck.IsUpgradeForAnyone` flags skipped, then — only
+  if both come up empty — a final pass over the upgrades alone, weakest first (`SellSelection.IsUpgrade`).
+  Inventory must always be clearable, so if selling an upgrade is the only way to make room, it goes.
+
+  **Why sell-then-buy never churns:** ordinary sales are gear that upgrades nobody, and purchase only
+  buys an upgrade over the equipped/bag baseline, so a sold piece is never a candidate; the
+  last-resort upgrade tier is covered by the per-pass `soldNames` exclusion (`RunPurchasePass` skips
+  those names); consumables sell only stacks above Keep Stacks and are bought only up to Keep Stacks.
   - `AutoHireMercenaryService.TryAutoHire(mercEntity)` ← `MercenaryManager.WalkToTavern`, after the
     merc is seated (`IsWaitingInTavern` + patron component) — hiring earlier corrupts seat state.
     `TryHirePass()` ← both settings-close paths (`ToggleSettingsVisibility`, `ForceCloseSettings`),
@@ -109,6 +136,13 @@ Removing a setting does **not** remove its bytes; reshaping a section in the mid
 a version bump. The v26 removal of the "Auto-Purchase Consumables" master flag left its bool as a
 dead slot in section 39 (`Persist` always writes `true`, `Recover` reads and discards it). Follow
 that pattern when a setting goes away.
+
+Merging two settings into one follows the same idea (v34 Keep Stacks): both `AutoSellConsumableMinStacks`
+(section 43) and `AutoPurchaseConsumableStacks` (section 39) are still written, from the one shared
+array, so the layout never moved. `Recover` reconciles files older than v34 into a single value: the
+sell floor is raised to the purchase target where purchasing was on and the item selected (that was
+the old *effective* floor), then the purchase target is set equal to it. A player whose sell floor
+exceeded the target therefore sees the target come up to the floor.
 
 Adding a persisted setting means, in order:
 
@@ -194,9 +228,11 @@ Gotchas:
 | Piece | File | Use it for |
 |---|---|---|
 | `GearCategoryUtils` | `RolePlayingFramework/Equipment/GearCategoryUtils.cs` | `ItemKind` → `GearCategory`, localization keys, `IsAllowed(bool[], ItemKind)` |
-| `GearAutoEquipService` | `RolePlayingFramework/Equipment/GearAutoEquipService.cs` | `GetGearScore`, `IsNewGearBetter`, `TryGetSlotForGear`, `GetHeroItemInSlot` / `GetMercItemInSlot` |
+| `GearAutoEquipService` | `RolePlayingFramework/Equipment/GearAutoEquipService.cs` | `GetGearScore`, `IsNewGearBetter`, `TryGetSlotForGear`, `GetHeroItemInSlot` / `GetMercItemInSlot`, `CategorySlots`, `GetEquippedBaseline` (accessory rule), `IsUpgradeFor(hero|merc, gear)` |
+| `PartyGearUpgradeCheck` | `RolePlayingFramework/Equipment/PartyGearUpgradeCheck.cs` | `IsUpgradeForAnyone(hero, mercs, gear)` — the sell tier test |
 | `PartyAutoEquipHelper` | `AI/PartyAutoEquipHelper.cs` | Hero → mercs equip cascade with hand-me-downs, honoring the auto-equip flags |
-| `ExcessItemSellSelector` | `RolePlayingFramework/Equipment/ExcessItemSellSelector.cs` | Pure "which item should we sell" logic, filter delegates optional |
+| `PrePitAutomationPass` | `AI/PrePitAutomationPass.cs` | The pre-jump equip → sell → purchase sequence; `CreateGearUpgradeCheck` for the chest safety net |
+| `ExcessItemSellSelector` | `RolePlayingFramework/Equipment/ExcessItemSellSelector.cs` | Pure "which item should we sell" logic, filter delegates optional, upgrade gear as the last tier |
 | `ItemSellHelper` | `Services/ItemSellHelper.cs` | Sell to vault + credit gold + analytics, one call |
 | `ConsumableCatalog` | `RolePlayingFramework/Equipment/ConsumableCatalog.cs` | Enumerate consumables; `CreateFresh(i)` for purchases |
 
