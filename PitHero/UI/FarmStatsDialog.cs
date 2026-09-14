@@ -23,6 +23,8 @@ namespace PitHero.UI
         private const float HeadingPadTop = 8f;
         // Keeps the count column clear of the scroll pane's vertical scrollbar
         private const float CountPadRight = 40f;
+        // Dish art variant (same atlas as crops); the Food tab uses the same one, scaled to fit
+        private const string DishSpriteSuffix = "_Large";
 
         private readonly Stage _stage;
         private readonly Skin _skin;
@@ -98,8 +100,10 @@ namespace PitHero.UI
             for (int i = 0; i < DishTypeInfo.Count; i++)
             {
                 var dish = (DishType)i;
+                var def = DishConfig.GetDefinition(dish);
                 int served = gameState != null && i < gameState.DishesServedTotals.Length ? gameState.DishesServedTotals[i] : 0;
-                AddRow(null, GetText(DishConfig.GetDefinition(dish).NameKey), served);
+                var sprite = _cropsAtlas?.GetSprite(def.BaseSpriteName + DishSpriteSuffix);
+                AddRow(sprite, GetText(def.NameKey), served);
             }
         }
 
