@@ -299,6 +299,8 @@ SecondChanceOwnedCount,Owned: {0}
 SecondChanceNeedCount,Need: {0}
 
 # Event Console Messages
+ConsoleMonsterJobLevelUp,{0} {1} reached {2} level {3}!
+ConsoleCropUnlocked,New crop unlocked: {0}!
 ConsoleAttack,{0} attacks {1} for {2} damage!
 ConsoleSkillAttack,{0} uses {1} on {2} for {3} damage!
 ConsoleBattleHealConsumable,{0} uses {1} on {2}. Restored {3} HP.

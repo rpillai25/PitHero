@@ -1029,6 +1029,37 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs a crop becoming purchasable through the harvest progression (issue #413).</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropUnlocked(string crop)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_unlocked"))
+                return;
+            _json.Field("crop", crop);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs an allied monster raising one of its job skill levels through completed tasks (issue #413).</summary>
+        [Conditional("DEBUG")]
+        public static void LogMonsterJobLevelUp(string monster, string monsterType, string job, int newLevel)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("monster_job_levelup"))
+                return;
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            _json.Field("job", job);
+            _json.Field("newLevel", newLevel);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs a kitchen worker being sent home to respawn in a different role (issue #375 churn analysis).</summary>
         [Conditional("DEBUG")]
         public static void LogKitchenRoleChanged(string monster, string monsterType,

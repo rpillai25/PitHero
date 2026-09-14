@@ -330,6 +330,8 @@ namespace PitHero
         public const string SecondChanceSellPrompt = "SecondChanceSellPrompt";
         public const string SecondChanceSellQtyPrompt = "SecondChanceSellQtyPrompt";
         public const string SecondChanceSellTotal = "SecondChanceSellTotal";
+        public const string ConsoleMonsterJobLevelUp = "ConsoleMonsterJobLevelUp";
+        public const string ConsoleCropUnlocked = "ConsoleCropUnlocked";
         public const string ConsoleAttack = "ConsoleAttack";
         public const string ConsoleSkillAttack = "ConsoleSkillAttack";
         public const string ConsoleBattleHealConsumable = "ConsoleBattleHealConsumable";

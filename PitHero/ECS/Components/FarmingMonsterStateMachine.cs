@@ -622,6 +622,7 @@ namespace PitHero.ECS.Components
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
             _cropGrowthService?.PlantCrop(tile, planType.Value, Entity.Scene, atlas);
             AnalyticsService.LogCropPlanted(planType.Value.ToString(), tile.X, tile.Y, _monster.Name, _monster.MonsterTypeName);
+            MonsterJobTaskRecorder.Record(_monster, MonsterJob.Farming);
 
             _coordinator.CompletePlantAction(in _currentAction);
             _hasAction = false;
@@ -672,6 +673,7 @@ namespace PitHero.ECS.Components
             AnalyticsService.LogCropWatered(_cropGrowthService?.GetCropType(_currentAction.TargetTile)?.ToString(),
                 _currentAction.TargetTile.X, _currentAction.TargetTile.Y,
                 _monster.Name, _monster.MonsterTypeName, _wateringCanCharges);
+            MonsterJobTaskRecorder.Record(_monster, MonsterJob.Farming);
             _coordinator.CompleteWaterAction(in _currentAction);
             _hasAction = false;
             CurrentState = FarmingMonsterState.Idle;
@@ -950,6 +952,9 @@ namespace PitHero.ECS.Components
             _harvestCarryCount = Util.CropConfig.GetHarvestYield(_harvestCropType);
             ApplyHarvestResult(tile);
             AnalyticsService.LogCropHarvested(_harvestCropType.ToString(), tile.X, tile.Y, _harvestCarryCount, _monster.Name, _monster.MonsterTypeName);
+            // Lifetime harvest total (issue #413): units picked, counted here so a later sale never lowers it
+            CropUnlockTracker.RecordHarvest(_harvestCropType, _harvestCarryCount);
+            MonsterJobTaskRecorder.Record(_monster, MonsterJob.Farming);
             ShowCarrySprite();
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.PickCrop, Entity.Transform.Position);
             _harvestPickedUp = true;
