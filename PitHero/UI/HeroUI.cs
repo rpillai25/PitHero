@@ -277,10 +277,13 @@ namespace PitHero.UI
             }
 
             // Compact tabs: the tab strip width (measured from the real buttons). Inventory: the
-            // full width, which can never be narrower than the strip either.
+            // full width, which can never be narrower than the strip either. The Mercenaries tab lays
+            // out at its own content width, so the window is never narrower than that (issue #413).
             float newWidth = selectedTab == _inventoryTab
                 ? System.Math.Max(HERO_WINDOW_WIDTH, _minTabStripWidth)
-                : _minTabStripWidth;
+                : selectedTab == _mercenariesTab
+                    ? System.Math.Max(MERCENARIES_CONTENT_WIDTH, _minTabStripWidth)
+                    : _minTabStripWidth;
 
             _heroWindow.SetWidth(newWidth); // PositionHeroWindow fits the height to the stage
             PositionHeroWindow(); // Reposition after resize to keep it on screen

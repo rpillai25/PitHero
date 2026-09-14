@@ -21,6 +21,8 @@ namespace PitHero.UI
         private const float ContentWidth = 300f;
         private const float IconSize = 20f;
         private const float HeadingPadTop = 8f;
+        // Keeps the count column clear of the scroll pane's vertical scrollbar
+        private const float CountPadRight = 40f;
 
         private readonly Stage _stage;
         private readonly Skin _skin;
@@ -115,7 +117,7 @@ namespace PitHero.UI
             else
                 _contentTable.Add().Size(IconSize, IconSize).SetPadRight(4f);
             _contentTable.Add(new Label(name, _skin, "ph-default")).Left().SetExpandX();
-            _contentTable.Add(new Label(value.ToString(), _skin, "ph-default")).Right().SetPadRight(8f);
+            _contentTable.Add(new Label(value.ToString(), _skin, "ph-default")).Right().SetPadRight(CountPadRight);
             _contentTable.Row();
         }
 

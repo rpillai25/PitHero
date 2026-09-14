@@ -20,18 +20,23 @@ namespace PitHero.UI
         private TextService _textService;
 
         // Per-mercenary display containers (up to 2)
-        /// <summary>Width of the tab content as laid out by HeroUI (the tab is centered at this width).</summary>
-        public const float ContentWidth = 580f;
-
         // Row geometry (issue #413): the scroll pane pads 10 and each row pads 5, and the three
-        // columns split the remainder with FIXED widths so the skills grid and the portrait/Dismiss
-        // column never move with the meal-buff text length.
+        // columns split the ColumnBudgetWidth remainder with FIXED widths so the skills grid and the
+        // portrait/Dismiss column never move with the meal-buff text length. The tab content is
+        // ScrollbarAllowance wider than the column budget so the pane's vertical scrollbar has its
+        // own room instead of clipping the right-most (Dismiss) column.
+        private const float ColumnBudgetWidth = 580f;
+        private const float ScrollbarAllowance = 32f;
+
+        /// <summary>Width of the tab content as laid out by HeroUI (the tab is centered at this width, and the Party window is never narrower).</summary>
+        public const float ContentWidth = ColumnBudgetWidth + ScrollbarAllowance;
+
         private const float ScrollPanePad = 10f;
         private const float RowPad = 5f;
         private const float CellPad = 5f;
         private const float SkillIconCell = 36f;          // 32px icon + 2px grid padding each side
         private const float DismissButtonWidth = 80f;
-        private const float RowInnerWidth = ContentWidth - 2f * ScrollPanePad - 2f * RowPad;
+        private const float RowInnerWidth = ColumnBudgetWidth - 2f * ScrollPanePad - 2f * RowPad;
         private const float SkillsColWidth = 4f * SkillIconCell + 2f * CellPad;
         private const float PreviewColWidth = DismissButtonWidth + 2f * CellPad;
         private const float LeftColWidth = RowInnerWidth - SkillsColWidth - PreviewColWidth;
