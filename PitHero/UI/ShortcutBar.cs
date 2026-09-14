@@ -21,6 +21,13 @@ namespace PitHero.UI
         private const float SLOT_PADDING = 1f;
         private const float HOVER_OFFSET_Y = -16f;
 
+        /// <summary>Number of shortcut slots (one full row).</summary>
+        public const int ShortcutCount = SHORTCUT_COUNT;
+        /// <summary>Columns of the compact docked grid used when a full row does not fit beside the inventory (4 x 2).</summary>
+        public const int CompactColumns = 4;
+        /// <summary>Space under each slot for its key number (14px text + 2px offset), before scale.</summary>
+        public const float KeyLabelSpace = 16f;
+
         // Array of shortcut slot data (can be item reference or skill reference)
         private readonly ShortcutSlotData[] _shortcutSlots;
 
@@ -51,11 +58,13 @@ namespace PitHero.UI
         // Track scaling for different window modes
         private float _currentScale = 1f;
 
-        // Base position and offset for inventory window
+        // Base position and hide/show slide
         private float _baseX = 0f;
         private float _baseY = 0f;
-        private float _offsetX = 0f;
         private float _slideOffsetY = 0f;
+
+        // Slots per row: a single row of 8, or the compact 4 x 2 grid when docked beside a window with little room
+        private int _columns = SHORTCUT_COUNT;
 
         // Public events for item/skill display
         public event System.Action<IItem> OnItemHovered;
@@ -99,20 +108,55 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Positions slot components based on current scale.</summary>
+        /// <summary>Positions slot components based on current scale and slots per row.</summary>
         private void LayoutSlots()
         {
+            int columns = _columns;
+            float scaledSlotSize = SLOT_SIZE * _currentScale;
+            float columnPitch = scaledSlotSize + SLOT_PADDING * _currentScale;
+            float rowPitch = scaledSlotSize + KeyLabelSpace * _currentScale; // key number sits under each row
             for (int i = 0; i < _visualSlots.Length; i++)
             {
                 var slot = _visualSlots.Buffer[i];
                 if (slot == null) continue;
 
-                float scaledSlotSize = SLOT_SIZE * _currentScale;
-                float scaledPadding = SLOT_PADDING * _currentScale;
                 slot.SetSize(scaledSlotSize, scaledSlotSize);
                 slot.Scale = _currentScale;
-                slot.SetPosition(i * (scaledSlotSize + scaledPadding), 0);
+                slot.SetPosition((i % columns) * columnPitch, (i / columns) * rowPitch);
             }
+        }
+
+        /// <summary>Width of the slots laid out <paramref name="columns"/> per row, at the given scale.</summary>
+        public static float GetLayoutWidth(float scale, int columns) => columns * (SLOT_SIZE + SLOT_PADDING) * scale - SLOT_PADDING * scale;
+
+        /// <summary>Height of the slots laid out <paramref name="columns"/> per row, including the key numbers under the last row.</summary>
+        public static float GetLayoutHeight(float scale, int columns)
+        {
+            int rowCount = (SHORTCUT_COUNT + columns - 1) / columns;
+            return rowCount * (SLOT_SIZE + KeyLabelSpace) * scale;
+        }
+
+        /// <summary>
+        /// True when the stage position is over the bar's slot area (key numbers and slot gaps included). The Group's own
+        /// size is never set, so windows that dismiss on outside clicks use this to treat the bar as inside.
+        /// </summary>
+        public bool ContainsStagePoint(Vector2 stagePos)
+        {
+            if (!IsVisible() || GetParent() == null) return false;
+            var topLeft = LocalToStageCoordinates(Vector2.Zero);
+            return stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + GetLayoutWidth(_currentScale, _columns)
+                && stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + GetLayoutHeight(_currentScale, _columns);
+        }
+
+        /// <summary>Sets how many slots go in each row: a full row of 8, or the compact 4 x 2 grid.</summary>
+        public void SetColumns(int columns)
+        {
+            if (columns < 1) columns = 1;
+            if (columns > SHORTCUT_COUNT) columns = SHORTCUT_COUNT;
+            if (_columns == columns)
+                return;
+            _columns = columns;
+            LayoutSlots();
         }
 
         /// <summary>Sets the scale of the shortcut bar (1x for Normal, 2x for Half).</summary>
@@ -133,13 +177,6 @@ namespace PitHero.UI
             UpdatePosition();
         }
 
-        /// <summary>Sets the horizontal offset (used when inventory is open).</summary>
-        public void SetOffsetX(float offsetX)
-        {
-            _offsetX = offsetX;
-            UpdatePosition();
-        }
-
         /// <summary>Sets a vertical slide offset used for the hide/show animation.</summary>
         public void SetSlideOffsetY(float offsetY)
         {
@@ -147,10 +184,10 @@ namespace PitHero.UI
             UpdatePosition();
         }
 
-        /// <summary>Updates the actual position based on base + offset + slide.</summary>
+        /// <summary>Updates the actual position based on base + slide.</summary>
         private void UpdatePosition()
         {
-            SetPosition(_baseX + _offsetX, _baseY + _slideOffsetY);
+            SetPosition(_baseX, _baseY + _slideOffsetY);
         }
 
         /// <summary>Creates the hover tooltip for skill shortcuts (call once during scene setup).</summary>

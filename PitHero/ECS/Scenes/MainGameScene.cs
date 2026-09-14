@@ -3066,6 +3066,30 @@ namespace PitHero.ECS.Scenes
 
             if (visible)
             {
+                var heroUI = _settingsUI?.HeroUI;
+                bool inventoryOpen = heroUI != null && heroUI.IsWindowVisible;
+
+                if (inventoryOpen)
+                {
+                    // The Party window covers the bottom row, so dock the shortcuts just left of the window (and of
+                    // its close button / stencil library panel), vertically centered, where items and skills can be
+                    // dragged onto them. One full row when it fits; a compact 4 x 2 grid on narrow stages.
+                    float rightEdge = heroUI.GetLeftDockEdge() - GameConfig.ShortcutDockGap * scale;
+                    int columns = rightEdge - ShortcutBar.GetLayoutWidth(scale, ShortcutBar.ShortcutCount) >= GameConfig.UIStageMargin
+                        ? ShortcutBar.ShortcutCount
+                        : ShortcutBar.CompactColumns;
+                    _shortcutBar.SetColumns(columns);
+
+                    float dockX = rightEdge - ShortcutBar.GetLayoutWidth(scale, columns);
+                    if (dockX < GameConfig.UIStageMargin)
+                        dockX = GameConfig.UIStageMargin;
+                    float dockY = (_uiStage.GetHeight() - ShortcutBar.GetLayoutHeight(scale, columns)) / 2f;
+                    _shortcutBar.SetBasePosition(dockX, dockY);
+                    return;
+                }
+
+                _shortcutBar.SetColumns(ShortcutBar.ShortcutCount);
+
                 // Calculate bottom center position
                 // 8 slots * (32px slot size + 1px padding) * scale
                 float barWidth = 8 * (32f + 1f) * scale;
@@ -3080,11 +3104,6 @@ namespace PitHero.ECS.Scenes
                 float bottomY = _uiStage.GetHeight() - barHeight - 16f + yOffset;
 
                 _shortcutBar.SetBasePosition(centerX, bottomY);
-
-                // Offset left when inventory is open
-                bool inventoryOpen = _settingsUI?.HeroUI?.IsWindowVisible ?? false;
-                float offsetX = inventoryOpen ? -150f : 0f; // Offset left by 150px when inventory open
-                _shortcutBar.SetOffsetX(offsetX);
             }
         }
 

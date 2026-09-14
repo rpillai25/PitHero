@@ -3215,9 +3215,8 @@ namespace PitHero.UI
             float sbScale = isHalfMode ? 2f : 1f;
 
             // Marker sits flush against the bottom edge, centered on the shortcut bar.
-            // _shortcutBar.GetX() includes the inventory-open _offsetX shift, but the bar is
-            // force-shown (never hidden) while Hero UI is open, so _offsetX == 0 whenever the
-            // marker is actually visible.
+            // While Hero UI is open the bar is docked beside the window as a grid, but it is also
+            // force-shown (never hidden) then, so it is always the bottom row whenever the marker is visible.
             float sbMarkerWidth = 8 * (32f * sbScale + 1f * sbScale);
             float scCX = _shortcutBar.GetX() + sbMarkerWidth * 0.5f;
             float scCY = _stage.GetHeight() - 16f; // 32px sprite half-height => bottom edge flush

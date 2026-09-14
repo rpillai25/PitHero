@@ -31,6 +31,8 @@ namespace PitHero
         public const float UIStageMargin = 4f;
         /// <summary>Gap between a top-bar button and the window opened beneath it.</summary>
         public const float UIWindowBelowBarGap = 4f;
+        /// <summary>Gap (before UI scale) between the shortcut grid and the Party window's left-docked elements while the inventory is open.</summary>
+        public const float ShortcutDockGap = 16f;
         /// <summary>Distance from the bottom of the stage to the baseline HUD labels (Pit Lv / Gold).</summary>
         public const float HudBottomLabelOffsetY = 10f;
 

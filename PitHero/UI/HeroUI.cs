@@ -1260,6 +1260,11 @@ namespace PitHero.UI
             if (CrystalCreationDialog.AnyVisible || CrystalCreationDialog.LastCloseFrame == Time.FrameCount) return;
             // Clicks on the window's own top-bar button are the toggle handler's job, not ours
             if (OutsideClickDismissal.IsMouseInside(_heroButton, _stage)) return;
+            // The shortcut bar docks beside the open window so items and skills can be dragged onto it; clicking
+            // it must not close the window. Checked separately (not in the envelope) so the gap between the two
+            // still counts as outside.
+            var shortcutBar = Core.Services?.GetService<ShortcutBarService>()?.ShortcutBar;
+            if (shortcutBar != null && shortcutBar.ContainsStagePoint(_stage.GetMousePosition())) return;
             if (OutsideClickDismissal.ShouldDismiss(GetWindowBoundsElements(), _stage, _windowShownFrame))
                 ToggleHeroWindow();
         }
@@ -1314,6 +1319,21 @@ namespace PitHero.UI
         }
 
         public bool IsWindowVisible => _windowVisible;
+
+        /// <summary>
+        /// Leftmost X of the Party window and everything docked against its left side (close button, stencil
+        /// library panel). The shortcut bar docks left of this while the window is open.
+        /// </summary>
+        public float GetLeftDockEdge()
+        {
+            float edge = _heroWindow != null ? _heroWindow.GetX() : 0f;
+            if (_closeButton != null && _closeButton.HasParent() && _closeButton.GetX() < edge)
+                edge = _closeButton.GetX();
+            if (_stencilLibraryPanel != null && _stencilLibraryPanel.IsVisible() && _stencilLibraryPanel.HasParent() &&
+                _stencilLibraryPanel.GetX() < edge)
+                edge = _stencilLibraryPanel.GetX();
+            return edge;
+        }
 
         /// <summary>Gets the inventory grid reference for shortcut bar integration.</summary>
         public InventoryGrid GetInventoryGrid() => _inventoryGrid;
