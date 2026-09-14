@@ -253,7 +253,7 @@ artifacts rewind with the save, so charging for them is safe.
 | Kairos Metronome | Global | `ArtifactKairosMetronomePrice` | The 4X and 8X live fast-forward rungs (`FastFUI.HighSpeedRungsUnlocked`) | none |
 | Chronos Timepiece | Global | `ArtifactChronosTimepiecePrice` | Time Travel Here | Sphere of Foresight **and** Kairos Metronome |
 | Fast Grow Fertilizer | Local | `ArtifactFastGrowFertilizerPrice` | Crops grow 2x (`FastGrowFertilizerCropGrowthMultiplier`) | none |
-| Lightning Grow Fertilizer | Local | `ArtifactLightningGrowFertilizerPrice` | Crops grow 3x (wins over Fast; never stacks) | Fast Grow Fertilizer |
+| Lightning Grow Fertilizer | Local | `ArtifactLightningGrowFertilizerPrice` | Crops grow 3x (wins over Fast; never stacks). Supersedes Fast in the owned grid (`ArtifactCatalog.GetSupersededBy`): Fast stays owned underneath, just not shown | Fast Grow Fertilizer |
 | Hermes Boots | Local | `ArtifactHermesBootsPrice` | Farm and kitchen workers move 2x (`HermesBootsWorkerMoveSpeedMultiplier`; the runner sprint stacks on top) | none |
 
 - **One query surface.** `ArtifactService` (global, Game1) answers `Owns` / `GetOwnedInOrder` /

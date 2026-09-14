@@ -129,6 +129,38 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void Lightning_SupersedesFastGrowInOwnedGrid()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var service = new ArtifactService(dir, "system.bin");
+                service.AttachLocalStore(new GameStateService());
+                service.Grant(ArtifactType.HermesBoots);
+                service.Grant(ArtifactType.FastGrowFertilizer);
+
+                var owned = new List<ArtifactType>();
+                service.GetOwnedInOrder(owned);
+                CollectionAssert.AreEqual(new List<ArtifactType> { ArtifactType.HermesBoots, ArtifactType.FastGrowFertilizer }, owned);
+                Assert.IsFalse(service.IsSuperseded(ArtifactType.FastGrowFertilizer));
+
+                service.Grant(ArtifactType.LightningGrowFertilizer);
+                owned.Clear();
+                service.GetOwnedInOrder(owned);
+                CollectionAssert.AreEqual(new List<ArtifactType> { ArtifactType.HermesBoots, ArtifactType.LightningGrowFertilizer }, owned,
+                    "The lightning fertilizer replaces the fast one in the grid");
+                Assert.IsTrue(service.IsSuperseded(ArtifactType.FastGrowFertilizer));
+                Assert.IsTrue(service.Owns(ArtifactType.FastGrowFertilizer), "Still owned underneath — it stays the prerequisite");
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.FastGrowFertilizer), "…and never returns to the shop");
+                service.Detach();
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [TestMethod]
         public void Catalog_ScopesAndPrices()
         {
             Assert.AreEqual(6, ArtifactCatalog.Count);

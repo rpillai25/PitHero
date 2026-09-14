@@ -158,6 +158,20 @@ namespace PitHero.Artifacts
             }
         }
 
+        /// <summary>
+        /// The artifact that is a straight upgrade of this one, or null. Once the upgrade is owned the
+        /// weaker piece stays owned (it is still the prerequisite) but drops out of the owned grid —
+        /// the lightning fertilizer is the fast one, only better.
+        /// </summary>
+        public static ArtifactType? GetSupersededBy(ArtifactType type)
+        {
+            switch (type)
+            {
+                case ArtifactType.FastGrowFertilizer: return ArtifactType.LightningGrowFertilizer;
+                default: return null;
+            }
+        }
+
         /// <summary>True for a value the catalog knows.</summary>
         public static bool IsValid(int ordinal)
         {

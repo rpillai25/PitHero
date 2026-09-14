@@ -93,11 +93,23 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Appends the owned artifacts to <paramref name="result"/>: the player's Global artifacts in
-        /// grant order, then this hero's Local artifacts in grant order.
+        /// True when the artifact is owned but a straight upgrade of it is owned too, so the owned
+        /// grid shows only the upgrade (Fast Grow Fertilizer once the Lightning one is bought).
+        /// </summary>
+        public bool IsSuperseded(ArtifactType type)
+        {
+            var upgrade = ArtifactCatalog.GetSupersededBy(type);
+            return upgrade.HasValue && Owns(upgrade.Value);
+        }
+
+        /// <summary>
+        /// Appends the artifacts to show as owned to <paramref name="result"/>: the player's Global
+        /// artifacts in grant order, then this hero's Local artifacts in grant order, minus any piece
+        /// whose upgrade is also owned (<see cref="IsSuperseded"/>).
         /// </summary>
         public void GetOwnedInOrder(List<ArtifactType> result)
         {
+            int start = result.Count;
             for (int i = 0; i < _data.OwnedArtifacts.Count; i++)
             {
                 int ordinal = _data.OwnedArtifacts[i];
@@ -105,6 +117,12 @@ namespace PitHero.Services
                     result.Add((ArtifactType)ordinal);
             }
             _local?.GetLocalArtifactsInOrder(result);
+
+            for (int i = result.Count - 1; i >= start; i--)
+            {
+                if (IsSuperseded(result[i]))
+                    result.RemoveAt(i);
+            }
         }
 
         /// <summary>
