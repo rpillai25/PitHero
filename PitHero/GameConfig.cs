@@ -577,6 +577,9 @@ namespace PitHero
         public const float CloudDriftSpeedPx       = 10f;    // world px per in-game second (octave 1)
         public const float CloudOctave2SpeedMult   = 1.15f;  // higher octaves drift only slightly faster;
         public const float CloudOctave3SpeedMult   = 1.3f;   // large deltas make clouds churn like smoke
+        // Horizontal parallax (issue #413): the cloud field tracks camera X at this fraction of the ground's
+        // rate (1 = world-locked, 0 = screen-locked). Applied in C# to the scroll offsets; dead zones stay world-locked.
+        public const float CloudParallaxRateX      = 0.6f;
         public const float CloudDriftDirX          = 0.7071f;  // bottom-left -> upper-right
         public const float CloudDriftDirY          = -0.7071f; // (y-down world: up = -y)
         public const float CloudCoveragePeriod1Seconds = 600f; // ~10 in-game hours

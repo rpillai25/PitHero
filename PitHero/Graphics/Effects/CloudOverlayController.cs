@@ -87,29 +87,41 @@ namespace PitHero.Rendering
         {
             var dir = new Vector2(GameConfig.CloudDriftDirX, GameConfig.CloudDriftDirY);
 
-            _effect.ScrollOffset1 = WrappedOffset(dir, t, GameConfig.CloudDriftSpeedPx, GameConfig.CloudNoiseWorldScale);
+            // Horizontal parallax (issue #413): the shader samples at world position, which follows the
+            // camera 1:1. Shifting every octave's offset by -(1 - rate) × cameraX makes the field track
+            // the camera at `rate` of the ground's speed. Presentation-only (camera is a view value)
+            // and the world-space dead zones are untouched because they read the world position directly.
+            float parallaxPx = 0f;
+            var camera = Core.Scene?.Camera;
+            if (camera != null)
+                parallaxPx = -(1f - GameConfig.CloudParallaxRateX) * camera.Bounds.Left;
+
+            _effect.ScrollOffset1 = WrappedOffset(dir, t, GameConfig.CloudDriftSpeedPx, GameConfig.CloudNoiseWorldScale, parallaxPx);
             _effect.ScrollOffset2 = WrappedOffset(dir, t,
                 GameConfig.CloudDriftSpeedPx * GameConfig.CloudOctave2SpeedMult,
-                GameConfig.CloudNoiseWorldScale * GameConfig.CloudOctave2Mult);
+                GameConfig.CloudNoiseWorldScale * GameConfig.CloudOctave2Mult, parallaxPx);
             _effect.ScrollOffset3 = WrappedOffset(dir, t,
                 GameConfig.CloudDriftSpeedPx * GameConfig.CloudOctave3SpeedMult,
-                GameConfig.CloudNoiseWorldScale * GameConfig.CloudOctave3Mult);
+                GameConfig.CloudNoiseWorldScale * GameConfig.CloudOctave3Mult, parallaxPx);
             _effect.ScrollOffsetMacro = WrappedOffset(dir, t,
                 GameConfig.CloudDriftSpeedPx * GameConfig.CloudMacroSpeedMult,
-                GameConfig.CloudNoiseWorldScale * GameConfig.CloudMacroMult);
+                GameConfig.CloudNoiseWorldScale * GameConfig.CloudMacroMult, parallaxPx);
             _effect.ScrollOffsetGiant = WrappedOffset(dir, t,
                 GameConfig.CloudDriftSpeedPx * GameConfig.CloudGiantSpeedMult,
-                GameConfig.CloudNoiseWorldScale * GameConfig.CloudGiantMult);
+                GameConfig.CloudNoiseWorldScale * GameConfig.CloudGiantMult, parallaxPx);
         }
 
         /// <summary>
-        /// off = dir * (speedPx * t) * octaveWorldScale, each component wrapped into [0,1) so float
-        /// precision never degrades in long sessions (the shader only ever sees a pre-wrapped offset,
-        /// never a raw unbounded time uniform).
+        /// off = (dir * speedPx * t + (parallaxPx, 0)) * octaveWorldScale, each component wrapped into
+        /// [0,1) so float precision never degrades in long sessions (the shader only ever sees a
+        /// pre-wrapped offset, never a raw unbounded time uniform). The parallax term is scaled by the
+        /// same octave world scale as the drift so every octave shifts by the same world distance.
         /// </summary>
-        static Vector2 WrappedOffset(Vector2 dir, float t, float speedPx, float octaveWorldScale)
+        static Vector2 WrappedOffset(Vector2 dir, float t, float speedPx, float octaveWorldScale, float parallaxPx)
         {
-            var off = dir * (speedPx * t) * octaveWorldScale;
+            var off = dir * (speedPx * t);
+            off.X += parallaxPx;
+            off *= octaveWorldScale;
             off.X -= MathF.Floor(off.X);
             off.Y -= MathF.Floor(off.Y);
             return off;
