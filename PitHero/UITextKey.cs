@@ -49,6 +49,7 @@ namespace PitHero
         public const string ButtonFarmIrrigation = "ButtonFarmIrrigation";
         public const string ButtonFarmRestoreGrass = "ButtonFarmRestoreGrass";
         public const string ButtonFarmRefrigerator = "ButtonFarmRefrigerator";
+        public const string ButtonFarmStats = "ButtonFarmStats";
         public const string ButtonFarmHarvestedCrops = "ButtonFarmHarvestedCrops";
         public const string HarvestCropApple = "HarvestCropApple";
         public const string HarvestCropCorn = "HarvestCropCorn";
@@ -321,6 +322,8 @@ namespace PitHero
         public const string ButtonChangeJobTooltip = "ButtonChangeJobTooltip";
         public const string DialogConfirmDismissMercenary = "DialogConfirmDismissMercenary";
         public const string ConfirmDismissMercenaryMessage = "ConfirmDismissMercenaryMessage";
+        public const string DialogConfirmDismissMonster = "DialogConfirmDismissMonster";
+        public const string ConfirmDismissMonsterMessage = "ConfirmDismissMonsterMessage";
         public const string WindowSecondChanceShop = "WindowSecondChanceShop";
         public const string TabItems = "TabItems";
         public const string SecondChanceBuyPrompt = "SecondChanceBuyPrompt";
@@ -524,6 +527,19 @@ namespace PitHero
 
         // Refrigerator (issue #386)
         public const string WindowRefrigerator = "WindowRefrigerator";
+        // Issue #413: crop unlocks, farm stats, monster job levels
+        public const string WindowUnlockRequirements = "WindowUnlockRequirements";
+        public const string LabelCropLocked = "LabelCropLocked";
+        public const string LabelUnlockRequirementsHint = "LabelUnlockRequirementsHint";
+        public const string WindowFarmStats = "WindowFarmStats";
+        public const string HeadingFarmStatsField = "HeadingFarmStatsField";
+        public const string HeadingFarmStatsKitchen = "HeadingFarmStatsKitchen";
+        public const string LabelJobLevelsHeading = "LabelJobLevelsHeading";
+        public const string LabelJobLevelFormat = "LabelJobLevelFormat";
+        public const string LabelJobProgressFormat = "LabelJobProgressFormat";
+        public const string LabelJobLevelMax = "LabelJobLevelMax";
+        public const string MonsterJobLevelsSummary = "MonsterJobLevelsSummary";
+        public const string MonsterPortraitTooltip = "MonsterPortraitTooltip";
         public const string FridgePreStockStackSize = "FridgePreStockStackSize";
         public const string FridgePreStockStackSizeTooltip = "FridgePreStockStackSizeTooltip";
         public const string ButtonSendToCropStorage = "ButtonSendToCropStorage";

@@ -23,7 +23,7 @@ namespace PitHero.UI
         private ImageButtonStyle[] _subNormalStyles;
         private ImageButtonStyle[] _subHalfStyles;
 
-        // Sub-button art and text keys — 7 entries.
+        // Sub-button art and text keys — 8 entries.
         private static readonly string[] SubButtonBaseNames =
         {
             "UIHarvestedCrops", // 0 Harvested Crops
@@ -33,6 +33,7 @@ namespace PitHero.UI
             "UIDestroyCrop",    // 4 Remove Crops
             "UIRestoreGrass",   // 5 Restore Grass
             "UIRefrigerator",   // 6 Refrigerator
+            "UIFarmOptions",    // 7 Farm Stats (issue #413)
         };
 
         private static readonly string[] SubButtonTextKeys =
@@ -44,6 +45,7 @@ namespace PitHero.UI
             UITextKey.ButtonFarmDestroyCrops,
             UITextKey.ButtonFarmRestoreGrass,
             UITextKey.ButtonFarmRefrigerator,
+            UITextKey.ButtonFarmStats,
         };
 
         private bool _subButtonsVisible = false;
@@ -72,6 +74,12 @@ namespace PitHero.UI
         /// the farm sub-menu, not close both at once.
         /// </summary>
         public System.Func<bool> IsRefrigeratorDialogOpen;
+
+        /// <summary>Fired when the Farm Stats sub-button is clicked; the scene opens the stats window (issue #413).</summary>
+        public System.Action FarmStatsRequested;
+
+        /// <summary>Reports whether the Farm Stats window is open (same sub-bar survival rule as the fridge).</summary>
+        public System.Func<bool> IsFarmStatsDialogOpen;
 
         private enum ButtonMode { Normal, Half }
         private ButtonMode _currentMode = ButtonMode.Normal;
@@ -204,6 +212,13 @@ namespace PitHero.UI
             {
                 DismissHoverText();
                 RefrigeratorRequested?.Invoke();
+            };
+
+            // Wire Farm Stats button (index 7) — same dialog-over-sub-bar treatment as the fridge.
+            _subButtons[7].OnClicked += (_) =>
+            {
+                DismissHoverText();
+                FarmStatsRequested?.Invoke();
             };
         }
 
@@ -490,7 +505,8 @@ namespace PitHero.UI
             // to that mode and must not collapse the sub-button row.
             bool anySubModeActive = IsInTillMode || IsInSeedMode || IsInRemoveCropsMode
                                   || IsInHarvestedCropsMode || IsInRestoreGrassMode
-                                  || (IsRefrigeratorDialogOpen?.Invoke() ?? false);
+                                  || (IsRefrigeratorDialogOpen?.Invoke() ?? false)
+                                  || (IsFarmStatsDialogOpen?.Invoke() ?? false);
             if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed
                 && Util.MouseUtils.IsMouseInsideWindow())
             {

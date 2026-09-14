@@ -330,6 +330,9 @@ namespace PitHero.Services.Replay
             var cropPlantingService = services.GetService<CropPlantingService>();
             if (gameState == null || cropPlantingService == null)
                 return;
+            // Locked crops (issue #413) cannot be bought, manually or otherwise
+            if (!PitHero.Farming.CropUnlockConfig.IsUnlocked(crop, gameState.CropHarvestedTotals))
+                return;
             int unitPrice = PitHero.Util.CropConfig.GetSeedPrice(crop);
             int totalPrice = unitPrice * qty;
             if (gameState.Funds < totalPrice)

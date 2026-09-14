@@ -216,6 +216,10 @@ namespace PitHero
         public const int SeedInventoryMaxPerCrop = 999;
         /// <summary>Scale amplitude of the attention pulse on seed shop slots with unmet planned demand (0.1 = ±10%).</summary>
         public const float SeedShopPulseAmplitude = 0.1f;
+        // Locked crops (issue #413) draw at this alpha (0-255) with a "?" badge in the shop and planting palette
+        public const int SeedShopLockedAlpha = 28;
+        public const float CropUnlockRequirementCellSize = 40f;
+        public const int CropUnlockRequirementsPerRow = 6;
         /// <summary>Angular speed (radians/sec) of the seed shop attention pulse.</summary>
         public const float SeedShopPulseSpeed = 4f;
         public const int TillZerothGid = 122;            // GIDs 122-137 are the 16 tilled-tile bitmask variants

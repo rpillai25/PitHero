@@ -432,6 +432,14 @@ namespace PitHero.UI
 
         private void OnCropSlotClicked(CropType crop)
         {
+            // Locked crop (issue #413): a plan could never be seeded, so show the unlock card instead
+            if (!CropUnlockTracker.IsUnlocked(crop))
+            {
+                if (UIPromptRegistry.AnyVisible) return;
+                new CropUnlockRequirementsDialog(crop, PitHeroSkin.CreateSkin()).Show(_stage);
+                return;
+            }
+
             _selectedCrop = crop;
             _inventoryWindow.SetVisible(false);
             CreateGhost(_selectedCrop);
@@ -496,6 +504,10 @@ namespace PitHero.UI
         /// <summary>Places a crop plan of the given type on a tile (replacing a different-type plan). Command handler entry point.</summary>
         public void ApplyPlaceCrop(CropType crop, int tileX, int tileY)
         {
+            // Handler re-validation: a locked crop can never be planned (issue #413)
+            if (!CropUnlockTracker.IsUnlocked(crop))
+                return;
+
             var tile = new Point(tileX, tileY);
             var cropService = Core.Services.GetService<CropPlantingService>();
 
@@ -591,6 +603,8 @@ namespace PitHero.UI
         {
             // Inventory-slot background drawn at the same translucency as the inventory UI.
             private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
+            private static readonly Color LockedSpriteColor = new Color(255, 255, 255, GameConfig.SeedShopLockedAlpha);
+            private const string LockedBadge = "?";
 
             private readonly Sprite     _sprite;
             private readonly string     _tooltipText;
@@ -628,6 +642,24 @@ namespace PitHero.UI
             public override void Draw(Batcher batcher, float parentAlpha)
             {
                 _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
+
+                // Locked crop (issue #413): barely visible with a "?" badge; clicking explains the unlock
+                if (!CropUnlockTracker.IsUnlocked((CropType)_inventoryIndex))
+                {
+                    _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), LockedSpriteColor);
+                    if (_hovered && _selectBox != null)
+                        new SpriteDrawable(_selectBox).Draw(
+                            batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                    var lockedFont = Nez.Graphics.Instance?.BitmapFont;
+                    if (lockedFont != null)
+                    {
+                        var size = lockedFont.MeasureString(LockedBadge);
+                        StackCountText.Draw(batcher, lockedFont, LockedBadge,
+                            new Vector2(GetX() + (GetWidth() - size.X) * 0.5f, GetY() + (GetHeight() - size.Y) * 0.5f),
+                            Color.White);
+                    }
+                    return;
+                }
 
                 _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
 

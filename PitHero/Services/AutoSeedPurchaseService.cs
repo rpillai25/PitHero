@@ -72,6 +72,8 @@ namespace PitHero.Services
                 var crop  = (CropType)i;
                 int price = CropConfig.GetSeedPrice(crop);
                 if (price <= 0) continue;
+                // Locked crops (issue #413) are never auto-purchased, even with plans waiting
+                if (!CropUnlockConfig.IsUnlocked(crop, _gameState.CropHarvestedTotals)) continue;
 
                 int needed = _cropPlanting.CountUnplantedPlans(crop, _cropGrowth);
                 if (needed <= 0) continue;

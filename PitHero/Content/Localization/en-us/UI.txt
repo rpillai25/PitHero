@@ -36,6 +36,7 @@ ButtonConstruction,Construction
 ButtonFarmIrrigation,Irrigation
 ButtonFarmRestoreGrass,Restore Grass
 ButtonFarmRefrigerator,Refrigerator
+ButtonFarmStats,Farm Stats
 HarvestCropApple,Apple
 HarvestCropCorn,Corn
 HarvestCropEggplant,Eggplant
@@ -262,6 +263,8 @@ ButtonDismiss,Dismiss
 ButtonDiscard,Sell
 DialogConfirmDismissMercenary,Dismiss Mercenary
 ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear will be returned to your inventory.
+DialogConfirmDismissMonster,Dismiss Monster
+ConfirmDismissMonsterMessage,Really dismiss "{0} {1}"?
 WindowSecondChanceShop,Second Chance Shop
 TabItems,Items
 TabSeeds,Seeds
@@ -479,6 +482,18 @@ ConsoleAutoLearnedSkill,{0} learned {1}!
 
 # Refrigerator (issue #386)
 WindowRefrigerator,Refrigerator
+WindowUnlockRequirements,Unlock Requirements
+LabelCropLocked,Locked
+LabelUnlockRequirementsHint,Harvest these crops to unlock {0}:
+WindowFarmStats,Farm Stats
+HeadingFarmStatsField,Field
+HeadingFarmStatsKitchen,Kitchen
+LabelJobLevelsHeading,Job Levels
+LabelJobLevelFormat,Lv {0}
+LabelJobProgressFormat,{0}/{1}
+LabelJobLevelMax,MAX
+MonsterJobLevelsSummary,Fish Lv{0}  Cook Lv{1}  Farm Lv{2}
+MonsterPortraitTooltip,Job Levels
 FridgePreStockStackSize,Pre-Stock Stack Size: {0}
 FridgePreStockStackSizeTooltip,Maintain this many stacks of each available crop for use in cooking
 ButtonSendToCropStorage,Send to Crop Storage
