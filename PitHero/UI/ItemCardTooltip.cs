@@ -214,7 +214,7 @@ namespace PitHero.UI
             var rarityString = ItemDisplayHelper.GetRarityString(_item.Rarity);
 
             // Item Name (with rarity color). A stack sale appends its size — "MidHPPotion (16)".
-            var nameText = _item.Name;
+            var nameText = _item.DisplayName;
             var nameLabel = new Label(nameText, new LabelStyle { Font = font, FontColor = rarityColor });
             _contentTable.Add(nameLabel).Left().Pad(0, 0, LINE_SPACING, 0);
             _contentTable.Row();

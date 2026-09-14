@@ -39,7 +39,7 @@ namespace PitHero.ECS.Components
             _startPosition = Entity.Transform.Position;
             _elapsedTime = 0f;
             LoadItemSprite();
-            string displayName = _item?.Name ?? _debugName ?? "?";
+            string displayName = _item?.DisplayName ?? _debugName ?? "?";
             Debug.Log($"[ItemPickupAnimation] Started pickup animation for {displayName} at position X: {_startPosition.X}, Y: {_startPosition.Y}");
         }
 
@@ -106,7 +106,7 @@ namespace PitHero.ECS.Components
             {
                 // Animation complete
                 _animationComplete = true;
-                string displayName = _item?.Name ?? _debugName ?? "?";
+                string displayName = _item?.DisplayName ?? _debugName ?? "?";
                 Debug.Log($"[ItemPickupAnimation] Animation complete for {displayName}, removing entity");
                 Entity.Destroy();
                 return;

@@ -1100,7 +1100,7 @@ namespace PitHero.UI
                 // Multi-item stack dropped onto an inventory slot: show quantity selector
                 var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
                 int maxQty = ComputeMaxQtyForInventorySlot(vaultStack, heroComp);
-                string itemName = vaultStack.ItemTemplate?.Name ?? "";
+                string itemName = vaultStack.ItemTemplate?.DisplayName ?? "";
                 var qtyDialog = new ItemQuantityDialog(shopTitle, itemName, unitPrice, maxQty, _skin,
                     onConfirm: (qty) => DispatchItemPurchase(vaultStack, destSlot, qty),
                     onCancel:  cancelAction,

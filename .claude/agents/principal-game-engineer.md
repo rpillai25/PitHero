@@ -41,7 +41,8 @@ using RolePlayingFramework.Stats;
 public sealed class YourMonster : IEnemy
 {
     private int _hp;
-    public string Name => "YourMonster";
+    // Identity = the Monster.txt key; display text ("Your Monster") is resolved via TextService (AGENTS.md → Localization)
+    public string Name => MonsterTextKey.Monster_YourMonster;
     public int Level { get; }
     public StatBlock Stats { get; }
     public DamageKind AttackKind => DamageKind.Physical;   // or DamageKind.Magic
@@ -111,10 +112,10 @@ namespace RolePlayingFramework.Equipment.Swords
             };
 
             return new Gear(
-                "YourWeapon",
+                InventoryTextKey.Inv_YourWeapon_Name,   // key: IItem.Name strips it to "YourWeapon", DisplayName reads Inventory.txt ("Your Weapon")
                 ItemKind.WeaponSword,
                 Rarity,
-                $"+{attackBonus} Attack",
+                InventoryTextKey.Inv_YourWeapon_Desc,   // description key (Inventory.txt Inv_YourWeapon_Desc)
                 500,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

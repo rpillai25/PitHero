@@ -198,37 +198,37 @@ namespace PitHero.Tests
             // Test each treasure level creates the correct item
             var level1Item = TreasureComponent.GenerateItemForTreasureLevel(1);
             Assert.AreEqual(ItemRarity.Normal, level1Item.Rarity);
-            bool level1IsNormalPotion = level1Item.Name == InventoryTextKey.Inv_HPPotion_Name
-                || level1Item.Name == InventoryTextKey.Inv_MPPotion_Name
-                || level1Item.Name == InventoryTextKey.Inv_MixPotion_Name;
+            bool level1IsNormalPotion = level1Item.Name == "HPPotion"
+                || level1Item.Name == "MPPotion"
+                || level1Item.Name == "MixPotion";
             Assert.IsTrue(level1IsNormalPotion, $"Level 1 item should be a normal potion, but got {level1Item.Name}");
 
             var level2Item = TreasureComponent.GenerateItemForTreasureLevel(2);
             Assert.AreEqual(ItemRarity.Normal, level2Item.Rarity);
-            bool level2IsNormalPotion = level2Item.Name == InventoryTextKey.Inv_HPPotion_Name
-                || level2Item.Name == InventoryTextKey.Inv_MPPotion_Name
-                || level2Item.Name == InventoryTextKey.Inv_MixPotion_Name;
+            bool level2IsNormalPotion = level2Item.Name == "HPPotion"
+                || level2Item.Name == "MPPotion"
+                || level2Item.Name == "MixPotion";
             Assert.IsTrue(level2IsNormalPotion, $"Level 2 item should be a normal potion, but got {level2Item.Name}");
 
             var level3Item = TreasureComponent.GenerateItemForTreasureLevel(3);
             Assert.AreEqual(ItemRarity.Normal, level3Item.Rarity);
-            bool level3IsMidPotion = level3Item.Name == InventoryTextKey.Inv_MidHPPotion_Name
-                || level3Item.Name == InventoryTextKey.Inv_MidMPPotion_Name
-                || level3Item.Name == InventoryTextKey.Inv_MidMixPotion_Name;
+            bool level3IsMidPotion = level3Item.Name == "MidHPPotion"
+                || level3Item.Name == "MidMPPotion"
+                || level3Item.Name == "MidMixPotion";
             Assert.IsTrue(level3IsMidPotion, $"Level 3 item should be a Mid potion, but got {level3Item.Name}");
 
             var level4Item = TreasureComponent.GenerateItemForTreasureLevel(4);
             Assert.AreEqual(ItemRarity.Normal, level4Item.Rarity);
-            bool level4IsFullPotion = level4Item.Name == InventoryTextKey.Inv_FullHPPotion_Name
-                || level4Item.Name == InventoryTextKey.Inv_FullMPPotion_Name
-                || level4Item.Name == InventoryTextKey.Inv_FullMixPotion_Name;
+            bool level4IsFullPotion = level4Item.Name == "FullHPPotion"
+                || level4Item.Name == "FullMPPotion"
+                || level4Item.Name == "FullMixPotion";
             Assert.IsTrue(level4IsFullPotion, $"Level 4 item should be a Full potion, but got {level4Item.Name}");
 
             var level5Item = TreasureComponent.GenerateItemForTreasureLevel(5);
             Assert.AreEqual(ItemRarity.Normal, level5Item.Rarity);
-            bool level5IsFullPotion = level5Item.Name == InventoryTextKey.Inv_FullHPPotion_Name
-                || level5Item.Name == InventoryTextKey.Inv_FullMPPotion_Name
-                || level5Item.Name == InventoryTextKey.Inv_FullMixPotion_Name;
+            bool level5IsFullPotion = level5Item.Name == "FullHPPotion"
+                || level5Item.Name == "FullMPPotion"
+                || level5Item.Name == "FullMixPotion";
             Assert.IsTrue(level5IsFullPotion, $"Level 5 item should be a Full potion, but got {level5Item.Name}");
         }
 
@@ -242,7 +242,7 @@ namespace PitHero.Tests
             
             component.ContainedItem = testItem;
             Assert.IsNotNull(component.ContainedItem);
-            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, component.ContainedItem.Name);
+            Assert.AreEqual("HPPotion", component.ContainedItem.Name);
             Assert.AreEqual(ItemRarity.Normal, component.ContainedItem.Rarity);
         }
 

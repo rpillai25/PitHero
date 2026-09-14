@@ -229,7 +229,7 @@ namespace PitHero.AI
 
                     Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleOutBattleHealConsumable,
                         (targetName, GameConfig.ConsoleColorHeroName),
-                        (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),
+                        (consumable.DisplayName, RarityUtils.GetRarityColor(consumable.Rarity)),
                         (hpRestored.ToString(), Color.White));
                 }
 

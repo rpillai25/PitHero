@@ -56,8 +56,9 @@ namespace PitHero.Services
                 if (close < 0) break;
                 if (int.TryParse(format.Substring(open + 1, close - open - 1), out int idx) && (uint)idx < (uint)args.Length)
                 {
-                    // Auto-tag args whose text is a registered item display name so the console can show item tooltips.
-                    string itemName = ItemRegistry.IsKnownItemName(args[idx].text) ? args[idx].text : null;
+                    // Auto-tag args whose text is an item display name so the console can show item
+                    // tooltips; the segment carries the identity name the registry can rebuild.
+                    string itemName = ItemRegistry.TryResolveDisplayName(args[idx].text, out var identity) ? identity : null;
                     result.Add(new ConsoleSegment(args[idx].text, args[idx].color, itemName));
                 }
                 pos = close + 1;

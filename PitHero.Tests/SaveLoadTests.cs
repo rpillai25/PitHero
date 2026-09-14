@@ -46,7 +46,7 @@ namespace PitHero.Tests
                 original.CurrentHP = 200;
                 original.CurrentMP = 50;
 
-                original.EquipmentNames = new string[] { InventoryTextKey.Inv_RustyBlade_Name, "", InventoryTextKey.Inv_SquireHelm_Name, "", "", "" };
+                original.EquipmentNames = new string[] { "RustyBlade", "", "SquireHelm", "", "", "" };
 
                 original.HasCrystal = true;
                 original.CrystalJobName = JobTextKey.Job_Knight_Name;
@@ -75,8 +75,8 @@ namespace PitHero.Tests
 
                 original.InventoryItems = new List<SavedItem>
                 {
-                    new SavedItem { Name = InventoryTextKey.Inv_HPPotion_Name, IsConsumable = true, StackCount = 5, SlotIndex = 0 },
-                    new SavedItem { Name = InventoryTextKey.Inv_RustyBlade_Name, IsConsumable = false, StackCount = 0, SlotIndex = 3 }
+                    new SavedItem { Name = "HPPotion", IsConsumable = true, StackCount = 5, SlotIndex = 0 },
+                    new SavedItem { Name = "RustyBlade", IsConsumable = false, StackCount = 0, SlotIndex = 3 }
                 };
 
                 original.AlliedMonsters = new List<SavedAlliedMonster>
@@ -264,18 +264,18 @@ namespace PitHero.Tests
         [TestMethod]
         public void ItemRegistry_TryCreateItem_FindsKnownGearItems()
         {
-            Assert.IsTrue(ItemRegistry.TryCreateItem(InventoryTextKey.Inv_RustyBlade_Name, out var sword));
+            Assert.IsTrue(ItemRegistry.TryCreateItem("RustyBlade", out var sword));
             Assert.IsNotNull(sword);
-            Assert.AreEqual(InventoryTextKey.Inv_RustyBlade_Name, sword.Name);
+            Assert.AreEqual("RustyBlade", sword.Name);
         }
 
         /// <summary>Verifies ItemRegistry finds known potion items.</summary>
         [TestMethod]
         public void ItemRegistry_TryCreateItem_FindsKnownPotionItems()
         {
-            Assert.IsTrue(ItemRegistry.TryCreateItem(InventoryTextKey.Inv_HPPotion_Name, out var potion));
+            Assert.IsTrue(ItemRegistry.TryCreateItem("HPPotion", out var potion));
             Assert.IsNotNull(potion);
-            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, potion.Name);
+            Assert.AreEqual("HPPotion", potion.Name);
         }
 
         /// <summary>Verifies ItemRegistry returns false for unknown items.</summary>
@@ -361,11 +361,11 @@ namespace PitHero.Tests
                 // Verify saved positions match original placement
                 Assert.AreEqual(3, savedItems.Count);
                 Assert.AreEqual(15, savedItems[0].SlotIndex);
-                Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, savedItems[0].Name);
+                Assert.AreEqual("ShortSword", savedItems[0].Name);
                 Assert.AreEqual(42, savedItems[1].SlotIndex);
-                Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, savedItems[1].Name);
+                Assert.AreEqual("IronHelm", savedItems[1].Name);
                 Assert.AreEqual(99, savedItems[2].SlotIndex);
-                Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, savedItems[2].Name);
+                Assert.AreEqual("HPPotion", savedItems[2].Name);
                 Assert.AreEqual(3, savedItems[2].StackCount);
 
                 // Step 3: Save through binary persistence
@@ -385,11 +385,11 @@ namespace PitHero.Tests
                 // Step 5: Verify loaded slot positions
                 Assert.AreEqual(3, loaded.InventoryItems.Count);
                 Assert.AreEqual(15, loaded.InventoryItems[0].SlotIndex);
-                Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, loaded.InventoryItems[0].Name);
+                Assert.AreEqual("ShortSword", loaded.InventoryItems[0].Name);
                 Assert.AreEqual(42, loaded.InventoryItems[1].SlotIndex);
-                Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, loaded.InventoryItems[1].Name);
+                Assert.AreEqual("IronHelm", loaded.InventoryItems[1].Name);
                 Assert.AreEqual(99, loaded.InventoryItems[2].SlotIndex);
-                Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, loaded.InventoryItems[2].Name);
+                Assert.AreEqual("HPPotion", loaded.InventoryItems[2].Name);
                 Assert.AreEqual(3, loaded.InventoryItems[2].StackCount);
 
                 // Step 6: Restore into a new bag (same logic as ApplyPendingLoadData)
@@ -417,21 +417,21 @@ namespace PitHero.Tests
 
                 var restoredSword = restoredBag.GetSlotItem(15);
                 Assert.IsNotNull(restoredSword, "ShortSword should be at slot 15");
-                Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, restoredSword.Name);
+                Assert.AreEqual("ShortSword", restoredSword.Name);
 
                 Assert.IsNull(restoredBag.GetSlotItem(16), "Slot 16 should be empty");
                 Assert.IsNull(restoredBag.GetSlotItem(41), "Slot 41 should be empty");
 
                 var restoredHelm = restoredBag.GetSlotItem(42);
                 Assert.IsNotNull(restoredHelm, "IronHelm should be at slot 42");
-                Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, restoredHelm.Name);
+                Assert.AreEqual("IronHelm", restoredHelm.Name);
 
                 Assert.IsNull(restoredBag.GetSlotItem(43), "Slot 43 should be empty");
                 Assert.IsNull(restoredBag.GetSlotItem(98), "Slot 98 should be empty");
 
                 var restoredPotion = restoredBag.GetSlotItem(99);
                 Assert.IsNotNull(restoredPotion, "HPPotion should be at slot 99");
-                Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, restoredPotion.Name);
+                Assert.AreEqual("HPPotion", restoredPotion.Name);
                 Assert.IsTrue(restoredPotion is RolePlayingFramework.Equipment.Consumable);
                 Assert.AreEqual(3, ((RolePlayingFramework.Equipment.Consumable)restoredPotion).StackCount);
 
@@ -1697,11 +1697,11 @@ namespace PitHero.Tests
                 // resulting vault StackCount after stacking.
                 string[] gearNames = new string[]
                 {
-                    InventoryTextKey.Inv_ShortSword_Name, InventoryTextKey.Inv_LongSword_Name,
-                    InventoryTextKey.Inv_IronArmor_Name,  InventoryTextKey.Inv_LeatherArmor_Name,
-                    InventoryTextKey.Inv_IronHelm_Name,   InventoryTextKey.Inv_ClothCap_Name,
-                    InventoryTextKey.Inv_IronShield_Name, InventoryTextKey.Inv_HideShield_Name,
-                    InventoryTextKey.Inv_RustyBlade_Name, InventoryTextKey.Inv_CaveShiv_Name,
+                    "ShortSword", "LongSword",
+                    "IronArmor",  "LeatherArmor",
+                    "IronHelm",   "ClothCap",
+                    "IronShield", "HideShield",
+                    "RustyBlade", "CaveShiv",
                 };
 
                 for (int i = 0; i < 50; i++)
@@ -1716,8 +1716,8 @@ namespace PitHero.Tests
                 // 10 consumable entries
                 string[] potionNames = new string[]
                 {
-                    InventoryTextKey.Inv_HPPotion_Name, InventoryTextKey.Inv_MPPotion_Name,
-                    InventoryTextKey.Inv_MixPotion_Name,
+                    "HPPotion", "MPPotion",
+                    "MixPotion",
                 };
                 for (int i = 0; i < 10; i++)
                 {

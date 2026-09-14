@@ -358,7 +358,7 @@ namespace PitHero.AI
 
                 Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleItemFound,
                     (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
-                    (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity)));
+                    (containedItem.DisplayName, RarityUtils.GetRarityColor(containedItem.Rarity)));
 
                 // Reset HealingItemExhausted if picked up item is a healing consumable
                 if (containedItem is Consumable consumable && consumable.HPRestoreAmount > 0)
@@ -383,7 +383,7 @@ namespace PitHero.AI
                 Debug.Warn($"[OpenChest] Hero's bags are full! Sending {containedItem.Name} to the Second Chance vault");
                 Core.Services.GetService<PitHero.Services.SecondChanceMerchantVault>()?.AddItem(containedItem);
                 Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleItemSentToVault,
-                    (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity)));
+                    (containedItem.DisplayName, RarityUtils.GetRarityColor(containedItem.Rarity)));
                 treasureComponent.ContainedItem = null;
             }
         }

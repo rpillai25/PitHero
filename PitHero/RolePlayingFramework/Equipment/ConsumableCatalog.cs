@@ -66,7 +66,7 @@ namespace RolePlayingFramework.Equipment
         public static string GetDisplayName(int index)
         {
             var template = GetTemplate(index);
-            return template != null ? template.Name : null;
+            return template != null ? template.DisplayName : null;
         }
 
         /// <summary>Catalog index of the consumable with the given sprite name, or -1 when unknown.</summary>

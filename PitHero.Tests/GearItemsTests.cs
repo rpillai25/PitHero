@@ -15,7 +15,7 @@ namespace PitHero.Tests
             var sword = GearItems.ShortSword();
             
             Assert.IsNotNull(sword);
-            Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, sword.Name);
+            Assert.AreEqual("ShortSword", sword.Name);
             Assert.AreEqual(ItemKind.WeaponSword, sword.Kind);
             Assert.AreEqual(ItemRarity.Normal, sword.Rarity);
             
@@ -34,7 +34,7 @@ namespace PitHero.Tests
             var sword = GearItems.LongSword();
             
             Assert.IsNotNull(sword);
-            Assert.AreEqual(InventoryTextKey.Inv_LongSword_Name, sword.Name);
+            Assert.AreEqual("LongSword", sword.Name);
             Assert.AreEqual(ItemKind.WeaponSword, sword.Kind);
             Assert.AreEqual(ItemRarity.Normal, sword.Rarity);
             
@@ -51,7 +51,7 @@ namespace PitHero.Tests
             var shield = GearItems.WoodenShield();
             
             Assert.IsNotNull(shield);
-            Assert.AreEqual(InventoryTextKey.Inv_WoodenShield_Name, shield.Name);
+            Assert.AreEqual("WoodenShield", shield.Name);
             Assert.AreEqual(ItemKind.Shield, shield.Kind);
             Assert.AreEqual(ItemRarity.Normal, shield.Rarity);
             
@@ -70,7 +70,7 @@ namespace PitHero.Tests
             var shield = GearItems.IronShield();
             
             Assert.IsNotNull(shield);
-            Assert.AreEqual(InventoryTextKey.Inv_IronShield_Name, shield.Name);
+            Assert.AreEqual("IronShield", shield.Name);
             Assert.AreEqual(ItemKind.Shield, shield.Kind);
             Assert.AreEqual(ItemRarity.Normal, shield.Rarity);
             
@@ -86,7 +86,7 @@ namespace PitHero.Tests
             var helm = GearItems.SquireHelm();
             
             Assert.IsNotNull(helm);
-            Assert.AreEqual(InventoryTextKey.Inv_SquireHelm_Name, helm.Name);
+            Assert.AreEqual("SquireHelm", helm.Name);
             Assert.AreEqual(ItemKind.HatHelm, helm.Kind);
             Assert.AreEqual(ItemRarity.Normal, helm.Rarity);
             
@@ -105,7 +105,7 @@ namespace PitHero.Tests
             var helm = GearItems.IronHelm();
             
             Assert.IsNotNull(helm);
-            Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, helm.Name);
+            Assert.AreEqual("IronHelm", helm.Name);
             Assert.AreEqual(ItemKind.HatHelm, helm.Kind);
             Assert.AreEqual(ItemRarity.Normal, helm.Rarity);
             
@@ -121,7 +121,7 @@ namespace PitHero.Tests
             var armor = GearItems.LeatherArmor();
             
             Assert.IsNotNull(armor);
-            Assert.AreEqual(InventoryTextKey.Inv_LeatherArmor_Name, armor.Name);
+            Assert.AreEqual("LeatherArmor", armor.Name);
             Assert.AreEqual(ItemKind.ArmorMail, armor.Kind);
             Assert.AreEqual(ItemRarity.Normal, armor.Rarity);
             
@@ -140,7 +140,7 @@ namespace PitHero.Tests
             var armor = GearItems.IronArmor();
             
             Assert.IsNotNull(armor);
-            Assert.AreEqual(InventoryTextKey.Inv_IronArmor_Name, armor.Name);
+            Assert.AreEqual("IronArmor", armor.Name);
             Assert.AreEqual(ItemKind.ArmorMail, armor.Kind);
             Assert.AreEqual(ItemRarity.Normal, armor.Rarity);
             
@@ -156,7 +156,7 @@ namespace PitHero.Tests
             var ring = GearItems.RingOfPower();
             
             Assert.IsNotNull(ring);
-            Assert.AreEqual(InventoryTextKey.Inv_RingOfPower_Name, ring.Name);
+            Assert.AreEqual("RingOfPower", ring.Name);
             Assert.AreEqual(ItemKind.Accessory, ring.Kind);
             Assert.AreEqual(ItemRarity.Uncommon, ring.Rarity);
             
@@ -179,7 +179,7 @@ namespace PitHero.Tests
             var necklace = GearItems.NecklaceOfHealth();
             
             Assert.IsNotNull(necklace);
-            Assert.AreEqual(InventoryTextKey.Inv_NecklaceOfHealth_Name, necklace.Name);
+            Assert.AreEqual("NecklaceOfHealth", necklace.Name);
             Assert.AreEqual(ItemKind.Accessory, necklace.Kind);
             Assert.AreEqual(ItemRarity.Rare, necklace.Rarity);
             
@@ -203,7 +203,7 @@ namespace PitHero.Tests
             var ring = GearItems.ProtectRing();
             
             Assert.IsNotNull(ring);
-            Assert.AreEqual(InventoryTextKey.Inv_ProtectRing_Name, ring.Name);
+            Assert.AreEqual("ProtectRing", ring.Name);
             Assert.AreEqual(ItemKind.Accessory, ring.Kind);
             Assert.AreEqual(ItemRarity.Normal, ring.Rarity);
             
@@ -224,7 +224,7 @@ namespace PitHero.Tests
             var chain = GearItems.MagicChain();
             
             Assert.IsNotNull(chain);
-            Assert.AreEqual(InventoryTextKey.Inv_MagicChain_Name, chain.Name);
+            Assert.AreEqual("MagicChain", chain.Name);
             Assert.AreEqual(ItemKind.Accessory, chain.Kind);
             Assert.AreEqual(ItemRarity.Uncommon, chain.Rarity);
             

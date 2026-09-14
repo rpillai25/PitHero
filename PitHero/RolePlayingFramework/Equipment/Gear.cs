@@ -55,9 +55,10 @@ namespace RolePlayingFramework.Equipment
         private readonly int _tier;
         // Tier suffix cached at construction ("" for tier 1, "+2" for tier 2, etc.)
         private readonly string _tierSuffix;
-        // Fully composed "BaseName+N" string cached once TextService resolves.
-        // null = not yet resolved; assigned on first Name access when tier >= 2.
-        private string _cachedTieredName;
+        // Stable identity: stripped key + tier suffix, composed once at construction.
+        private readonly string _name;
+        // Localized "Base Name+N" string cached once TextService resolves (null until then).
+        private string _cachedDisplayName;
 
         private TextService GetTextService()
         {
@@ -68,20 +69,23 @@ namespace RolePlayingFramework.Equipment
             return _textService;
         }
 
-        public string Name
+        /// <summary>Stable identity ("RustyBlade", "RustyBlade+2"); see <see cref="IItem.Name"/>.</summary>
+        public string Name => _name;
+
+        /// <summary>Localized player-facing name with the tier suffix; falls back to the identity headlessly.</summary>
+        public string DisplayName
         {
             get
             {
-                if (_tier <= 1)
-                    return GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
-
-                // Tier >= 2: compose once and cache to avoid per-frame allocation.
-                if (_cachedTieredName != null)
-                    return _cachedTieredName;
-
-                string baseName = GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
-                _cachedTieredName = baseName + _tierSuffix;
-                return _cachedTieredName;
+                if (_cachedDisplayName != null)
+                    return _cachedDisplayName;
+                var textService = GetTextService();
+                if (textService == null)
+                    return _name;   // don't cache: the service may appear later in the process
+                _cachedDisplayName = _tier <= 1
+                    ? textService.DisplayText(TextType.Inventory, _nameKey)
+                    : textService.DisplayText(TextType.Inventory, _nameKey) + _tierSuffix;
+                return _cachedDisplayName;
             }
         }
 
@@ -125,11 +129,7 @@ namespace RolePlayingFramework.Equipment
         {
             _nameKey = name;
             _descKey = description;
-            const string prefix = "Inv_";
-            const string suffix = "_Name";
-            _spriteName = (name.StartsWith(prefix) && name.EndsWith(suffix))
-                ? name.Substring(prefix.Length, name.Length - prefix.Length - suffix.Length)
-                : name;
+            _spriteName = ItemNameKey.Strip(name);
             Kind = kind;
             Rarity = rarity;
             Price = price;
@@ -142,6 +142,8 @@ namespace RolePlayingFramework.Equipment
             AllowedJobs = allowedJobs ?? GetDefaultAllowedJobs(kind);
             _tier = tier < 1 ? 1 : tier;
             _tierSuffix = _tier >= 2 ? ("+" + _tier) : string.Empty;
+            // Identity string, byte-identical to the pre-#413 localized value for every item
+            _name = _tier >= 2 ? _spriteName + _tierSuffix : _spriteName;
         }
 
         /// <summary>

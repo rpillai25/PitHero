@@ -113,6 +113,7 @@ See `PitHero/docs/RenderingSystem.md` for the full reference.  Key rules:
 - All display text lives in `Content/Localization/en-us/*.txt` (one file per `TextType`: UI, Inventory, Skill, Job, Monster, Dialogue, Name), accessed via `TextService.DisplayText(TextType.X, SomeTextKey.Y)`
 - No hardcoded display strings anywhere in game code (debug logs are exempt)
 - `Names.txt` is **list-valued**: each line is `PoolKey,entry,entry,...`, a key may repeat across lines (entries append), and callers read it with `TextService.DisplayTextList`. Character name pools live there, not in C#
+- **Item and monster names are two strings.** The identity string (`IItem.Name`, `IEnemy.Name`, `ItemRegistry` keys, saves, replay hashes, command payloads) is the localization key with the `Inv_`/`_Name` affixes stripped (`ItemNameKey.Strip`) and is never shown to the player. The player-facing text is `IItem.DisplayName` / `TextService.DisplayText(TextType.Monster, ...)`. Localized values in `Inventory.txt` and `Monster.txt` are written as spaced words — split the TitleCase key at every capital, keep acronym runs together, use possessives and a lowercase "of" ("Rusty Blade", "Mid HP Potion", "Pit Lord's Aegis", "Necklace of Health"). Never compare, hash or persist a `DisplayName`; never show a `Name`
 
 ### Constants
 - All sizes, positions, speeds, and physics layers go in `GameConfig.cs`

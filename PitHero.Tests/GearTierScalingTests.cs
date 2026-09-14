@@ -275,7 +275,7 @@ namespace PitHero.Tests
         {
             // Save serializes only "BaseName+N"; load rebuilds via ItemRegistry. Stats must match
             // what the chest originally produced, so scaling must be deterministic.
-            Assert.IsTrue(ItemRegistry.TryCreateItem("Inv_RustyBlade_Name", out var baseItem));
+            Assert.IsTrue(ItemRegistry.TryCreateItem("RustyBlade", out var baseItem));
             var baseGear = (Gear)baseItem;
 
             ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel;
@@ -301,12 +301,12 @@ namespace PitHero.Tests
         public void ItemRegistry_TryCreateItem_TierScaledName_RoundTrips()
         {
             // Get a known base gear name via the registry (headless: Name = _nameKey)
-            Assert.IsTrue(ItemRegistry.TryCreateItem("Inv_RustyBlade_Name", out var baseItem),
-                "Base item 'Inv_RustyBlade_Name' must exist in registry");
+            Assert.IsTrue(ItemRegistry.TryCreateItem("RustyBlade", out var baseItem),
+                "Base item RustyBlade must exist in registry");
             Assert.IsInstanceOfType(baseItem, typeof(Gear));
 
             var baseGear = (Gear)baseItem;
-            var tier2Name = baseGear.Name + "+2"; // e.g. "Inv_RustyBlade_Name+2" in headless
+            var tier2Name = baseGear.Name + "+2"; // "RustyBlade+2" in every host
 
             ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel; // ensure stride is set
             bool found = ItemRegistry.TryCreateItem(tier2Name, out var tier2Item);
@@ -331,8 +331,8 @@ namespace PitHero.Tests
         public void ItemRegistry_TryCreateItem_PotionWithPlusSuffix_ReturnsFalse()
         {
             // Potions are not Gear so the +N branch should not produce a result even if base exists.
-            // "Inv_HPPotion_Name+2" — base "Inv_HPPotion_Name" exists but is a Potion, not Gear.
-            ItemRegistry.TryCreateItem("Inv_HPPotion_Name", out var potionItem);
+            // "HPPotion+2" — base "HPPotion" exists but is a Potion, not Gear.
+            ItemRegistry.TryCreateItem("HPPotion", out var potionItem);
             if (potionItem == null) return; // potion not in registry under that key — skip
 
             string potionTier2Name = potionItem.Name + "+2";
