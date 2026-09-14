@@ -20,6 +20,9 @@ ButtonActivateStencil,Activate Stencil
 ButtonViewStencils,View Stencils
 ButtonMoveStencils,Move Stencils
 ButtonRemoveStencil,Remove Stencil
+ButtonSortTime,Sort by Time
+ButtonSortType,Sort by Type
+ButtonSortAlpha,Sort Alphabetically
 ButtonExitMoveMode,Exit Move Mode
 ButtonExitRemoveMode,Exit Remove Mode
 ButtonReplenish,Replenish

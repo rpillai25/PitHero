@@ -215,6 +215,9 @@ namespace PitHero.Services.Replay
                 case PlayerCommandType.SellBagItem:
                     GetGrid(cmd.C)?.DiscardItem(cmd.A, cmd.B <= 0 ? int.MaxValue : cmd.B);
                     return true;
+                case PlayerCommandType.SortBag:
+                    ApplySortBag(cmd.A);
+                    return true;
                 case PlayerCommandType.BuyVaultItem:
                     GetSettingsUI()?.SecondChanceShopUI?.ApplyItemPurchase(cmd.A, cmd.S, cmd.B, cmd.C);
                     return true;
@@ -311,6 +314,22 @@ namespace PitHero.Services.Replay
             if (value < AutoSellExcessItemsService.MinKeepStacks) return AutoSellExcessItemsService.MinKeepStacks;
             if (value > AutoSellExcessItemsService.MaxKeepStacks) return AutoSellExcessItemsService.MaxKeepStacks;
             return value;
+        }
+
+        /// <summary>Sorts the hero bag (items in placed stencil cells stay put), then refreshes every inventory view.</summary>
+        private static void ApplySortBag(int orderOrdinal)
+        {
+            if (orderOrdinal < (int)PitHero.UI.InventorySortOrder.Time || orderOrdinal > (int)PitHero.UI.InventorySortOrder.Name)
+                return;
+            var bag = GetHeroComponent()?.Bag;
+            if (bag == null)
+                return;
+
+            var mask = new bool[bag.Capacity];
+            StencilBagMask.Build(Services?.GetService<GameStateService>()?.PlacedStencils, mask);
+            RolePlayingFramework.Inventory.BagSorter.Sort(bag, (PitHero.UI.InventorySortOrder)orderOrdinal, mask,
+                PitHero.UI.InventoryGrid.BagColumns, PitHero.UI.InventoryGrid.BagRows);
+            PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
         }
 
         /// <summary>Resolves the inventory grid a command targets: 0 = Party window, 1 = Second Chance shop.</summary>

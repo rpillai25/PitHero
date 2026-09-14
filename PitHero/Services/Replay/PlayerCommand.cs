@@ -42,6 +42,7 @@ namespace PitHero.Services.Replay
         PlaceStencil = 42,           // S = pattern id, A = x, B = y
         RemoveStencil = 43,          // S = pattern id, L = grid owner id
         MoveStencil = 44,            // S = pattern id, A = x, B = y, L = grid owner id
+        SortBag = 45,                // A = InventorySortOrder ordinal (hero bag; stencil cells untouched)
 
         // Mercenaries / monsters
         HireMercenary = 50,          // A = tavern index, S = merc name

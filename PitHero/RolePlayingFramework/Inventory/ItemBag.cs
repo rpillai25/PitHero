@@ -10,6 +10,9 @@ namespace RolePlayingFramework.Inventory
         private int _count;                        // number of non-null items
         private readonly List<IItem> _compact;     // reusable compact non-null list for Items exposure
         private bool _compactDirty;                // flag to rebuild compact list lazily
+        private readonly Dictionary<IItem, long> _acquireSeq; // per-instance acquisition order (higher = newer); saved
+        private long _nextAcquireSeq = 1;
+        private readonly List<IItem> _pruneBuffer = new List<IItem>();
 
         /// <summary>Current bag name.</summary>
         public string BagName { get; private set; }
@@ -33,6 +36,31 @@ namespace RolePlayingFramework.Inventory
             _count = 0;
             _compact = new List<IItem>(capacity);
             _compactDirty = true;
+            _acquireSeq = new Dictionary<IItem, long>(capacity, ReferenceEqualityComparer.Instance);
+        }
+
+        /// <summary>Acquisition order of an item in the bag (higher = acquired more recently); 0 when not in the bag.</summary>
+        public long GetAcquireSequence(IItem item)
+        {
+            if (item == null) return 0;
+            return _acquireSeq.TryGetValue(item, out var seq) ? seq : 0;
+        }
+
+        /// <summary>Restores an item's acquisition order (save load). Later stamps continue above it.</summary>
+        public void SetAcquireSequence(IItem item, long seq)
+        {
+            if (item == null || seq <= 0) return;
+            _acquireSeq[item] = seq;
+            if (seq >= _nextAcquireSeq) _nextAcquireSeq = seq + 1;
+        }
+
+        /// <summary>Marks an item as the most recently acquired.</summary>
+        private void Stamp(IItem item) => _acquireSeq[item] = _nextAcquireSeq++;
+
+        /// <summary>Stamps an item entering the bag unless it already has an acquisition order.</summary>
+        private void StampIfNew(IItem item)
+        {
+            if (item != null && !_acquireSeq.ContainsKey(item)) Stamp(item);
         }
 
         /// <summary>Adds an item to first empty slot.</summary>
@@ -52,6 +80,7 @@ namespace RolePlayingFramework.Inventory
                         existingConsumable.StackCount < existingConsumable.StackSize)
                     {
                         existingConsumable.StackCount++;
+                        Stamp(existingConsumable); // a growing stack counts as newly acquired (Sort by Time)
                         _compactDirty = true;
                         return true;
                     }
@@ -69,6 +98,7 @@ namespace RolePlayingFramework.Inventory
                 {
                     _slots[pref] = item;
                     _count++;
+                    Stamp(item);
                     _compactDirty = true;
                     return true;
                 }
@@ -81,6 +111,7 @@ namespace RolePlayingFramework.Inventory
                 {
                     _slots[i] = item;
                     _count++;
+                    Stamp(item);
                     _compactDirty = true;
                     return true;
                 }
@@ -98,6 +129,7 @@ namespace RolePlayingFramework.Inventory
                 {
                     _slots[i] = null;
                     _count--;
+                    _acquireSeq.Remove(item);
                     _compactDirty = true;
                     return true;
                 }
@@ -117,6 +149,7 @@ namespace RolePlayingFramework.Inventory
                 {
                     _slots[slotIndex] = null;
                     _count--;
+                    _acquireSeq.Remove(consumable);
                     _compactDirty = true;
                 }
                 return true;
@@ -135,6 +168,7 @@ namespace RolePlayingFramework.Inventory
                 {
                     if (seen == index)
                     {
+                        _acquireSeq.Remove(_slots[i]);
                         _slots[i] = null;
                         _count--;
                         _compactDirty = true;
@@ -173,6 +207,7 @@ namespace RolePlayingFramework.Inventory
                 {
                     _slots[indexA] = null;
                     _count--;
+                    _acquireSeq.Remove(src);
                 }
                 _compactDirty = true;
                 return true;
@@ -193,8 +228,10 @@ namespace RolePlayingFramework.Inventory
             var existing = _slots[slotIndex];
             if (existing == item) return true;
             if (existing != null) { _count--; }
-            if (item != null) { _count++; }
+            if (item != null) { _count++; StampIfNew(item); }
             _slots[slotIndex] = item;
+            // Forget the displaced item's acquisition order unless it still sits in another slot
+            if (existing != null && IndexOfItem(existing) < 0) _acquireSeq.Remove(existing);
             _compactDirty = true;
             return true;
         }
@@ -207,10 +244,7 @@ namespace RolePlayingFramework.Inventory
             if (len > _slots.Length) len = _slots.Length;
             for (int i = 0; i < len; i++) _slots[i] = ordered[i];
             for (int i = len; i < _slots.Length; i++) _slots[i] = null;
-            // recalc count
-            _count = 0;
-            for (int i = 0; i < _slots.Length; i++) if (_slots[i] != null) _count++;
-            _compactDirty = true;
+            RecountAndSyncAcquireOrder();
         }
 
         /// <summary>Replaces slot ordering with provided raw buffer (no allocation path).</summary>
@@ -221,8 +255,35 @@ namespace RolePlayingFramework.Inventory
             if (count > _slots.Length) count = _slots.Length;
             for (int i = 0; i < count; i++) _slots[i] = orderedBuffer[i];
             for (int i = count; i < _slots.Length; i++) _slots[i] = null;
+            RecountAndSyncAcquireOrder();
+        }
+
+        /// <summary>Slot index holding this exact item instance, or -1.</summary>
+        private int IndexOfItem(IItem item)
+        {
+            for (int i = 0; i < _slots.Length; i++)
+                if (ReferenceEquals(_slots[i], item)) return i;
+            return -1;
+        }
+
+        /// <summary>Recounts items after a bulk reorder, stamps newcomers and forgets items that left the bag.</summary>
+        private void RecountAndSyncAcquireOrder()
+        {
             _count = 0;
-            for (int i = 0; i < _slots.Length; i++) if (_slots[i] != null) _count++;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var it = _slots[i];
+                if (it == null) continue;
+                _count++;
+                StampIfNew(it);
+            }
+            if (_acquireSeq.Count > _count)
+            {
+                _pruneBuffer.Clear();
+                foreach (var key in _acquireSeq.Keys)
+                    if (IndexOfItem(key) < 0) _pruneBuffer.Add(key);
+                for (int i = 0; i < _pruneBuffer.Count; i++) _acquireSeq.Remove(_pruneBuffer[i]);
+            }
             _compactDirty = true;
         }
 

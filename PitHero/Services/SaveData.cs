@@ -15,6 +15,8 @@ namespace PitHero.Services
         public bool IsConsumable;
         public int StackCount;
         public int SlotIndex;
+        /// <summary>Bag acquisition order (higher = newer) for Sort by Time; 0 in files older than v36.</summary>
+        public long AcquireSeq;
     }
 
     /// <summary>Lightweight struct representing a stacked item in the Second Chance Merchant vault.</summary>
@@ -277,7 +279,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 35; // v35: per-monster job task progress + lifetime crop/dish counters appended (issue #413)
+        public const int CurrentVersion = 36; // v36: inventory item acquisition order appended (issue #414, Sort by Time)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -1171,6 +1173,16 @@ namespace PitHero.Services
             // 50. Lifetime progression counters (v35, issue #413): crop units harvested, dishes served
             WriteIntArray(writer, CropHarvestedTotals);
             WriteIntArray(writer, DishesServedTotals);
+
+            // 51. Inventory acquisition order (v36, issue #414): one entry per section-6 item, same order,
+            // as low/high int halves of the long sequence
+            writer.Write(InventoryItems.Count);
+            for (int i = 0; i < InventoryItems.Count; i++)
+            {
+                long seq = InventoryItems[i].AcquireSeq;
+                writer.Write((int)(seq & 0xFFFFFFFFL));
+                writer.Write((int)(seq >> 32));
+            }
         }
 
         /// <summary>Writes a count-prefixed int array (null writes a zero count).</summary>
@@ -1267,6 +1279,7 @@ namespace PitHero.Services
                 item.IsConsumable = reader.ReadBool();
                 item.StackCount = item.IsConsumable ? reader.ReadInt() : 0;
                 item.SlotIndex = reader.ReadInt();
+                item.AcquireSeq = 0; // filled from section 51 (v36+)
                 // Saves before v33 laid the bag out 24 x 5; the grid is now 30 x 4 (issue: shorter
                 // window). Remap so the player's arrangement keeps its rows and columns.
                 if (fileVersion < 33)
@@ -1803,6 +1816,24 @@ namespace PitHero.Services
             {
                 CropHarvestedTotals = new int[Farming.CropTypeInfo.Count];
                 DishesServedTotals = new int[Dining.DishTypeInfo.Count];
+            }
+
+            // 51. Inventory acquisition order (section added in v36, issue #414). Older files keep
+            // AcquireSeq 0, so the bag stamps items in load (slot) order instead.
+            if (fileVersion >= 36)
+            {
+                int seqCount = reader.ReadInt();
+                for (int i = 0; i < seqCount; i++)
+                {
+                    uint low = (uint)reader.ReadInt();
+                    long seq = ((long)reader.ReadInt() << 32) | low;
+                    if (i < InventoryItems.Count)
+                    {
+                        var item = InventoryItems[i];
+                        item.AcquireSeq = seq;
+                        InventoryItems[i] = item;
+                    }
+                }
             }
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
