@@ -64,9 +64,10 @@ namespace PitHero.Services
             if (roll > joinChance) return null;
 
             string firstName = Util.NameGenerator.GenerateMonsterName();
-            int fishing = Nez.Random.Range(1, 10);
-            int cooking = Nez.Random.Range(1, 10);
-            int farming = Nez.Random.Range(1, 10);
+            // Every recruit starts at the base level in every job and earns levels by working (issue #413)
+            int fishing = GameConfig.MonsterJobStartingLevel;
+            int cooking = GameConfig.MonsterJobStartingLevel;
+            int farming = GameConfig.MonsterJobStartingLevel;
 
             var allied = new AlliedMonster(firstName, enemy.Name, fishing, cooking, farming,
                 targetHouse.UniqueId);
@@ -100,6 +101,35 @@ namespace PitHero.Services
             _alliedMonsters.Add(ally);
         }
 
+        /// <summary>
+        /// Removes a monster from the roster (issue #413 dismiss). The roster drops it immediately;
+        /// a live worker entity notices its monster is gone and walks home through the coordinators'
+        /// normal return path. Returns false when the monster is not on the roster.
+        /// </summary>
+        public bool RemoveAlliedMonster(AlliedMonster monster)
+        {
+            for (int i = 0; i < _alliedMonsters.Count; i++)
+            {
+                if (!ReferenceEquals(_alliedMonsters[i], monster))
+                    continue;
+                _alliedMonsters.RemoveAt(i);
+                Debug.Log($"[AlliedMonsterManager] Dismissed '{monster.Name}' ({monster.MonsterTypeName})");
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>True when the monster is on the roster (reference identity).</summary>
+        public bool Contains(AlliedMonster monster)
+        {
+            for (int i = 0; i < _alliedMonsters.Count; i++)
+            {
+                if (ReferenceEquals(_alliedMonsters[i], monster))
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>Number of allied monsters currently linked to the given Monster House (by UniqueId).</summary>
         public int GetLinkedMonsterCount(int houseUniqueId)
         {
@@ -129,7 +159,7 @@ namespace PitHero.Services
 
         /// <summary>
         /// Manually adds a monster to a house in exchange for gold (issue #283). Bypasses the join
-        /// roll but produces the same shape as a natural recruit (random name + 1–9 proficiencies,
+        /// roll but produces the same shape as a natural recruit (random name, level-1 job skills,
         /// Job=None). Returns the new monster, or null if the house is full. Gold is handled by the
         /// caller.
         /// </summary>
@@ -138,9 +168,9 @@ namespace PitHero.Services
             if (enemy == null || IsHouseFull(houseUniqueId)) return null;
 
             string firstName = Util.NameGenerator.GenerateMonsterName();
-            int fishing = Nez.Random.Range(1, 10);
-            int cooking = Nez.Random.Range(1, 10);
-            int farming = Nez.Random.Range(1, 10);
+            int fishing = GameConfig.MonsterJobStartingLevel;
+            int cooking = GameConfig.MonsterJobStartingLevel;
+            int farming = GameConfig.MonsterJobStartingLevel;
 
             var allied = new AlliedMonster(firstName, enemy.Name, fishing, cooking, farming, houseUniqueId);
             _alliedMonsters.Add(allied);

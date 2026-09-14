@@ -64,5 +64,54 @@ namespace PitHero.Tests
             Assert.AreEqual(1, monster.FishingProficiency, "Minimum proficiency of 1 should be accepted");
             Assert.AreEqual(9, monster.CookingProficiency, "Maximum proficiency of 9 should be accepted");
         }
+
+        /// <summary>Ten tasks at level 1 raise the job to level 2 and reset progress (issue #413).</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_RecordTask_LevelsUpAfterLevelTimesTen()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 1, 1);
+
+            for (int i = 0; i < 9; i++)
+                Assert.IsFalse(monster.RecordTask(MonsterJob.Farming), "Nine tasks are not enough");
+            Assert.AreEqual(9, monster.FarmingTasks);
+            Assert.AreEqual(10, monster.GetTasksRequired(MonsterJob.Farming));
+
+            Assert.IsTrue(monster.RecordTask(MonsterJob.Farming), "The tenth task levels up");
+            Assert.AreEqual(2, monster.FarmingProficiency);
+            Assert.AreEqual(0, monster.FarmingTasks, "Progress restarts at the new level");
+            Assert.AreEqual(20, monster.GetTasksRequired(MonsterJob.Farming), "Level 2 needs 20 tasks");
+            Assert.AreEqual(1, monster.CookingProficiency, "Other jobs are untouched");
+            Assert.AreEqual(0, monster.CookingTasks);
+        }
+
+        /// <summary>Progress stops at the maximum level and None never records anything.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_RecordTask_StopsAtMaxLevel()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 9, 1, 1);
+
+            Assert.IsTrue(monster.IsMaxLevel(MonsterJob.Fishing));
+            Assert.IsFalse(monster.RecordTask(MonsterJob.Fishing));
+            Assert.AreEqual(0, monster.FishingTasks, "No progress accumulates at max level");
+            Assert.AreEqual(9, monster.FishingProficiency);
+
+            Assert.IsFalse(monster.RecordTask(MonsterJob.None));
+            Assert.AreEqual(0, monster.GetLevel(MonsterJob.None));
+        }
+
+        /// <summary>Restored progress is honoured and clamped to non-negative.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_SetTaskProgress_RestoresAndClamps()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 2, 3);
+            monster.SetTaskProgress(4, -1, 7);
+
+            Assert.AreEqual(4, monster.GetTasks(MonsterJob.Fishing));
+            Assert.AreEqual(0, monster.GetTasks(MonsterJob.Cooking));
+            Assert.AreEqual(7, monster.GetTasks(MonsterJob.Farming));
+        }
     }
 }

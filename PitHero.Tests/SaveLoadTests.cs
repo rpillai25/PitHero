@@ -2110,5 +2110,124 @@ namespace PitHero.Tests
             Assert.IsNotNull(loaded);
             CollectionAssert.AreEqual(new List<int> { 3 }, loaded.LocalArtifacts, "A replay's start state carries the hero's local artifacts");
         }
+
+        // ── v35 (issue #413): per-monster task progress + lifetime counters ────────────
+
+        [TestMethod]
+        public void SaveData_V35_MonsterTasksAndCounters_RoundTrip()
+        {
+            var original = new SaveData();
+            original.AlliedMonsters.Add(new SavedAlliedMonster
+            {
+                Name = "Bob", MonsterTypeName = MonsterTextKey.Monster_Slime,
+                FishingProficiency = 1, CookingProficiency = 2, FarmingProficiency = 3,
+                MonsterJobId = 1, MonsterHouseId = 7,
+                FishingTasks = 4, CookingTasks = 5, FarmingTasks = 6,
+            });
+            original.CropHarvestedTotals[(int)PitHero.Farming.CropType.Wheat] = 9;
+            original.CropHarvestedTotals[(int)PitHero.Farming.CropType.Corn] = 18;
+            original.DishesServedTotals[(int)PitHero.Dining.DishType.ApplePie] = 3;
+
+            var loaded = RoundTrip(original);
+
+            Assert.AreEqual(1, loaded.AlliedMonsters.Count);
+            Assert.AreEqual(4, loaded.AlliedMonsters[0].FishingTasks);
+            Assert.AreEqual(5, loaded.AlliedMonsters[0].CookingTasks);
+            Assert.AreEqual(6, loaded.AlliedMonsters[0].FarmingTasks);
+            Assert.AreEqual(7, loaded.AlliedMonsters[0].MonsterHouseId);
+            Assert.AreEqual(9, loaded.CropHarvestedTotals[(int)PitHero.Farming.CropType.Wheat]);
+            Assert.AreEqual(18, loaded.CropHarvestedTotals[(int)PitHero.Farming.CropType.Corn]);
+            Assert.AreEqual(3, loaded.DishesServedTotals[(int)PitHero.Dining.DishType.ApplePie]);
+        }
+
+        /// <summary>Strips the v35 tail (two count-prefixed counter arrays) from a monster-less save and patches the version to 34.</summary>
+        private static byte[] ToV34Bytes(SaveData original)
+        {
+            Assert.AreEqual(0, original.AlliedMonsters.Count, "ToV34Bytes supports monster-less saves only (section 11 also grew in v35)");
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+                writer.Write(original);
+            byte[] v35 = ms.ToArray();
+            int tail = (4 + 4 * original.CropHarvestedTotals.Length) + (4 + 4 * original.DishesServedTotals.Length);
+            var body = new byte[v35.Length - tail];
+            Array.Copy(v35, 0, body, 0, body.Length);
+            body[0] = 34; body[1] = 0; body[2] = 0; body[3] = 0;
+            return body;
+        }
+
+        [TestMethod]
+        public void SaveData_V34_File_ReadsWithV35Defaults()
+        {
+            var original = new SaveData();
+            original.HeroId = 555;
+            original.AutoSellInventorySellPercent = 40;
+            original.CropHarvestedTotals[(int)PitHero.Farming.CropType.Wheat] = 99;
+            original.DishesServedTotals[0] = 5;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ToV34Bytes(original))))
+                rdr.ReadPersistableInto(loaded);
+
+            Assert.AreEqual(555, loaded.HeroId, "The v34 read consumed exactly the v34 bytes");
+            Assert.AreEqual(40, loaded.AutoSellInventorySellPercent);
+            Assert.AreEqual(PitHero.Farming.CropTypeInfo.Count, loaded.CropHarvestedTotals.Length);
+            Assert.AreEqual(0, loaded.CropHarvestedTotals[(int)PitHero.Farming.CropType.Wheat], "A v34 file has harvested nothing on record");
+            Assert.AreEqual(PitHero.Dining.DishTypeInfo.Count, loaded.DishesServedTotals.Length);
+            Assert.AreEqual(0, loaded.DishesServedTotals[0]);
+        }
+
+        [TestMethod]
+        public void SaveData_V34_MonsterRecord_ReadsWithZeroTaskProgress()
+        {
+            // Build a v34 file with one monster: serialise the same save with and without the monster,
+            // diff to find the section-11 count field, then drop the record's three v35 task ints and the tail.
+            var without = new SaveData();
+            var withMonster = new SaveData();
+            withMonster.AlliedMonsters.Add(new SavedAlliedMonster
+            {
+                Name = "Zed", MonsterTypeName = MonsterTextKey.Monster_Slime,
+                FishingProficiency = 1, CookingProficiency = 1, FarmingProficiency = 1,
+                MonsterJobId = 0, MonsterHouseId = 3, FishingTasks = 8, CookingTasks = 8, FarmingTasks = 8,
+            });
+            var msWithout = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(msWithout)) writer.Write(without);
+            var msWith = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(msWith)) writer.Write(withMonster);
+            byte[] v35 = msWithout.ToArray();
+            byte[] v35With = msWith.ToArray();
+            int tail = (4 + 4 * without.CropHarvestedTotals.Length) + (4 + 4 * without.DishesServedTotals.Length);
+
+            int countOffset = 0;
+            while (countOffset < v35.Length && v35[countOffset] == v35With[countOffset]) countOffset++;
+            int recordLen = v35With.Length - v35.Length;          // one v35 record (count field is same width)
+            int recordEnd = countOffset + 4 + recordLen;           // first byte after the record
+            int keepBeforeTasks = recordEnd - 12;                  // the record minus its 3 task ints
+
+            var v34 = new byte[v35With.Length - 12 - tail];
+            Array.Copy(v35With, 0, v34, 0, keepBeforeTasks);
+            Array.Copy(v35With, recordEnd, v34, keepBeforeTasks, v35With.Length - tail - recordEnd);
+            v34[0] = 34; v34[1] = 0; v34[2] = 0; v34[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v34)))
+                rdr.ReadPersistableInto(loaded);
+
+            Assert.AreEqual(1, loaded.AlliedMonsters.Count);
+            Assert.AreEqual("Zed", loaded.AlliedMonsters[0].Name);
+            Assert.AreEqual(3, loaded.AlliedMonsters[0].MonsterHouseId, "Fields after the record read in step");
+            Assert.AreEqual(0, loaded.AlliedMonsters[0].FarmingTasks, "A v34 monster has no task progress");
+            Assert.AreEqual(0, loaded.CropHarvestedTotals[0]);
+        }
+
+        [TestMethod]
+        public void SaveData_V35_Defaults()
+        {
+            var loaded = RoundTrip(new SaveData());
+            Assert.AreEqual(PitHero.Farming.CropTypeInfo.Count, loaded.CropHarvestedTotals.Length);
+            Assert.AreEqual(PitHero.Dining.DishTypeInfo.Count, loaded.DishesServedTotals.Length);
+            Assert.AreEqual(GameConfig.NewGameStartingWheatSeeds, loaded.SeedInventory[(int)PitHero.Farming.CropType.Wheat]);
+            Assert.AreEqual(GameConfig.NewGameStartingCornSeeds, loaded.SeedInventory[(int)PitHero.Farming.CropType.Corn]);
+            Assert.AreEqual(0, loaded.SeedInventory[(int)PitHero.Farming.CropType.Tomato], "Locked crops are not gifted");
+        }
     }
 }

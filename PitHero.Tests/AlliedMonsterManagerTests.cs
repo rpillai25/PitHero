@@ -284,5 +284,40 @@ namespace PitHero.Tests
             Assert.IsNull(added, "Should not add to a full house");
             Assert.AreEqual(GameConfig.MonsterHouseCapacity, manager.GetLinkedMonsterCount(9));
         }
+
+        /// <summary>Dismissing removes the monster from the roster and frees its house slot (issue #413).</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonsterManager_RemoveAlliedMonster_DropsRosterEntryAndHouseCount()
+        {
+            var manager = new AlliedMonsterManager();
+            var kept = new AlliedMonster("Kept", MonsterTextKey.Monster_Slime, 1, 1, 1, monsterHouseId: 4);
+            var gone = new AlliedMonster("Gone", MonsterTextKey.Monster_Rat, 1, 1, 1, monsterHouseId: 4);
+            manager.AddAlliedMonster(kept);
+            manager.AddAlliedMonster(gone);
+
+            Assert.IsTrue(manager.RemoveAlliedMonster(gone));
+            Assert.AreEqual(1, manager.Count);
+            Assert.IsFalse(manager.Contains(gone));
+            Assert.IsTrue(manager.Contains(kept));
+            Assert.AreEqual(1, manager.GetLinkedMonsterCount(4));
+
+            Assert.IsFalse(manager.RemoveAlliedMonster(gone), "A second removal finds nothing");
+        }
+
+        /// <summary>Purchased monsters start every job at the base level (issue #413).</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonsterManager_AddPurchasedMonster_StartsAtLevelOne()
+        {
+            var manager = new AlliedMonsterManager();
+            var added = manager.AddPurchasedMonster(new MockEnemy(MonsterTextKey.Monster_Slime, 1f), houseUniqueId: 2);
+
+            Assert.IsNotNull(added);
+            Assert.AreEqual(GameConfig.MonsterJobStartingLevel, added.FarmingProficiency);
+            Assert.AreEqual(GameConfig.MonsterJobStartingLevel, added.CookingProficiency);
+            Assert.AreEqual(GameConfig.MonsterJobStartingLevel, added.FishingProficiency);
+            Assert.AreEqual(0, added.FarmingTasks);
+        }
     }
 }

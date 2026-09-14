@@ -89,8 +89,7 @@ namespace PitHero.UI
 
             _seedInventory = new int[CropTypeInfo.Count];
             _seedInventory[(int)CropType.Wheat]     = GameConfig.NewGameStartingWheatSeeds;
-            _seedInventory[(int)CropType.Tomato]    = GameConfig.NewGameStartingTomatoSeeds;
-            _seedInventory[(int)CropType.AppleTree] = GameConfig.NewGameStartingAppleTreeSeeds;
+            _seedInventory[(int)CropType.Corn]      = GameConfig.NewGameStartingCornSeeds;
 
             CreateInventoryWindow();
 

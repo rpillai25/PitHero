@@ -1110,6 +1110,7 @@ namespace PitHero.ECS.Scenes
                         saved.FishingProficiency, saved.CookingProficiency, saved.FarmingProficiency,
                         saved.MonsterHouseId);
                     allied.Job = (MonsterJob)saved.MonsterJobId;
+                    allied.SetTaskProgress(saved.FishingTasks, saved.CookingTasks, saved.FarmingTasks);
                     alliedManager.AddAlliedMonster(allied);
                 }
             }
