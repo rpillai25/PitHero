@@ -479,12 +479,15 @@ namespace PitHero
         public const int BuildingFreeStarterCount = 1; // one of each type is placed free by SetupNewGameFarmContent
 
         // Monster job skill levels (issue #413). Every recruit starts at MonsterJobStartingLevel in
-        // every job; reaching the next level takes (current level × MonsterJobTasksPerLevel) tasks.
-        // The max stays 9 because the work-speed formulas (1 - step × (level-1)) assume it.
+        // every job; reaching the next level takes (current level × that job's TasksPerLevel) tasks.
+        // Farm tasks come thick and fast (plant/water/harvest per tile), so farming needs twice the
+        // kitchen's count per level. The max stays 9 because the work-speed formulas
+        // (1 - step × (level-1)) assume it.
         public const int MonsterJobLevelMin = 1;
         public const int MonsterJobLevelMax = 9;
         public const int MonsterJobStartingLevel = 1;
-        public const int MonsterJobTasksPerLevel = 10;
+        public const int MonsterJobTasksPerLevel = 10;        // Cooking, Fishing
+        public const int MonsterJobFarmingTasksPerLevel = 20; // Farming
         // Auto-assignment candidate score = level × weight + tasks toward next level, so a higher level
         // always outranks more partial progress (weight exceeds any reachable task count).
         public const int MonsterJobExperienceLevelWeight = 1000;

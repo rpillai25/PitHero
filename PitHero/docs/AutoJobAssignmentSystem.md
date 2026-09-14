@@ -139,8 +139,9 @@ and ignores the `nocturnal` param — farming is shift-agnostic.
 
 **Experience tiebreak (issue #413).** Job skill levels are no longer rolled at recruitment; every
 monster starts at level 1 in every job and levels up by completing that job's tasks
-(`AlliedMonster.RecordTask`, `current level × GameConfig.MonsterJobTasksPerLevel` tasks per level,
-cap 9). The fill, trim and starvation passes rank candidates by
+(`AlliedMonster.RecordTask`, `current level × GameConfig.MonsterJobTasksPerLevel` (10) kitchen or
+fishing tasks, or `× GameConfig.MonsterJobFarmingTasksPerLevel` (20) farm tasks per level — farm
+tasks are far more frequent — cap 9). The fill, trim and starvation passes rank candidates by
 `JobAssignmentSolver.GetExperienceScore` = `level × MonsterJobExperienceLevelWeight + tasks toward
 the next level`, so among equal-level monsters the one already progressing in a job keeps it, and a
 higher level always outranks partial progress. Need is still decided by the evaluators — experience

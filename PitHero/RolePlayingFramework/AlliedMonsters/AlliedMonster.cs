@@ -3,7 +3,8 @@ namespace RolePlayingFramework.AlliedMonsters
     /// <summary>
     /// A monster that has joined the party after being defeated in battle. Every job has a skill
     /// level (1–9) that rises by performing that job's tasks (issue #413): reaching the next level
-    /// takes <c>current level × GameConfig.MonsterJobTasksPerLevel</c> completed tasks.
+    /// takes <c>current level × the job's tasks-per-level</c> completed tasks
+    /// (GameConfig.MonsterJobFarmingTasksPerLevel for farming, MonsterJobTasksPerLevel otherwise).
     /// </summary>
     public sealed class AlliedMonster
     {
@@ -62,10 +63,18 @@ namespace RolePlayingFramework.AlliedMonsters
             return System.Math.Clamp(level, PitHero.GameConfig.MonsterJobLevelMin, PitHero.GameConfig.MonsterJobLevelMax);
         }
 
-        /// <summary>Tasks that must be completed at <paramref name="level"/> to reach the next level.</summary>
-        public static int TasksRequiredForLevel(int level)
+        /// <summary>Tasks per level for a job: farming needs more because its tasks are far more frequent.</summary>
+        public static int TasksPerLevel(MonsterJob job)
         {
-            return level * PitHero.GameConfig.MonsterJobTasksPerLevel;
+            return job == MonsterJob.Farming
+                ? PitHero.GameConfig.MonsterJobFarmingTasksPerLevel
+                : PitHero.GameConfig.MonsterJobTasksPerLevel;
+        }
+
+        /// <summary>Tasks that must be completed at <paramref name="level"/> of <paramref name="job"/> to reach the next level.</summary>
+        public static int TasksRequiredForLevel(MonsterJob job, int level)
+        {
+            return level * TasksPerLevel(job);
         }
 
         /// <summary>Skill level for the given job (0 for None).</summary>
@@ -95,7 +104,7 @@ namespace RolePlayingFramework.AlliedMonsters
         /// <summary>Tasks required to reach the next level of the given job at its current level.</summary>
         public int GetTasksRequired(MonsterJob job)
         {
-            return TasksRequiredForLevel(GetLevel(job));
+            return TasksRequiredForLevel(job, GetLevel(job));
         }
 
         /// <summary>True when the job is at the maximum level and can no longer progress.</summary>
@@ -112,14 +121,14 @@ namespace RolePlayingFramework.AlliedMonsters
         {
             switch (job)
             {
-                case MonsterJob.Farming: return Advance(ref _farmingLevel, ref _farmingTasks);
-                case MonsterJob.Cooking: return Advance(ref _cookingLevel, ref _cookingTasks);
-                case MonsterJob.Fishing: return Advance(ref _fishingLevel, ref _fishingTasks);
+                case MonsterJob.Farming: return Advance(job, ref _farmingLevel, ref _farmingTasks);
+                case MonsterJob.Cooking: return Advance(job, ref _cookingLevel, ref _cookingTasks);
+                case MonsterJob.Fishing: return Advance(job, ref _fishingLevel, ref _fishingTasks);
                 default: return false;
             }
         }
 
-        private static bool Advance(ref int level, ref int tasks)
+        private static bool Advance(MonsterJob job, ref int level, ref int tasks)
         {
             if (level >= PitHero.GameConfig.MonsterJobLevelMax)
             {
@@ -127,7 +136,7 @@ namespace RolePlayingFramework.AlliedMonsters
                 return false;
             }
             tasks++;
-            int required = TasksRequiredForLevel(level);
+            int required = TasksRequiredForLevel(job, level);
             if (tasks < required)
                 return false;
             tasks -= required;

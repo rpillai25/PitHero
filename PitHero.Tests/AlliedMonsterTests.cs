@@ -65,24 +65,42 @@ namespace PitHero.Tests
             Assert.AreEqual(9, monster.CookingProficiency, "Maximum proficiency of 9 should be accepted");
         }
 
-        /// <summary>Ten tasks at level 1 raise the job to level 2 and reset progress (issue #413).</summary>
+        /// <summary>Ten kitchen tasks at level 1 raise cooking to level 2 and reset progress (issue #413).</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]
-        public void AlliedMonster_RecordTask_LevelsUpAfterLevelTimesTen()
+        public void AlliedMonster_RecordTask_KitchenLevelsUpAfterLevelTimesTen()
         {
             var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 1, 1);
 
             for (int i = 0; i < 9; i++)
-                Assert.IsFalse(monster.RecordTask(MonsterJob.Farming), "Nine tasks are not enough");
-            Assert.AreEqual(9, monster.FarmingTasks);
-            Assert.AreEqual(10, monster.GetTasksRequired(MonsterJob.Farming));
+                Assert.IsFalse(monster.RecordTask(MonsterJob.Cooking), "Nine tasks are not enough");
+            Assert.AreEqual(9, monster.CookingTasks);
+            Assert.AreEqual(10, monster.GetTasksRequired(MonsterJob.Cooking));
 
-            Assert.IsTrue(monster.RecordTask(MonsterJob.Farming), "The tenth task levels up");
+            Assert.IsTrue(monster.RecordTask(MonsterJob.Cooking), "The tenth task levels up");
+            Assert.AreEqual(2, monster.CookingProficiency);
+            Assert.AreEqual(0, monster.CookingTasks, "Progress restarts at the new level");
+            Assert.AreEqual(20, monster.GetTasksRequired(MonsterJob.Cooking), "Level 2 needs 20 tasks");
+            Assert.AreEqual(1, monster.FarmingProficiency, "Other jobs are untouched");
+            Assert.AreEqual(0, monster.FarmingTasks);
+        }
+
+        /// <summary>Farming tasks are frequent, so farming needs level × 20 tasks per level.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_RecordTask_FarmingLevelsUpAfterLevelTimesTwenty()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 1, 1);
+            Assert.AreEqual(20, monster.GetTasksRequired(MonsterJob.Farming));
+
+            for (int i = 0; i < 19; i++)
+                Assert.IsFalse(monster.RecordTask(MonsterJob.Farming), "Nineteen tasks are not enough");
+            Assert.IsTrue(monster.RecordTask(MonsterJob.Farming), "The twentieth task levels up");
             Assert.AreEqual(2, monster.FarmingProficiency);
-            Assert.AreEqual(0, monster.FarmingTasks, "Progress restarts at the new level");
-            Assert.AreEqual(20, monster.GetTasksRequired(MonsterJob.Farming), "Level 2 needs 20 tasks");
-            Assert.AreEqual(1, monster.CookingProficiency, "Other jobs are untouched");
-            Assert.AreEqual(0, monster.CookingTasks);
+            Assert.AreEqual(0, monster.FarmingTasks);
+            Assert.AreEqual(40, monster.GetTasksRequired(MonsterJob.Farming), "Level 2 farming needs 40 tasks");
+            Assert.AreEqual(GameConfig.MonsterJobFarmingTasksPerLevel, AlliedMonster.TasksPerLevel(MonsterJob.Farming));
+            Assert.AreEqual(GameConfig.MonsterJobTasksPerLevel, AlliedMonster.TasksPerLevel(MonsterJob.Fishing));
         }
 
         /// <summary>Progress stops at the maximum level and None never records anything.</summary>
