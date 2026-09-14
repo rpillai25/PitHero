@@ -495,6 +495,7 @@ namespace PitHero.Services
                                 var savedItem = new SavedItem();
                                 savedItem.Name = item.Name;
                                 savedItem.SlotIndex = i;
+                                savedItem.AcquireSeq = bag.GetAcquireSequence(item);
 
                                 if (item is Consumable consumable)
                                 {

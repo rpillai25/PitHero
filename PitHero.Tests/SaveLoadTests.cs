@@ -2022,7 +2022,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v34 = ms.ToArray();
-            int tail = 4 + 4 * localArtifactCount + 4;
+            int tail = 4 + 4 * localArtifactCount + 4 + V35Tail(original) + V36Tail(original);
             var v33 = new byte[v34.Length - tail];
             Array.Copy(v34, 0, v33, 0, v33.Length);
             v33[0] = 33;
@@ -2148,11 +2148,63 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v35 = ms.ToArray();
-            int tail = (4 + 4 * original.CropHarvestedTotals.Length) + (4 + 4 * original.DishesServedTotals.Length);
+            int tail = V35Tail(original) + V36Tail(original);
             var body = new byte[v35.Length - tail];
             Array.Copy(v35, 0, body, 0, body.Length);
             body[0] = 34; body[1] = 0; body[2] = 0; body[3] = 0;
             return body;
+        }
+
+        /// <summary>Byte length of the v35 section: two count-prefixed int arrays.</summary>
+        private static int V35Tail(SaveData data) =>
+            (4 + 4 * data.CropHarvestedTotals.Length) + (4 + 4 * data.DishesServedTotals.Length);
+
+        /// <summary>Byte length of the v36 section: a count plus two int halves per inventory item.</summary>
+        private static int V36Tail(SaveData data) => 4 + 8 * data.InventoryItems.Count;
+
+        // ── v36 (issue #414): inventory acquisition order ────────────────────────────
+
+        [TestMethod]
+        public void SaveData_V36_InventoryAcquireSeq_RoundTrip()
+        {
+            var original = new SaveData();
+            original.InventoryItems.Add(new SavedItem { Name = "HPPotion", IsConsumable = true, StackCount = 3, SlotIndex = 4, AcquireSeq = 7 });
+            original.InventoryItems.Add(new SavedItem { Name = "RustyBlade", SlotIndex = 9, AcquireSeq = 5_000_000_000L });
+
+            var loaded = RoundTrip(original);
+
+            Assert.AreEqual(2, loaded.InventoryItems.Count);
+            Assert.AreEqual(7, loaded.InventoryItems[0].AcquireSeq);
+            Assert.AreEqual(3, loaded.InventoryItems[0].StackCount);
+            Assert.AreEqual(5_000_000_000L, loaded.InventoryItems[1].AcquireSeq, "sequences above int range survive");
+            Assert.AreEqual(9, loaded.InventoryItems[1].SlotIndex);
+        }
+
+        [TestMethod]
+        public void SaveData_V35_File_ReadsWithZeroAcquireSeq()
+        {
+            var original = new SaveData();
+            original.HeroId = 4141;
+            original.InventoryItems.Add(new SavedItem { Name = "RustyBlade", SlotIndex = 12, AcquireSeq = 99 });
+            original.DishesServedTotals[0] = 6;
+
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+                writer.Write(original);
+            byte[] v36 = ms.ToArray();
+            var v35 = new byte[v36.Length - V36Tail(original)];
+            Array.Copy(v36, 0, v35, 0, v35.Length);
+            v35[0] = 35; v35[1] = 0; v35[2] = 0; v35[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v35)))
+                rdr.ReadPersistableInto(loaded);
+
+            Assert.AreEqual(4141, loaded.HeroId);
+            Assert.AreEqual(6, loaded.DishesServedTotals[0], "The v35 section still reads in step");
+            Assert.AreEqual(1, loaded.InventoryItems.Count);
+            Assert.AreEqual(12, loaded.InventoryItems[0].SlotIndex);
+            Assert.AreEqual(0, loaded.InventoryItems[0].AcquireSeq, "A v35 file has no acquisition order");
         }
 
         [TestMethod]
@@ -2195,7 +2247,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(msWith)) writer.Write(withMonster);
             byte[] v35 = msWithout.ToArray();
             byte[] v35With = msWith.ToArray();
-            int tail = (4 + 4 * without.CropHarvestedTotals.Length) + (4 + 4 * without.DishesServedTotals.Length);
+            int tail = V35Tail(without) + V36Tail(without);
 
             int countOffset = 0;
             while (countOffset < v35.Length && v35[countOffset] == v35With[countOffset]) countOffset++;

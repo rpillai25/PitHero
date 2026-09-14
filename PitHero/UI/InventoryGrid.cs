@@ -108,9 +108,6 @@ namespace PitHero.UI
         /// <summary>Fired when a vault item is dragged and dropped onto a slot in this grid. Provides destination slot and vault stack.</summary>
         public event System.Action<InventorySlot, SecondChanceMerchantVault.StackedItem> OnVaultItemDropRequested;
 
-        private int _nextAcquireIndex = 1; // monotonic acquisition counter
-        private readonly Dictionary<IItem, int> _acquireIndexMap; // persistent mapping of items to acquire indices
-        private readonly Dictionary<IItem, int> _itemStackMap;    // last known stack count per item instance
 
         // Stencil system
         private readonly ActiveStencilManager _stencilManager;
@@ -132,8 +129,6 @@ namespace PitHero.UI
         {
             _slots = new FastList<InventorySlot>(CELL_COUNT);
             _persistBuffer = new IItem[CELL_COUNT];
-            _acquireIndexMap = new Dictionary<IItem, int>(64);
-            _itemStackMap = new Dictionary<IItem, int>(64);
             _stencilManager = new ActiveStencilManager();
             _moveStencilsMode = false;
             _activeSynergies = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
@@ -310,17 +305,9 @@ namespace PitHero.UI
         /// <summary>Connects grid to hero and loads items.</summary>
         public void ConnectToHero(HeroComponent heroComponent)
         {
-            // Only reset mappings if connecting to a different hero instance.
             // Note: UnviewedGearTracker is deliberately NOT cleared here — multiple grids
             // (HeroUI, SecondChanceShopUI) connect to the same hero and a first-connect
             // would falsely wipe unviewed-gear state; stale refs are purged on viewed-clear.
-            if (!object.ReferenceEquals(_heroComponent, heroComponent))
-            {
-                _acquireIndexMap.Clear();
-                _itemStackMap.Clear();
-                _nextAcquireIndex = 1;
-            }
-
             _heroComponent = heroComponent;
             if (_heroComponent?.Bag != null)
             {
@@ -577,53 +564,7 @@ namespace PitHero.UI
                     // Assign item to slot
                     slot.SlotData.Item = newItem;
 
-                    if (newItem != null)
-                    {
-                        // Ensure unique, monotonically increasing acquire index per item instance
-                        int idx;
-                        if (!_acquireIndexMap.TryGetValue(newItem, out idx))
-                        {
-                            idx = _nextAcquireIndex++;
-                            _acquireIndexMap[newItem] = idx;
-                        }
-
-                        // If consumable, detect stack increase per item (not per slot)
-                        if (newItem is Consumable consumable)
-                        {
-                            int lastKnown;
-                            if (!_itemStackMap.TryGetValue(newItem, out lastKnown))
-                            {
-                                lastKnown = consumable.StackCount;
-                                _itemStackMap[newItem] = lastKnown;
-                            }
-                            if (consumable.StackCount > lastKnown)
-                            {
-                                idx = _nextAcquireIndex++;
-                                _acquireIndexMap[newItem] = idx;
-                                _itemStackMap[newItem] = consumable.StackCount;
-                            }
-                            // Update slot-visible stack count always
-                            slot.SlotData.StackCount = consumable.StackCount;
-                        }
-                        else
-                        {
-                            slot.SlotData.StackCount = 0;
-                        }
-
-                        // Non-null items must never have AcquireIndex 0
-                        if (idx <= 0)
-                        {
-                            idx = _nextAcquireIndex++;
-                            _acquireIndexMap[newItem] = idx;
-                        }
-                        slot.SlotData.AcquireIndex = idx;
-                    }
-                    else
-                    {
-                        // Empty slots get AcquireIndex 0
-                        slot.SlotData.AcquireIndex = 0;
-                        slot.SlotData.StackCount = 0;
-                    }
+                    slot.SlotData.StackCount = newItem is Consumable consumable ? consumable.StackCount : 0;
 
                     bagIndex++;
                 }
@@ -1013,6 +954,44 @@ namespace PitHero.UI
                     return slot;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Adds the Sort by Time / Type / Alphabetically buttons above the last three bag columns
+        /// (the empty band right of the equipment block). Clicks dispatch a recorded SortBag command.
+        /// </summary>
+        public void AddSortButtons(string timeText, string typeText, string alphaText)
+        {
+            if (_sortButtonsAdded || Core.Content == null) return;
+            _sortButtonsAdded = true;
+
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            AddSortButton(uiAtlas, "UISortTime", timeText, InventorySortOrder.Time, GRID_WIDTH - 3);
+            AddSortButton(uiAtlas, "UISortType", typeText, InventorySortOrder.Type, GRID_WIDTH - 2);
+            AddSortButton(uiAtlas, "UISortAlpha", alphaText, InventorySortOrder.Name, GRID_WIDTH - 1);
+        }
+
+        private bool _sortButtonsAdded;
+
+        private void AddSortButton(SpriteAtlas uiAtlas, string baseName, string hoverText, InventorySortOrder order, int column)
+        {
+            var sprite = uiAtlas.GetSprite(baseName);
+            var style = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(sprite),
+                ImageDown = new SpriteDrawable(uiAtlas.GetSprite(baseName + "Inverse")),
+                ImageOver = new SpriteDrawable(uiAtlas.GetSprite(baseName + "Highlight"))
+            };
+            var button = new HoverableImageButton(style, hoverText);
+            float w = sprite.SourceRect.Width;
+            float h = sprite.SourceRect.Height;
+            button.SetSize(w, h);
+            // Centered over its column, bottom-aligned just above the first bag row
+            button.SetPosition(column * ROW_PITCH + X_OFFSET + (SLOT_SIZE - w) * 0.5f,
+                               BAG_START_ROW * ROW_PITCH + Y_OFFSET - SLOT_PADDING - h - 2f);
+            button.OnClicked += _ => Services.Replay.PlayerCommandService.Dispatch(
+                new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.SortBag, (int)order));
+            AddElement(button);
         }
 
         /// <summary>Builds the SwapSlots command for a drag from <paramref name="source"/> onto <paramref name="target"/>.</summary>

@@ -345,6 +345,11 @@ namespace PitHero.UI
             if (heroComponent != null)
                 _inventoryGrid.ConnectToHero(heroComponent);
 
+            _inventoryGrid.AddSortButtons(
+                GetText(TextType.UI, UITextKey.ButtonSortTime),
+                GetText(TextType.UI, UITextKey.ButtonSortType),
+                GetText(TextType.UI, UITextKey.ButtonSortAlpha));
+
             // Create scroll pane for inventory grid
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false);

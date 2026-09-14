@@ -34,6 +34,9 @@ namespace PitHero
         public const string ButtonViewStencils = "ButtonViewStencils";
         public const string ButtonMoveStencils = "ButtonMoveStencils";
         public const string ButtonRemoveStencil = "ButtonRemoveStencil";
+        public const string ButtonSortTime = "ButtonSortTime";
+        public const string ButtonSortType = "ButtonSortType";
+        public const string ButtonSortAlpha = "ButtonSortAlpha";
         public const string ButtonExitMoveMode = "ButtonExitMoveMode";
         public const string ButtonExitRemoveMode = "ButtonExitRemoveMode";
         public const string ButtonReplenish = "ButtonReplenish";

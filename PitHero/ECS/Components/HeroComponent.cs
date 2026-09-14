@@ -669,6 +669,7 @@ namespace PitHero.ECS.Components
                             consumable.StackCount = savedItem.StackCount;
                         }
                         Bag.SetSlotItem(savedItem.SlotIndex, item);
+                        Bag.SetAcquireSequence(item, savedItem.AcquireSeq); // 0 (pre-v36) keeps the load-order stamp
                     }
                     else
                     {
