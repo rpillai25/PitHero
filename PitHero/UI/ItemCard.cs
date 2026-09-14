@@ -87,7 +87,7 @@ namespace PitHero.UI
             var rarityString = ItemDisplayHelper.GetRarityString(_item.Rarity);
 
             // Item Name (with rarity color)
-            var nameLabel = new Label(_item.Name, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = rarityColor });
+            var nameLabel = new Label(_item.DisplayName, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = rarityColor });
             _contentTable.Add(nameLabel).Left().Pad(0, 0, LINE_SPACING, 0);
             _contentTable.Row();
 

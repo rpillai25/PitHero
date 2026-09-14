@@ -209,5 +209,57 @@ namespace PitHero.Services
             _localArtifactOrder.Clear();
             LocalArtifactVersion++;
         }
+
+        // ── Lifetime progression counters (issue #413) ───────────────────────────
+        // Only ever increase (selling a crop never lowers its harvested total). Crop totals gate crop
+        // unlocks in the shop and planting palette; both feed the Farm Stats window. Session state:
+        // saved with the hero, restored by ApplyLoadedState (replay start included), reset for a new hero.
+
+        /// <summary>Units harvested per crop over the hero's lifetime, indexed by (int)CropType.</summary>
+        public int[] CropHarvestedTotals { get; } = new int[Farming.CropTypeInfo.Count];
+
+        /// <summary>Dishes served per dish type over the hero's lifetime, indexed by (int)DishType.</summary>
+        public int[] DishesServedTotals { get; } = new int[Dining.DishTypeInfo.Count];
+
+        /// <summary>Adds harvested units to the crop's lifetime total.</summary>
+        public void RecordHarvest(Farming.CropType crop, int units)
+        {
+            int i = (int)crop;
+            if (units <= 0 || i < 0 || i >= CropHarvestedTotals.Length)
+                return;
+            CropHarvestedTotals[i] += units;
+        }
+
+        /// <summary>Counts one served dish of the given type.</summary>
+        public void RecordDishServed(Dining.DishType dish)
+        {
+            int i = (int)dish;
+            if (i < 0 || i >= DishesServedTotals.Length)
+                return;
+            DishesServedTotals[i]++;
+        }
+
+        /// <summary>Replaces both counter arrays from a save (missing entries read as zero).</summary>
+        public void SetProgressCounters(int[] cropHarvested, int[] dishesServed)
+        {
+            CopyCounters(cropHarvested, CropHarvestedTotals);
+            CopyCounters(dishesServed, DishesServedTotals);
+        }
+
+        /// <summary>Zeroes both counter arrays (a new hero starts from nothing).</summary>
+        public void ClearProgressCounters()
+        {
+            CopyCounters(null, CropHarvestedTotals);
+            CopyCounters(null, DishesServedTotals);
+        }
+
+        private static void CopyCounters(int[] source, int[] target)
+        {
+            for (int i = 0; i < target.Length; i++)
+            {
+                int v = source != null && i < source.Length ? source[i] : 0;
+                target[i] = v < 0 ? 0 : v;
+            }
+        }
     }
 }

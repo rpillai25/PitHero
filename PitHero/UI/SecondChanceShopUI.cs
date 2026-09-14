@@ -345,8 +345,9 @@ namespace PitHero.UI
                 string cropName = GetText(TextType.UI, CropConfig.GetDisplayNameKey(crop));
                 int price       = CropConfig.GetSeedPrice(crop);
                 string tooltip  = cropName + " - " + price + "G";
+                string lockedTooltip = GetText(TextType.UI, UITextKey.LabelCropUnknown);
 
-                var slot = new SeedShopSlot(sprite, crop, cropPlantingService, cropGrowthService, tooltip);
+                var slot = new SeedShopSlot(sprite, crop, cropPlantingService, cropGrowthService, tooltip, lockedTooltip);
                 slot.OnBuyClicked += HandleSeedBuyClicked;
 
                 grid.Add(slot).Size(40f, 40f).Pad(2f);
@@ -473,6 +474,14 @@ namespace PitHero.UI
         /// <summary>Opens the quantity dialog and executes a seed purchase when confirmed.</summary>
         private void HandleSeedBuyClicked(CropType crop)
         {
+            // Locked crop (issue #413): explain what to harvest instead of selling seeds
+            if (!CropUnlockTracker.IsUnlocked(crop))
+            {
+                if (UIPromptRegistry.AnyVisible) return;
+                new CropUnlockRequirementsDialog(crop, _skin).Show(_stage);
+                return;
+            }
+
             var cropPlantingService = Core.Services?.GetService<CropPlantingService>();
             if (cropPlantingService == null) return;
 
@@ -1091,7 +1100,7 @@ namespace PitHero.UI
                 // Multi-item stack dropped onto an inventory slot: show quantity selector
                 var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
                 int maxQty = ComputeMaxQtyForInventorySlot(vaultStack, heroComp);
-                string itemName = vaultStack.ItemTemplate?.Name ?? "";
+                string itemName = vaultStack.ItemTemplate?.DisplayName ?? "";
                 var qtyDialog = new ItemQuantityDialog(shopTitle, itemName, unitPrice, maxQty, _skin,
                     onConfirm: (qty) => DispatchItemPurchase(vaultStack, destSlot, qty),
                     onCancel:  cancelAction,
@@ -1701,6 +1710,8 @@ namespace PitHero.UI
         {
             // Inventory-slot background drawn at the same translucency as the inventory UI.
             private static readonly Color SlotBgColor       = new Color(255, 255, 255, 100);
+            private static readonly Color LockedSpriteColor = new Color(255, 255, 255, GameConfig.SeedShopLockedAlpha);
+            private const string LockedBadge = "?";
 
             private readonly Sprite   _sprite;
             private readonly CropType _crop;
@@ -1713,17 +1724,20 @@ namespace PitHero.UI
             private Sprite _selectBox;
             private bool   _hovered;
             private readonly string _tooltipText;
+            private readonly string _lockedTooltipText;
 
             /// <summary>Fired when the player left-clicks this slot.</summary>
             public event System.Action<CropType> OnBuyClicked;
 
-            public SeedShopSlot(Sprite sprite, CropType crop, CropPlantingService cropService, CropGrowthService cropGrowth, string tooltipText)
+            public SeedShopSlot(Sprite sprite, CropType crop, CropPlantingService cropService, CropGrowthService cropGrowth,
+                string tooltipText, string lockedTooltipText)
             {
                 _sprite      = sprite;
                 _crop        = crop;
                 _cropService = cropService;
                 _cropGrowth  = cropGrowth;
                 _tooltipText = tooltipText;
+                _lockedTooltipText = lockedTooltipText;
                 _draw        = sprite != null ? new SpriteDrawable(sprite) : null;
                 SetTouchable(Touchable.Enabled);
                 SetSize(40f, 40f);
@@ -1761,6 +1775,24 @@ namespace PitHero.UI
 
                 _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
 
+                // Locked crop (issue #413): a barely visible sprite with a "?" badge; no pulse, no count
+                if (!CropUnlockTracker.IsUnlocked(_crop))
+                {
+                    _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), LockedSpriteColor);
+                    if (_hovered && _selectBox != null)
+                        new SpriteDrawable(_selectBox).Draw(
+                            batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                    var lockedFont = Nez.Graphics.Instance?.BitmapFont;
+                    if (lockedFont != null)
+                    {
+                        var size = lockedFont.MeasureString(LockedBadge);
+                        StackCountText.Draw(batcher, lockedFont, LockedBadge,
+                            new Vector2(GetX() + (GetWidth() - size.X) * 0.5f, GetY() + (GetHeight() - size.Y) * 0.5f),
+                            Color.White);
+                    }
+                    return;
+                }
+
                 float spriteX = GetX(), spriteY = GetY(), spriteW = GetWidth(), spriteH = GetHeight();
                 if (needed > count)
                 {
@@ -1792,17 +1824,18 @@ namespace PitHero.UI
             void IInputListener.OnMouseEnter()
             {
                 _hovered = true;
-                if (!string.IsNullOrEmpty(_tooltipText))
+                string tooltip = CropUnlockTracker.IsUnlocked(_crop) ? _tooltipText : _lockedTooltipText;
+                if (!string.IsNullOrEmpty(tooltip))
                 {
                     var stage = GetStage();
                     if (stage != null)
                     {
                         var mp = stage.GetMousePosition();
-                        HoverTextManager.ShowHoverText(_tooltipText, mp.X + 12f, mp.Y - 4f);
+                        HoverTextManager.ShowHoverText(tooltip, mp.X + 12f, mp.Y - 4f);
                     }
                     else
                     {
-                        HoverTextManager.ShowHoverText(_tooltipText, GetX(), GetY() + GetHeight() + 4f);
+                        HoverTextManager.ShowHoverText(tooltip, GetX(), GetY() + GetHeight() + 4f);
                     }
                 }
             }

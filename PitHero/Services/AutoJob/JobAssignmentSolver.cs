@@ -36,6 +36,15 @@ namespace PitHero.Services.AutoJob
 
         /// <summary>Fishing proficiency rating, 1–9.</summary>
         public int FishingProficiency;
+
+        /// <summary>Farm tasks completed toward the next farming level (issue #413 experience tiebreak).</summary>
+        public int FarmingTasks;
+
+        /// <summary>Kitchen tasks completed toward the next cooking level.</summary>
+        public int CookingTasks;
+
+        /// <summary>Fishing tasks completed toward the next fishing level.</summary>
+        public int FishingTasks;
     }
 
     /// <summary>
@@ -59,6 +68,24 @@ namespace PitHero.Services.AutoJob
                 case MonsterJob.Fishing: return m.FishingProficiency;
                 default: return 0;
             }
+        }
+
+        /// <summary>
+        /// Candidate ranking for a job (issue #413): level first, then progress toward the next
+        /// level, so a monster that has been working a job keeps it over an equal-level newcomer.
+        /// Demand is still decided by need — this only picks WHO fills it.
+        /// </summary>
+        public static int GetExperienceScore(in MonsterJobSnapshot m, MonsterJob job)
+        {
+            int tasks;
+            switch (job)
+            {
+                case MonsterJob.Farming: tasks = m.FarmingTasks; break;
+                case MonsterJob.Cooking: tasks = m.CookingTasks; break;
+                case MonsterJob.Fishing: tasks = m.FishingTasks; break;
+                default: return 0;
+            }
+            return GetProficiency(m, job) * GameConfig.MonsterJobExperienceLevelWeight + tasks;
         }
 
         /// <summary>
@@ -123,7 +150,7 @@ namespace PitHero.Services.AutoJob
                 {
                     if (resultJobs[i] != demand.Job || monsters[i].CurrentJob != demand.Job)
                         continue;
-                    int proficiency = GetProficiency(monsters[i], demand.Job);
+                    int proficiency = GetExperienceScore(monsters[i], demand.Job);
                     if (proficiency < worstProficiency)
                     {
                         worst = i;
@@ -181,7 +208,7 @@ namespace PitHero.Services.AutoJob
             }
         }
 
-        /// <summary>Unassigned monster with the best proficiency for the job; ties break to lowest index. -1 if none.</summary>
+        /// <summary>Unassigned monster with the best experience score for the job; ties break to lowest index. -1 if none.</summary>
         private static int SelectBestFree(List<MonsterJobSnapshot> monsters, List<MonsterJob> resultJobs,
             MonsterJob job)
         {
@@ -191,7 +218,7 @@ namespace PitHero.Services.AutoJob
             {
                 if (resultJobs[i] != MonsterJob.None)
                     continue;
-                int proficiency = GetProficiency(monsters[i], job);
+                int proficiency = GetExperienceScore(monsters[i], job);
                 if (proficiency > bestProficiency)
                 {
                     best = i;
@@ -235,7 +262,7 @@ namespace PitHero.Services.AutoJob
                             continue;
                         if (CountAssigned(resultJobs, job) <= demands[otherIndex].MinWorkers)
                             continue;
-                        int proficiency = GetProficiency(monsters[i], demand.Job);
+                        int proficiency = GetExperienceScore(monsters[i], demand.Job);
                         if (proficiency > bestProficiency)
                         {
                             best = i;

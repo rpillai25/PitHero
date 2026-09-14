@@ -248,6 +248,54 @@ namespace RolePlayingFramework.Equipment
             return false;
         }
 
+        // Localized display name → identity name, built on first use (issue #413). Headlessly the
+        // two are equal, so the map is the identity map there.
+        private static Dictionary<string, string> _displayToName;
+
+        private static Dictionary<string, string> DisplayToName
+        {
+            get
+            {
+                if (_displayToName == null)
+                {
+                    var registry = Registry;
+                    var map = new Dictionary<string, string>(registry.Count);
+                    var e = registry.GetEnumerator();
+                    while (e.MoveNext())
+                    {
+                        var item = e.Current.Value();
+                        map[item.DisplayName] = item.Name;
+                    }
+                    e.Dispose();
+                    _displayToName = map;
+                }
+                return _displayToName;
+            }
+        }
+
+        /// <summary>
+        /// Resolves a player-facing display name ("Rusty Blade", "Rusty Blade+2") to the identity
+        /// name the registry and saves use ("RustyBlade", "RustyBlade+2"). False when unknown.
+        /// </summary>
+        public static bool TryResolveDisplayName(string displayName, out string name)
+        {
+            name = null;
+            if (string.IsNullOrEmpty(displayName))
+                return false;
+            if (DisplayToName.TryGetValue(displayName, out name))
+                return true;
+
+            int plusIdx = displayName.LastIndexOf('+');
+            if (plusIdx > 0
+                && int.TryParse(displayName.Substring(plusIdx + 1), out int tier) && tier > 1
+                && DisplayToName.TryGetValue(displayName.Substring(0, plusIdx), out var baseName))
+            {
+                name = baseName + "+" + tier;
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Returns true when the name matches a registered item, including tier-scaled
         /// "BaseName+N" (N &gt; 1) gear names. Never instantiates an item.

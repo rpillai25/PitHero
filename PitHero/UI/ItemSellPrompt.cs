@@ -39,7 +39,7 @@ namespace PitHero.UI
                 // Card, "Sell <item>?", < N >, running total, Yes/No — the buy dialog's shape.
                 var qtyDialog = new ItemQuantityDialog(
                     Text(UITextKey.WindowSecondChanceShop),
-                    item.Name,
+                    item.DisplayName,
                     item.GetSellPrice(),
                     stackCount,
                     skin,

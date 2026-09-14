@@ -64,7 +64,7 @@ namespace PitHero.Tests
             // Assert
             Assert.AreEqual(1, _vault.StackCount);
             Assert.AreEqual(1, _vault.TotalItemCount);
-            Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, _vault.Stacks[0].ItemTemplate.Name);
+            Assert.AreEqual("ShortSword", _vault.Stacks[0].ItemTemplate.Name);
             Assert.AreEqual(1, _vault.Stacks[0].Quantity);
         }
 
@@ -284,7 +284,7 @@ namespace PitHero.Tests
             Assert.AreEqual(32, potionStack.Quantity, "HP Potions should stack: 16 + 16 = 32");
 
             // Find the sword stack
-            var swordStack = _vault.Stacks.FirstOrDefault(s => s.ItemTemplate.Name == InventoryTextKey.Inv_ShortSword_Name);
+            var swordStack = _vault.Stacks.FirstOrDefault(s => s.ItemTemplate.Name == "ShortSword");
             Assert.IsNotNull(swordStack);
             Assert.AreEqual(2, swordStack.Quantity, "Short Swords should stack: 2 total");
         }

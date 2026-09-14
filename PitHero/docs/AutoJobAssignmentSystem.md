@@ -137,6 +137,18 @@ and ignores the `nocturnal` param — farming is shift-agnostic.
    one is the far better farmer — the farm gets that one.)
 7. Everyone unassigned gets `MonsterJob.None` → the coordinators send them home.
 
+**Experience tiebreak (issue #413).** Job skill levels are no longer rolled at recruitment; every
+monster starts at level 1 in every job and levels up by completing that job's tasks
+(`AlliedMonster.RecordTask`, `current level × GameConfig.MonsterJobTasksPerLevel` (10) kitchen or
+fishing tasks, or `× GameConfig.MonsterJobFarmingTasksPerLevel` (20) farm tasks per level — farm
+tasks are far more frequent — cap 9). The fill, trim and starvation passes rank candidates by
+`JobAssignmentSolver.GetExperienceScore` = `level × MonsterJobExperienceLevelWeight + tasks toward
+the next level`, so among equal-level monsters the one already progressing in a job keeps it, and a
+higher level always outranks partial progress. Need is still decided by the evaluators — experience
+only picks *who* fills a slot; when no experienced monster is free the next available one is taken.
+The swap pass keeps its level-only gains (`GetProficiency`) so its "every swap strictly raises total
+proficiency" no-oscillation argument is unchanged. Ties still break to the lowest roster index.
+
 A monster holding a job with **no demand entry** is non-sticky by definition and gets pooled and
 reassigned — this is the extensibility guarantee (a Fishing-assigned monster before a fishing
 evaluator exists just returns to the pool).

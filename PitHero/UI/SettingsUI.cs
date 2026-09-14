@@ -324,6 +324,20 @@ namespace PitHero.UI
             set { if (_farmUI != null) _farmUI.IsRefrigeratorDialogOpen = value; }
         }
 
+        /// <summary>Fired when the Farm Stats sub-button is clicked (issue #413); set by MainGameScene.</summary>
+        public System.Action FarmStatsRequested
+        {
+            get => _farmUI != null ? _farmUI.FarmStatsRequested : null;
+            set { if (_farmUI != null) _farmUI.FarmStatsRequested = value; }
+        }
+
+        /// <summary>Reports whether the Farm Stats window is open; set by MainGameScene.</summary>
+        public System.Func<bool> FarmStatsDialogOpen
+        {
+            get => _farmUI?.IsFarmStatsDialogOpen;
+            set { if (_farmUI != null) _farmUI.IsFarmStatsDialogOpen = value; }
+        }
+
         /// <summary>Opens the monster roster filtered to a single Monster House (by UniqueId).</summary>
         public void ShowMonstersForHouse(int houseId) => _monsterUI?.ShowForHouse(houseId);
 

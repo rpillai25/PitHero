@@ -91,7 +91,7 @@ namespace PitHero.AI
         {
             Core.Services?.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleAutoEquip,
                 (characterName, GameConfig.ConsoleColorHeroName),
-                (gear.Name, RarityUtils.GetRarityColor(gear.Rarity)));
+                (gear.DisplayName, RarityUtils.GetRarityColor(gear.Rarity)));
         }
     }
 }

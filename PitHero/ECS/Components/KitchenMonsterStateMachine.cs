@@ -386,6 +386,7 @@ namespace PitHero.ECS.Components
                     {
                         _coordinator.NotifyPartyOrderTaken(_targetPartySlot, ticket);
                         _takenOrders.Add(ticket);
+                        MonsterJobTaskRecorder.Record(_monster, MonsterJob.Cooking);
                         Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.TakeOrder, Entity.Transform.Position);
                     }
                 }
@@ -414,6 +415,7 @@ namespace PitHero.ECS.Components
                 t.ServerEntity = Entity;
                 comp.OnOrderTaken(t);
                 _takenOrders.Add(t);
+                MonsterJobTaskRecorder.Record(_monster, MonsterJob.Cooking);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.TakeOrder, Entity.Transform.Position);
             }
         }
@@ -545,6 +547,7 @@ namespace PitHero.ECS.Components
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.PlaceFoodOnTable, platePos);
             }
             _coordinator.OnTicketDelivered(c.Ticket, dishEntity);
+            MonsterJobTaskRecorder.Record(_monster, MonsterJob.Cooking);
             _carried.RemoveAt(0);
             BeginNextCarriedLeg();
         }
@@ -593,6 +596,7 @@ namespace PitHero.ECS.Components
                 ShowCarrySprite(sprite?.Sprite);
                 _busJob.DishEntity.Destroy();
                 _busJob.DishEntity = null;
+                MonsterJobTaskRecorder.Record(_monster, MonsterJob.Cooking);
                 TrySetPathTo(KitchenTaskCoordinator.SinkTile);
                 return;
             }
@@ -856,6 +860,7 @@ namespace PitHero.ECS.Components
 
             // Done — pick up the dish and head for a serving table
             _coordinator.FinishCooking(_cookTicket);
+            MonsterJobTaskRecorder.Record(_monster, MonsterJob.Cooking);
             ShowCarryDish(_cookTicket.Dish);
             if (_coordinator.TryReserveServingSlot(_cookTicket, out _))
                 CurrentState = KitchenMonsterState.CookWalkToServing;
@@ -1117,6 +1122,7 @@ namespace PitHero.ECS.Components
             {
                 _coordinator.DeliverCarriedTopUp(_carryQueue, _monster?.Name, _monster?.MonsterTypeName);
             }
+            MonsterJobTaskRecorder.Record(_monster, MonsterJob.Cooking);
             _coordinator.CompleteFetch(_fetchTicket);
             _fetchTicket = null;
             EndFetchTrip();
@@ -1241,6 +1247,7 @@ namespace PitHero.ECS.Components
             {
                 _busJob.DishEntity.Destroy();
                 _platesCarried++;
+                MonsterJobTaskRecorder.Record(_monster, MonsterJob.Cooking);
             }
             _busJob = default;
             ShowCarryPlates(_platesCarried);

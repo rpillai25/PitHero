@@ -231,7 +231,7 @@ namespace PitHero.Services
             if (Core.Instance == null || item == null)
                 return;
             Core.Services?.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleAutoSoldItem,
-                (item.Name, RarityUtils.GetRarityColor(item.Rarity)),
+                (item.DisplayName, RarityUtils.GetRarityColor(item.Rarity)),
                 (gold.ToString(), Color.White));
         }
     }

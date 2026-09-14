@@ -20,6 +20,27 @@ namespace PitHero.UI
         private TextService _textService;
 
         // Per-mercenary display containers (up to 2)
+        // Row geometry (issue #413): the scroll pane pads 10 and each row pads 5, and the three
+        // columns split the ColumnBudgetWidth remainder with FIXED widths so the skills grid and the
+        // portrait/Dismiss column never move with the meal-buff text length. The tab content is
+        // ScrollbarAllowance wider than the column budget so the pane's vertical scrollbar has its
+        // own room instead of clipping the right-most (Dismiss) column.
+        private const float ColumnBudgetWidth = 580f;
+        private const float ScrollbarAllowance = 32f;
+
+        /// <summary>Width of the tab content as laid out by HeroUI (the tab is centered at this width, and the Party window is never narrower).</summary>
+        public const float ContentWidth = ColumnBudgetWidth + ScrollbarAllowance;
+
+        private const float ScrollPanePad = 10f;
+        private const float RowPad = 5f;
+        private const float CellPad = 5f;
+        private const float SkillIconCell = 36f;          // 32px icon + 2px grid padding each side
+        private const float DismissButtonWidth = 80f;
+        private const float RowInnerWidth = ColumnBudgetWidth - 2f * ScrollPanePad - 2f * RowPad;
+        private const float SkillsColWidth = 4f * SkillIconCell + 2f * CellPad;
+        private const float PreviewColWidth = DismissButtonWidth + 2f * CellPad;
+        private const float LeftColWidth = RowInnerWidth - SkillsColWidth - PreviewColWidth;
+
         private readonly Table[] _mercRows = new Table[2];
 
         // Per-mercenary labels
@@ -141,10 +162,15 @@ namespace PitHero.UI
             _mealBuffsHeaderLabels[index] = new Label("", skin, "ph-meal-header");
             leftCol.Add(_mealBuffsHeaderLabels[index]).Left().SetPadTop(4f);
             leftCol.Row();
+            // The buff text can run long ("<dish> (Deluxe) - 5h 59m"); it wraps inside the fixed
+            // left column instead of pushing the skills and portrait columns around (issue #413).
             _mealBuffsLabels[index] = new Label("", skin, "ph-default");
-            leftCol.Add(_mealBuffsLabels[index]).Left();
+            _mealBuffsLabels[index].SetWrap(true);
+            leftCol.Add(_mealBuffsLabels[index]).Left().Width(LeftColWidth - 2f * CellPad);
 
-            infoSection.Add(leftCol).Left().Top().Expand().Pad(5f);
+            // Column widths are fixed so the skills grid and the portrait/Dismiss column sit at the
+            // same X for every mercenary regardless of how long the meal-buff text is.
+            infoSection.Add(leftCol).Left().Top().Width(LeftColWidth).Pad(CellPad);
 
             // Middle column: a mercenary only ever has four skills, so the label and icons fit beside
             // the info labels instead of costing two more rows underneath them
@@ -153,14 +179,14 @@ namespace PitHero.UI
             skillsCol.Add(_skillsSectionLabels[index]).Center();
             skillsCol.Row();
             skillsCol.Add(_skillGrids[index]).Center().SetPadTop(2f);
-            infoSection.Add(skillsCol).Center().Expand().Pad(5f);
+            infoSection.Add(skillsCol).Top().Width(SkillsColWidth).Pad(CellPad);
 
-            // Right column: sprite preview with the Dismiss button tucked 8px beneath it
+            // Right column: sprite preview with the Dismiss button tucked 8px beneath it, flush right
             var previewCol = new Table();
             previewCol.Add(_previewContainers[index]).Center();
             previewCol.Row();
-            previewCol.Add(_dismissButtons[index]).Center().SetPadTop(8f).SetMinWidth(80f).SetMinHeight(28f);
-            infoSection.Add(previewCol).Center().Pad(5f).SetPadRight(64f);
+            previewCol.Add(_dismissButtons[index]).Center().SetPadTop(8f).SetMinWidth(DismissButtonWidth).SetMinHeight(28f);
+            infoSection.Add(previewCol).Top().Right().Width(PreviewColWidth).Pad(CellPad);
 
             row.Add(infoSection).Expand().Fill();
             row.Row();

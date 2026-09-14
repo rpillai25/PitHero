@@ -220,6 +220,10 @@ namespace PitHero.Services
         public int FarmingProficiency;
         public int MonsterJobId;
         public int MonsterHouseId;
+        // Task progress toward the next level per job (v35, issue #413)
+        public int FishingTasks;
+        public int CookingTasks;
+        public int FarmingTasks;
     }
 
     /// <summary>Lightweight struct representing a saved hired mercenary.</summary>
@@ -273,7 +277,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 34; // v34: local artifacts + inventory sell percent appended (issue #411); keep-stacks arrays unified on read of older files
+        public const int CurrentVersion = 35; // v35: per-monster job task progress + lifetime crop/dish counters appended (issue #413)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -638,6 +642,13 @@ namespace PitHero.Services
         /// </summary>
         public int HeroId;
 
+        // Lifetime progression counters (v35, issue #413)
+        /// <summary>Units harvested per crop over the hero's lifetime, indexed by (int)CropType. Only ever increases.</summary>
+        public int[] CropHarvestedTotals;
+
+        /// <summary>Dishes served per dish type over the hero's lifetime, indexed by (int)DishType.</summary>
+        public int[] DishesServedTotals;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -661,9 +672,10 @@ namespace PitHero.Services
             TileStates = new List<SavedTileState>();
             PlacedBuildings = new List<SavedBuilding>();
             SeedInventory = new int[Farming.CropTypeInfo.Count];
-            SeedInventory[(int)Farming.CropType.Wheat]     = GameConfig.NewGameStartingWheatSeeds;
-            SeedInventory[(int)Farming.CropType.Tomato]    = GameConfig.NewGameStartingTomatoSeeds;
-            SeedInventory[(int)Farming.CropType.AppleTree] = GameConfig.NewGameStartingAppleTreeSeeds;
+            SeedInventory[(int)Farming.CropType.Wheat] = GameConfig.NewGameStartingWheatSeeds;
+            SeedInventory[(int)Farming.CropType.Corn]  = GameConfig.NewGameStartingCornSeeds;
+            CropHarvestedTotals = new int[Farming.CropTypeInfo.Count];
+            DishesServedTotals = new int[Dining.DishTypeInfo.Count];
             CropPlans = new List<SavedCropPlan>();
             NextBuildingId = 1;
             CropGrowthStates = new List<SavedCropGrowthState>();
@@ -823,6 +835,10 @@ namespace PitHero.Services
                 writer.Write(monster.FarmingProficiency);
                 writer.Write(monster.MonsterJobId);
                 writer.Write(monster.MonsterHouseId);
+                // v35: task progress toward the next level (issue #413)
+                writer.Write(monster.FishingTasks);
+                writer.Write(monster.CookingTasks);
+                writer.Write(monster.FarmingTasks);
             }
 
             // 12. Shortcut Bar
@@ -1151,6 +1167,36 @@ namespace PitHero.Services
 
             // 49. Inventory sell percent (v34)
             writer.Write(AutoSellInventorySellPercent);
+
+            // 50. Lifetime progression counters (v35, issue #413): crop units harvested, dishes served
+            WriteIntArray(writer, CropHarvestedTotals);
+            WriteIntArray(writer, DishesServedTotals);
+        }
+
+        /// <summary>Writes a count-prefixed int array (null writes a zero count).</summary>
+        private static void WriteIntArray(IPersistableWriter writer, int[] values)
+        {
+            int count = values != null ? values.Length : 0;
+            writer.Write(count);
+            for (int i = 0; i < count; i++)
+                writer.Write(values[i]);
+        }
+
+        /// <summary>
+        /// Reads a count-prefixed int array into a fresh array of <paramref name="size"/> entries.
+        /// Extra entries a newer build wrote are consumed and dropped; missing ones read as zero.
+        /// </summary>
+        private static int[] ReadIntArray(IPersistableReader reader, int size)
+        {
+            var result = new int[size];
+            int count = reader.ReadInt();
+            for (int i = 0; i < count; i++)
+            {
+                int v = reader.ReadInt();
+                if (i < size)
+                    result[i] = v;
+            }
+            return result;
         }
 
         /// <summary>
@@ -1313,6 +1359,10 @@ namespace PitHero.Services
                 monster.FarmingProficiency = reader.ReadInt();
                 monster.MonsterJobId = reader.ReadInt();
                 monster.MonsterHouseId = reader.ReadInt();
+                // v35: task progress (issue #413); older files start every job at zero progress
+                monster.FishingTasks = fileVersion >= 35 ? reader.ReadInt() : 0;
+                monster.CookingTasks = fileVersion >= 35 ? reader.ReadInt() : 0;
+                monster.FarmingTasks = fileVersion >= 35 ? reader.ReadInt() : 0;
                 AlliedMonsters.Add(monster);
             }
 
@@ -1740,6 +1790,19 @@ namespace PitHero.Services
                 if (percent < GameConfig.AutoSellInventoryPercentMin) percent = GameConfig.AutoSellInventoryPercentMin;
                 if (percent > GameConfig.AutoSellInventoryPercentMax) percent = GameConfig.AutoSellInventoryPercentMax;
                 AutoSellInventorySellPercent = percent;
+            }
+
+            // 50. Lifetime progression counters (section added in v35, issue #413). Older files have
+            // harvested nothing on record, which leaves only the starting crops unlocked.
+            if (fileVersion >= 35)
+            {
+                CropHarvestedTotals = ReadIntArray(reader, Farming.CropTypeInfo.Count);
+                DishesServedTotals = ReadIntArray(reader, Dining.DishTypeInfo.Count);
+            }
+            else
+            {
+                CropHarvestedTotals = new int[Farming.CropTypeInfo.Count];
+                DishesServedTotals = new int[Dining.DishTypeInfo.Count];
             }
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable

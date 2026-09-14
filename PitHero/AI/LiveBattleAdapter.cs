@@ -671,7 +671,7 @@ namespace PitHero.AI
             {
                 evtSvc.EmitLocalized(UITextKey.ConsoleBattleHealConsumable,
                     (evt.ActorName, GameConfig.ConsoleColorHeroName),
-                    (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),
+                    (consumable.DisplayName, RarityUtils.GetRarityColor(consumable.Rarity)),
                     (evt.TargetName, GameConfig.ConsoleColorHeroName),
                     (evt.Amount.ToString(), Color.White));
             }

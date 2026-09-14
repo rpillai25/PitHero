@@ -280,8 +280,8 @@ namespace PitHero.Services
             if (Core.Instance == null) return;
             Core.Services?.GetService<GameEventService>()?.EmitLocalized(
                 UITextKey.ConsoleVaultItemEvicted,
-                (evicted.Name, RarityUtils.GetRarityColor(evicted.Rarity)),
-                (incoming.Name, RarityUtils.GetRarityColor(incoming.Rarity)));
+                (evicted.DisplayName, RarityUtils.GetRarityColor(evicted.Rarity)),
+                (incoming.DisplayName, RarityUtils.GetRarityColor(incoming.Rarity)));
         }
 
         /// <summary>
@@ -295,7 +295,7 @@ namespace PitHero.Services
             if (Core.Instance == null) return;
             Core.Services?.GetService<GameEventService>()?.EmitLocalized(
                 UITextKey.ConsoleVaultItemRejected,
-                (rejected.Name, RarityUtils.GetRarityColor(rejected.Rarity)));
+                (rejected.DisplayName, RarityUtils.GetRarityColor(rejected.Rarity)));
         }
 
         // ── Identity / cloning ────────────────────────────────────────────────────

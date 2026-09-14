@@ -570,5 +570,55 @@ namespace PitHero.Tests
 
             CollectionAssert.AreEqual(first, _result, "Same inputs must always produce the same assignments");
         }
+
+        // ── Experience tiebreak (issue #413) ────────────────────────────────────────
+
+        [TestMethod]
+        public void Solve_EqualLevels_MoreTaskProgressWins()
+        {
+            var newcomer = Monster(0, MonsterJob.None, 1, 1);
+            var veteran = Monster(1, MonsterJob.None, 1, 1);
+            veteran.FarmingTasks = 7;
+            var monsters = new List<MonsterJobSnapshot> { newcomer, veteran };
+            var demands = new List<JobDemandEntry> { Demand(MonsterJob.Farming, 1, 1, sticky: false) };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.None, _result[0], "Lower roster index loses to more progress");
+            Assert.AreEqual(MonsterJob.Farming, _result[1], "The monster already progressing in farming keeps farming");
+        }
+
+        [TestMethod]
+        public void Solve_HigherLevel_BeatsAnyTaskProgress()
+        {
+            var levelTwo = Monster(0, MonsterJob.None, 2, 1);
+            var levelOneAlmostThere = Monster(1, MonsterJob.None, 1, 1);
+            levelOneAlmostThere.FarmingTasks = 9;
+            var monsters = new List<MonsterJobSnapshot> { levelOneAlmostThere, levelTwo };
+            var demands = new List<JobDemandEntry> { Demand(MonsterJob.Farming, 1, 1, sticky: false) };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.None, _result[0]);
+            Assert.AreEqual(MonsterJob.Farming, _result[1], "Level outranks partial progress");
+            Assert.IsTrue(JobAssignmentSolver.GetExperienceScore(levelTwo, MonsterJob.Farming)
+                > JobAssignmentSolver.GetExperienceScore(levelOneAlmostThere, MonsterJob.Farming));
+        }
+
+        [TestMethod]
+        public void Solve_ExperienceTie_StillBreaksToLowestIndex()
+        {
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.None, 1, 1),
+                Monster(1, MonsterJob.None, 1, 1),
+            };
+            var demands = new List<JobDemandEntry> { Demand(MonsterJob.Farming, 1, 1, sticky: false) };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Farming, _result[0]);
+            Assert.AreEqual(MonsterJob.None, _result[1]);
+        }
     }
 }

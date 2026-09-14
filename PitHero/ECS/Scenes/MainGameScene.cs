@@ -97,6 +97,10 @@ namespace PitHero.ECS.Scenes
         private UI.RestoreGrassModeOverlay _restoreGrassModeOverlay;
         private bool _wasInRestoreGrassMode;
         private RefrigeratorDialog _refrigeratorDialog; // Fridge inventory window (issue #386)
+        private FarmStatsDialog _farmStatsDialog; // Lifetime harvest / dishes-served window (issue #413)
+
+        /// <summary>True while a Farm sub-bar dialog (Refrigerator or Farm Stats) is open; both share one pause/zoom gate.</summary>
+        private bool FarmDialogVisible => (_refrigeratorDialog?.IsVisible() ?? false) || (_farmStatsDialog?.IsVisible() ?? false);
         private bool _wasFridgeDialogVisible;
         private bool _fridgeRestoreHalfZoom;
         private bool _wasInHarvestedCropsMode;
@@ -664,6 +668,26 @@ namespace PitHero.ECS.Scenes
                 // A housed monster implies its type was defeated (issue #283 invariant)
                 Core.Services.GetService<DefeatedMonsterService>()?.MarkDefeatedByTypeName(MonsterTextKey.Monster_Slime);
             }
+
+            // Scripted starter field (issue #413): a 3x3 block marked ReadyToTill with Wheat plans so the
+            // farming Slime tills, then plants. Data-only, mirroring the load path: SetFlag raises
+            // OnReadyToTillSet for the coordinator's till queue and HandleTileTilled later picks up the
+            // plan. Pre-tick setup, so replays of a new game reproduce it without a command.
+            var tileStateService = Core.Services.GetService<TileStateService>();
+            if (tileStateService != null && _seedModeOverlay != null)
+            {
+                for (int y = GameConfig.NewGameStarterFieldMinTileY; y <= GameConfig.NewGameStarterFieldMaxTileY; y++)
+                {
+                    for (int x = GameConfig.NewGameStarterFieldMinTileX; x <= GameConfig.NewGameStarterFieldMaxTileX; x++)
+                    {
+                        var tile = new Microsoft.Xna.Framework.Point(x, y);
+                        if (!tileStateService.HasFlag(tile, Farming.TileStateFlag.ReadyToTill))
+                            tileStateService.SetFlag(tile, Farming.TileStateFlag.ReadyToTill);
+                        _seedModeOverlay.SpawnRestoredCropPlan(Farming.CropType.Wheat, x, y);
+                    }
+                }
+                Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanReadyToTill();
+            }
         }
 
         /// <summary>Applies pending save data to restore game state after scene initialization.</summary>
@@ -1110,6 +1134,7 @@ namespace PitHero.ECS.Scenes
                         saved.FishingProficiency, saved.CookingProficiency, saved.FarmingProficiency,
                         saved.MonsterHouseId);
                     allied.Job = (MonsterJob)saved.MonsterJobId;
+                    allied.SetTaskProgress(saved.FishingTasks, saved.CookingTasks, saved.FarmingTasks);
                     alliedManager.AddAlliedMonster(allied);
                 }
             }
@@ -1460,6 +1485,14 @@ namespace PitHero.ECS.Scenes
             {
                 _settingsUI.RefrigeratorRequested = () => _refrigeratorDialog?.Show();
                 _settingsUI.RefrigeratorDialogOpen = () => _refrigeratorDialog != null && _refrigeratorDialog.IsVisible();
+            }
+
+            // Farm Stats window (issue #413) — opened from the Farm sub-bar, shares the fridge gate.
+            _farmStatsDialog = new FarmStatsDialog(_uiStage);
+            if (_settingsUI != null)
+            {
+                _settingsUI.FarmStatsRequested = () => _farmStatsDialog?.Show();
+                _settingsUI.FarmStatsDialogOpen = () => _farmStatsDialog != null && _farmStatsDialog.IsVisible();
             }
 
             // Building context menu — shown when a placed building is clicked (Move / Show ...).
@@ -3548,6 +3581,7 @@ namespace PitHero.ECS.Scenes
             if (!replayActive)
                 HandleFridgeClicks();
             _refrigeratorDialog?.Update();
+            _farmStatsDialog?.Update();
             UpdateFridgeDialogGate();
             UpdateBuildingMenuGate();
             UpdateStatueDialogGate();
@@ -3561,7 +3595,7 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void UpdateFridgeDialogGate()
         {
-            bool fridgeDialogVisible = _refrigeratorDialog?.IsVisible() ?? false;
+            bool fridgeDialogVisible = FarmDialogVisible;
             if (fridgeDialogVisible == _wasFridgeDialogVisible)
                 return;
 
@@ -3630,7 +3664,7 @@ namespace PitHero.ECS.Scenes
             // The gates share ExternalUIWindowOpen, so each sets the OR of every gated window's
             // visibility to keep one gate's closing edge from clearing another open window.
             if (_settingsUI != null)
-                _settingsUI.ExternalUIWindowOpen = menuVisible || (_refrigeratorDialog?.IsVisible() ?? false)
+                _settingsUI.ExternalUIWindowOpen = menuVisible || FarmDialogVisible
                     || UI.JobChangeFlow.IsDialogVisible;
             _wasBuildingMenuVisible = menuVisible;
         }
@@ -3669,7 +3703,7 @@ namespace PitHero.ECS.Scenes
             }
             if (_settingsUI != null)
                 _settingsUI.ExternalUIWindowOpen = dialogVisible || (_buildingContextMenu?.IsVisible ?? false)
-                    || (_refrigeratorDialog?.IsVisible() ?? false);
+                    || FarmDialogVisible;
             _wasStatueDialogVisible = dialogVisible;
         }
 

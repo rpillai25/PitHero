@@ -20,7 +20,27 @@ namespace RolePlayingFramework.Equipment
             return _textService;
         }
 
-        public string Name => GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
+        // Stable identity (stripped key) and the lazily cached localized name (issue #413)
+        private readonly string _name;
+        private string _cachedDisplayName;
+
+        /// <summary>Stable identity ("HPPotion"); see <see cref="IItem.Name"/>.</summary>
+        public string Name => _name;
+
+        /// <summary>Localized player-facing name; falls back to the identity headlessly.</summary>
+        public string DisplayName
+        {
+            get
+            {
+                if (_cachedDisplayName != null)
+                    return _cachedDisplayName;
+                var textService = GetTextService();
+                if (textService == null)
+                    return _name;
+                _cachedDisplayName = textService.DisplayText(TextType.Inventory, _nameKey);
+                return _cachedDisplayName;
+            }
+        }
 
         /// <summary>Sprite name used to look up the item's sprite in the Items atlas. Returns the concrete class name.</summary>
         public string SpriteName => GetType().Name;
@@ -44,6 +64,7 @@ namespace RolePlayingFramework.Equipment
         protected Consumable(string name, ItemRarity rarity, string description, int price, int hpRestoreAmount = 0, int mpRestoreAmount = 0, bool battleOnly = false)
         {
             _nameKey = name;
+            _name = ItemNameKey.Strip(name);
             _descKey = description;
             Rarity = rarity;
             Price = price;

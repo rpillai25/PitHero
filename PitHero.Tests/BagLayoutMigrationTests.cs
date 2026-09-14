@@ -94,9 +94,9 @@ namespace PitHero.Tests
                 original.HeroName = "Packrat";
                 original.InventoryItems = new List<SavedItem>
                 {
-                    new SavedItem { Name = InventoryTextKey.Inv_HPPotion_Name, IsConsumable = true, StackCount = 5, SlotIndex = 0 },
-                    new SavedItem { Name = InventoryTextKey.Inv_RustyBlade_Name, IsConsumable = false, StackCount = 0, SlotIndex = 25 },  // old (1,1)
-                    new SavedItem { Name = InventoryTextKey.Inv_SquireHelm_Name, IsConsumable = false, StackCount = 0, SlotIndex = 100 }, // old (4,4)
+                    new SavedItem { Name = "HPPotion", IsConsumable = true, StackCount = 5, SlotIndex = 0 },
+                    new SavedItem { Name = "RustyBlade", IsConsumable = false, StackCount = 0, SlotIndex = 25 },  // old (1,1)
+                    new SavedItem { Name = "SquireHelm", IsConsumable = false, StackCount = 0, SlotIndex = 100 }, // old (4,4)
                 };
                 original.ShortcutSlots = new List<SavedShortcutSlot>
                 {

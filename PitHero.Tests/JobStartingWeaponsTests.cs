@@ -15,7 +15,7 @@ namespace PitHero.Tests
             var weapon = JobStartingWeapons.CreateStartingWeapon(JobType.Knight);
 
             Assert.IsNotNull(weapon);
-            Assert.AreEqual(InventoryTextKey.Inv_RustyBlade_Name, weapon.Name);
+            Assert.AreEqual("RustyBlade", weapon.Name);
             Assert.AreEqual(ItemKind.WeaponSword, weapon.Kind);
         }
 
@@ -25,7 +25,7 @@ namespace PitHero.Tests
             var weapon = JobStartingWeapons.CreateStartingWeapon(JobType.Thief);
 
             Assert.IsNotNull(weapon);
-            Assert.AreEqual(InventoryTextKey.Inv_RustyDagger_Name, weapon.Name);
+            Assert.AreEqual("RustyDagger", weapon.Name);
             Assert.AreEqual(ItemKind.WeaponKnife, weapon.Kind);
         }
 
@@ -35,7 +35,7 @@ namespace PitHero.Tests
             var weapon = JobStartingWeapons.CreateStartingWeapon(JobType.Mage);
 
             Assert.IsNotNull(weapon);
-            Assert.AreEqual(InventoryTextKey.Inv_RustyDagger_Name, weapon.Name);
+            Assert.AreEqual("RustyDagger", weapon.Name);
             Assert.AreEqual(ItemKind.WeaponKnife, weapon.Kind);
         }
 
@@ -45,7 +45,7 @@ namespace PitHero.Tests
             var weapon = JobStartingWeapons.CreateStartingWeapon(JobType.Priest);
 
             Assert.IsNotNull(weapon);
-            Assert.AreEqual(InventoryTextKey.Inv_Mallet_Name, weapon.Name);
+            Assert.AreEqual("Mallet", weapon.Name);
             Assert.AreEqual(ItemKind.WeaponHammer, weapon.Kind);
         }
 

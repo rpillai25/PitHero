@@ -1,286 +1,286 @@
 Inv_AbyssFang_Desc,Pitch-black blade from the void.
-Inv_AbyssFang_Name,AbyssFang
+Inv_AbyssFang_Name,Abyss Fang
 Inv_AbyssHelm_Desc,Helmet from the deepest void.
-Inv_AbyssHelm_Name,AbyssHelm
+Inv_AbyssHelm_Name,Abyss Helm
 Inv_AbyssPlate_Desc,Armor from the deepest caves.
-Inv_AbyssPlate_Name,AbyssPlate
+Inv_AbyssPlate_Name,Abyss Plate
 Inv_AbyssWall_Desc,Shield from the void.
-Inv_AbyssWall_Name,AbyssWall
+Inv_AbyssWall_Name,Abyss Wall
 Inv_AssassinsEdge_Desc,Perfectly balanced killing blade.
-Inv_AssassinsEdge_Name,AssassinsEdge
+Inv_AssassinsEdge_Name,Assassin's Edge
 Inv_Bascinet_Desc,Pointed metal helmet.
 Inv_Bascinet_Name,Bascinet
 Inv_BurlapTunic_Desc,Rough woven fabric armor.
-Inv_BurlapTunic_Name,BurlapTunic
+Inv_BurlapTunic_Name,Burlap Tunic
 Inv_CaveExplorersHood_Desc,Practical hood for cave exploration.
-Inv_CaveExplorersHood_Name,CaveExplorersHood
+Inv_CaveExplorersHood_Name,Cave Explorer's Hood
 Inv_CaveExplorersVest_Desc,Practical armor for cave navigation.
-Inv_CaveExplorersVest_Name,CaveExplorersVest
+Inv_CaveExplorersVest_Name,Cave Explorer's Vest
 Inv_CaveGuard_Desc,Shield painted with cave markings.
-Inv_CaveGuard_Name,CaveGuard
+Inv_CaveGuard_Name,Cave Guard
 Inv_CavePike_Desc,Long spear designed for cave defense.
-Inv_CavePike_Name,CavePike
+Inv_CavePike_Name,Cave Pike
 Inv_CaveShiv_Desc,Crude knife made from cave debris.
-Inv_CaveShiv_Name,CaveShiv
+Inv_CaveShiv_Name,Cave Shiv
 Inv_CaveStalkersBlade_Desc,Dark steel blade favored by cave dwellers.
-Inv_CaveStalkersBlade_Name,CaveStalkersBlade
+Inv_CaveStalkersBlade_Name,Cave Stalker's Blade
 Inv_CavernCutter_Desc,Broad blade designed for tight spaces.
-Inv_CavernCutter_Name,CavernCutter
+Inv_CavernCutter_Name,Cavern Cutter
 Inv_ChainCoif_Desc,Chainmail head covering.
-Inv_ChainCoif_Name,ChainCoif
+Inv_ChainCoif_Name,Chain Coif
 Inv_ChainMail_Desc,Interlocking metal rings.
-Inv_ChainMail_Name,ChainMail
+Inv_ChainMail_Name,Chain Mail
 Inv_ClothCap_Desc,Simple fabric head covering.
-Inv_ClothCap_Name,ClothCap
+Inv_ClothCap_Name,Cloth Cap
 Inv_CrystalBarrier_Desc,Translucent crystal shield.
-Inv_CrystalBarrier_Name,CrystalBarrier
+Inv_CrystalBarrier_Name,Crystal Barrier
 Inv_CrystalCirclet_Desc,Headband with protective crystals.
-Inv_CrystalCirclet_Name,CrystalCirclet
+Inv_CrystalCirclet_Name,Crystal Circlet
 Inv_CrystalCleaver_Desc,Axe with crystalline blade edge.
-Inv_CrystalCleaver_Name,CrystalCleaver
+Inv_CrystalCleaver_Name,Crystal Cleaver
 Inv_CrystalEdge_Desc,Blade with embedded crystal formations.
-Inv_CrystalEdge_Name,CrystalEdge
+Inv_CrystalEdge_Name,Crystal Edge
 Inv_CrystalGuard_Desc,Armor embedded with protective crystals.
-Inv_CrystalGuard_Name,CrystalGuard
+Inv_CrystalGuard_Name,Crystal Guard
 Inv_DepthsReaver_Desc,Ancient blade from the deepest caves.
-Inv_DepthsReaver_Name,DepthsReaver
+Inv_DepthsReaver_Name,Depths Reaver
 Inv_DiamondBarrier_Desc,Ultra-hard diamond shield.
-Inv_DiamondBarrier_Name,DiamondBarrier
+Inv_DiamondBarrier_Name,Diamond Barrier
 Inv_DiamondCirclet_Desc,Headpiece with diamond reinforcement.
-Inv_DiamondCirclet_Name,DiamondCirclet
+Inv_DiamondCirclet_Name,Diamond Circlet
 Inv_DiamondEdge_Desc,Blade reinforced with diamond shards.
-Inv_DiamondEdge_Name,DiamondEdge
+Inv_DiamondEdge_Name,Diamond Edge
 Inv_DiamondMail_Desc,Armor reinforced with diamond.
-Inv_DiamondMail_Name,DiamondMail
+Inv_DiamondMail_Name,Diamond Mail
 Inv_EarthenStaff_Desc,Staff embedded with earth crystals.
-Inv_EarthenStaff_Name,EarthenStaff
+Inv_EarthenStaff_Name,Earthen Staff
 Inv_EmberHelm_Desc,Heat-resistant helmet with glowing edges.
-Inv_EmberHelm_Name,EmberHelm
+Inv_EmberHelm_Name,Ember Helm
 Inv_EmberRod_Desc,Staff topped with ever-burning ember.
-Inv_EmberRod_Name,EmberRod
+Inv_EmberRod_Name,Ember Rod
 Inv_EmberShield_Desc,Shield with glowing ember core.
-Inv_EmberShield_Name,EmberShield
+Inv_EmberShield_Name,Ember Shield
 Inv_EmberSword_Desc,Blade that glows with inner heat.
-Inv_EmberSword_Name,EmberSword
+Inv_EmberSword_Name,Ember Sword
 Inv_EmberguardMail_Desc,Heat-resistant mail armor.
-Inv_EmberguardMail_Name,EmberguardMail
+Inv_EmberguardMail_Name,Emberguard Mail
 Inv_FlameHatchet_Desc,Axe head that glows red when swung.
-Inv_FlameHatchet_Name,FlameHatchet
+Inv_FlameHatchet_Name,Flame Hatchet
 Inv_FlameLance_Desc,Spear with burning tip.
-Inv_FlameLance_Name,FlameLance
+Inv_FlameLance_Name,Flame Lance
 Inv_FullHPPotion_Desc,Fully restores HP
-Inv_FullHPPotion_Name,FullHPPotion
+Inv_FullHPPotion_Name,Full HP Potion
 Inv_FullMPPotion_Desc,Fully restores MP
-Inv_FullMPPotion_Name,FullMPPotion
+Inv_FullMPPotion_Name,Full MP Potion
 Inv_FullMixPotion_Desc,Fully restores HP and MP
-Inv_FullMixPotion_Name,FullMixPotion
+Inv_FullMixPotion_Name,Full Mix Potion
 Inv_GeologistsHammer_Desc,Precision hammer for breaking minerals.
-Inv_GeologistsHammer_Name,GeologistsHammer
+Inv_GeologistsHammer_Name,Geologist's Hammer
 Inv_GloomBlade_Desc,Cursed blade from deep caverns.
-Inv_GloomBlade_Name,GloomBlade
+Inv_GloomBlade_Name,Gloom Blade
 Inv_GraniteBlade_Desc,Reinforced blade with granite edge.
-Inv_GraniteBlade_Name,GraniteBlade
+Inv_GraniteBlade_Name,Granite Blade
 Inv_GraniteGuard_Desc,Heavy stone shield.
-Inv_GraniteGuard_Name,GraniteGuard
+Inv_GraniteGuard_Name,Granite Guard
 Inv_GranitePlate_Desc,Ultra-dense stone armor.
-Inv_GranitePlate_Name,GranitePlate
+Inv_GranitePlate_Name,Granite Plate
 Inv_GreatHelm_Desc,Fully enclosed helmet.
-Inv_GreatHelm_Name,GreatHelm
+Inv_GreatHelm_Name,Great Helm
 Inv_HPPotion_Desc,Restores 100 HP
-Inv_HPPotion_Name,HPPotion
+Inv_HPPotion_Name,HP Potion
 Inv_HardenedLeather_Desc,Treated leather with increased durability.
-Inv_HardenedLeather_Name,HardenedLeather
+Inv_HardenedLeather_Name,Hardened Leather
 Inv_HeaterShield_Desc,Classic triangular shield.
-Inv_HeaterShield_Name,HeaterShield
+Inv_HeaterShield_Name,Heater Shield
 Inv_HideHood_Desc,Animal hide hood.
-Inv_HideHood_Name,HideHood
+Inv_HideHood_Name,Hide Hood
 Inv_HideShield_Desc,Leather-covered wooden frame.
-Inv_HideShield_Name,HideShield
+Inv_HideShield_Name,Hide Shield
 Inv_HideVest_Desc,Animal hide chest protection.
-Inv_HideVest_Name,HideVest
+Inv_HideVest_Name,Hide Vest
 Inv_InfernalPike_Desc,Spear wreathed in eternal flames.
-Inv_InfernalPike_Name,InfernalPike
+Inv_InfernalPike_Name,Infernal Pike
 Inv_InfernoCrown_Desc,Crown with eternal flames.
-Inv_InfernoCrown_Name,InfernoCrown
+Inv_InfernoCrown_Name,Inferno Crown
 Inv_InfernoEdge_Desc,Blade wreathed in perpetual flames.
-Inv_InfernoEdge_Name,InfernoEdge
+Inv_InfernoEdge_Name,Inferno Edge
 Inv_InfernoGuard_Desc,Shield wreathed in flames.
-Inv_InfernoGuard_Name,InfernoGuard
+Inv_InfernoGuard_Name,Inferno Guard
 Inv_IronArmor_Desc,Regular armor for soldiers.
-Inv_IronArmor_Name,IronArmor
+Inv_IronArmor_Name,Iron Armor
 Inv_IronBuckler_Desc,Small all-metal shield.
-Inv_IronBuckler_Name,IronBuckler
+Inv_IronBuckler_Name,Iron Buckler
 Inv_IronHelm_Desc,Helm providing decent defense\nand earth resistance.
-Inv_IronHelm_Name,IronHelm
+Inv_IronHelm_Name,Iron Helm
 Inv_IronShield_Desc,Regular shield of soldiers.
-Inv_IronShield_Name,IronShield
+Inv_IronShield_Name,Iron Shield
 Inv_KiteShield_Desc,Tall triangular shield.
-Inv_KiteShield_Name,KiteShield
+Inv_KiteShield_Name,Kite Shield
 Inv_LavaCrown_Desc,Magma-forged royal helmet.
-Inv_LavaCrown_Name,LavaCrown
+Inv_LavaCrown_Name,Lava Crown
 Inv_LavaForgedSword_Desc,Blade tempered in underground magma.
-Inv_LavaForgedSword_Name,LavaForgedSword
+Inv_LavaForgedSword_Name,Lava Forged Sword
 Inv_LavaShield_Desc,Heat-resistant volcanic shield.
-Inv_LavaShield_Name,LavaShield
+Inv_LavaShield_Name,Lava Shield
 Inv_LavaplateArmor_Desc,Magma-forged heavy armor.
-Inv_LavaplateArmor_Name,LavaplateArmor
+Inv_LavaplateArmor_Name,Lavaplate Armor
 Inv_LeatherArmor_Desc,Basic armor for adventurers.
-Inv_LeatherArmor_Name,LeatherArmor
+Inv_LeatherArmor_Name,Leather Armor
 Inv_LeatherCap_Desc,Basic leather headwear.
-Inv_LeatherCap_Name,LeatherCap
+Inv_LeatherCap_Name,Leather Cap
 Inv_LongSword_Desc,Longer sword for seasoned warriors.
-Inv_LongSword_Name,LongSword
+Inv_LongSword_Name,Long Sword
 Inv_MPPotion_Desc,Restores 100 MP
-Inv_MPPotion_Name,MPPotion
+Inv_MPPotion_Name,MP Potion
 Inv_MagicChain_Desc,Mages wear this to enhance their spells.
-Inv_MagicChain_Name,MagicChain
+Inv_MagicChain_Name,Magic Chain
 Inv_MagmaBlade_Desc,Red-hot blade that never cools.
-Inv_MagmaBlade_Name,MagmaBlade
+Inv_MagmaBlade_Name,Magma Blade
 Inv_MagmaBlastPlate_Desc,Ultimate fire-resistant armor.
-Inv_MagmaBlastPlate_Name,MagmaBlastPlate
+Inv_MagmaBlastPlate_Name,Magma Blast Plate
 Inv_MagmaHelm_Desc,Molten-core protective helmet.
-Inv_MagmaHelm_Name,MagmaHelm
+Inv_MagmaHelm_Name,Magma Helm
 Inv_MagmaMaul_Desc,Molten-core war hammer.
-Inv_MagmaMaul_Name,MagmaMaul
+Inv_MagmaMaul_Name,Magma Maul
 Inv_MagmaWall_Desc,Molten-core defensive barrier.
-Inv_MagmaWall_Name,MagmaWall
+Inv_MagmaWall_Name,Magma Wall
 Inv_Mallet_Desc,Simple wooden mallet.
 Inv_Mallet_Name,Mallet
 Inv_MidHPPotion_Desc,Restores 500 HP
-Inv_MidHPPotion_Name,MidHPPotion
+Inv_MidHPPotion_Name,Mid HP Potion
 Inv_MidMPPotion_Desc,Restores 500 MP
-Inv_MidMPPotion_Name,MidMPPotion
+Inv_MidMPPotion_Name,Mid MP Potion
 Inv_MidMixPotion_Desc,Restores 500 HP and 500 MP
-Inv_MidMixPotion_Name,MidMixPotion
+Inv_MidMixPotion_Name,Mid Mix Potion
 Inv_MinersAxe_Desc,Heavy mining tool repurposed for combat.
-Inv_MinersAxe_Name,MinersAxe
+Inv_MinersAxe_Name,Miner's Axe
 Inv_MinersPickSword_Desc,Modified mining tool repurposed as a weapon.
-Inv_MinersPickSword_Name,MinersPickSword
+Inv_MinersPickSword_Name,Miner's Pick Sword
 Inv_MixPotion_Desc,Restores 100 HP and 100 MP
-Inv_MixPotion_Name,MixPotion
+Inv_MixPotion_Name,Mix Potion
 Inv_NecklaceOfHealth_Desc,Adventurers wear this to for longevity.
-Inv_NecklaceOfHealth_Name,NecklaceOfHealth
+Inv_NecklaceOfHealth_Name,Necklace of Health
 Inv_ObsidianCleaver_Desc,Razor-sharp volcanic glass axe.
-Inv_ObsidianCleaver_Name,ObsidianCleaver
+Inv_ObsidianCleaver_Name,Obsidian Cleaver
 Inv_PaddedArmor_Desc,Quilted protective layers.
-Inv_PaddedArmor_Name,PaddedArmor
+Inv_PaddedArmor_Name,Padded Armor
 Inv_PaddedCoif_Desc,Quilted head protection.
-Inv_PaddedCoif_Name,PaddedCoif
+Inv_PaddedCoif_Name,Padded Coif
 Inv_PitLordsAegis_Desc,Legendary shield of the cave master.
-Inv_PitLordsAegis_Name,PitLordsAegis
+Inv_PitLordsAegis_Name,Pit Lord's Aegis
 Inv_PitLordsArmor_Desc,Legendary armor of the cave master.
-Inv_PitLordsArmor_Name,PitLordsArmor
+Inv_PitLordsArmor_Name,Pit Lord's Armor
 Inv_PitLordsCrown_Desc,Legendary crown of the cave master.
-Inv_PitLordsCrown_Name,PitLordsCrown
+Inv_PitLordsCrown_Name,Pit Lord's Crown
 Inv_PitLordsSword_Desc,Massive sword wielded by the cave's master.
-Inv_PitLordsSword_Name,PitLordsSword
+Inv_PitLordsSword_Name,Pit Lord's Sword
 Inv_ProtectRing_Desc,Wear this for more protection\nfrom physical attacks.
-Inv_ProtectRing_Name,ProtectRing
+Inv_ProtectRing_Name,Protect Ring
 Inv_QuakeHammer_Desc,Massive hammer that shakes the ground.
-Inv_QuakeHammer_Name,QuakeHammer
+Inv_QuakeHammer_Name,Quake Hammer
 Inv_QuartzHelm_Desc,Translucent crystal helmet.
-Inv_QuartzHelm_Name,QuartzHelm
+Inv_QuartzHelm_Name,Quartz Helm
 Inv_QuartzSaber_Desc,Crystalline blade that resonates when struck.
-Inv_QuartzSaber_Name,QuartzSaber
+Inv_QuartzSaber_Name,Quartz Saber
 Inv_QuartzWall_Desc,Shield made of massive quartz crystal.
-Inv_QuartzWall_Name,QuartzWall
+Inv_QuartzWall_Name,Quartz Wall
 Inv_ReinforcedBuckler_Desc,Small metal-rimmed shield.
-Inv_ReinforcedBuckler_Name,ReinforcedBuckler
+Inv_ReinforcedBuckler_Name,Reinforced Buckler
 Inv_ReinforcedCap_Desc,Leather with metal reinforcement.
-Inv_ReinforcedCap_Name,ReinforcedCap
+Inv_ReinforcedCap_Name,Reinforced Cap
 Inv_ReinforcedPlate_Desc,Heavy reinforced metal plates.
-Inv_ReinforcedPlate_Name,ReinforcedPlate
+Inv_ReinforcedPlate_Name,Reinforced Plate
 Inv_RingOfPower_Desc,Gives a boost to strength.
-Inv_RingOfPower_Name,RingOfPower
+Inv_RingOfPower_Name,Ring of Power
 Inv_RoundShield_Desc,Standard circular shield.
-Inv_RoundShield_Name,RoundShield
+Inv_RoundShield_Name,Round Shield
 Inv_RustyBlade_Desc,Corroded iron blade found in cave ruins.
-Inv_RustyBlade_Name,RustyBlade
+Inv_RustyBlade_Name,Rusty Blade
 Inv_RustyDagger_Desc,Old corroded blade.
-Inv_RustyDagger_Name,RustyDagger
+Inv_RustyDagger_Name,Rusty Dagger
 Inv_ScaleMail_Desc,Overlapping metal scales.
-Inv_ScaleMail_Name,ScaleMail
+Inv_ScaleMail_Name,Scale Mail
 Inv_SerpentsTooth_Desc,Curved dagger shaped like a snake fang.
-Inv_SerpentsTooth_Name,SerpentsTooth
+Inv_SerpentsTooth_Name,Serpent's Tooth
 Inv_ShadowCowl_Desc,Dark hood that obscures features.
-Inv_ShadowCowl_Name,ShadowCowl
+Inv_ShadowCowl_Name,Shadow Cowl
 Inv_ShadowFang_Desc,Obsidian blade that absorbs light.
-Inv_ShadowFang_Name,ShadowFang
+Inv_ShadowFang_Name,Shadow Fang
 Inv_ShadowGuard_Desc,Dark shield that bends shadows.
-Inv_ShadowGuard_Name,ShadowGuard
+Inv_ShadowGuard_Name,Shadow Guard
 Inv_ShadowSplitter_Desc,Black-bladed axe that cleaves through darkness.
-Inv_ShadowSplitter_Name,ShadowSplitter
+Inv_ShadowSplitter_Name,Shadow Splitter
 Inv_ShadowStiletto_Desc,Thin piercing blade that vanishes in shadows.
-Inv_ShadowStiletto_Name,ShadowStiletto
+Inv_ShadowStiletto_Name,Shadow Stiletto
 Inv_ShadowVest_Desc,Dark leather that blends into shadows.
-Inv_ShadowVest_Name,ShadowVest
+Inv_ShadowVest_Name,Shadow Vest
 Inv_ShadowwoodStaff_Desc,Staff carved from black petrified wood.
-Inv_ShadowwoodStaff_Name,ShadowwoodStaff
+Inv_ShadowwoodStaff_Name,Shadowwood Staff
 Inv_ShortSword_Desc,Basic sword for beginners.
-Inv_ShortSword_Name,ShortSword
+Inv_ShortSword_Name,Short Sword
 Inv_SilentFang_Desc,Slim blade for stealth attacks.
-Inv_SilentFang_Name,SilentFang
+Inv_SilentFang_Name,Silent Fang
 Inv_SpelunkersSaber_Desc,Curved blade with torch-guard attachment.
-Inv_SpelunkersSaber_Name,SpelunkersSaber
+Inv_SpelunkersSaber_Name,Spelunker's Saber
 Inv_SquireHelm_Desc,Helm used by novices.
-Inv_SquireHelm_Name,SquireHelm
+Inv_SquireHelm_Name,Squire Helm
 Inv_StalactiteSpear_Desc,Spear crafted from a massive cave formation.
-Inv_StalactiteSpear_Name,StalactiteSpear
+Inv_StalactiteSpear_Name,Stalactite Spear
 Inv_StalagmiteSword_Desc,Blade shaped like a cave formation.
-Inv_StalagmiteSword_Name,StalagmiteSword
+Inv_StalagmiteSword_Name,Stalagmite Sword
 Inv_SteelCuirass_Desc,Quality steel chest armor.
-Inv_SteelCuirass_Name,SteelCuirass
+Inv_SteelCuirass_Name,Steel Cuirass
 Inv_SteelHelm_Desc,Quality steel helmet.
-Inv_SteelHelm_Name,SteelHelm
+Inv_SteelHelm_Name,Steel Helm
 Inv_SteelShield_Desc,Quality steel shield.
-Inv_SteelShield_Name,SteelShield
+Inv_SteelShield_Name,Steel Shield
 Inv_StoneCrown_Desc,Carved stone headpiece.
-Inv_StoneCrown_Name,StoneCrown
+Inv_StoneCrown_Name,Stone Crown
 Inv_StoneCrusher_Desc,Heavy stone-headed hammer.
-Inv_StoneCrusher_Name,StoneCrusher
+Inv_StoneCrusher_Name,Stone Crusher
 Inv_StoneHatchet_Desc,Primitive stone-headed axe.
-Inv_StoneHatchet_Name,StoneHatchet
+Inv_StoneHatchet_Name,Stone Hatchet
 Inv_StoneLance_Desc,Stone-tipped thrusting weapon.
-Inv_StoneLance_Name,StoneLance
+Inv_StoneLance_Name,Stone Lance
 Inv_StonePlate_Desc,Carved stone armor pieces.
-Inv_StonePlate_Name,StonePlate
+Inv_StonePlate_Name,Stone Plate
 Inv_StoneShield_Desc,Shield carved from solid stone.
-Inv_StoneShield_Name,StoneShield
+Inv_StoneShield_Name,Stone Shield
 Inv_StoneSword_Desc,Crude blade carved from dense stone.
-Inv_StoneSword_Name,StoneSword
+Inv_StoneSword_Name,Stone Sword
 Inv_StuddedLeather_Desc,Leather reinforced with metal studs.
-Inv_StuddedLeather_Name,StuddedLeather
+Inv_StuddedLeather_Name,Studded Leather
 Inv_TatteredCloth_Desc,Worn cloth garments.
-Inv_TatteredCloth_Name,TatteredCloth
+Inv_TatteredCloth_Name,Tattered Cloth
 Inv_TorchBlade_Desc,Steel blade with fire-resistant coating.
-Inv_TorchBlade_Name,TorchBlade
+Inv_TorchBlade_Name,Torch Blade
 Inv_TorchStaff_Desc,Staff with burning crystal tip.
-Inv_TorchStaff_Name,TorchStaff
+Inv_TorchStaff_Name,Torch Staff
 Inv_TowerShield_Desc,Massive full-body shield.
-Inv_TowerShield_Name,TowerShield
+Inv_TowerShield_Name,Tower Shield
 Inv_UndergroundRapier_Desc,Lightweight piercing blade for swift strikes.
-Inv_UndergroundRapier_Name,UndergroundRapier
+Inv_UndergroundRapier_Name,Underground Rapier
 Inv_VoidBarrier_Desc,Shield that consumes attacks.
-Inv_VoidBarrier_Name,VoidBarrier
+Inv_VoidBarrier_Name,Void Barrier
 Inv_VoidCutter_Desc,Dark blade that seems to drink in light.
-Inv_VoidCutter_Name,VoidCutter
+Inv_VoidCutter_Name,Void Cutter
 Inv_VoidMask_Desc,Featureless dark mask.
-Inv_VoidMask_Name,VoidMask
+Inv_VoidMask_Name,Void Mask
 Inv_Voidmail_Desc,Pitch-black armor that absorbs light.
 Inv_Voidmail_Name,Voidmail
 Inv_VolcanicArmor_Desc,Armor tempered in volcanic heat.
-Inv_VolcanicArmor_Name,VolcanicArmor
+Inv_VolcanicArmor_Name,Volcanic Armor
 Inv_VolcanicAxe_Desc,Axe forged in volcanic heat.
-Inv_VolcanicAxe_Name,VolcanicAxe
+Inv_VolcanicAxe_Name,Volcanic Axe
 Inv_WalkingStick_Desc,Simple wooden rod.
-Inv_WalkingStick_Name,WalkingStick
+Inv_WalkingStick_Name,Walking Stick
 Inv_WingedHelm_Desc,Helmet with decorative wings.
-Inv_WingedHelm_Name,WingedHelm
+Inv_WingedHelm_Name,Winged Helm
 Inv_WoodcuttersAxe_Desc,Simple wood-cutting tool.
-Inv_WoodcuttersAxe_Name,WoodcuttersAxe
+Inv_WoodcuttersAxe_Name,Woodcutter's Axe
 Inv_WoodenPlank_Desc,Simple wooden board.
-Inv_WoodenPlank_Name,WoodenPlank
+Inv_WoodenPlank_Name,Wooden Plank
 Inv_WoodenShield_Desc,No adventurer should be without one.
-Inv_WoodenShield_Name,WoodenShield
+Inv_WoodenShield_Name,Wooden Shield
 Inv_WoodenSpear_Desc,Simple wooden shaft with sharpened tip.
-Inv_WoodenSpear_Name,WoodenSpear
+Inv_WoodenSpear_Name,Wooden Spear

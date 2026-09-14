@@ -1545,6 +1545,9 @@ namespace PitHero.Services
             if (ticket == null) return;
             ticket.State = TicketState.Delivered;
             ticket.PlatedDishEntity = dishEntity;
+            // Lifetime dishes-served total (issue #413) — the one choke point for patron and party dishes
+            if (Core.Instance != null)
+                Core.Services.GetService<GameStateService>()?.RecordDishServed(ticket.Dish);
 
             if (ticket.IsPartyTicket)
             {

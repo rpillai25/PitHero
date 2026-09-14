@@ -24,9 +24,9 @@ namespace PitHero.Tests
                         Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var normalPotion = (Consumable)item;
-                        bool isNormalPotion = normalPotion.Name == InventoryTextKey.Inv_HPPotion_Name
-                            || normalPotion.Name == InventoryTextKey.Inv_MPPotion_Name
-                            || normalPotion.Name == InventoryTextKey.Inv_MixPotion_Name;
+                        bool isNormalPotion = normalPotion.Name == "HPPotion"
+                            || normalPotion.Name == "MPPotion"
+                            || normalPotion.Name == "MixPotion";
                         Assert.IsTrue(isNormalPotion, $"Expected a normal potion but got {normalPotion.Name}");
                         break;
                         
@@ -39,9 +39,9 @@ namespace PitHero.Tests
                         Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var midPotion = (Consumable)item;
-                        bool isMidPotion = midPotion.Name == InventoryTextKey.Inv_MidHPPotion_Name
-                            || midPotion.Name == InventoryTextKey.Inv_MidMPPotion_Name
-                            || midPotion.Name == InventoryTextKey.Inv_MidMixPotion_Name;
+                        bool isMidPotion = midPotion.Name == "MidHPPotion"
+                            || midPotion.Name == "MidMPPotion"
+                            || midPotion.Name == "MidMixPotion";
                         Assert.IsTrue(isMidPotion, $"Expected a mid potion but got {midPotion.Name}");
                         break;
                         
@@ -49,9 +49,9 @@ namespace PitHero.Tests
                         Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var fullPotion = (Consumable)item;
-                        bool isFullPotion = fullPotion.Name == InventoryTextKey.Inv_FullHPPotion_Name
-                            || fullPotion.Name == InventoryTextKey.Inv_FullMPPotion_Name
-                            || fullPotion.Name == InventoryTextKey.Inv_FullMixPotion_Name;
+                        bool isFullPotion = fullPotion.Name == "FullHPPotion"
+                            || fullPotion.Name == "FullMPPotion"
+                            || fullPotion.Name == "FullMixPotion";
                         Assert.IsTrue(isFullPotion, $"Expected a full potion but got {fullPotion.Name}");
                         break;
                         
@@ -115,17 +115,17 @@ namespace PitHero.Tests
 
             // Test that consumables have correct properties when retrieved from bag
             var retrievedHPPotion = (Consumable)bag.Items[0];
-            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, retrievedHPPotion.Name);
+            Assert.AreEqual("HPPotion", retrievedHPPotion.Name);
             Assert.AreEqual(100, retrievedHPPotion.HPRestoreAmount);
             Assert.AreEqual(ItemRarity.Normal, retrievedHPPotion.Rarity);
 
             var retrievedMidMPPotion = (Consumable)bag.Items[1];
-            Assert.AreEqual(InventoryTextKey.Inv_MidMPPotion_Name, retrievedMidMPPotion.Name);
+            Assert.AreEqual("MidMPPotion", retrievedMidMPPotion.Name);
             Assert.AreEqual(500, retrievedMidMPPotion.MPRestoreAmount);
             Assert.AreEqual(ItemRarity.Normal, retrievedMidMPPotion.Rarity);
 
             var retrievedFullMixPotion = (Consumable)bag.Items[2];
-            Assert.AreEqual(InventoryTextKey.Inv_FullMixPotion_Name, retrievedFullMixPotion.Name);
+            Assert.AreEqual("FullMixPotion", retrievedFullMixPotion.Name);
             Assert.AreEqual(-1, retrievedFullMixPotion.HPRestoreAmount);
             Assert.AreEqual(-1, retrievedFullMixPotion.MPRestoreAmount);
             Assert.AreEqual(ItemRarity.Normal, retrievedFullMixPotion.Rarity);
@@ -150,9 +150,9 @@ namespace PitHero.Tests
 
             var expectedNames = new[]
             {
-                InventoryTextKey.Inv_HPPotion_Name, InventoryTextKey.Inv_MPPotion_Name, InventoryTextKey.Inv_MixPotion_Name,
-                InventoryTextKey.Inv_MidHPPotion_Name, InventoryTextKey.Inv_MidMPPotion_Name, InventoryTextKey.Inv_MidMixPotion_Name,
-                InventoryTextKey.Inv_FullHPPotion_Name, InventoryTextKey.Inv_FullMPPotion_Name, InventoryTextKey.Inv_FullMixPotion_Name
+                "HPPotion", "MPPotion", "MixPotion",
+                "MidHPPotion", "MidMPPotion", "MidMixPotion",
+                "FullHPPotion", "FullMPPotion", "FullMixPotion"
             };
 
             CollectionAssert.AreEqual(expectedNames, potionNames);

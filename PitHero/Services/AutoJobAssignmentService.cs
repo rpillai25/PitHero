@@ -150,6 +150,9 @@ namespace PitHero.Services
                     FarmingProficiency = m.FarmingProficiency,
                     CookingProficiency = m.CookingProficiency,
                     FishingProficiency = m.FishingProficiency,
+                    FarmingTasks = m.FarmingTasks,
+                    CookingTasks = m.CookingTasks,
+                    FishingTasks = m.FishingTasks,
                 });
             }
             if (_snapshots.Count == 0)

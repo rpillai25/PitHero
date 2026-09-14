@@ -586,6 +586,8 @@ namespace PitHero.Services
                 data.HeroId = gameState.HeroId;
                 data.LocalArtifacts = new List<int>();
                 gameState.CopyLocalArtifactOrdinals(data.LocalArtifacts);
+                data.CropHarvestedTotals = (int[])gameState.CropHarvestedTotals.Clone();
+                data.DishesServedTotals = (int[])gameState.DishesServedTotals.Clone();
 
                 // Copy stencils (enum to int)
                 data.DiscoveredStencils = new Dictionary<string, int>(gameState.DiscoveredStencils.Count);
@@ -636,6 +638,9 @@ namespace PitHero.Services
                     saved.FarmingProficiency = monster.FarmingProficiency;
                     saved.MonsterJobId = (int)monster.Job;
                     saved.MonsterHouseId = monster.MonsterHouseId;
+                    saved.FishingTasks = monster.FishingTasks;
+                    saved.CookingTasks = monster.CookingTasks;
+                    saved.FarmingTasks = monster.FarmingTasks;
                     data.AlliedMonsters.Add(saved);
                 }
             }
@@ -1196,6 +1201,8 @@ namespace PitHero.Services
                 gameState.HeroId = data.HeroId;
                 // Local artifacts ride with the session: slot, autosave and replay start state alike
                 gameState.SetLocalArtifacts(data.LocalArtifacts);
+                // Lifetime counters gate crop unlocks (sim-read), so they ride with the session too
+                gameState.SetProgressCounters(data.CropHarvestedTotals, data.DishesServedTotals);
 
                 // Restore stencils (int back to enum)
                 gameState.DiscoveredStencils.Clear();

@@ -104,6 +104,7 @@ All farming work is performed by allied monsters; `monster` is the worker's disp
 | `crop_sold` | `crop`, `qty`, `gold`, `source` | One line **per stack sold**; `source`: `"manual"` or `"auto"`. The gold itself arrives via the paired `gold_gained (source:"sell_crops")`. In bulk manual sells the per-stack `gold` sum can deviate from the paired `gold_gained.amount` if auto-sell emptied slots while the confirm dialog was open (pre-existing quirk; the detail lines reflect what was actually cleared). |
 | `building_created` | `buildingType`, `x`, `y`, `cost` | `buildingType`: `"MonsterHouse"` or `"CropStorage"`. Player placements only — never fired on save restore. `cost` is the gold spent. |
 | `building_moved` | `buildingType`, `fromX`, `fromY`, `toX`, `toY` | Player moved an existing building. |
+| `crop_unlocked` | `crop` | A crop became purchasable through the harvest progression (issue #413: lifetime `crop_harvested` units per crop reaching the `CropUnlockConfig` tier thresholds). Fires once per crop per hero, at the harvest that crossed the last threshold. |
 
 ### Tavern dining (issue #319)
 | `e` | Fields | Notes |
@@ -123,6 +124,8 @@ type via `MonsterScheduleConfig`).
 |---|---|---|
 | `monster_job_changed` | `monster`, `monsterType`, `fromJob`, `toJob`, `trigger` | An allied monster's `MonsterJob` changed. Jobs are the `MonsterJob` enum names (`None`, `Farming`, `Cooking`, `Fishing`); `toJob:"None"` means sent home, `fromJob:"None"` means newly staffed. `trigger`: `"auto"` (AutoJobAssignmentService reassessment — fires per shift solve, so a burst of lines at one timestamp is one reassessment) or `"manual"` (job button in the Monsters window; only possible while automation is off). Save restore never logs. |
 | `kitchen_role_changed` | `monster`, `monsterType`, `fromRole`, `toRole` | A live kitchen worker was sent home to respawn in a different role (`Cook`/`Server`/`Runner`). Logged once at the send-home decision; `toRole` is the role wanted at that moment and can in rare cases differ from the role actually taken after the walk-home/respawn round trip (the mix may shift meanwhile). Workers leaving the kitchen entirely log `monster_job_changed` instead, not this. With role retention this should be RARE — a sustained stream of these lines means the role mix is thrashing and `KitchenRoleMixDwellSeconds` needs raising. |
+| `monster_job_levelup` | `monster`, `monsterType`, `job`, `newLevel` | An allied monster's job skill level rose through completed tasks (issue #413: `current level × 10` kitchen tasks or `× 20` farm tasks per level, cap 9). `job` is the `MonsterJob` enum name. One line per level gained. |
+| `monster_dismissed` | `monster`, `monsterType`, `job` | The player dismissed the monster from the Monsters window (issue #413). `job` is the job held at dismissal; the roster entry is gone immediately while any live worker walks home. |
 
 ## Interpretation caveats
 

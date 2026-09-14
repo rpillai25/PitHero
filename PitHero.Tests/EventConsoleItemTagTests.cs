@@ -8,12 +8,12 @@ namespace PitHero.Tests
     /// <summary>
     /// Tests for issue #404: ConsoleSegment item-name auto-tagging (console hover tooltips)
     /// and ItemRegistry.IsKnownItemName rules. Registry keys are raw localization keys
-    /// (e.g. "Inv_RustyBlade_Name") in headless test hosts.
+    /// (e.g. "RustyBlade") in headless test hosts.
     /// </summary>
     [TestClass]
     public class EventConsoleItemTagTests
     {
-        private const string KnownItemName = "Inv_RustyBlade_Name";
+        private const string KnownItemName = "RustyBlade";
 
         // ── ConsoleSegment.Build auto-tagging ────────────────────────────────────────
 
