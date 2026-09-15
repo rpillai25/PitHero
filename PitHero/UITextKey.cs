@@ -154,6 +154,11 @@ namespace PitHero
         public const string ReplayListShowingRecentFormat = "ReplayListShowingRecentFormat";
         public const string ReplayRowTitleFormat = "ReplayRowTitleFormat";
         public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";
+        public const string ReplayRowOlderSimulation = "ReplayRowOlderSimulation";
+        public const string ReplayOlderSimulationStatus = "ReplayOlderSimulationStatus";
+        public const string ConfirmContinueOlderFormat = "ConfirmContinueOlderFormat";
+        public const string ConfirmContinueOlderInSync = "ConfirmContinueOlderInSync";
+        public const string ConfirmContinueOlderDiverged = "ConfirmContinueOlderDiverged";
         public const string ReplaySelectedNone = "ReplaySelectedNone";
         public const string ReplaySelectedFormat = "ReplaySelectedFormat";
         public const string ReplaySpeedFormat = "ReplaySpeedFormat";

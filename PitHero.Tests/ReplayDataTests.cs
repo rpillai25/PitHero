@@ -35,6 +35,7 @@ namespace PitHero.Tests
                 RecordedAtUtcTicks = new DateTime(2026, 9, 3, 10, 30, 0, DateTimeKind.Utc).Ticks,
                 TotalTicks = 123456789012L,
                 BuildId = "1.2.3.4",
+                SimulationVersion = 42,
                 StateBlob = ReplayIO.SerializeSaveData(save),
             };
             for (int i = 0; i < commandCount; i++)
@@ -75,6 +76,8 @@ namespace PitHero.Tests
                 Assert.AreEqual(original.RecordedAtUtcTicks, loaded.RecordedAtUtcTicks);
                 Assert.AreEqual(original.TotalTicks, loaded.TotalTicks);
                 Assert.AreEqual(original.BuildId, loaded.BuildId);
+                Assert.AreEqual(42, loaded.SimulationVersion);
+                Assert.IsFalse(loaded.IsCurrentSimulation, "a stamp other than GameConfig.SimulationVersion must read as older");
                 CollectionAssert.AreEqual(original.StateBlob, loaded.StateBlob);
 
                 Assert.AreEqual(original.Commands.Count, loaded.Commands.Count);
@@ -130,6 +133,60 @@ namespace PitHero.Tests
             {
                 Directory.Delete(dir, true);
             }
+        }
+
+        /// <summary>
+        /// A v3 file (no SimulationVersion in the header) still loads, reads as simulation version 0 and
+        /// therefore as an older recording. Built by serializing a current sample and splicing the new
+        /// header int out, so the rest of the layout is exactly what v3 wrote.
+        /// </summary>
+        [TestMethod]
+        public void ReplayData_V3Layout_ReadsAsSimulationVersionZero()
+        {
+            var original = BuildSample(3);
+            byte[] v4;
+            using (var ms = new MemoryStream())
+            {
+                var w = new ReuseableBinaryWriter(ms);
+                ((IPersistable)original).Persist(w);
+                w.Flush();
+                v4 = ms.ToArray();
+            }
+
+            // Re-write the v3 header (same fields, version 3, no SimulationVersion) and measure where
+            // the v4 header's SimulationVersion int sits so the tail can be copied verbatim
+            int headerLenWithoutSim;
+            byte[] v3Header;
+            using (var ms = new MemoryStream())
+            {
+                var w = new ReuseableBinaryWriter(ms);
+                w.Write(3);
+                w.Write((int)original.Kind);
+                w.Write(original.MasterSeed);
+                w.Write(original.HeroName);
+                w.Write(original.JobName);
+                w.Write(original.PitLevelAtStart);
+                w.Write(original.HeroId);
+                ReplayIO.WriteLong(w, original.RecordedAtUtcTicks);
+                ReplayIO.WriteLong(w, original.TotalTicks);
+                w.Write(original.BuildId);
+                w.Flush();
+                v3Header = ms.ToArray();
+                headerLenWithoutSim = v3Header.Length;
+            }
+            var v3 = new byte[v4.Length - 4];
+            Buffer.BlockCopy(v3Header, 0, v3, 0, headerLenWithoutSim);
+            Buffer.BlockCopy(v4, headerLenWithoutSim + 4, v3, headerLenWithoutSim, v4.Length - headerLenWithoutSim - 4);
+
+            var loaded = new ReplayData();
+            new ReuseableBinaryReader(new MemoryStream(v3)).ReadPersistableInto(loaded);
+            Assert.AreEqual(3, loaded.FormatVersion);
+            Assert.AreEqual(0, loaded.SimulationVersion);
+            Assert.IsFalse(loaded.IsCurrentSimulation);
+            Assert.AreEqual(original.HeroId, loaded.HeroId);
+            Assert.AreEqual(original.BuildId, loaded.BuildId);
+            Assert.AreEqual(original.Commands.Count, loaded.Commands.Count);
+            Assert.AreEqual(original.TotalTicks, loaded.TotalTicks);
         }
 
         /// <summary>A file with an unsupported version is rejected cleanly.</summary>

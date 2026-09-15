@@ -529,6 +529,11 @@ ReplayFilterCurrentHero,Filter to current hero
 ReplayListShowingRecentFormat,Showing the {0} most recent of {1} replays
 ReplayRowTitleFormat,{0} the {1}
 ReplayRowDetailFormat,{0}  -  {1}  -  Pit {2}
+ReplayRowOlderSimulation,Older game version: may differ from the original
+ReplayOlderSimulationStatus,Obsolete
+ConfirmContinueOlderFormat,WARNING: this replay was recorded on an older game version. {0} You would continue from the world shown here, not from the game as it was originally played.
+ConfirmContinueOlderInSync,So far it has matched the original session.
+ConfirmContinueOlderDiverged,It has already diverged from the original session.
 ReplaySelectedNone,No replay selected
 ReplaySelectedFormat,Selected: {0}
 ReplaySpeedFormat,{0}

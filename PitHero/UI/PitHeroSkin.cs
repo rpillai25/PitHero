@@ -59,6 +59,9 @@ namespace PitHero.UI
             // Dedicated red style for the waving "Sleeping" label (issue #272). Standalone so it
             // does not affect any other text.
             skin.Add("ph-sleeping", new LabelStyle(defaultFont, Color.Red));
+            // Red warning text (obsolete replays, destructive confirmations); its own style because
+            // SetFontColor would recolor the shared "ph-default"
+            skin.Add("ph-warning", new LabelStyle(defaultFont, Color.Red));
 
             // Washed-out label style for controls that are visible but deactivated
             skin.Add("ph-grayed", new LabelStyle(defaultFont, GrayedFontColor));
@@ -67,6 +70,8 @@ namespace PitHero.UI
             // and SetFontColor would recolor the shared "ph-default" style, so each color needs its own style.
             skin.Add("ph-hero-name", new LabelStyle(defaultFont, HeroNameFontColor));
             skin.Add("ph-meal-header", new LabelStyle(defaultFont, BuffFontColor));
+            // Same green for a paragraph that must stand out without the alarm of red (dialog notices)
+            skin.Add("ph-notice", new LabelStyle(defaultFont, BuffFontColor));
 
             // Create custom text button style to use brown color
             var textButtonStyle = new TextButtonStyle

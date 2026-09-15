@@ -102,6 +102,15 @@ namespace PitHero.Services.Replay
         public bool TimeTravelAllowed => TimeTravelUnlocked
             && (_isCurrentSession || Data != null && Data.HeroId != 0 && Data.HeroId == _liveHeroId);
 
+        /// <summary>
+        /// True while playing a recording made by a build whose simulation logic differs from this one
+        /// (GameConfig.SimulationVersion). It still plays and can still be time-travelled into — the
+        /// world on screen is a valid state computed by this build — but the recorded commands may have
+        /// led somewhere else than the original session, so the scrubber warns and the Time Travel
+        /// confirmation spells out whether the replay matched the original.
+        /// </summary>
+        public bool IsOlderSimulation => Data != null && !_isCurrentSession && !Data.IsCurrentSimulation;
+
         private int _commandCursor;
         private int _decisionCursor;
         private int _hashCursor;
@@ -166,6 +175,8 @@ namespace PitHero.Services.Replay
 
             if (!string.IsNullOrEmpty(data.BuildId) && data.BuildId != BuildIdentity.Current)
                 Debug.Warn($"[ReplayPlayback] Recording was made with build {data.BuildId}; this is {BuildIdentity.Current}. Divergence is possible.");
+            if (!isCurrentSession && !data.IsCurrentSimulation)
+                Debug.Warn($"[ReplayPlayback] Recording was made with simulation version {data.SimulationVersion}; this build is {GameConfig.SimulationVersion}. It plays with a warning; time travel asks for confirmation.");
 
             RestartScene(startAtTick);
         }

@@ -51,6 +51,7 @@ namespace PitHero.UI
             var probe = new Label(text, _skin, "ph-default");
             return probe.PreferredWidth;
         }
+
         private const float ButtonHeight = 20f;
 
         /// <summary>Builds the panel. Positioned by MainGameScene.PositionReplayScrubber.</summary>
@@ -92,6 +93,8 @@ namespace PitHero.UI
             Add(_speedButton).Width(TextButtonWidth(_speedButton) + 8f).Height(ButtonHeight).SetPadRight(10f);
             Add(_slider).Expand().Fill().Height(ButtonHeight).SetPadRight(10f);
             Add(_timeLabel).SetPadRight(10f);
+            // Status strings are kept short (one or two words, "Diverged at m:ss") so the cell's
+            // natural width never squeezes the slider; a long status here overruns the buttons
             Add(_statusLabel).SetPadRight(EdgePad);
 
             SetVisible(false);
@@ -121,11 +124,26 @@ namespace PitHero.UI
             // Continuing from the past discards what happened since; continuing from the simulated
             // future commits to a world the player only watched
             string message = GetText(playback.InFuture ? UITextKey.ConfirmContinueFutureMessage : UITextKey.ConfirmContinueHereMessage);
+            string warning = null;
+            if (playback.IsOlderSimulation)
+            {
+                // Older game version: the world on screen is what this build computed from the old
+                // recording, which may not be the game as it was originally played. Say which it is,
+                // in red on its own line under the usual message.
+                string fidelity = GetText(playback.DivergenceTick >= 0
+                    ? UITextKey.ConfirmContinueOlderDiverged
+                    : UITextKey.ConfirmContinueOlderInSync);
+                warning = string.Format(GetText(UITextKey.ConfirmContinueOlderFormat), fidelity);
+            }
             _continueDialog = new ConfirmationDialog(
                 GetText(UITextKey.DialogConfirmContinueHere),
                 message,
                 _skin,
-                onYes: () => ReplayPlaybackService.Current?.ContinueFromHere());
+                onYes: () => ReplayPlaybackService.Current?.ContinueFromHere(),
+                onNo: null,
+                detailContent: null,
+                warning: warning,
+                warningStyle: "ph-notice"); // buff green: a paragraph in red reads as an alarm
             _continueDialog.YesButton.SuppressGlobalClick = true;
             _continueDialog.Show(stage);
         }
@@ -242,6 +260,8 @@ namespace PitHero.UI
                     GetText(playback.DivergenceIsDecision ? UITextKey.ReplayDivergenceDecision : UITextKey.ReplayDivergenceState)));
             else if (state == ReplayPlaybackState.AtEnd)
                 _statusLabel.SetText(GetText(UITextKey.ReplayEndReached));
+            else if (playback.IsOlderSimulation)
+                _statusLabel.SetText(GetText(UITextKey.ReplayOlderSimulationStatus));
             else
                 _statusLabel.SetText(GetText(UITextKey.ReplayNoDivergence));
         }

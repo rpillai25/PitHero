@@ -70,6 +70,7 @@ Every session is recorded and can be replayed by **re-simulating** it (fixed 60 
 - **Update order must not depend on history.** Never sort an update list with `Array.Sort`/`List.Sort` on keys that can tie (they are unstable); the Nez fork's `ComponentList` uses `FastList.StableSort` for exactly this reason. Add/remove of components or entities must not change the relative order of the survivors
 - **`Debug.Log` arguments must be pure.** Calls are compiled out in Release and the interpolation is skipped under `Debug.QuietMode` (replay seeks), so a side effect inside a log argument runs in some builds/modes and not others
 - **Validate**: after a feature that adds input, randomness, timers or player actions, play it, **Settings → Replay → Replay Current Session**, seek across it, and confirm the scrubber reads **In sync**. "Diverged at" plus `replay_divergence.log` names the drifted part (`rng`/`hero`/`party`/`world`)
+- **Bump `GameConfig.SimulationVersion`** whenever a change alters what the simulation does from the same seed and commands (balance numbers, AI actions, RNG calls, command handlers, load path). Recordings stamped with an older value still play, flagged "Older game version", and Time Travel asks for confirmation with a warning
 
 ### Nez Framework
 - `Game1` inherits `Nez.Core` — do not override `Draw()` or `Update()`

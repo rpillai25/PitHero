@@ -145,6 +145,21 @@ float, `S` string) and the service applies it in `Drain` at the end of the tick,
 open/close (except the pause commands they trigger), event-console scrolling. If a feature adds
 something the player does that changes the world and it is not one of these, it is a command.
 
+## Simulation version
+
+Every recording is stamped with `GameConfig.SimulationVersion` (file format v4; older files read as 0).
+The stamp is a hand-bumped integer, not the assembly version: a UI or art build must not orphan
+recordings, and in development every local build would. **Bump it whenever a change alters what the
+simulation does from the same seed and commands** — balance numbers, GOAP actions, RNG calls added or
+removed, command handlers, the load path. A recording whose stamp differs still plays: the Replay tab
+row and the scrubber say "Older game version: may differ from the original"
+(`ReplayPlaybackService.IsOlderSimulation`). Time Travel Here stays available — the world on screen is
+a valid state this build computed, so continuing from it cannot corrupt anything — but its confirmation
+adds a warning that names whether the replay has matched the original so far or already diverged,
+because the player is committing to the world they watched, not the game as they played it. Replay
+Current Session is always current by construction. The tripwire hashes remain the safety net for a
+change nobody stamped.
+
 ## Recording and the file format
 
 `ReplayRecorder` is always on. `ReplayData` (own format version, independent of `SaveData`) holds:

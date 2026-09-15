@@ -134,6 +134,10 @@ the recorded one.
 
 ## Verification protocol (any feature touched by this audit)
 
+0. If the change alters what the simulation does from the same seed and commands (balance, AI,
+   RNG calls, handlers, load path), **bump `GameConfig.SimulationVersion`**. Older recordings then
+   play with an "Older game version" warning and Time Travel asks for confirmation, instead of
+   silently diverging.
 1. Build + tests green.
 2. New game, play 2–3 minutes exercising the feature (several times, with menus open and closed).
 3. Settings → Replay → **Replay Current Session**. Let it run past the feature at 1x, then at 8x.

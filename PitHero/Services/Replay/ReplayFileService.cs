@@ -20,6 +20,11 @@ namespace PitHero.Services.Replay
         public long TotalTicks;
         public ReplayKind Kind;
         public string BuildId;
+        /// <summary>Simulation logic version that recorded it (0 = pre-v4 file).</summary>
+        public int SimulationVersion;
+
+        /// <summary>False when the recording predates a simulation change: it may diverge and cannot time-travel.</summary>
+        public bool IsCurrentSimulation => SimulationVersion == GameConfig.SimulationVersion;
 
         /// <summary>Duration in seconds implied by TotalTicks.</summary>
         public float DurationSeconds => TotalTicks * GameConfig.SimulationFixedStepSeconds;
@@ -172,6 +177,7 @@ namespace PitHero.Services.Replay
                     TotalTicks = data.TotalTicks,
                     Kind = data.Kind,
                     BuildId = data.BuildId,
+                    SimulationVersion = data.SimulationVersion,
                 };
             }
             catch (Exception ex)

@@ -63,8 +63,8 @@ namespace PitHero.Services.Replay
     /// </summary>
     public class ReplayData : IPersistable
     {
-        /// <summary>Current replay file format version (2: state samples carry part hashes; 3: HeroId in the header).</summary>
-        public const int CurrentVersion = 3;
+        /// <summary>Current replay file format version (2: state samples carry part hashes; 3: HeroId in the header; 4: SimulationVersion in the header).</summary>
+        public const int CurrentVersion = 4;
         /// <summary>Oldest replay file format this build can read.</summary>
         public const int MinSupportedVersion = 2;
 
@@ -80,6 +80,14 @@ namespace PitHero.Services.Replay
         public long TotalTicks;
         /// <summary>Identifies the game build the recording was made with; a mismatch is a warning, not a block.</summary>
         public string BuildId = string.Empty;
+        /// <summary>
+        /// GameConfig.SimulationVersion of the build that recorded the session; 0 in pre-v4 files. A
+        /// different value means the simulation logic changed since: playback is allowed but flagged.
+        /// </summary>
+        public int SimulationVersion;
+
+        /// <summary>True when this recording was made by a build with the same simulation logic as this one.</summary>
+        public bool IsCurrentSimulation => SimulationVersion == GameConfig.SimulationVersion;
         /// <summary>SaveData bytes the session started from (see <see cref="ReplayKind"/>).</summary>
         public byte[] StateBlob;
 
@@ -105,6 +113,7 @@ namespace PitHero.Services.Replay
             ReplayIO.WriteLong(writer, RecordedAtUtcTicks);
             ReplayIO.WriteLong(writer, TotalTicks);
             writer.Write(BuildId ?? string.Empty);
+            writer.Write(SimulationVersion);
             ReplayIO.WriteBytes(writer, StateBlob);
 
             writer.Write(Commands.Count);
@@ -157,6 +166,7 @@ namespace PitHero.Services.Replay
             RecordedAtUtcTicks = ReplayIO.ReadLong(reader);
             TotalTicks = ReplayIO.ReadLong(reader);
             BuildId = reader.ReadString();
+            SimulationVersion = FormatVersion >= 4 ? reader.ReadInt() : 0;
             if (HeaderOnly)
             {
                 // Skip the blob without decoding it

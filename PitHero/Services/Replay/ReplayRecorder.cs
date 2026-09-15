@@ -169,6 +169,7 @@ namespace PitHero.Services.Replay
                 RecordedAtUtcTicks = _recordedAtUtcTicks,
                 TotalTicks = totalTicks,
                 BuildId = BuildIdentity.Current,
+                SimulationVersion = GameConfig.SimulationVersion,
                 StateBlob = _stateBlob,
             };
             data.Commands.AddRange(_commands);

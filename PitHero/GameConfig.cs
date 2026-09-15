@@ -693,6 +693,10 @@ namespace PitHero
         public const bool ReplaySeekSkipsCosmetics = true;       // Seeks skip purely visual per-step work (particles, floating text, Y-sort); flip to A/B a divergence
         public const bool ReplaySeekQuietLogging = true;        // Seeks drop Debug.Log output (and its interpolation); flip to A/B a divergence
         public const bool ReplayDivergenceSnapshots = true;     // Playback describes the sim at every matching sample so a divergence report can show the last in-sync state next to the drifted one
+        // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
+        // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
+        // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
+        public const int SimulationVersion = 1;
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

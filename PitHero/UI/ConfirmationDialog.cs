@@ -45,12 +45,25 @@ namespace PitHero.UI
         /// 350x180 box.
         /// </summary>
         public ConfirmationDialog(string title, string message, Skin skin, System.Action onYes,
-                                  System.Action onNo, Element detailContent) : base(title, skin)
+                                  System.Action onNo, Element detailContent)
+            : this(title, message, skin, onYes, onNo, detailContent, null)
+        {
+        }
+
+        /// <summary>
+        /// Adds an optional <paramref name="warning"/> paragraph in red under the message (its own
+        /// line, wrapped like the message). With a warning the dialog fits its content instead of
+        /// the fixed 350x180 box, since the extra paragraph would otherwise clip.
+        /// </summary>
+        public ConfirmationDialog(string title, string message, Skin skin, System.Action onYes,
+                                  System.Action onNo, Element detailContent, string warning,
+                                  string warningStyle = "ph-warning") : base(title, skin)
         {
             _onNo = onNo;
             var textService = Core.Services.GetService<TextService>();
+            bool fitToContent = detailContent != null || !string.IsNullOrEmpty(warning);
 
-            if (detailContent == null)
+            if (!fitToContent)
                 SetSize(350, 180);
             SetMovable(false);
             // SetModal(true); // Not available in this version of Nez
@@ -68,8 +81,16 @@ namespace PitHero.UI
             // Message
             var label = new Label(message, skin);
             label.SetWrap(true);
-            dialogTable.Add(label).Width(300f).SetPadBottom(20);
+            dialogTable.Add(label).Width(300f).SetPadBottom(string.IsNullOrEmpty(warning) ? 20f : 10f);
             dialogTable.Row();
+
+            if (!string.IsNullOrEmpty(warning))
+            {
+                var warningLabel = new Label(warning, skin, warningStyle);
+                warningLabel.SetWrap(true);
+                dialogTable.Add(warningLabel).Width(300f).SetPadBottom(20);
+                dialogTable.Row();
+            }
 
             // Button row
             var buttonTable = new Table();
@@ -98,8 +119,8 @@ namespace PitHero.UI
 
             Add(dialogTable).Expand().Fill();
 
-            // With detail content the box is no longer a fixed size — fit it to the card.
-            if (detailContent != null)
+            // With detail content or a warning paragraph the box is no longer a fixed size — fit it.
+            if (fitToContent)
                 Pack();
         }
 

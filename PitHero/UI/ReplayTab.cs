@@ -256,6 +256,13 @@ namespace PitHero.UI
             var detail = new Label(string.Format(GetText(UITextKey.ReplayRowDetailFormat),
                 when, ReplayTimeFormatter.FormatSeconds(info.DurationSeconds), info.PitLevelAtStart), _skin, "ph-default");
             rowTable.Add(detail).Left().SetPadLeft(6f);
+            if (!info.IsCurrentSimulation)
+            {
+                // Recorded before a simulation change: still playable, may diverge, no time travel
+                rowTable.Row();
+                var older = new Label(GetText(UITextKey.ReplayRowOlderSimulation), _skin, "ph-warning");
+                rowTable.Add(older).Left().SetPadLeft(6f);
+            }
 
             var rowButton = new TextButton("", _skin, "ph-default");
             rowButton.ClearChildren();
