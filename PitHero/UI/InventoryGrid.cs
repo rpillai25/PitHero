@@ -19,8 +19,9 @@ namespace PitHero.UI
     /// <summary>Grid layout container for inventory slots with interaction logic (single linear buffer version).</summary>
     public class InventoryGrid : Group
     {
-        private const int GRID_WIDTH = 30;
-        private const int GRID_HEIGHT = 7;  // 1 row for hero name space + 2 rows for equipment area + 4 rows for inventory
+        // Geometry is owned by PartyGridLayout so the simulation's synergy detection and this grid can never disagree
+        private const int GRID_WIDTH = PitHero.Services.PartyGridLayout.Width;
+        private const int GRID_HEIGHT = PitHero.Services.PartyGridLayout.Height;  // 1 row for hero name space + 2 rows for equipment area + 4 rows for inventory
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
@@ -30,7 +31,7 @@ namespace PitHero.UI
         // the same 120 bag slots the older 24 x 5 (and 20 x 6) layouts had, but one row shorter so
         // the whole grid fits the design height (GameConfig.VirtualHeight) without scrolling.
         // Saves written for the 24 x 5 layout are remapped on load (BagLayoutMigration).
-        private const int BAG_START_ROW = 3;                                            // rows 0-2 are names + equipment
+        private const int BAG_START_ROW = PitHero.Services.PartyGridLayout.BagRowStart; // rows 0-2 are names + equipment
         private const int BAG_ROW_COUNT = GRID_HEIGHT - BAG_START_ROW;                  // 4
         private const float ROW_PITCH = SLOT_SIZE + SLOT_PADDING;                       // 33
         private const float X_OFFSET = 32f;                                             // left padding before column 0
@@ -54,7 +55,7 @@ namespace PitHero.UI
 
         // Equipment block: mercenary / hero / mercenary, three columns each with a one-column gap,
         // centered over the grid width (11 = 3 + 1 + 3 + 1 + 3).
-        private const int EQUIP_BLOCK_START = (GRID_WIDTH - 11) / 2;
+        private const int EQUIP_BLOCK_START = PitHero.Services.PartyGridLayout.EquipBlockStart;
         private const int MERC0_COL_START = EQUIP_BLOCK_START;      // First mercenary (left of hero)
         private const int HERO_COL_START = EQUIP_BLOCK_START + 4;   // Hero equipment columns
         private const int MERC1_COL_START = EQUIP_BLOCK_START + 8;  // Second mercenary (right of hero)
@@ -118,9 +119,9 @@ namespace PitHero.UI
         private List<RolePlayingFramework.Synergies.ActiveSynergy> _activeSynergies;
         private readonly Dictionary<Point, Nez.Tweens.ITween<Color>> _slotGlowTweens; // Track glow tweens per slot position
 
-        // Synergy detection
+        // Detection itself lives in the simulation (HeroSynergyResolver); this detector only feeds the
+        // static pattern registry that SynergyDetector.GetPatternById serves to UI lookups
         private readonly SynergyDetector _synergyDetector;
-        private IItem?[,] _synergyDetectionGrid; // Reusable grid for synergy detection
         
         // Cached synergy lookup per slot position (only updated when inventory changes)
         private readonly Dictionary<Point, List<RolePlayingFramework.Synergies.ActiveSynergy>> _slotSynergyCache;
@@ -136,7 +137,6 @@ namespace PitHero.UI
 
             // Initialize synergy detection
             _synergyDetector = new SynergyDetector();
-            _synergyDetectionGrid = new IItem?[GRID_WIDTH, GRID_HEIGHT];
             _slotSynergyCache = new Dictionary<Point, List<RolePlayingFramework.Synergies.ActiveSynergy>>();
             RegisterDefaultSynergyPatterns();
 
@@ -308,6 +308,14 @@ namespace PitHero.UI
             // Note: UnviewedGearTracker is deliberately NOT cleared here — multiple grids
             // (HeroUI, SecondChanceShopUI) connect to the same hero and a first-connect
             // would falsely wipe unviewed-gear state; stale refs are purged on viewed-clear.
+            if (!ReferenceEquals(_heroComponent, heroComponent))
+            {
+                // Follow the simulation's synergy recomputes so glow and slot cache stay current
+                if (_heroComponent != null)
+                    _heroComponent.Synergies.Changed -= DetectAndApplySynergies;
+                if (heroComponent != null)
+                    heroComponent.Synergies.Changed += DetectAndApplySynergies;
+            }
             _heroComponent = heroComponent;
             if (_heroComponent?.Bag != null)
             {
@@ -470,6 +478,41 @@ namespace PitHero.UI
                     _stage.AddElement(tooltip);
                 }
             }
+        }
+
+        /// <summary>
+        /// Rebuilds this grid's slot picture from the simulation (bag, hero gear, hired mercenaries' gear)
+        /// so a command applied on it acts on current state. Command handlers must call this first:
+        /// swaps end in PersistBagOrdering, which writes the whole slot picture back into the bag, so a
+        /// grid that was last refreshed before a chest pickup would silently undo that pickup. Live play
+        /// hides this because opening a window reconnects the grid; a replay never opens windows.
+        /// </summary>
+        public void SyncFromSimulation()
+        {
+            // Bind to the CURRENT hero. The UI overlay is built before the hero entity exists, so a grid
+            // whose window was never opened this session (every replay, the shop grid in particular) is
+            // still unconnected, and after a death/respawn a grid may still point at the old hero's
+            // component. Live play hides both because opening a window reconnects; a command must not.
+            var current = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (current?.Bag == null)
+                return;
+            if (!ReferenceEquals(_heroComponent, current))
+                ConnectToHero(current);
+            List<Mercenary> hired = null;
+            var mercManager = Core.Services?.GetService<PitHero.Services.MercenaryManager>();
+            if (mercManager != null)
+            {
+                var entities = mercManager.GetHiredMercenaries();
+                for (int i = 0; i < entities.Count; i++)
+                {
+                    var mc = entities[i].GetComponent<PitHero.ECS.Components.MercenaryComponent>();
+                    if (mc?.LinkedMercenary == null) continue;
+                    hired ??= new List<Mercenary>(2);
+                    hired.Add(mc.LinkedMercenary);
+                }
+            }
+            RefreshMercenarySlots(hired); // also refreshes merc equipment items
+            UpdateItemsFromBag();
         }
 
         /// <summary>Refreshes items from hero state.</summary>
@@ -1011,9 +1054,14 @@ namespace PitHero.UI
             Services.Replay.SlotRefCodec.Unpack(packedTarget, out int tb, out int xb, out int yb);
             var a = FindSlot((InventorySlotType)ta, xa, ya);
             var b = FindSlot((InventorySlotType)tb, xb, yb);
+            Services.Replay.ReplayBattleTrace.Add(
+                $"swap ({ta},{xa},{ya})<->({tb},{xb},{yb}) gridId={CommandGridId} a={(a != null)} b={(b != null)} " +
+                $"aItem={a?.SlotData.Item?.Name ?? "-"} bItem={b?.SlotData.Item?.Name ?? "-"} hero={(_heroComponent != null)} bag={(_heroComponent?.Bag != null)} bagCount={_heroComponent?.Bag?.Count ?? -1}");
             if (a == null || b == null || a == b)
                 return;
             SwapSlotItems(a, b);
+            Services.Replay.ReplayBattleTrace.Add(
+                $"swap done aItem={a.SlotData.Item?.Name ?? "-"} bItem={b.SlotData.Item?.Name ?? "-"} bagCount={_heroComponent?.Bag?.Count ?? -1}");
         }
 
         /// <summary>Swaps two slot items (if legal) and persists bag ordering.</summary>
@@ -1095,23 +1143,18 @@ namespace PitHero.UI
             InventorySelectionManager.OnInventoryChanged?.Invoke();
         }
 
-        /// <summary>Detects synergies in current inventory state and applies them to hero.</summary>
+        /// <summary>
+        /// Mirrors the hero's active synergies (computed by the simulation in HeroSynergyResolver every
+        /// tick) into this grid's glow effects and per-slot cache. The grid never detects or applies
+        /// synergies itself: doing so made the hero's passives depend on which windows were open, which
+        /// a replay cannot reproduce.
+        /// </summary>
         private void DetectAndApplySynergies()
         {
             var hero = _heroComponent?.LinkedHero;
             if (hero == null) return;
 
-            // Build synergy detection grid from current slot state
-            BuildSynergyDetectionGrid();
-
-            // Use grouped detection with stacking system (enforces 3-instance cap and overlap rejection)
-            var synergyGroups = _synergyDetector.DetectSynergiesGrouped(_synergyDetectionGrid, GRID_WIDTH, GRID_HEIGHT);
-
-            // Get GameStateService for stencil discovery
-            var gameStateService = Core.Services?.GetService<PitHero.Services.GameStateService>();
-
-            // Apply synergies to hero using grouped method (respects stacking multipliers)
-            hero.UpdateActiveSynergiesGrouped(synergyGroups, gameStateService);
+            var synergyGroups = hero.ActiveSynergyGroups;
 
             // Extract all instances from groups for glow effects (respects 3-instance cap)
             var allInstances = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
@@ -1155,32 +1198,6 @@ namespace PitHero.UI
             DetectAndApplySynergies();
         }
 
-
-        /// <summary>Builds the synergy detection grid from current slot state.</summary>
-        private void BuildSynergyDetectionGrid()
-        {
-            // Clear grid
-            for (int x = 0; x < GRID_WIDTH; x++)
-            {
-                for (int y = 0; y < GRID_HEIGHT; y++)
-                {
-                    _synergyDetectionGrid[x, y] = null;
-                }
-            }
-
-            // Populate grid from slots
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                var slot = _slots.Buffer[i];
-                if (slot == null) continue;
-
-                var data = slot.SlotData;
-                if (data.X >= 0 && data.X < GRID_WIDTH && data.Y >= 0 && data.Y < GRID_HEIGHT)
-                {
-                    _synergyDetectionGrid[data.X, data.Y] = data.Item;
-                }
-            }
-        }
 
         /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
         public override void Draw(Batcher batcher, float parentAlpha)

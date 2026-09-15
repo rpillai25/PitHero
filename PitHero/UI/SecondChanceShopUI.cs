@@ -1164,6 +1164,8 @@ namespace PitHero.UI
             var gameState = Core.Services?.GetService<GameStateService>();
             if (vault == null || gameState == null || qty <= 0)
                 return;
+            // The destination slot is resolved through this grid's picture; make it current first (replay system)
+            _heroInventoryGrid?.SyncFromSimulation();
 
             var stacks = vault.Stacks;
             SecondChanceMerchantVault.StackedItem stack = null;

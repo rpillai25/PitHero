@@ -4,6 +4,8 @@
 
 The Item Synergy System is a flexible pattern-matching framework that detects spatial arrangements of items in the hero's inventory grid and applies powerful effects. It replaces the traditional secondary/tertiary job progression system with a more dynamic, equipment-driven progression model.
 
+Detection is simulation state, not UI state: `HeroSynergyResolver` (owned by `HeroComponent`) re-runs the detector on every tick where a bag slot changed and applies the result to the hero; `InventoryGrid` only mirrors the hero's active groups for glow. Only the four bag rows of `PartyGridLayout` are matched — hero and mercenary equipment cells never take part. (Before 2026-09-14 the Party window did the detection over every cell, so passives depended on which windows had been opened and replays diverged.)
+
 ## Core Concepts
 
 ### 1. Synergy Patterns

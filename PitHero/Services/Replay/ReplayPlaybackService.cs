@@ -181,6 +181,9 @@ namespace PitHero.Services.Replay
             _decisionCursor = 0;
             _hashCursor = 0;
             _pastEndUnpauseInjected = false;
+            _lastMatchTick = -1;
+            _lastMatchDescription = null;
+            ReplayBattleTrace.Clear(); // the trace is process-global; a rebuilt scene starts its own history
             State = ReplayPlaybackState.Starting;
 
             // Live-input doorway closes now; the new scene's service inherits the flag in OnSceneStarted
@@ -717,7 +720,16 @@ namespace PitHero.Services.Replay
                 else
                     ReportDivergence(tick, kind);
             }
+            else if (kind == "state" && GameConfig.ReplayDivergenceSnapshots && DivergenceTick < 0)
+            {
+                // Still in sync: this IS the recorded state at this tick, so remember it for the report
+                _lastMatchTick = tick;
+                _lastMatchDescription = ReplayStateDescriber.Describe();
+            }
         }
+
+        private long _lastMatchTick = -1;
+        private string _lastMatchDescription;
 
         private void ReportDivergence(long tick, string kind)
         {
@@ -786,6 +798,13 @@ namespace PitHero.Services.Replay
                     sb.Append("    ").Append(c.Tick).Append(' ').Append(c.Command.Type).Append(' ').Append(c.Command.A).Append(' ')
                       .Append(c.Command.B).Append(' ').Append(c.Command.C).Append(' ').Append(c.Command.D).Append(' ')
                       .Append(c.Command.L).Append(' ').Append(c.Command.S ?? "-").AppendLine();
+                }
+                if (GameConfig.ReplayDivergenceSnapshots)
+                {
+                    sb.Append("  last in-sync sample @").Append(_lastMatchTick).AppendLine(" (this is the recorded state at that tick):");
+                    sb.Append(_lastMatchDescription ?? "    (none)\n");
+                    sb.Append("  drifted state @").Append(tick).AppendLine(":");
+                    sb.Append(ReplayStateDescriber.Describe());
                 }
                 sb.AppendLine();
                 System.IO.File.AppendAllText(System.IO.Path.Combine(files.Directory_, "replay_divergence.log"), sb.ToString());

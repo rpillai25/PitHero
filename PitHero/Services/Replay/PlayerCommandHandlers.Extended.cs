@@ -210,8 +210,12 @@ namespace PitHero.Services.Replay
 
                 // ── Inventory / shop ─────────────────────────────────────────────────
                 case PlayerCommandType.SwapSlots:
-                    GetGrid((int)cmd.L)?.ApplySwapCommand(cmd.A, cmd.B);
+                {
+                    var grid = GetGrid((int)cmd.L);
+                    ReplayBattleTrace.Add($"cmd SwapSlots grid={cmd.L} resolved={(grid != null)} a={cmd.A} b={cmd.B}");
+                    grid?.ApplySwapCommand(cmd.A, cmd.B);
                     return true;
+                }
                 case PlayerCommandType.SellBagItem:
                     GetGrid(cmd.C)?.DiscardItem(cmd.A, cmd.B <= 0 ? int.MaxValue : cmd.B);
                     return true;
@@ -338,14 +342,21 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>Resolves the inventory grid a command targets: 0 = Party window, 1 = Second Chance shop.</summary>
+        /// <summary>
+        /// The grid a command was recorded on, resynced from the simulation first. The grid is only an
+        /// executor over the shared bag and party gear; its slot picture must never be older than the
+        /// bag it is about to persist (replay system: nothing else refreshes it during playback).
+        /// </summary>
         private static PitHero.UI.InventoryGrid GetGrid(int gridId)
         {
             var settings = GetSettingsUI();
             if (settings == null)
                 return null;
-            if (gridId == 1)
-                return settings.SecondChanceShopUI?.GetHeroInventoryGrid();
-            return settings.HeroUI?.GetInventoryGrid();
+            var grid = gridId == 1
+                ? settings.SecondChanceShopUI?.GetHeroInventoryGrid()
+                : settings.HeroUI?.GetInventoryGrid();
+            grid?.SyncFromSimulation();
+            return grid;
         }
 
         private static void ApplyBuySeeds(PitHero.Farming.CropType crop, int qty)

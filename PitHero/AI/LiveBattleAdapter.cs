@@ -512,6 +512,7 @@ namespace PitHero.AI
                 evt.ActorName, evt.ActorType, evt.Action,
                 evt.TargetName, evt.TargetType,
                 evt.Damage, evt.HpBefore, evt.HpAfter, evt.Killed, evt.Missed);
+            Services.Replay.ReplayBattleTrace.Add($"attack {evt.ActorName} {evt.Action} -> {evt.TargetName} dmg={evt.Damage} hp={evt.HpBefore}->{evt.HpAfter} killed={evt.Killed} missed={evt.Missed}");
 
             // DoT ticks logged analytics-only in the original — no console line
             if (evt.Action != null && evt.Action.EndsWith(".dot"))
@@ -609,6 +610,7 @@ namespace PitHero.AI
 
             PitHero.Services.Analytics.AnalyticsService.LogBuff(
                 evt.CasterName, evt.Source, evt.TargetName, evt.BuffTypeName, evt.Magnitude, evt.DurationTurns);
+            Services.Replay.ReplayBattleTrace.Add($"buff {evt.CasterName} {evt.Source} -> {evt.TargetName} {evt.BuffTypeName} x{evt.Magnitude} turns={evt.DurationTurns}");
         }
 
         /// <inheritdoc/>
@@ -617,6 +619,7 @@ namespace PitHero.AI
         {
             PitHero.Services.Analytics.AnalyticsService.LogThreat(
                 evt.ActorName, evt.ActorType, evt.Source, evt.Amount, evt.Total);
+            Services.Replay.ReplayBattleTrace.Add($"threat {evt.ActorName} {evt.Source} +{evt.Amount:0.#} = {evt.Total:0.#}");
         }
 
         /// <inheritdoc/>

@@ -777,8 +777,17 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Update fog cooldown timer
         /// </summary>
+        /// <summary>
+        /// Simulation-side synergy state (replaces the Party window as the source of truth): recomputed
+        /// here every tick from the bag whenever any slot changed. Equipment cells never contribute.
+        /// </summary>
+        public PitHero.Services.HeroSynergyResolver Synergies { get; } = new PitHero.Services.HeroSynergyResolver();
+
         public void Update()
         {
+            if (LinkedHero != null && Bag != null)
+                Synergies.Sync(LinkedHero, Bag, Core.Services.GetService<GameStateService>());
+
             if (_fogCooldown > 0f)
             {
                 _fogCooldown -= Time.DeltaTime;

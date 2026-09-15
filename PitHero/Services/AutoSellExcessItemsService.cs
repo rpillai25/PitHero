@@ -143,7 +143,7 @@ namespace PitHero.Services
                 return AutoSellOutcome.None;
 
             var grid = RefreshGrid();
-            Func<int, bool> isProtected = grid != null ? grid.IsBagIndexProtected : (Func<int, bool>)null;
+            Func<int, bool> isProtected = ProtectionFromSimulation();
 
             var selection = SelectNext(bag, incoming, isProtected, gearIsUpgrade);
             if (!selection.HasSelection)
@@ -172,7 +172,7 @@ namespace PitHero.Services
                 return 0;
 
             var grid = RefreshGrid();
-            Func<int, bool> isProtected = grid != null ? grid.IsBagIndexProtected : (Func<int, bool>)null;
+            Func<int, bool> isProtected = ProtectionFromSimulation();
 
             int sold = 0;
             while (IsAtOrAboveSellThreshold(bag))
@@ -216,7 +216,25 @@ namespace PitHero.Services
             return false;
         }
 
-        /// <summary>Refreshes the hero grid from the bag so the synergy cache matches current contents before protection checks.</summary>
+        /// <summary>
+        /// Protection predicate from the simulation's own synergy state (never the Party window's):
+        /// resyncs the hero's synergies first so gear the equip sweep just moved is judged correctly.
+        /// Null outside a scene (tests), which means nothing is protected.
+        /// </summary>
+        private static Func<int, bool> ProtectionFromSimulation()
+        {
+            if (Core.Instance == null)
+                return null;
+            var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<PitHero.ECS.Components.HeroComponent>();
+            var hero = heroComp?.LinkedHero;
+            if (hero == null || heroComp.Bag == null)
+                return null;
+            var resolver = heroComp.Synergies;
+            resolver.Sync(hero, heroComp.Bag, Core.Services?.GetService<GameStateService>());
+            return bagIndex => resolver.IsBagIndexProtected(hero, bagIndex);
+        }
+
+        /// <summary>Refreshes the hero grid from the bag so its glow and slot cache match current contents (presentation only).</summary>
         private static InventoryGrid RefreshGrid()
         {
             if (Core.Instance == null)

@@ -184,6 +184,7 @@ namespace PitHero.Combat
             string tankType = tank.IsHero ? "hero" : "merc";
             AddThreat(battleContext, c, tankType, skill.Id, ThreatTable.SkillFlatThreat(skill));
             _forcedThreatTarget = tank;
+            PitHero.Services.Replay.ReplayBattleTrace.Add($"provoke {c.Name} for {protectedAlly?.Combatant?.Name ?? "-"} reaction={reaction} mp={c.CurrentMP}");
 
             // Announce the target now so the HUD turns red before the monster swings
             BuildLivingAllyList();
@@ -346,6 +347,8 @@ namespace PitHero.Combat
 
                     // Sort descending by TurnValue (highest goes first)
                     _participants.Sort(static (a, b) => b.TurnValue.CompareTo(a.TurnValue));
+
+                    PitHero.Services.Replay.ReplayBattleTrace.Add($"round {_currentRound} participants={_participants.Count}");
 
                     r = _sink.OnRoundStarted();
                     if (r != null) yield return r;
@@ -1273,6 +1276,18 @@ namespace PitHero.Combat
                 int idx = (int)(targetRoll * _tempLivingAllies.Count);
                 if (idx >= _tempLivingAllies.Count) idx = _tempLivingAllies.Count - 1;
                 targetAlly = _tempLivingAllies[idx];
+            }
+
+            if (GameConfig.ReplayDivergenceSnapshots)
+            {
+                var names = new System.Text.StringBuilder(64);
+                for (int ci = 0; ci < _tempLivingAllies.Count; ci++)
+                {
+                    if (ci > 0) names.Append(',');
+                    names.Append(_tempLivingAllies[ci].Combatant?.Name);
+                }
+                PitHero.Services.Replay.ReplayBattleTrace.Add(
+                    $"target-pick {enemy.Name}: leader={threatTarget?.Combatant?.Name ?? "-"} forced={forced?.Combatant?.Name ?? "-"} roll={targetRoll:0.000} candidates=[{names}] -> {targetAlly.Combatant?.Name}");
             }
 
             // Sink handles monster facing + attack animation

@@ -25,7 +25,11 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 4. **Static/global state the sim reads resets at the session reseed** (top of `MainGameScene.Begin`)
    or is scene-scoped and removed in `Unload`. Seeks restart the scene inside one process.
 5. **Presentation never feeds back into the sim** except through commands; a handler's outcome must
-   not depend on which window is open or hovered.
+   not depend on which window is open or hovered. Corollaries (each was a real divergence): no UI
+   class computes or stores a value the sim reads (synergy passives → `HeroSynergyResolver`); a UI
+   object a handler executes on is rebound and refreshed from the sim first
+   (`InventoryGrid.SyncFromSimulation`) because the overlay is built before the hero exists and a
+   never-opened window's grid is not connected at all.
 6. **Cosmetic-only components** early-return or finish instantly on `Core.CosmeticUpdatesSuspended`;
    anything the sim waits on (sprite animators, `AnimationState`) must not skip.
 7. **Speed is more fixed steps** (`Core.SimulationSpeed`), never `Time.TimeScale`.
@@ -46,6 +50,7 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 | Adding or changing a player action, the `Dispatch` / `ShouldApplyDirectly` pattern, handler rules, payload packing | `references/player-command-recipe.md` |
 | Auditing a feature for determinism, RNG streams, timers, static state, cosmetics, scene services, and diagnosing "Diverged at" | `references/determinism-audit.md` |
 | Architecture, file format, playback/seek internals, configuration, tests | `PitHero/docs/ReplaySystem.md` |
+| A divergence that code sweeps cannot explain, or any UI class that computes something the sim reads | `references/case-study-2026-09-14.md` — the snapshot → trace → analytics method and the three UI-feeds-sim bugs it found |
 
 ## Quick Gotchas
 
@@ -56,11 +61,14 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 | Feature works live, replay skips it | The mutation never became a `PlayerCommand`; playback has nothing to inject |
 | `hero` part diverges only during seeks, RNG equal | Update-order drift: something reorders components/entities by history. Nez `ComponentList` uses a stable sort for this reason; never sort update lists with `Array.Sort` on tied keys |
 | Handler works live, no-ops on replay | Handler resolved its target through UI state (selected row, open window) instead of a stable index/id/name in the payload |
+| `hero` diverges a few ticks after a `SwapSlots`/`SellBagItem`/`BuyVaultItem`, RNG equal | A grid-executed handler ran on a stale slot picture and `PersistBagOrdering` wrote it over the bag. Live hides it because opening a window reconnects the grid. Handlers must call `InventoryGrid.SyncFromSimulation()` first (`GetGrid` does) |
 | One-shot animation plays late after a seek | Component froze under `CosmeticUpdatesSuspended` instead of finishing instantly |
 | Timer drifts between live and replay | Stored `Time.TotalTime`; store `SimulationClock.Now` |
 | Command applied one tick late in replay | Applied between steps with the wrong tick; use `PlayerCommandService.ApplyNow` (records at tick-1) only when the drain cannot run |
 | Clicks ignored during playback | Expected: `RejectLiveEnqueues` drops live commands while a replay runs |
 | New `MainGameScene` throws duplicate service key | Old scene still registered; scene swaps go through `ReplayBootScene`, services removed in `Unload` |
+| Diverges in a battle at a deflect/crit/hit roll, same roll value both sides | A combat passive was set by UI code (window refresh, hover, grid rebuild). Synergies are the precedent: they now live in `HeroSynergyResolver` (sim, per tick) and `InventoryGrid` only mirrors them. Any stat the sim reads must be derived in the sim |
+| Divergence report needs more than hashes | `GameConfig.ReplayDivergenceSnapshots`: the report prints the last in-sync state, the drifted state and `ReplayBattleTrace`; compare against the live analytics `.jsonl` by wall time (tick / 60 s after load) |
 
 ## File Reference
 

@@ -56,6 +56,15 @@ matters, and the fix. The invariants are numbered as in `PitHero/docs/ReplaySyst
       scroll position). Settings the sim needs live in a service the command handler writes.
 - [ ] Callbacks from sim → UI → sim (`OnInventoryChanged`, shortcut refresh) behave identically with
       the window closed, hidden, or never opened.
+- [ ] No UI class computes or stores a value the sim reads. grep the UI for calls into hero/party
+      mutators (`hero.Update*`, `Apply*`, `SetEquipmentSlot`, `RecalculateDerived`) outside command
+      handlers; each one is a candidate. Synergies (`HeroSynergyResolver`) are the precedent.
+- [ ] A UI object a command handler executes on (grids, shop panels) is rebound and refreshed from
+      the sim before the command applies (`InventoryGrid.SyncFromSimulation`). Remember the overlay is
+      built before the hero entity exists: a never-opened window's grid is not connected at all, and a
+      respawn leaves it pointing at the old hero.
+- [ ] Nothing derived (stats, passives, protection) is only recomputed on window open, hover, or
+      drag. If it has to be current for the sim, recompute it in the sim on the change itself.
 
 ### Cosmetics and seeks (invariant 8)
 - [ ] Purely visual components (floating numbers, rising text, pickup arcs, Y-sort, indicators,
@@ -107,6 +116,21 @@ the recorded one.
    restart. Reset it at the reseed.
 6. Diverges only in a **loaded-save** replay: a value came from the pre-load scene or a global service
    that the start blob does not carry.
+7. **Read the snapshot blocks first.** With `GameConfig.ReplayDivergenceSnapshots` the report holds the
+   last in-sync state and the drifted state (`ReplayStateDescriber`) plus `ReplayBattleTrace`. Diff
+   the two hero lines; then read the trace backwards from the divergence tick. A `target-pick` line
+   shows the roll and candidates, so "same roll, different target" means a candidate list, forced
+   Provoke, or threat leader differed; an `attack` line the live analytics lacks was a deflect.
+8. **Get ground truth from the live run.** Playback disables analytics, but the live session wrote
+   `analytics\session_*.jsonl`. Wall time ≈ session start + tick/60 s. Compare row by row with the
+   trace. `party_snapshot` rows carry the live hero's skills and gear for unhashed fields.
+9. **Dump the recording** in a throwaway MSTest (`FileDataStore.Load`) when you need the recorded
+   hashes around the tick: a hero hash constant across N samples means the live hero was idle or
+   untouched; a replay post-command hash equal to the recorded pre-command hash means the command
+   no-oped in playback (an unconnected UI executor).
+10. Reproduce before theorising. Replays are self-consistent and seek at ~18k steps/s, so a fresh
+    launch plus a seek costs under a minute; two runs with byte-identical drifted hashes prove the
+    difference is systematic (live vs replay), not run-to-run.
 
 ## Verification protocol (any feature touched by this audit)
 

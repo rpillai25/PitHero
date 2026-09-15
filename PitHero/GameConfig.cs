@@ -692,6 +692,7 @@ namespace PitHero
         public const long ReplayPauseSkipMinTicks = 120;         // Recorded pause stretches at least this long (2 s) are skipped during playback
         public const bool ReplaySeekSkipsCosmetics = true;       // Seeks skip purely visual per-step work (particles, floating text, Y-sort); flip to A/B a divergence
         public const bool ReplaySeekQuietLogging = true;        // Seeks drop Debug.Log output (and its interpolation); flip to A/B a divergence
+        public const bool ReplayDivergenceSnapshots = true;     // Playback describes the sim at every matching sample so a divergence report can show the last in-sync state next to the drifted one
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

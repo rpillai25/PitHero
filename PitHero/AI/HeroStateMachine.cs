@@ -33,6 +33,27 @@ namespace PitHero.AI
         }
         private HeroActionBase _currentAction;
 
+        /// <summary>Replay divergence diagnostics: FSM state, executing action and the remaining plan.</summary>
+        public string DescribeForDiagnostics()
+        {
+            var sb = new System.Text.StringBuilder(128);
+            sb.Append("fsm=").Append(CurrentState)
+              .Append(" action=").Append(_currentAction != null ? _currentAction.Name : "-")
+              .Append(" plan=[");
+            if (_actionPlan != null)
+            {
+                bool first = true;
+                foreach (var a in _actionPlan)
+                {
+                    if (!first) sb.Append('>');
+                    sb.Append(a.Name);
+                    first = false;
+                }
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+
         // References to healing actions for dynamic cost updates
         private SleepInBedAction _sleepInBedAction;
         private UseHealingItemAction _useHealingItemAction;

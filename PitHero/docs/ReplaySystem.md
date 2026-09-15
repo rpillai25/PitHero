@@ -299,7 +299,22 @@ artifacts rewind with the save, so charging for them is safe.
 6. **Iteration order is part of the state.** `Dictionary`/`HashSet` enumerate in insertion order for
    identical operation sequences; do not sort by anything unstable (float ties, reference hashes).
 7. **Presentation never feeds back into the sim** except through commands. Whether a window is open,
-   hovered or off-screen must not change what a handler does.
+   hovered or off-screen must not change what a handler does — and no UI class computes or stores a
+   value the sim later reads. Synergies were the precedent (2026-09-14): `InventoryGrid` detected
+   patterns on every window refresh and wrote deflect/defense/stat passives onto the hero, so a hero
+   fought with different passives depending on which windows had been opened, and a replay (which
+   opens none) diverged at the first deflect roll. Detection now runs in the sim
+   (`HeroSynergyResolver`, every tick a bag slot changes) and the grid only mirrors the result.
+12. **A UI object used as a command executor must be rebound and refreshed from the sim first.** The
+    UI overlay is constructed before the hero entity is spawned, so a grid whose window was never
+    opened this session is not connected to the hero — in a replay that is every grid — and a swap or
+    purchase recorded on it is a silent no-op. Even a connected grid keeps a cached slot picture that
+    `PersistBagOrdering` writes back over the bag. `InventoryGrid.SyncFromSimulation()` (called by
+    the handlers' `GetGrid` and by `SecondChanceShopUI.ApplyItemPurchase`) rebinds to the current hero
+    entity (also after a respawn) and rebuilds the picture before the command applies.
+13. **The synergy grid is the bag only.** Hero and mercenary equipment cells never take part in
+    pattern matching (`PartyGridLayout.FillSynergyGrid`). The old UI detection matched every cell, so
+    mercenary gear that had been shown in the Party window could complete a pattern.
 8. **Cosmetic-only components may honor `Core.CosmeticUpdatesSuspended`; anything the sim waits on
    may not.** One-shot effects finish instantly when suspended (they must not freeze and replay later).
    Sprite animators are NOT cosmetic: `EnemyAnimationComponent` waits on `AnimationState`.
@@ -376,6 +391,19 @@ artifacts rewind with the save, so charging for them is safe.
    state (invariants 1, 2, 5, 7).
 4. A `decision` divergence with matching state hashes usually means the plan hash inputs changed
    (renamed action) rather than a real drift.
+5. With `GameConfig.ReplayDivergenceSnapshots` on (default) the block also carries the **last in-sync
+   state** (`ReplayStateDescriber`: hero vitals, gear, deflect, active synergies, GOAP plan, mercs,
+   nearby enemies with wander timers) and the **drifted state**, plus `ReplayBattleTrace`: the last 48
+   battle/command events with ticks (round starts, monster target picks with roll and candidates,
+   Provoke, attacks, buffs, threat, grid swaps). The in-sync sample IS the recorded state at that
+   tick for everything the hash covers; unhashed fields (deflect, synergies, gear) are the replay's.
+6. Cross-check against the **live session's analytics** (`%LOCALAPPDATA%\FeedTheHero\analytics\
+   session_*.jsonl`, the long `mode=load`/`new` one — playback writes a stub with no events). Wall
+   time of a tick ≈ session start + tick/60 s. An attack the trace shows but analytics lacks was a
+   deflect (deflects write no row). `party_snapshot` rows carry the live hero's skills and gear.
+7. To read a recording offline, load it in a throwaway MSTest with `FileDataStore.Load(name, new
+   ReplayData())` and dump `Commands` and `StateHashes`: seeing the recorded hero hash stay constant
+   across a window, or equal the replay's post-command hash, tells you a command no-oped.
 
 ## Debug vs Release
 
