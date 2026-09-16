@@ -153,13 +153,13 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
 - **Monster kills**: `BalanceConfig.CalculateMonsterGoldYield(level) = 5 + level × 3`
   (caps at 302 when the monster level caps at 99).
 - **Chest pouches** (issue #417): one item chest in two (a 10-of-20 shuffle bag in
-  `LootBagSet`) also carries gold: `(30 + 22 × effectiveDepth) × [0.75, 1.25]`, doubled on
+  `LootBagSet`) also carries gold: `(8 + 1.44 × effectiveDepth^1.62) × [0.75, 1.25]`, doubled on
   boss floors, capped at `ChestGoldCap = 2,500` (`BalanceConfig.CalculateChestGold`). Seed,
-  stencil and boss epic chests never carry gold. Roughly four kills' worth at any depth.
+  stencil and boss epic chests never carry gold. A convex curve: about one kill's worth on the first floors (an opening 15-minute run must not out-earn the farm), several kills' worth from the second cycle on.
 
-| Effective depth | 1 | 10 | 25 (boss) | 50 (boss) | 75+ |
+| Effective depth | 1 | 5 (boss) | 10 | 25 (boss) | 50 (boss) | 75 | 100 |
 |---|---|---|---|---|---|
-| Pouch range | 39–65 | 188–313 | 870–1,450 | 1,700–2,500 | cap |
+| Pouch range | 7–12 | 41–68 | 51–85 | 410–683 | 1,235–2,058 | 1,185–1,975 | cap 2,500 |
 
 ---
 

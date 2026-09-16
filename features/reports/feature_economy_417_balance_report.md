@@ -14,7 +14,7 @@ Issue #417 rebuilt the gold economy. This report validates:
 1. **Crop retune** — profit per growth hour is a function of the crop's progression tier (`{1.25, 2.2, 4, 7, 12, 25, 45}` g/h for tiers 0–6); seed prices cap at half of a one-shot's first-cycle profit; Wheat/Grapes/Turnip stacks shrunk so auto-sell fires within a real hour.
 2. **Market saturation** — per-crop demand (floor 15%, saturation 80 plots, 5%/in-game-hour recovery) that settles to a steady state and punishes monoculture without any replanning.
 3. **Dish progression** — dishes soft-unlock with their recipe crops and fully unlock on lifetime servings; patrons and the party only order unlocked dishes; the patron dish bag's inverse-price weights are clamped to 3 marbles.
-4. **Chest gold** — one item chest in two carries `(30 + 22 × depth) × [0.75, 1.25]` gold, ×2 on boss floors, cap 2,500.
+4. **Chest gold** — one item chest in two carries `(8 + 1.44 × depth^1.62) × [0.75, 1.25]` gold, ×2 on boss floors, cap 2,500 (convex curve after a playtest showed the first linear formula paying 2,153 g from nine chests in a 15-minute opening run).
 
 Owner pacing anchor: a diversified 100-plot late farm earns **1,000,000 g in ~10 real hours** from crops alone.
 
@@ -91,15 +91,37 @@ patron-limited and seed spend scales with harvests. The monoculture penalty is u
 
 | Depth | Tier | Level | Battle gold | Chest gold | Chests |
 |---|---|---|---|---|---|
-| 1 | 1 | 1 | 11 | 49 | 1 |
-| 10 | 1 | 10 | 59 | 424 | 2 |
-| 20 | 1 | 20 | 119 | 1,870 | 3 |
-| 30 | 2 | 5 | 170 | 1,164 | 3 |
-| 40 | 2 | 15 | 0 | 3,497 | 2 |
-| 50 | 2 | 25 | 245 | 2,272 | 5 |
+| 1 | 1 | 1 | 11 | 9 | 1 |
+| 10 | 1 | 10 | 59 | 115 | 2 |
+| 20 | 1 | 20 | 119 | 766 | 3 |
+| 30 | 2 | 5 | 170 | 614 | 3 |
+| 40 | 2 | 15 | 0 | 2,210 | 2 |
+| 50 | 2 | 25 | 245 | 1,653 | 5 |
 | 75 | 3 | 25 | 296 | 12,500 | 9 |
 
-Chest pouches are already the larger pit income by tier 2, cap at 2,500 each from depth ~75, and the boss-floor double shows at depths 20/25/50/75. Pit gold stays an order of magnitude below a mature farm, which is the intent: the pit funds the early game and the farm prints the millions. (Rows with 0 battle gold are levels where the single-level traversal wiped or fought nothing before the orb — a pre-existing traversal characteristic, not a gold change.)
+Chest pouches are pocket change on the first floors, overtake battle gold around pit 15, cap at 2,500 each from depth ~75, and the boss-floor double shows at depths 20/25/50/75. Pit gold stays an order of magnitude below a mature farm, which is the intent: the pit funds the early game and the farm prints the millions. (Rows with 0 battle gold are levels where the single-level traversal wiped or fought nothing before the orb — a pre-existing traversal characteristic, not a gold change.)
+
+**Playtest correction.** The first linear pouch formula (`30 + 22 × depth`) was too generous at
+shallow depth: in analytics session `session_20260916_002613` the hero cleared 13 pit levels in
+15 real minutes and nine gold chests paid 2,153 g against 476 g from all 13 kills (4.5×), with
+two boss-floor pouches at pit 5 worth 298 and 324 g. The curve is now convex
+(`8 + 1.44 × depth^1.62`). The same nine chests with the same variance rolls:
+
+| Pit | Old pouch | New pouch |
+|---|---|---|
+| 2 | 67 | 11 |
+| 3 | 114 | 20 |
+| 4 | 125 | 23 |
+| 5 (boss) | 298 | 59 |
+| 5 (boss) | 324 | 64 |
+| 9 | 181 | 47 |
+| 10 (boss) | 400 | 109 |
+| 11 | 278 | 80 |
+| 13 | 366 | 116 |
+| **total** | **2,153** | **529** |
+
+Chest gold on that run now roughly matches battle gold (529 vs 476) instead of dwarfing it, and
+the starter farm (~600 g per real hour) stays the larger early income.
 
 ### Worker throughput
 

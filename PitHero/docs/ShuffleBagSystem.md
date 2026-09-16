@@ -94,7 +94,7 @@ serves both layers**: live feeds it `Nez.Random` rolls, virtual feeds it per-run
 **Chest gold (issue #417)**: after an item chest's contents and color are settled,
 `TreasureComponent.RollChestGold` consumes one `Nez.Random` gate roll ALWAYS and one amount
 roll only on a hit, feeding `BalanceConfig.CalculateChestGold(effectiveDepth, bossFloor, roll)`
-(`(30 + 22 × depth) × [0.75, 1.25]`, ×2 on boss floors, cap 2,500). Seed, stencil and boss
+(`(8 + 1.44 × depth^1.62) × [0.75, 1.25]`, ×2 on boss floors, cap 2,500 — about one kill on the first floors, several by the second cycle). Seed, stencil and boss
 epic chests never roll it. `VirtualPitGenerator` makes the same two draws in the same order
 off its per-depth `System.Random`; the pouch lands in `VirtualRunMetrics.ChestGold`. Live
 pickup credits `AddFunds(gold, "chest")` before the item is bagged, auto-sold or vaulted.
