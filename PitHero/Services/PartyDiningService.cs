@@ -35,7 +35,7 @@ namespace PitHero.Services
         private const int PartySlots = 3;
 
         /// <summary>The hero's favorite dish chosen in the Food tab.</summary>
-        public int FavoriteDishId = (int)DishType.RoastedOnionSkewers;
+        public int FavoriteDishId = (int)DishType.ButteredBread; // a starter (tier 0) dish, issue #417
 
         /// <summary>When true, the party auto-dines at the tavern after waking each morning. On by
         /// default so new players see the dining system in action; saves restore the player's choice.</summary>
@@ -230,7 +230,7 @@ namespace PitHero.Services
 
             var favorite = FavoriteDishId >= 0 && FavoriteDishId < DishTypeInfo.Count
                 ? (DishType)FavoriteDishId
-                : DishType.RoastedOnionSkewers;
+                : DishType.ButteredBread;
             var gameState = Core.Services.GetService<GameStateService>();
             bool anyCoverable = false;
             if (gameState == null
@@ -640,7 +640,7 @@ namespace PitHero.Services
         {
             if (!_skippedThisSeating[0])
             {
-                string reason = !coordinator.CanCoverRecipe(heroFavorite) ? "no_ingredients" : "no_gold";
+                string reason = !coordinator.IsOrderable(heroFavorite) ? "no_ingredients" : "no_gold";
                 Analytics.AnalyticsService.LogPartyDineSkipped(0, heroName,
                     heroFavorite.ToString(), reason);
             }
@@ -666,7 +666,7 @@ namespace PitHero.Services
             DishType favorite, out DishType dish, out bool anyCoverable)
         {
             return TryPickHeroDishCore(favorite, GetJobName(0), gameState.Funds,
-                coordinator.CanCoverRecipe, out dish, out anyCoverable);
+                coordinator.IsOrderable, out dish, out anyCoverable);
         }
 
         /// <summary>
@@ -706,7 +706,7 @@ namespace PitHero.Services
                 var candidate = c == 0 ? favorite : DishConfig.GetFallbackForJob(jobName, c - 1);
                 if (c > 0 && candidate == favorite)
                     continue; // favorite already failed — don't re-check it
-                if (!coordinator.CanCoverRecipe(candidate))
+                if (!coordinator.IsOrderable(candidate))
                     continue;
                 dish = candidate;
                 return true;

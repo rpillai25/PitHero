@@ -89,6 +89,15 @@ serves both layers**: live feeds it `Nez.Random` rolls, virtual feeds it per-run
 | Accessory share (per rarity pool) | 1×true + 9×false | **new** — `BalanceConfig.AccessoryLootShare` 10% |
 | Uncommon accessory pick | MagicChain/RingOfPower, 1 each | — |
 | Epic index | 0–3 (PitLord set), 1 each | — |
+| Chest gold gate (#417) | `BalanceConfig.ChestGoldChanceMarbles` (10) × true + 10 × false | **new** — one item chest in two carries a gold pouch |
+
+**Chest gold (issue #417)**: after an item chest's contents and color are settled,
+`TreasureComponent.RollChestGold` consumes one `Nez.Random` gate roll ALWAYS and one amount
+roll only on a hit, feeding `BalanceConfig.CalculateChestGold(effectiveDepth, bossFloor, roll)`
+(`(30 + 22 × depth) × [0.75, 1.25]`, ×2 on boss floors, cap 2,500). Seed, stencil and boss
+epic chests never roll it. `VirtualPitGenerator` makes the same two draws in the same order
+off its per-depth `System.Random`; the pouch lands in `VirtualRunMetrics.ChestGold`. Live
+pickup credits `AddFunds(gold, "chest")` before the item is bagged, auto-sold or vaulted.
 
 Pit levels ≤ 10 are always L1 (no bag). `DrawCaveTreasureLevel` picks the band internally.
 
@@ -153,9 +162,12 @@ drop (keeps legacy tests untouched). `CurrentPitTier` must be set by the caller 
 Files: `PitHero/Services/KitchenTaskCoordinator.cs` (`PickPatronDish`),
 `PitHero/ECS/Components/KitchenMonsterStateMachine.cs` (`TakeOrderAtTarget`).
 
-Walk-in patrons draw from a persistent full-menu bag weighted **inversely to price**:
-`marbles(d) = max(1, round(maxPrice / price(d)))`. Cheap dishes dominate; the priciest dish
-still cycles through on a bounded cadence. Selection is **bounded draw-and-skip**: up to
+Walk-in patrons draw from a persistent full-menu bag weighted **inversely to price**, clamped
+(issue #417): `marbles(d) = clamp(round(maxPrice / price(d)), 1, GameConfig.DishBagMaxMarbles)`
+(`DishBagBuilder`). With menu prices spanning ~250× the unclamped weighting would make
+patrons order almost nothing but the cheapest dish; with the clamp cheap dishes are ordered a
+little more often but the whole unlocked menu cycles through. Locked dishes (dish
+progression) are skipped like unstocked ones. Selection is **bounded draw-and-skip**: up to
 `Count` draws of `_dishBag.Next()` (this stream is not contract-bound, so `Next()` is fine),
 first drawn dish present in the orderable list wins; skipped unorderable marbles restore next
 cycle so pricey-dish pity persists across stock fluctuations; a fully unorderable cycle falls
@@ -212,7 +224,7 @@ rebuilds lazily. Do not add bag state to the save format without revisiting this
   `NextFromRoll` determinism/boundaries, `Add` cursor reset.
 - `PitHero.Tests/StubSkillTests.cs` — `RollCrit`: quickdraw fold-in, exactly-1-per-20 base
   cycle, bag survival across `ClearBattleState`, lazy quickdraw rebuild.
-- `PitHero.Tests/ShuffleBagLootTests.cs` — every `LootBagSet` rate, epic 4-before-repeat,
-  virtual Molten Titan chest spawn (+ negative test for non-main bosses), dish-bag
-  inverse-price conformance.
+- `PitHero.Tests/ShuffleBagLootTests.cs` — every `LootBagSet` rate (including the chest gold
+  gate and its gate-always/amount-on-hit roll order), epic 4-before-repeat, virtual Molten
+  Titan chest spawn (+ negative test for non-main bosses), clamped dish-bag conformance.
 - `BattleEngineTests` — the unweakened structural guards for the RNG contract.

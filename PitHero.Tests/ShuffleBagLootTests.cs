@@ -2,9 +2,11 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using PitHero;
 using PitHero.Dining;
+using PitHero.ECS.Components;
 using PitHero.Farming;
 using PitHero.Services;
 using PitHero.VirtualGame;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
@@ -55,6 +57,39 @@ namespace PitHero.Tests
             Assert.AreEqual(4, counts[3], "boss 20/25 band: exactly 4 rare per 20");
             Assert.AreEqual(10, counts[2], "boss 20/25 band: exactly 10 uncommon per 20");
             Assert.AreEqual(6, counts[1], "boss 20/25 band: exactly 6 normal per 20");
+        }
+
+        [TestMethod]
+        public void ChestGoldGate_ExactlyTenPerTwenty()
+        {
+            // Issue #417: one item chest in two carries a gold pouch, enforced per 20-chest cycle
+            var bags = new LootBagSet();
+            var rng = new System.Random(417);
+            for (int cycle = 0; cycle < 3; cycle++)
+            {
+                int hits = 0;
+                for (int i = 0; i < 20; i++)
+                    if (bags.DrawChestGoldGate((float)rng.NextDouble())) hits++;
+                Assert.AreEqual(BalanceConfig.ChestGoldChanceMarbles, hits, $"cycle {cycle}: exactly {BalanceConfig.ChestGoldChanceMarbles} gold chests per 20");
+            }
+        }
+
+        [TestMethod]
+        public void RollChestGold_ConsumesAmountRollOnlyOnHit()
+        {
+            var bags = new LootBagSet();
+            int amountRolls = 0;
+            float Amount() { amountRolls++; return 0.5f; }
+            int hits = 0;
+            var rng = new System.Random(3);
+            for (int i = 0; i < 20; i++)
+                if (TreasureComponent.RollChestGold(5, 1, bags, (float)rng.NextDouble(), Amount) > 0) hits++;
+            Assert.AreEqual(BalanceConfig.ChestGoldChanceMarbles, hits);
+            Assert.AreEqual(hits, amountRolls, "the amount roll is drawn exactly once per gold chest");
+
+            // Headless fallback (no bags): the raw chance gates on the roll itself
+            Assert.AreEqual(0, TreasureComponent.RollChestGold(5, 1, null, 0.99f, Amount));
+            Assert.IsTrue(TreasureComponent.RollChestGold(5, 1, null, 0.01f, Amount) > 0);
         }
 
         [TestMethod]
@@ -216,8 +251,10 @@ namespace PitHero.Tests
 
         // ── Tavern dish bag ──────────────────────────────────────────────────────
 
+        // Issue #417: inverse-price weights are clamped to DishBagMaxMarbles so the whole unlocked
+        // menu cycles through instead of the cheapest dish dominating a 100x price spread.
         private static int ExpectedMarbles(DishType dish, int maxPrice)
-            => System.Math.Max(1, (int)System.Math.Round((float)maxPrice / DishConfig.GetPrice(dish)));
+            => DishBagBuilder.GetMarbles(dish, maxPrice);
 
         [TestMethod]
         public void PickPatronDish_FullMenu_MatchesInversePriceComposition()

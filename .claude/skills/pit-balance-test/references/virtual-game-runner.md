@@ -66,7 +66,8 @@ List<VirtualRunMetrics> perLevel = sim.RunLevelRange(1, 25); // stops early on w
 VirtualRunMetrics.WriteCsvHeader(writer);
 for (int i = 0; i < perLevel.Count; i++) perLevel[i].WriteRow(writer);
 // Columns: pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,
-//          treasures,gearEquipped,goldEarned,wallet,innRested,mercsHired
+//          treasures,gearEquipped,goldEarned,itemsAutoSold,autoSellGold,wallet,innRested,mercsHired,
+//          pitTier,displayedLevel,heroLevel,chestGold
 ```
 
 See `PitHero.Tests/VirtualBalanceTraversalTests.cs` for working examples of all three
@@ -86,8 +87,8 @@ If the virtual layer **doesn't support** a piece of functionality you need to te
 - The seed is recorded in `VirtualRunMetrics.RngSeed` — capture seed + job + traversal
   range at the top of every balance report.
 - Re-run the same seed after rebalance changes to verify the fix (before/after diff).
-- Test-suite baseline: **12 known pre-existing failures** in `dotnet test` — anything
-  above that is a regression introduced by the change under test.
+- Test-suite baseline: **0 failures** in `dotnet test` (since PR #313) — anything
+  failing is a regression introduced by the change under test.
 
 ## Performance Note
 

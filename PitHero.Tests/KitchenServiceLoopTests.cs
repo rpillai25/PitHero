@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero;
 using PitHero.Dining;
+using PitHero.Farming;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
@@ -988,6 +989,49 @@ namespace PitHero.Tests
             Assert.IsTrue(KitchenTaskCoordinator.HasClosingWork(false, 0, 0, 1), "orphaned serving holds the crew");
             Assert.IsFalse(KitchenTaskCoordinator.HasClosingWork(false, 0, 0, 0),
                 "all tickets delivered, guests gone, plates bussed, orphans sunk — crew goes home");
+        }
+
+        // ── Dish progression (issue #417) ─────────────────────────────────────────
+
+        [TestMethod]
+        public void LockedDish_NotOrderable_UntilCropsAndServingsMet()
+        {
+            _coordinator.EnforceDishUnlocks = true;
+            StockRecipe(3); // RoastedOnionSkewers is a tier-3 dish (Onion)
+
+            var orderable = new List<DishType>();
+            _coordinator.GetOrderableDishes(orderable);
+            Assert.IsFalse(orderable.Contains(Dish), "a fresh farm has not unlocked Onion, let alone the dish");
+            Assert.IsFalse(_coordinator.IsOrderable(Dish));
+            Assert.IsNull(_coordinator.CreateTicket(Dish, false, -1, null, PatronSeat), "a locked dish is never cooked");
+
+            // Unlock the recipe crops (every crop requirement up to tier 3) ...
+            for (int c = 0; c < CropTypeInfo.Count; c++)
+            {
+                var reqs = CropUnlockConfig.GetRequirements((CropType)c);
+                if (CropUnlockConfig.GetTier((CropType)c) > 3) continue;
+                for (int r = 0; r < reqs.Length; r++)
+                    if (_gameState.CropHarvestedTotals[(int)reqs[r].Crop] < reqs[r].Required)
+                        _gameState.CropHarvestedTotals[(int)reqs[r].Crop] = reqs[r].Required;
+            }
+            Assert.IsFalse(_coordinator.IsOrderable(Dish), "soft-unlocked: crops ready, servings not");
+
+            // ... then the cooking requirements
+            var dishReqs = DishUnlockConfig.GetRequirements(Dish);
+            for (int r = 0; r < dishReqs.Length; r++)
+                _gameState.DishesServedTotals[(int)dishReqs[r].Dish] = dishReqs[r].Required;
+            Assert.IsTrue(_coordinator.IsOrderable(Dish));
+            _coordinator.GetOrderableDishes(orderable);
+            Assert.IsTrue(orderable.Contains(Dish));
+            Assert.IsNotNull(_coordinator.CreateTicket(Dish, false, -1, null, PatronSeat));
+        }
+
+        [TestMethod]
+        public void HeadlessDefault_DoesNotEnforceDishUnlocks()
+        {
+            Assert.IsFalse(_coordinator.EnforceDishUnlocks, "kitchen loop tests order any dish");
+            StockRecipe();
+            Assert.IsTrue(_coordinator.IsOrderable(Dish));
         }
     }
 }

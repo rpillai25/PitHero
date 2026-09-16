@@ -191,6 +191,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 
 **Balance / data:**
 - `PitHero/docs/AnalyticsSchema.md` — debug-only balance analytics: JSONL event schema, output location, interpretation caveats
+- `PitHero/docs/EconomyBalanceGuide.md` — gold economy: crop tier profit model, market saturation, dish pricing/progression, chest gold, measured pacing (issue #417)
 - `PitHero/docs/EquipmentBalanceGuide.md`
 - `PitHero/docs/MonsterBalanceGuide.md`
 - `PitHero/docs/JobStatCurves.md`

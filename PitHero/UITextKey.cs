@@ -343,6 +343,8 @@ namespace PitHero
         public const string SecondChanceSellTotal = "SecondChanceSellTotal";
         public const string ConsoleMonsterJobLevelUp = "ConsoleMonsterJobLevelUp";
         public const string ConsoleCropUnlocked = "ConsoleCropUnlocked";
+        public const string ConsoleDishUnlocked = "ConsoleDishUnlocked";
+        public const string ConsoleGoldFound = "ConsoleGoldFound";
         public const string ConsoleAttack = "ConsoleAttack";
         public const string ConsoleSkillAttack = "ConsoleSkillAttack";
         public const string ConsoleBattleHealConsumable = "ConsoleBattleHealConsumable";
@@ -440,6 +442,7 @@ namespace PitHero
         public const string FoodEatAtTavern = "FoodEatAtTavern";
         public const string FoodEatAtTavernTooltip = "FoodEatAtTavernTooltip";
         public const string FoodMissingIngredients = "FoodMissingIngredients";
+        public const string FoodViewRequirements = "FoodViewRequirements";
         public const string JobNameNone = "JobNameNone";
         public const string JobNameFarming = "JobNameFarming";
         public const string JobNameKitchen = "JobNameKitchen";
@@ -538,7 +541,10 @@ namespace PitHero
         // Issue #413: crop unlocks, farm stats, monster job levels
         public const string WindowUnlockRequirements = "WindowUnlockRequirements";
         public const string LabelCropUnknown = "LabelCropUnknown";
+        public const string LabelCropDemand = "LabelCropDemand";
         public const string LabelUnlockRequirementsHint = "LabelUnlockRequirementsHint";
+        public const string LabelDishUnlockRequirementsHint = "LabelDishUnlockRequirementsHint";
+        public const string LabelFarmStatsLocked = "LabelFarmStatsLocked";
         public const string WindowFarmStats = "WindowFarmStats";
         public const string HeadingFarmStatsField = "HeadingFarmStatsField";
         public const string HeadingFarmStatsKitchen = "HeadingFarmStatsKitchen";

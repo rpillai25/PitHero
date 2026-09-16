@@ -999,6 +999,9 @@ namespace PitHero.Services
                 return null;
 
             EnsureServices();
+            // Dish progression (issue #417): a locked dish is never cooked, whoever asked for it
+            if (EnforceDishUnlocks && !DishUnlockTracker.IsFullyUnlocked(_gameState, dish))
+                return null;
             var def = DishConfig.GetDefinition(dish);
 
             // All-or-nothing availability check (fridge + AVAILABLE storage — units held for
@@ -1214,14 +1217,32 @@ namespace PitHero.Services
             return true;
         }
 
-        /// <summary>Clears <paramref name="results"/> and fills it with dishes whose recipe is coverable.</summary>
+        /// <summary>
+        /// Whether dish progression gates orders (issue #417). Defaults to true in a live session and
+        /// false headlessly so kitchen loop tests can order any dish; tests of the gate opt in.
+        /// </summary>
+        public bool EnforceDishUnlocks { get; set; } = Core.Instance != null;
+
+        /// <summary>True when the dish is fully unlocked (or unlocks aren't enforced) AND its recipe can be covered.</summary>
+        public bool IsOrderable(DishType dish)
+        {
+            if (EnforceDishUnlocks)
+            {
+                EnsureServices();
+                if (!DishUnlockTracker.IsFullyUnlocked(_gameState, dish))
+                    return false;
+            }
+            return CanCoverRecipe(dish);
+        }
+
+        /// <summary>Clears <paramref name="results"/> and fills it with dishes that are unlocked and whose recipe is coverable.</summary>
         public void GetOrderableDishes(List<DishType> results)
         {
             results.Clear();
             for (int d = 0; d < DishTypeInfo.Count; d++)
             {
                 var dish = (DishType)d;
-                if (CanCoverRecipe(dish))
+                if (IsOrderable(dish))
                     results.Add(dish);
             }
         }
@@ -1256,23 +1277,10 @@ namespace PitHero.Services
             return orderable[Nez.Random.Range(0, orderable.Count)];
         }
 
-        /// <summary>Builds the inverse-price dish bag: marbles(d) = max(1, round(maxPrice / price(d))).</summary>
+        /// <summary>Builds the clamped inverse-price dish bag (see <see cref="DishBagBuilder"/>).</summary>
         private void BuildDishBag()
         {
-            int maxPrice = 0;
-            for (int d = 0; d < DishTypeInfo.Count; d++)
-            {
-                int price = DishConfig.GetPrice((DishType)d);
-                if (price > maxPrice) maxPrice = price;
-            }
-
-            _dishBag = new RolePlayingFramework.Utils.ShuffleBag<DishType>(DishTypeInfo.Count * 4);
-            for (int d = 0; d < DishTypeInfo.Count; d++)
-            {
-                var dish = (DishType)d;
-                int marbles = Math.Max(1, (int)Math.Round((float)maxPrice / DishConfig.GetPrice(dish)));
-                _dishBag.Add(dish, marbles);
-            }
+            _dishBag = DishBagBuilder.BuildFullMenu();
         }
 
         /// <summary>Registers the party order source.</summary>
@@ -1545,9 +1553,10 @@ namespace PitHero.Services
             if (ticket == null) return;
             ticket.State = TicketState.Delivered;
             ticket.PlatedDishEntity = dishEntity;
-            // Lifetime dishes-served total (issue #413) — the one choke point for patron and party dishes
+            // Lifetime dishes-served total (issue #413) — the one choke point for patron and party
+            // dishes; the tracker also announces dishes this serving fully unlocked (issue #417)
             if (Core.Instance != null)
-                Core.Services.GetService<GameStateService>()?.RecordDishServed(ticket.Dish);
+                DishUnlockTracker.RecordDishServed(Core.Services.GetService<GameStateService>(), ticket.Dish);
 
             if (ticket.IsPartyTicket)
             {

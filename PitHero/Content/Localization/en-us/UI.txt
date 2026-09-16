@@ -307,6 +307,8 @@ SecondChanceNeedCount,Need: {0}
 # Event Console Messages
 ConsoleMonsterJobLevelUp,{0} {1} reached {2} level {3}!
 ConsoleCropUnlocked,New crop unlocked: {0}!
+ConsoleDishUnlocked,New dish unlocked: {0}!
+ConsoleGoldFound,{0} found {1} gold in the chest!
 ConsoleAttack,{0} attacks {1} for {2} damage!
 ConsoleSkillAttack,{0} uses {1} on {2} for {3} damage!
 ConsoleBattleHealConsumable,{0} uses {1} on {2}. Restored {3} HP.
@@ -391,6 +393,7 @@ FoodFavoriteLabel,Favorite Food
 FoodEatAtTavern,Eat at tavern
 FoodEatAtTavernTooltip,When stopped at the tavern, order and eat favorite food.
 FoodMissingIngredients,Missing ingredients!
+FoodViewRequirements,View requirements
 JobNameNone,None
 JobNameFarming,Farming
 JobNameKitchen,Kitchen
@@ -487,7 +490,10 @@ ConsoleAutoLearnedSkill,{0} learned {1}!
 WindowRefrigerator,Refrigerator
 WindowUnlockRequirements,Unlock Requirements
 LabelCropUnknown,???
+LabelCropDemand,Market demand: {0}%
 LabelUnlockRequirementsHint,Harvest these crops to unlock {0}:
+LabelDishUnlockRequirementsHint,Serve these dishes to unlock {0}:
+LabelFarmStatsLocked,{0} (locked)
 WindowFarmStats,Farm Stats
 HeadingFarmStatsField,Field
 HeadingFarmStatsKitchen,Kitchen

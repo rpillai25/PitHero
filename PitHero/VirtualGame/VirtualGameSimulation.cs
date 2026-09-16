@@ -500,12 +500,13 @@ namespace PitHero.VirtualGame
             _runMetrics.GearEquipped    = _battleRunner.GearEquipped;
             _runMetrics.ItemsAutoSold   = _battleRunner.ItemsAutoSold;
             _runMetrics.AutoSellGold    = _battleRunner.AutoSellGold;
+            _runMetrics.ChestGold       = _battleRunner.ChestGold;
             if (partyMaxHPPool > 0)
                 _runMetrics.HpLossPercent = (float)_runMetrics.DamageTaken / partyMaxHPPool;
 
             // Credit the wallet with gold earned this level and snapshot the balance.
             // InnRested / MercsHired are 0/false here; RunLevelRange stamps them after.
-            Gold                  += _runMetrics.GoldEarned + _runMetrics.AutoSellGold;
+            Gold                  += _runMetrics.GoldEarned + _runMetrics.AutoSellGold + _runMetrics.ChestGold;
             _runMetrics.Wallet     = Gold;
             _runMetrics.HeroLevel  = _hero.LinkedHero.Level;
 

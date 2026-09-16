@@ -188,17 +188,19 @@ namespace PitHero.Util
         {
             return crop switch
             {
-                CropType.Grapes     => 100,
+                // Auto-sell only moves FULL stacks (issue #417): a modest patch must fill a
+                // stack within roughly a real hour or the first income takes forever.
+                CropType.Grapes     => 10,
                 CropType.Eggplant   => 30,
                 CropType.Pumpkin    => 10,
                 CropType.Watermelon => 10,
                 CropType.Onion      => 30,
-                CropType.Turnip     => 50,
+                CropType.Turnip     => 27,
                 CropType.Lettuce    => 30,
                 CropType.Sugarcane  => 20,
                 CropType.Corn       => 20,
                 CropType.Potato     => 30,
-                CropType.Wheat      => 100,
+                CropType.Wheat      => 20,
                 CropType.Tomato     => 30,
                 CropType.AppleTree  => 30,
                 _                   => 30,
@@ -239,24 +241,29 @@ namespace PitHero.Util
             };
         }
 
-        /// <summary>Gold cost to purchase one seed of this crop from the Second Chance Shop.</summary>
+        /// <summary>
+        /// Gold cost to purchase one seed of this crop from the Second Chance Shop. Issue #417:
+        /// a one-shot seed costs at most half of the profit its first harvest brings in, so every
+        /// harvest funds at least two more plantings; a regrow seed costs roughly one income cycle
+        /// (a one-time establishment fee).
+        /// </summary>
         public static int GetSeedPrice(CropType crop)
         {
             return crop switch
             {
-                CropType.AppleTree  => 200,
-                CropType.Corn       => 50,
-                CropType.Eggplant   => 50,
-                CropType.Grapes     => 50,
-                CropType.Lettuce    => 50,
-                CropType.Onion      => 50,
-                CropType.Potato     => 50,
-                CropType.Pumpkin    => 100,
-                CropType.Sugarcane  => 50,
-                CropType.Tomato     => 50,
-                CropType.Turnip     => 50,
-                CropType.Watermelon => 100,
-                CropType.Wheat      => 25,
+                CropType.AppleTree  => 900,
+                CropType.Corn       => 15,
+                CropType.Eggplant   => 65,
+                CropType.Grapes     => 350,
+                CropType.Lettuce    => 15,
+                CropType.Onion      => 65,
+                CropType.Potato     => 100,
+                CropType.Pumpkin    => 800,
+                CropType.Sugarcane  => 40,
+                CropType.Tomato     => 40,
+                CropType.Turnip     => 40,
+                CropType.Watermelon => 1100,
+                CropType.Wheat      => 5,
                 _                   => 50,
             };
         }
@@ -277,32 +284,29 @@ namespace PitHero.Util
         }
 
         /// <summary>
-        /// Gold-rate multiplier for the harvest sell-price formula. The base rate is
-        /// <see cref="HarvestGoldPerGrowthHour"/> × tier per in-game growth hour. See issue #287.
+        /// Net profit in gold per in-game growth hour for one plant, indexed by the crop's
+        /// progression tier (<see cref="CropUnlockConfig.GetTier"/>). Issue #417: unlocking a
+        /// later crop is what raises income, so the ladder is deliberately steep (~×1.8 per tier
+        /// early, easing to ~×1.8 at the top). One real hour ≈ 55 wet growth hours, so tier 0 is
+        /// ≈ 70 g per plant per real hour and tier 6 ≈ 2,500 g before market demand (see
+        /// <c>CropMarketService</c>). Tune here, never per crop.
         /// </summary>
-        public static float GetGrowthTier(CropType crop)
+        public static readonly float[] TierProfitPerGrowthHour = { 1.25f, 2.2f, 4f, 7f, 12f, 25f, 45f };
+
+        /// <summary>Net profit per in-game growth hour for one plant of this crop (see <see cref="TierProfitPerGrowthHour"/>).</summary>
+        public static float GetProfitPerGrowthHour(CropType crop)
         {
-            return crop switch
-            {
-                CropType.Wheat      => 0.70f,
-                CropType.Lettuce    => 0.75f,
-                CropType.Turnip     => 0.75f,
-                CropType.Sugarcane  => 0.80f,
-                CropType.Onion      => 0.85f,
-                CropType.Potato     => 0.85f,
-                CropType.Tomato     => 0.95f,
-                CropType.Corn       => 1.00f,
-                CropType.Eggplant   => 1.05f,
-                CropType.Grapes     => 1.10f,
-                CropType.Pumpkin    => 1.15f,
-                CropType.Watermelon => 1.20f,
-                CropType.AppleTree  => 1.30f,
-                _                   => 1.00f,
-            };
+            int tier = CropUnlockConfig.GetTier(crop);
+            if (tier < 0) tier = 0;
+            if (tier >= TierProfitPerGrowthHour.Length) tier = TierProfitPerGrowthHour.Length - 1;
+            return TierProfitPerGrowthHour[tier];
         }
 
-        /// <summary>Base gold paid per in-game growth hour at rate tier 1.0 (0.5 g/hr = 30 g per real hour). See issue #287.</summary>
-        public const float HarvestGoldPerGrowthHour = 0.5f;
+        /// <summary>Net gold one harvest cycle of this crop brings in above its seed cost.</summary>
+        public static float GetCycleProfit(CropType crop)
+        {
+            return GetProfitPerGrowthHour(crop) * GetIncomeCycleHours(crop);
+        }
 
         /// <summary>Minimum sell value of a single harvested unit (guards degenerate future data combos).</summary>
         public const float HarvestUnitSellFloor = 1f;
@@ -324,13 +328,15 @@ namespace PitHero.Util
         }
 
         /// <summary>
-        /// Sell value of a single harvested unit of this crop:
-        /// <c>(HarvestGoldPerGrowthHour × tier × cycle_hours [+ seed_price for one-shot]) / yield</c>,
-        /// with a floor of <see cref="HarvestUnitSellFloor"/>. See issue #287.
+        /// Base sell value of a single harvested unit of this crop at full market demand:
+        /// <c>(cycle_profit [+ seed_price for one-shot]) / yield</c>, with a floor of
+        /// <see cref="HarvestUnitSellFloor"/>. Issue #417 (supersedes the #287 rate model).
+        /// Live sales apply the per-crop demand multiplier on top — use
+        /// <c>CropSellPricing</c>, not this, when paying the player.
         /// </summary>
         public static float GetHarvestUnitSellPrice(CropType crop)
         {
-            float cycleGold = HarvestGoldPerGrowthHour * GetGrowthTier(crop) * GetIncomeCycleHours(crop);
+            float cycleGold = GetCycleProfit(crop);
             if (!IsRepeatHarvest(crop))
                 cycleGold += GetSeedPrice(crop);   // one-shot crops recover their seed each cycle
             float unit = cycleGold / GetHarvestYield(crop);
@@ -338,8 +344,8 @@ namespace PitHero.Util
         }
 
         /// <summary>
-        /// Gold paid for selling a stack of <paramref name="count"/> harvested units:
-        /// <c>ceil(unit_sell_price × count)</c>.
+        /// Base gold for selling a stack of <paramref name="count"/> harvested units at full
+        /// demand: <c>ceil(unit_sell_price × count)</c>. Live sales go through <c>CropSellPricing</c>.
         /// </summary>
         public static int GetHarvestStackSellPrice(CropType crop, int count)
         {

@@ -97,13 +97,20 @@ namespace PitHero.UI
             }
 
             AddHeading(UITextKey.HeadingFarmStatsKitchen, true);
-            for (int i = 0; i < DishTypeInfo.Count; i++)
+            var dishOrder = DishUnlockConfig.ProgressionOrder;
+            for (int i = 0; i < dishOrder.Length; i++)
             {
-                var dish = (DishType)i;
+                var dish = dishOrder[i];
                 var def = DishConfig.GetDefinition(dish);
-                int served = gameState != null && i < gameState.DishesServedTotals.Length ? gameState.DishesServedTotals[i] : 0;
+                int served = gameState != null ? DishUnlockConfig.GetTotal(gameState.DishesServedTotals, dish) : 0;
                 var sprite = _cropsAtlas?.GetSprite(def.BaseSpriteName + DishSpriteSuffix);
-                AddRow(sprite, GetText(def.NameKey), served);
+                // Dish progression (issue #417): not-yet-orderable dishes are marked locked
+                bool unlocked = gameState == null
+                    || DishUnlockConfig.IsFullyUnlocked(dish, gameState.CropHarvestedTotals, gameState.DishesServedTotals);
+                string name = unlocked
+                    ? GetText(def.NameKey)
+                    : string.Format(GetText(UITextKey.LabelFarmStatsLocked), GetText(def.NameKey));
+                AddRow(sprite, name, served);
             }
         }
 

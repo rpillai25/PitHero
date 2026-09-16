@@ -101,6 +101,13 @@ namespace PitHero.ECS.Components
         /// </summary>
         public string ContainedStencilPatternId;
 
+        /// <summary>
+        /// Gold pouch found alongside the item (issue #417); 0 when the chest carries none. Rolled
+        /// only for item chests, never for seed, stencil or boss epic chests. Transient — cleared
+        /// after pickup; chests regenerate with the pit so nothing is saved.
+        /// </summary>
+        public int ContainedGold;
+
         public override void OnAddedToEntity()
         {
             base.OnAddedToEntity();
@@ -1009,6 +1016,29 @@ namespace PitHero.ECS.Components
                 Level = RarityUtils.GetTreasureLevelForRarity(finalGear.Rarity);
             else if (ContainedItem != null)
                 Level = 1;
+
+            // Gold pouch (issue #417): the gate roll is ALWAYS consumed, the amount roll only when it
+            // hits — VirtualPitGenerator mirrors this order exactly. Chest generation is not
+            // RNG-contract-bound, so the two extra rolls are legal (SimulationVersion bumped).
+            ContainedGold = RollChestGold(pitLevel, pitTier, LootShuffleService.LiveBags,
+                Nez.Random.NextFloat(), Nez.Random.NextFloat);
+        }
+
+        /// <summary>
+        /// Rolls the gold pouch for an item chest: <paramref name="gateRoll"/> decides through the
+        /// session gate bag (or the raw chance headlessly), then <paramref name="amountRoll"/> is
+        /// drawn only on a hit and fed to <see cref="BalanceConfig.CalculateChestGold"/>.
+        /// </summary>
+        public static int RollChestGold(int pitLevel, int pitTier, LootBagSet bags, float gateRoll,
+            System.Func<float> amountRoll)
+        {
+            bool hasGold = bags != null
+                ? bags.DrawChestGoldGate(gateRoll)
+                : gateRoll < BalanceConfig.ChestGoldChanceMarbles / 20f;
+            if (!hasGold)
+                return 0;
+            int depth = BiomeProgressionConfig.GetEffectiveDepth(pitLevel, pitTier);
+            return BalanceConfig.CalculateChestGold(depth, CaveBiomeConfig.IsBossFloor(pitLevel), amountRoll());
         }
     }
 }

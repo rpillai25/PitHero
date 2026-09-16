@@ -279,7 +279,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 36; // v36: inventory item acquisition order appended (issue #414, Sort by Time)
+        public const int CurrentVersion = 37; // v37: per-crop market demand appended (issue #417, economy)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -519,7 +519,7 @@ namespace PitHero.Services
 
         // Party Dining (issue #319, v18)
         /// <summary>The hero's favorite dish chosen in the Food tab.</summary>
-        public int FavoriteDishId = 0;
+        public int FavoriteDishId = (int)Dining.DishType.ButteredBread; // starter dish (issue #417)
 
         /// <summary>Whether the party auto-dines at the tavern after waking each morning.</summary>
         public bool EatAtTavern = false;
@@ -651,6 +651,10 @@ namespace PitHero.Services
         /// <summary>Dishes served per dish type over the hero's lifetime, indexed by (int)DishType.</summary>
         public int[] DishesServedTotals;
 
+        // Crop market (v37, issue #417)
+        /// <summary>Per-crop market demand multiplier in [MarketDemandFloor, 1], indexed by (int)CropType. Pre-v37 files read as full demand.</summary>
+        public float[] CropDemand;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -678,6 +682,7 @@ namespace PitHero.Services
             SeedInventory[(int)Farming.CropType.Corn]  = GameConfig.NewGameStartingCornSeeds;
             CropHarvestedTotals = new int[Farming.CropTypeInfo.Count];
             DishesServedTotals = new int[Dining.DishTypeInfo.Count];
+            CropDemand = FullDemand();
             CropPlans = new List<SavedCropPlan>();
             NextBuildingId = 1;
             CropGrowthStates = new List<SavedCropGrowthState>();
@@ -1183,6 +1188,46 @@ namespace PitHero.Services
                 writer.Write((int)(seq & 0xFFFFFFFFL));
                 writer.Write((int)(seq >> 32));
             }
+
+            // 52. Crop market demand (v37, issue #417): one float per CropType
+            WriteFloatArray(writer, CropDemand);
+        }
+
+        /// <summary>A demand array with every crop at full (1.0) demand.</summary>
+        public static float[] FullDemand()
+        {
+            var demand = new float[Farming.CropTypeInfo.Count];
+            for (int i = 0; i < demand.Length; i++)
+                demand[i] = 1f;
+            return demand;
+        }
+
+        /// <summary>Writes a count-prefixed float array (null writes a zero count).</summary>
+        private static void WriteFloatArray(IPersistableWriter writer, float[] values)
+        {
+            int count = values != null ? values.Length : 0;
+            writer.Write(count);
+            for (int i = 0; i < count; i++)
+                writer.Write(values[i]);
+        }
+
+        /// <summary>
+        /// Reads a count-prefixed float array into a fresh array of <paramref name="size"/> entries
+        /// pre-filled with <paramref name="missing"/>. Extra entries are consumed and dropped.
+        /// </summary>
+        private static float[] ReadFloatArray(IPersistableReader reader, int size, float missing)
+        {
+            var result = new float[size];
+            for (int i = 0; i < size; i++)
+                result[i] = missing;
+            int count = reader.ReadInt();
+            for (int i = 0; i < count; i++)
+            {
+                float v = reader.ReadFloat();
+                if (i < size)
+                    result[i] = v;
+            }
+            return result;
         }
 
         /// <summary>Writes a count-prefixed int array (null writes a zero count).</summary>
@@ -1835,6 +1880,12 @@ namespace PitHero.Services
                     }
                 }
             }
+
+            // 52. Crop market demand (section added in v37, issue #417). Older files start every
+            // crop at full demand — the market simply settles from there.
+            CropDemand = fileVersion >= 37
+                ? ReadFloatArray(reader, Farming.CropTypeInfo.Count, 1f)
+                : FullDemand();
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
             // value. Older files carried two; reproduce the old EFFECTIVE sell floor (raised to the

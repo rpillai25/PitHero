@@ -167,6 +167,10 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
   Delta-Plan gap: the virtual layer has no synergy/stencil model, so nothing is protected,
   all rarities are sellable, and the per-consumable sell selections / min-stack floors (v26)
   are not applied; selling consumes no RNG, so parity is unaffected either way.
+- **Chest gold (issue #417):** `VirtualPitGenerator` rolls the gold pouch with the same two
+  draws as the live chest (gate always, amount on a hit) through the shared `LootBagSet`;
+  `VirtualWorldState` keeps it per tile, `VirtualBattleRunner.CollectChestItem(item, gold)`
+  credits `ChestGold` before bagging the item, and `RunPitLevel` adds it to the wallet.
 - **Stencil chest drops (issue #362):** `TreasureComponent.InitializeForPitLevel` gates the
   stencil branch on `Core.Instance != null`. Because the virtual layer runs headless (no Nez
   core), stencil chests are never generated in `VirtualPitGenerator`. This is the same gap as
@@ -192,8 +196,36 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
 | `goldEarned` / `wallet` | Gold from kills this level / balance after crediting |
 | `itemsAutoSold` / `autoSellGold` | Items auto-sold to make bag room / gold they earned (0 unless `AutoSellExcessItems` is on) |
 | `innRested` / `mercsHired` | Between-level actions taken **before** this level (`RunLevelRange` only) |
+| `pitTier` / `displayedLevel` / `heroLevel` | Tier, within-tier level, hero level at the end of the level |
+| `chestGold` | Gold found in chest pouches this level (issue #417), credited to the wallet |
 
 Run-level fields: `RngSeed`, `JobName`, `LevelRangeMin/Max`.
+
+## Economy Simulation (`PitHero/VirtualGame/Economy/`, issue #417)
+
+`VirtualEconomySimulation.Run(EconomyScenario)` is a second headless harness for the
+farm + kitchen gold economy. It steps one in-game minute (= one real second) at a time and
+reuses the real pricing, progression and market code — `CropConfig`, `CropUnlockConfig`,
+`DishConfig`, `DishUnlockConfig`, `DishBagBuilder`, `CropMarketService`, `GameStateService`,
+`CropStorageInventoryService`, `AutoCropSellService`, `PartyDiningService.TryPickHeroDishCore` —
+and models only what needs a scene:
+
+- crop growth: the exact wet-gated math of `CropGrowthService.Update`, Wet cleared at 6 AM;
+- farm workers: water → harvest → plant priority, base durations from `GameConfig` plus a
+  flat `TravelOverheadSeconds`, watering-can charges, day shift 6 AM–10 PM;
+- seed auto-purchase: the `AutoSeedPurchaseService` rule over the scenario's plots;
+- the tavern: arrivals per `TavernScheduleConfig` and `MercenaryManager`'s intervals, nine
+  seats, patience, cook/server throughput, tips, the party's three meals (hero pays).
+
+`EconomyScenario` factories: `Starter()` (the scripted new-game farm), `MidGame()`,
+`LateGameDiverse()` (the pacing anchor: 100 plots over nine crops, full crew) and
+`LateGameMonoculture()` (100 apple trees). `EconomyRunMetrics` records the gold curve per real
+hour, income/spend by source, milestone minutes (1k/10k/100k/1M), crop and dish unlock
+minutes, per-crop harvests, units sold, realized vs base gold (average demand) and worker
+utilization; `WriteSummary` renders the report tables. Fidelity caveats: no pathing, no fridge
+pre-stock, no runner, no worker sleep beyond the day shift, and every plot is planted at
+minute 0 so harvests arrive in synchronized bursts. Tests: `EconomySimulationTests`
+(`TestCategory=EconomySim`).
 
 ## Known Gotchas (learned the hard way)
 
@@ -216,7 +248,7 @@ Run-level fields: `RngSeed`, `JobName`, `LevelRangeMin/Max`.
 | Walking/travel time (pit↔tavern↔inn), animations | Intentionally skipped — instant in virtual |
 | Seed-crop chest contents (farming) | Level-2 chests never roll seeds virtually |
 | Shop purchases (buying potions/gear) | No virtual shop; stock `Bag` manually |
-| Night sleep (free time-of-day rest) | No `InGameTimeService` headlessly |
+| Night sleep (free time-of-day rest) | No `InGameTimeService` headlessly (the economy simulation keeps its own minute clock) |
 | `SecondChanceMerchantVault` on merc death/dismissal | Gear is not recovered virtually |
 | Analytics JSONL (`AnalyticsService`) | Virtual sink aggregates metrics instead — same event payloads, comparable columns |
 | Tavern seat management, `DeferredMercenary` | Not applicable headlessly |
@@ -234,6 +266,7 @@ New live-layer features should be checked against this document (see the
 | `VirtualBalanceTraversalTests` | Balance curves (solo / party / persistent run), CSV output, same-seed reproducibility |
 | `VirtualGameSimulationTests`, `VirtualWorldStateTests`, `CaveBiomeBalanceTests`, `InterfaceBased*Tests` | Exploration, world state, generation parity, GOAP dual execution |
 | `KitchenFlowPathTests` | Kitchen/tavern walk routes on the REAL surface map: parses `PitHero.tmx`'s Collision layer as text (no FNA), seeds `FarmPathfinder` static walls exactly like `MainGameScene`, and asserts every dining-flow leg (house exit → posts, sink → stove pickups, sink → all 12 seat tables, sink ↔ crop storage) is reachable without crossing walls |
+| `EconomySimulationTests` | Farm + kitchen gold pacing through `VirtualEconomySimulation` (starter modest, mid-game, late diverse 1M in 7–12 real hours, monoculture penalty, market settles, kitchen secondary, same-seed CSV) plus battle + chest gold per depth via `RunPitLevel` |
 | `KitchenServiceLoopTests` | Headless end-to-end tavern service loop through the real `KitchenTaskCoordinator` + `TavernPatronComponent` (injected via `SetHeadlessServices`, no Nez scene): order → ticket board post → runner fridge restock (par top-up) → cook read/station/cook → serving table slot → zone-gated server pickup → deliver → eat → pay → retired; plus board gating, one-cook-per-ticket, zone ownership (top/bottom tables), serving-slot exhaustion, orphaned-dish-to-sink, patience expiry before/after ordering (refund vs none), leave-after-cooking (payment stands), hire mid-dining, party cook priority, mid-cook and mid-fetch interrupt requeue |
 
 Full suite: `dotnet test PitHero.Tests/PitHero.Tests.csproj`. Baseline: **0 failures**

@@ -565,5 +565,51 @@ namespace PitHero.Tests
         }
 
         #endregion
+
+        #region Chest Gold (issue #417)
+
+        [TestMethod]
+        public void CalculateChestGold_GrowsWithDepth_UntilTheCap()
+        {
+            int prev = 0;
+            for (int depth = 1; depth <= 120; depth++)
+            {
+                int gold = BalanceConfig.CalculateChestGold(depth, false, 0.5f);
+                Assert.IsTrue(gold >= prev, $"depth {depth}: {gold} < {prev}");
+                Assert.IsTrue(gold <= BalanceConfig.ChestGoldCap);
+                prev = gold;
+            }
+            Assert.AreEqual(BalanceConfig.ChestGoldCap, BalanceConfig.CalculateChestGold(120, false, 1f), "deep cycles hit the cap");
+        }
+
+        [TestMethod]
+        public void CalculateChestGold_VarianceBand_AndBossDouble()
+        {
+            int nominal = BalanceConfig.ChestGoldBase + BalanceConfig.ChestGoldPerDepth * 10;
+            int low = BalanceConfig.CalculateChestGold(10, false, 0f);
+            int mid = BalanceConfig.CalculateChestGold(10, false, 0.5f);
+            int high = BalanceConfig.CalculateChestGold(10, false, 1f);
+            Assert.AreEqual((int)System.Math.Round(nominal * BalanceConfig.ChestGoldVarianceMin), low);
+            Assert.AreEqual(nominal, mid);
+            Assert.AreEqual((int)System.Math.Round(nominal * BalanceConfig.ChestGoldVarianceMax), high);
+            Assert.AreEqual(nominal * 2, BalanceConfig.CalculateChestGold(10, true, 0.5f), "boss floors double the pouch");
+            Assert.AreEqual(BalanceConfig.CalculateChestGold(1, false, 0f), BalanceConfig.CalculateChestGold(-5, false, -1f), "degenerate inputs clamp to depth 1 and the low roll");
+        }
+
+        [TestMethod]
+        public void CalculateChestGold_IsWorthAFewMonsterKills()
+        {
+            // A pouch at depth d should be worth roughly 3-6 kills of a depth-appropriate monster
+            int[] depths = { 1, 10, 25, 50 };
+            for (int i = 0; i < depths.Length; i++)
+            {
+                int level = BalanceConfig.EstimatePlayerLevelForPitLevel(depths[i]);
+                int kill = BalanceConfig.CalculateMonsterGoldYield(level);
+                int pouch = BalanceConfig.CalculateChestGold(depths[i], false, 0.5f);
+                Assert.IsTrue(pouch >= 3 * kill && pouch <= 8 * kill, $"depth {depths[i]}: pouch {pouch} vs kill {kill}");
+            }
+        }
+
+        #endregion
     }
 }

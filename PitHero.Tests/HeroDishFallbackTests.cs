@@ -111,5 +111,35 @@ namespace PitHero.Tests
             Assert.IsTrue(ok);
             Assert.AreEqual(DishConfig.GetFallbackForJob(null, 0), dish);
         }
+
+        [TestMethod]
+        [TestCategory("PartyDining")]
+        public void LockedFavorite_FallsThroughToStarterDish()
+        {
+            // Issue #417: the predicate is the kitchen's IsOrderable, so a favorite that is still
+            // locked by dish progression is skipped like a missing ingredient. Every job's second
+            // fallback is a tier-0 dish, so a fresh party can always eat.
+            var noCrops = new int[PitHero.Farming.CropTypeInfo.Count];
+            var noDishes = new int[DishTypeInfo.Count];
+            bool ok = PartyDiningService.TryPickHeroDishCore(
+                DishType.PumpkinCreamSoup, "Knight", PlentyOfGold,
+                d => DishUnlockConfig.IsFullyUnlocked(d, noCrops, noDishes), out var dish, out var anyCoverable);
+
+            Assert.IsTrue(ok);
+            Assert.AreEqual(DishType.ButteredBread, dish);
+            Assert.IsTrue(anyCoverable);
+        }
+
+        [TestMethod]
+        [TestCategory("PartyDining")]
+        public void EveryJob_SecondFallback_IsAStarterDish()
+        {
+            string[] jobs = { "Knight", "Mage", "Priest", "Thief", "Monk", "Archer", null };
+            for (int i = 0; i < jobs.Length; i++)
+            {
+                var second = DishConfig.GetFallbackForJob(jobs[i], 1);
+                Assert.AreEqual(0, DishUnlockConfig.GetTier(second), $"{jobs[i] ?? "default"}: {second} is not a starter dish");
+            }
+        }
     }
 }

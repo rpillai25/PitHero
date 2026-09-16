@@ -19,6 +19,7 @@ namespace PitHero.Services
 
         private readonly CropStorageInventoryService _storage;
         private readonly GameStateService _gameState;
+        private readonly CropMarketService _market;
         private readonly List<int> _idScratch = new List<int>(16);
         private readonly int[] _fullSeenScratch = new int[CropTypeInfo.Count];
         private float _throttleTimer;
@@ -43,11 +44,13 @@ namespace PitHero.Services
         /// </summary>
         public bool[] Designations { get; } = new bool[CropTypeInfo.Count];
 
-        /// <summary>Initialises the service with the required dependencies.</summary>
-        public AutoCropSellService(CropStorageInventoryService storage, GameStateService gameState)
+        /// <summary>Initialises the service with the required dependencies. A null market sells at base price.</summary>
+        public AutoCropSellService(CropStorageInventoryService storage, GameStateService gameState,
+            CropMarketService market = null)
         {
             _storage = storage;
             _gameState = gameState;
+            _market = market;
             for (int i = 0; i < Designations.Length; i++)
                 Designations[i] = true;
         }
@@ -98,9 +101,11 @@ namespace PitHero.Services
                     _fullSeenScratch[(int)crop]++;
                     if (_fullSeenScratch[(int)crop] <= _keepStacks) continue;
 
-                    int gold = CropConfig.GetHarvestStackSellPrice(crop, slots[s].Count);
+                    int units = slots[s].Count;
+                    int gold = CropSellPricing.GetStackSellPrice(_market, crop, units);
                     _gameState.AddFunds(gold, SellSource);
-                    Analytics.AnalyticsService.LogCropSold(crop.ToString(), slots[s].Count, gold, "auto");
+                    _market?.RecordSale(crop, units);
+                    Analytics.AnalyticsService.LogCropSold(crop.ToString(), units, gold, "auto");
                     _storage.ClearSlot(buildingId, s);
                 }
             }

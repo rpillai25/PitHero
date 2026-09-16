@@ -2,9 +2,18 @@
 
 ## Introduction
 
-This guide documents the idle-economy balance decisions made in issue #287. The goal is to keep
-per-plant gold income in a 20–40 g/real-hour band so that progression feels earned: a small early
-farm generates pocket change; a mature, expanded farm generates meaningful wealth.
+This guide documents the gold economy as rebalanced in issue #417 (which supersedes the
+#287 rate model). The goals: the player must eventually make millions of gold (artifacts cost
+100k–4M), a brand-new farm must feel modest, every harvest must comfortably fund replanting,
+income must scale linearly with plot count, unlocking later crops must be what raises income,
+and a *diversified* farm must out-earn a monoculture without the player ever replanning.
+
+Pacing anchor (owner decision): a **diversified 100-plot late farm, fully automated, earns
+1,000,000 g in ~10 real hours** from crops alone; the kitchen and pit gold stack on top.
+
+Verified by the headless economy simulation — see
+`features/reports/feature_economy_417_balance_report.md` and
+`PitHero.Tests/EconomySimulationTests.cs`.
 
 ---
 
@@ -16,153 +25,150 @@ farm generates pocket change; a mature, expanded farm generates meaningful wealt
 | 1 real minute | 1 in-game hour |
 | 1 real hour | 60 in-game hours |
 
-Implementation: `InGameTimeService.cs:9`, `CropGrowthService.cs:27`.
+Crops grow only while their tile is Wet; Wet clears farm-wide at 6 AM and workers re-water,
+so a plant accrues about **55 wet growth hours per real hour**. Implementation:
+`InGameTimeService.cs`, `CropGrowthService.cs`.
 
 ---
 
-## Design Targets
+## Crop Formula (`CropConfig.cs`)
 
-| Metric | Target |
-|---|---|
-| Net gold per real hour per established plant | 20–40 g |
-| Net gold per in-game growth hour (same band in game units) | 0.33–0.67 g |
-| 10-plant early farm | ~300 g/real-hr |
-| 200-plant expanded farm | ~6,000 g/real-hr |
+Profit is a pure function of the crop's **progression tier** (`CropUnlockConfig.GetTier`):
 
-**Prices only.** Growth times, regrow times, yields, stack sizes, and seed prices are out of scope
-for this rebalance. See the "Out-of-Scope Items" section.
+```
+profitPerGrowthHour = TierProfitPerGrowthHour[tier]      // { 1.25, 2.2, 4, 7, 12, 25, 45 }
+cycleProfit         = profitPerGrowthHour × cycleHours    // GetIncomeCycleHours
+unitSell (one-shot) = (cycleProfit + seedPrice) / yield   // seed recovered every harvest
+unitSell (regrow)   = cycleProfit / yield
+stackSell           = ceil(unitSell × count)
+```
+
+- `HarvestUnitSellFloor = 1 g` guards degenerate data only.
+- **Seed prices** (`GetSeedPrice`): a one-shot seed is at most half of its first-cycle profit,
+  so every harvest funds at least two more plantings; a regrow seed costs roughly one income
+  cycle (a one-time establishment fee). `EconomyBalanceTests` pins both rules.
+- **Stack sizes** (`GetMaxHarvestStack`): auto-sell only moves full stacks, so Wheat (20),
+  Grapes (10) and Turnip (27) were shrunk so a modest patch fills a stack within about a real
+  hour. Old saves holding a bigger stack still sell it (`Count >= max`).
+
+### Crop table (base prices, before market demand)
+
+| Crop | Tier | Type | Cycle h | Yield | Profit/cycle | Seed | Unit sell | g per plot-real-hour |
+|---|---|---|---|---|---|---|---|---|
+| Wheat | 0 | one-shot | 8 | 1 | 10 | 5 | 15 | 69 |
+| Corn | 0 | regrow | 13.5 | 3 | 16.9 | 15 | 5.6 | 69 |
+| Tomato | 1 | regrow | 18 | 4 | 39.6 | 40 | 9.9 | 121 |
+| Eggplant | 1 | regrow | 30 | 1 | 66 | 65 | 66 | 121 |
+| Sugarcane | 2 | one-shot | 21 | 2 | 84 | 40 | 62 | 220 |
+| Lettuce | 2 | one-shot | 8 | 4 | 32 | 15 | 11.75 | 220 |
+| Turnip | 3 | one-shot | 12 | 9 | 84 | 40 | 13.8 | 385 |
+| Onion | 3 | one-shot | 20 | 9 | 140 | 65 | 22.8 | 385 |
+| Potato | 4 | one-shot | 18 | 4 | 216 | 100 | 79 | 660 |
+| Grapes | 4 | regrow | 32 | 1 | 384 | 350 | 384 | 660 |
+| Watermelon | 5 | one-shot | 110 | 1 | 2,750 | 1,100 | 3,850 | 1,375 |
+| Pumpkin | 5 | one-shot | 80 | 1 | 2,000 | 800 | 2,800 | 1,375 |
+| AppleTree | 6 | regrow | 24 | 4 | 1,080 | 900 | 270 | 2,475 |
+
+Regrow crops pay their establishment time first (Apple Tree: 160 in-game hours ≈ 2.7 real
+hours before the first harvest).
 
 ---
 
-## Crop Formula
+## Market Saturation (`CropMarketService`, issue #417)
 
-### Constants (`CropConfig.cs`)
+Each crop has a demand multiplier in `[MarketDemandFloor, 1]`, starting at 1. Selling a crop
+lowers its demand in proportion to the **base** gold sold; demand recovers toward 1 at a
+constant rate. Nothing is random and nothing moves on its own, so a farm planned once settles
+into a steady income and never needs replanning.
 
-| Constant | Value | Meaning |
+```
+on sale:   demand -= baseUnitPrice × units / depth       depth = MarketSaturationPlots × profitPerGrowthHour / MarketRecoveryPerHour
+per hour:  demand += (1 - demand) × MarketRecoveryPerHour
+price:     baseUnitPrice × demand
+```
+
+Steady state for N plots of one crop is `demand ≈ 1 − N / MarketSaturationPlots` (floored),
+**independent of tier and of the recovery rate** — the recovery rate only sets how fast the
+market settles and how much a synchronized harvest burst can ride the recovery.
+
+| Constant (`GameConfig`) | Value | Meaning |
 |---|---|---|
-| `HarvestGoldPerGrowthHour` | 0.5 g | Base gold per in-game growth hour at tier 1.0 |
-| `HarvestUnitSellFloor` | 1 g | Minimum sell value for any single harvested unit |
+| `MarketDemandFloor` | 0.15 | A wall of one crop still pays 15% of base |
+| `MarketSaturationPlots` | 80 | Plots of one crop that would zero its demand without the floor |
+| `MarketRecoveryPerHour` | 0.05 | Fraction of the gap to full demand recovered per in-game hour |
 
-### Income Cycle
+So ~16 plots of a crop sell near 80%, 40 plots near 50%, 68+ plots at the floor. Crops the
+kitchen consumes never touch demand, so cooking is the outlet for a surplus crop. Simulation
+result: 100 apple trees realize a **28%** average price and earn 58% of what a mixed 100-plot
+farm earns; the mixed farm's apples (20 plots) sell at 80%.
 
-The **income cycle** (`GetIncomeCycleHours`) is the number of in-game hours that one harvest
-pays for:
-
-- **Repeat-harvest crops** (Corn, Tomato, Eggplant, Grapes, AppleTree): the steady-state regrow
-  cycle from revert frame to fully grown, scaled by `GetRegrowthRateMultiplier`.
-- **One-shot crops** (all others): the full seed-to-mature growth time.
-
-### Unit Sell Price
-
-```
-cycleGold = HarvestGoldPerGrowthHour × tier × cycleHours
-if one-shot: cycleGold += seedPrice      // recover seed cost each cycle
-unitPrice = max(cycleGold / yield, HarvestUnitSellFloor)
-```
-
-Because one-shot crops include seed recovery, their **net profit** per cycle equals
-`cycleGold − seedPrice = HarvestGoldPerGrowthHour × tier × cycleHours`, the same expression as
-regrow crops. Net rate is therefore `0.5 × tier` for every crop, giving a linear,
-tier-ordered income band.
-
-### Stack Sell Price
-
-`GetHarvestStackSellPrice(crop, count)` = `ceil(unitPrice × count)`. The ceiling ensures small
-fractional unit prices (Corn 2.25, Tomato 2.14, AppleTree 3.90) add up correctly over a stack.
-
-### Why a 1g Floor?
-
-The old 5g floor would push Corn's per-unit price above formula value, inflating its real-hour
-income well past the 30 g/hr target. The 1g floor guards only against pathological future data
-(e.g., an extremely high-yield crop with a very short cycle) while leaving all 13 current crops
-untouched — the cheapest is AppleTree at 3.90 g/unit.
+Every path that pays the player for crops goes through `CropSellPricing` (`PitHero/Util/`),
+which resolves the scene's market (base price headlessly) and records the sale. A direct
+`CropConfig.GetHarvestStackSellPrice` call in a sell path is a bug. Demand is sim state:
+registered per scene, ticked from the fixed step, persisted in save v37 (§52), shown as
+"Market demand: N%" in the crop viewer's description window. Dish and seed prices are not
+affected by demand.
 
 ---
 
-## Crop Results Table
+## Dish Pricing and Progression
 
-Net g/real-hr = `(0.5 × tier) × 60`. All 13 crops land in the 21–39 g/real-hr band.
+Menu prices derive from crop base prices (`DishConfig.ComputePrice`):
+`ingredientSellValue × 1.25 + effect premium (15 g per ATK/DEF/AGI point, 10 g per MAG,
+3 g per EVA, 30 g per regen point)`, rounded to 5 g, min 10 g, with a monotonicity pass.
+Cooking therefore always beats raw selling and the fixed premium makes early dishes a strong
+multiplier (a 15 g wheat becomes a 35 g Buttered Bread). The Harvest Feast Platter now also
+takes a Watermelon so it stays the priciest dish.
 
-| Crop | Type | Tier | Cycle (in-game hrs) | Unit sell (g) | Net g/real-hr |
+Dishes unlock in tiers that mirror the crops — see `TavernDiningSystem.md` "Dish
+progression". Walk-in patrons draw from a shuffle bag whose inverse-price weights are clamped
+to `DishBagMaxMarbles = 3`, so the whole unlocked menu cycles through and kitchen income
+scales with unlocks (`ShuffleBagSystem.md`).
+
+Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 85 · Skewers 100
+· Stew 110 · Parmesan 185 · Chowder 200 · Mash 230 · Steak 430 · Grape Tart 635 · Grape Juice
+1,070 · Apple Pie 1,525 · Pumpkin Soup 3,590 · Sorbet 5,030 · Feast ≈ 9,300.
+
+---
+
+## Pit Gold
+
+- **Monster kills**: `BalanceConfig.CalculateMonsterGoldYield(level) = 5 + level × 3`
+  (caps at 302 when the monster level caps at 99).
+- **Chest pouches** (issue #417): one item chest in two (a 10-of-20 shuffle bag in
+  `LootBagSet`) also carries gold: `(30 + 22 × effectiveDepth) × [0.75, 1.25]`, doubled on
+  boss floors, capped at `ChestGoldCap = 2,500` (`BalanceConfig.CalculateChestGold`). Seed,
+  stencil and boss epic chests never carry gold. Roughly four kills' worth at any depth.
+
+| Effective depth | 1 | 10 | 25 (boss) | 50 (boss) | 75+ |
 |---|---|---|---|---|---|
-| Wheat | one-shot | 0.70 | 8 | 27.80 | 21.0 |
-| Lettuce | one-shot | 0.75 | 8 | 13.25 | 22.5 |
-| Turnip | one-shot | 0.75 | 12 | 6.06 | 22.5 |
-| Sugarcane | one-shot | 0.80 | 21 | 29.20 | 24.0 |
-| Onion | one-shot | 0.85 | 20 | 6.50 | 25.5 |
-| Potato | one-shot | 0.85 | 18 | 14.41 | 25.5 |
-| Tomato | regrow | 0.95 | 18 | 2.14 | 28.5 |
-| Corn | regrow | 1.00 | 13.5 | 2.25 | 30.0 |
-| Eggplant | regrow | 1.05 | 30 | 15.75 | 31.5 |
-| Grapes | regrow | 1.10 | 32 | 17.60 | 33.0 |
-| Pumpkin | one-shot | 1.15 | 80 | 146.00 | 34.5 |
-| Watermelon | one-shot | 1.20 | 110 | 166.00 | 36.0 |
-| AppleTree | regrow | 1.30 | 24 | 3.90 | 39.0 |
-
-Full Turnip harvest (×9) sells for **55 g**; full Corn harvest (×20) sells for **45 g**.
+| Pouch range | 39–65 | 188–313 | 870–1,450 | 1,700–2,500 | cap |
 
 ---
 
-## Regrow Crop Establishment Payback
+## Design Targets (measured)
 
-Repeat-harvest crops require an upfront seed investment that is never directly recovered in the
-sell price (seed recovery only applies to one-shot crops). Players pay the seed cost once and
-earn steady-state income thereafter.
-
-| Crop | Seed cost | Steady-state g/real-hr | Payback time |
-|---|---|---|---|
-| Corn | 50 g | 30 g/hr | ~1.7 real hrs |
-| AppleTree | 200 g | 39 g/hr | ~5.1 real hrs |
-
-After payback, every subsequent income cycle is pure profit. This gives late crops (AppleTree)
-a meaningful establishment cost relative to earlier crops (Corn), matching the "reward patience
-and expansion" design intent.
+| Scenario (economy simulation, seed 417) | Net gold per real hour | Notes |
+|---|---|---|
+| Starter: 12 wheat + 6 corn, 1 level-1 worker | ~600 | 1,000 g at 1h 37m; Tomato/Eggplant unlock at 31 min |
+| Mid-game: 30 plots (tiers 1–3), 2 workers, small kitchen | ~5,400 | 10,000 g at 1h 39m |
+| Late diverse: 100 plots over 9 crops, 6 workers, full kitchen | ~92,000 | 1,000,000 g at 10h 33m |
+| Late monoculture: 100 apple trees | ~53,000 | apples realize 28% of base |
 
 ---
 
 ## Gear Sell Fractions
 
-Replacing the old flat 50% sell price with rarity-scaled fractions (implemented in
-`ItemExtensions.GetSellPrice`). Normal-rarity loot flooding is reduced; finding a rare or epic
-item is meaningfully more valuable.
-
-| Rarity | Sell fraction | Example: 500 g item |
-|---|---|---|
-| Normal | 20% | 100 g |
-| Uncommon | 35% | 175 g |
-| Rare | 50% | 250 g |
-| Epic | 60% | 300 g |
-| Legendary | 75% | 375 g |
-
-**Sell < buy invariant:** every rarity sells below buy price, so purchasing an item at full price
-and immediately selling it is always a net loss. This invariant holds at all price points.
-
----
-
-## Consumable Exception
-
-Consumables always sell for **50% of buy price** (`item.Price / 2`), regardless of their listed
-rarity. All potions are `ItemRarity.Normal`, but their potency is encoded in restore amounts, not
-rarity — using rarity-scaled fractions would make FullMixPotion (900 g buy, `Normal` rarity)
-sell for only 180 g instead of 450 g, breaking the potion buyback economy in the Second Chance
-Shop.
-
----
-
-## Out-of-Scope Items
-
-The following balance values were deliberately **not changed** in issue #287:
-
-- **Monster gold drop formula** (`BalanceConfig.cs:449-455`) — enemy gold is a separate tuning pass.
-- **Seed prices** (`CropConfig.GetSeedPrice`) — seed cost is a one-time acquisition barrier, not the ongoing income driver under the rate-based formula.
-- **Growth times** (`CropConfig.GetHoursPerStage`, `GetFrameCount`) — these define the game's pacing and are frozen for this rebalance.
-- **HeroCrystal sell values** (`Permadeath.md`) — handled by a separate subsystem.
+Rarity-scaled fractions (`ItemExtensions.GetSellPrice`): Normal 20%, Uncommon 35%, Rare 50%,
+Epic 60%, Legendary 75%. **Sell < buy** at every rarity. Consumables always sell for 50% of
+buy price regardless of rarity (potency is in the restore amount, not the rarity).
 
 ---
 
 ## Related Documentation
 
-- `PitHero/docs/EquipmentBalanceGuide.md` — Equipment stat formulas and rarity multipliers
-- `PitHero/docs/EquipmentLibrary.md` — Full gear library
-- `CropConfig.cs` — All crop data and sell-price helpers
-- `ItemExtensions.cs` — `GetSellPrice` implementation
+- `PitHero/docs/TavernDiningSystem.md` — dish progression, kitchen income
+- `PitHero/docs/ShuffleBagSystem.md` — chest gold gate, dish bag weights
+- `PitHero/docs/VirtualGameLogicLayer.md` — economy simulation
+- `features/reports/feature_economy_417_balance_report.md` — measured curves
+- `CropConfig.cs`, `CropMarketService.cs`, `CropSellPricing.cs`, `DishUnlockConfig.cs`

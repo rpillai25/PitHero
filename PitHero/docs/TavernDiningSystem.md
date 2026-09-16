@@ -319,7 +319,10 @@ kitchen finishes serving them.
 On delivery the patron faces their table (`TavernSeatConfig.GetFacing`). On finishing: pays
 `DishConfig.GetPrice`, 50% chance of a 5–15% tip (rounded up), logs `dish_served`. Hiring a
 patron mid-order calls `CancelTicketForPatron` before removing the component. Patrons order a
-random dish from `GetOrderableDishes` (= every dish whose recipe fridge+storage can cover).
+random dish from `GetOrderableDishes` (= every **fully unlocked** dish whose recipe fridge+storage
+can cover — see "Dish progression"), drawn from the `DishBagBuilder` bag whose inverse-price
+weights are clamped to `GameConfig.DishBagMaxMarbles` (issue #417) so the priciest dishes
+still cycle through.
 
 ## Kitchen hours (10 PM – 6 AM closure)
 
@@ -450,6 +453,34 @@ full table — from Onion-skewer starters up to `HarvestFeastPlatter` (11-crop r
 point)`, rounded to 5g, min 10g. A monotonicity pass then guarantees that among single-buff
 dishes of the same buff type, more magnitude costs strictly more. Rebalancing crop sell prices
 reprices the whole menu automatically (`DishPricingTests` guards this).
+
+## Dish progression (issue #417)
+
+The menu grows in step with the field. `Dining/DishUnlockConfig.cs` mirrors
+`Farming/CropUnlockConfig.cs`:
+
+- A dish's **tier** is the highest progression tier among its recipe crops (`GetTier`, cached
+  from `ComputeTier`; a test guards the hardcoded `ProgressionOrder`): tier 0 Buttered Bread,
+  Grilled Corn · 1 Bisque, Parmesan · 2 Salad · 3 Skewers, Stew, Steak · 4 Chowder, Mash,
+  Tart, Juice · 5 Pumpkin Soup, Sorbet, Feast · 6 Apple Pie.
+- **Soft-unlocked** = every recipe crop is unlocked (`IsSoftUnlocked`): the dish appears in the
+  Food tab, faded, with a "View requirements" button (`DishUnlockRequirementsDialog`).
+- **Fully unlocked** = soft-unlocked AND the cooking requirements are met
+  (`IsFullyUnlocked`): a tier-N dish needs every lower-tier dish served
+  `DishUnlockServingsBase (10) × min(N − tier, DishUnlockTierGapCap (3))` times (tier 1 =
+  10 Bread + 10 Grilled Corn; Apple Pie ≈ 290 servings in total). Tier 0 is free.
+- Crop-locked dishes are hidden from the Food tab entirely (low mental load).
+
+Gates are sim-side: `KitchenTaskCoordinator.EnforceDishUnlocks` (true in a live session,
+false headlessly so kitchen loop tests can order any dish; `LockedDish_NotOrderable_UntilCropsAndServingsMet`
+opts in) feeds `IsOrderable(dish)` = fully unlocked AND `CanCoverRecipe`. `GetOrderableDishes`
+(patron orders), `CreateTicket` (belt and braces) and `PartyDiningService`'s hero/merc ladders
+all use it. Every job's second fallback dish is tier 0, so a fresh party can always eat; the
+default favorite is Buttered Bread. `Services/DishUnlockTracker.cs` is the one place that
+records servings (`OnTicketDelivered` → `RecordDishServed`) and announces new unlocks
+(`dish_unlocked` analytics + a console line); it reads `GameStateService.DishesServedTotals`
+(save v35), so no new save data was needed — pre-v35 saves simply re-lock dishes above tier 0.
+Farm Stats marks not-yet-orderable dishes "(locked)".
 
 ## Persistence (section 33)
 
