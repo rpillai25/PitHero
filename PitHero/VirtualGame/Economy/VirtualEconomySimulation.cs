@@ -145,7 +145,7 @@ namespace PitHero.VirtualGame.Economy
         {
             _gameState = new GameStateService { Funds = _scenario.StartingGold };
             _gameState.SetProgressCounters(_scenario.InitialCropTotals, _scenario.InitialDishTotals);
-            _market = new CropMarketService();
+            _market = new CropMarketService { SaturationScale = _scenario.GrowthSpeedMultiplier };
             _buildings = new BuildingService();
             _storageIds.Clear();
             for (int i = 0; i < _scenario.StorageBuildings; i++)
@@ -221,7 +221,7 @@ namespace PitHero.VirtualGame.Economy
                 if (!_plots[i].Wet)
                     continue;
                 _wetPlotMinutes++;
-                _plots[i].AccumulatedHours += 1f / 60f;
+                _plots[i].AccumulatedHours += _scenario.GrowthSpeedMultiplier / 60f;   // CropGrowthService: DeltaTime x GrowthSpeedMultiplier / 60
 
                 int maxFrame = CropConfig.GetFrameCount(_plots[i].Type);
                 float multiplier = _plots[i].RegrowMultiplier <= 0f ? 1f : _plots[i].RegrowMultiplier;

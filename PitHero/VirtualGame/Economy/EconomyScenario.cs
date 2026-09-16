@@ -38,6 +38,9 @@ namespace PitHero.VirtualGame.Economy
         /// <summary>Farming job level 1-9 (speed = 1 - 0.06 x (level - 1)).</summary>
         public int FarmWorkerLevel = 1;
 
+        /// <summary>Crop growth multiplier (1 = none, 2 = Fast Grow Fertilizer, 3 = Lightning Grow Fertilizer; CropGrowthService.GrowthSpeedMultiplier).</summary>
+        public float GrowthSpeedMultiplier = 1f;
+
         /// <summary>Seconds of walking folded into every farm task (no pathing in the sim).</summary>
         public float TravelOverheadSeconds = 4f;
 

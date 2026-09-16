@@ -25,6 +25,15 @@ namespace PitHero.Services
             Reset();
         }
 
+        /// <summary>
+        /// Multiplies every crop's saturation depth. The scene sets it to the active fertilizer
+        /// growth multiplier every fixed step (like <c>CropGrowthService.GrowthSpeedMultiplier</c>),
+        /// so a farm growing 3x faster faces a market 3x deeper and the artifact keeps its full
+        /// income multiplier; a monoculture is still penalized relative to a mixed farm. Derived
+        /// from session artifact state, never saved.
+        /// </summary>
+        public float SaturationScale { get; set; } = 1f;
+
         /// <summary>Current demand multiplier for a crop, in [MarketDemandFloor, 1].</summary>
         public float GetDemand(CropType crop)
         {
@@ -71,7 +80,8 @@ namespace PitHero.Services
             if (units <= 0 || i < 0 || i >= _demand.Length)
                 return;
             float baseGold = CropConfig.GetHarvestUnitSellPrice(crop) * units;
-            float next = _demand[i] - baseGold / GetDepthGold(crop);
+            float scale = SaturationScale < 1f ? 1f : SaturationScale;
+            float next = _demand[i] - baseGold / (GetDepthGold(crop) * scale);
             _demand[i] = next < GameConfig.MarketDemandFloor ? GameConfig.MarketDemandFloor : next;
         }
 

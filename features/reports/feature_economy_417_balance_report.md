@@ -61,6 +61,26 @@ Seeds are the one big sink (24% of crop sales): top-tier one-shots (Watermelon 1
 
 The monoculture's 100 apple trees realized **28%** of base price (final snapshot 46%, mid-recovery between synchronized harvest bursts) and earned **58%** of the diverse farm's net gold — and its kitchen sold nothing, because no dish can be made from apples alone (423 of 423 patrons left hungry, 90 of 90 hero meals skipped). Analytic steady state `1 − plots / 80` matches within 5 points wherever harvests are not bursty.
 
+### Fertilizer artifacts (Fast Grow 2×, Lightning Grow 3×)
+
+The owner asked whether the 3× growth artifact had been considered: it had not, and without
+compensation the market read a fertilized farm as a farm 3× larger, so Lightning Grow delivered
+only 1.83× income (Fast Grow 1.58×). `CropMarketService.SaturationScale` now follows the active
+growth multiplier each fixed step, deepening the market by the same factor. Measured after the
+fix (`EconomyFertilizerProbeTests`, 12 real hours):
+
+| Farm | Growth | g / real hour | Crop sales | 1,000,000 g | Apple realized price | Worker util |
+|---|---|---|---|---|---|---|
+| Diverse 100 | 1× | 91,611 | 1,043,256 | 10h 33m | 80% | 31% |
+| Diverse 100 | 2× | 170,776 | 2,161,380 | 6h 01m | 80% | 45% |
+| Diverse 100 | 3× | 229,060 | 3,075,568 | 4h 25m | 85% | 53% |
+| 100 apple | 1× | 53,112 | 637,340 | never | 28% | 25% |
+| 100 apple | 2× | 109,041 | 1,308,495 | 9h 02m | 27% | 36% |
+| 100 apple | 3× | 146,631 | 1,759,569 | 6h 36m | 29% | 42% |
+
+Crop sales scale by 2.07× and 2.95×; net income by 1.86× and 2.5× because the kitchen is
+patron-limited and seed spend scales with harvests. The monoculture penalty is unchanged.
+
 ### Progression pacing
 
 - Starter unlocks Tomato and Eggplant (tier 1 crops) at **31 real minutes**; 1,000 g at 1h 37m. One level-1 worker keeps 18 plots 99% wet at 50% utilization.

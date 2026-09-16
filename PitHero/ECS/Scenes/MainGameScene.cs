@@ -3335,6 +3335,10 @@ namespace PitHero.ECS.Scenes
                     cropGrowthService.GrowthSpeedMultiplier = Artifacts.LocalArtifactEffects.GetCropGrowthMultiplier(
                         Core.Services.GetService<Services.GameStateService>());
                     cropGrowthService.Update(Core.Services.GetService<TileStateService>(), cropsAtlas);
+                    // A fertilized farm sells that much more, so the market is that much deeper (issue #417)
+                    var market = Core.Services.GetService<Services.CropMarketService>();
+                    if (market != null)
+                        market.SaturationScale = cropGrowthService.GrowthSpeedMultiplier;
                 }
                 Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
                 Core.Services.GetService<Services.AutoCropSellService>()?.Update();

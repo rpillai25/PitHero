@@ -114,6 +114,22 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void SaturationScale_DeepensTheMarket_ForFertilizedFarms()
+        {
+            // A farm growing 3x faster sells 3x the gold; with a 3x deeper market its demand settles
+            // where an unfertilized farm of the same plot count would (so the artifact keeps its multiplier)
+            var plain = new CropMarketService();
+            var fertilized = new CropMarketService { SaturationScale = 3f };
+            plain.RecordSale(CropType.Wheat, 30);
+            fertilized.RecordSale(CropType.Wheat, 90);
+            Assert.AreEqual(plain.GetDemand(CropType.Wheat), fertilized.GetDemand(CropType.Wheat), 0.0001f);
+
+            var below = new CropMarketService { SaturationScale = 0.5f };
+            below.RecordSale(CropType.Wheat, 30);
+            Assert.AreEqual(plain.GetDemand(CropType.Wheat), below.GetDemand(CropType.Wheat), 0.0001f, "scale never drops below 1");
+        }
+
+        [TestMethod]
         public void SetDemand_ClampsAndTolerantOfShortArrays()
         {
             var market = new CropMarketService();

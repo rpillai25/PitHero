@@ -98,7 +98,24 @@ market settles and how much a synchronized harvest burst can ride the recovery.
 | `MarketRecoveryPerHour` | 0.05 | Fraction of the gap to full demand recovered per in-game hour |
 
 So ~16 plots of a crop sell near 80%, 40 plots near 50%, 68+ plots at the floor. Crops the
-kitchen consumes never touch demand, so cooking is the outlet for a surplus crop. Simulation
+kitchen consumes never touch demand, so cooking is the outlet for a surplus crop.
+
+**Fertilizer artifacts.** Fast Grow (2×) and Lightning Grow (3×) multiply harvests, which the
+market would otherwise read as a farm 2–3× larger. `CropMarketService.SaturationScale` is set
+every fixed step to the active growth multiplier (next to `CropGrowthService.GrowthSpeedMultiplier`,
+from session artifact state, never saved), so the market is that much deeper and the artifact
+keeps its full multiplier on crop sales while a monoculture stays penalized relative to a mixed
+farm:
+
+| Late diverse farm | 1× | 2× | 3× |
+|---|---|---|---|
+| Crop sales, 12 real hours | 1.04M | 2.16M | 3.08M |
+| Net gold per real hour | 91,600 | 170,800 | 229,100 |
+| 1,000,000 g at | 10h 33m | 6h 01m | 4h 25m |
+| 100 apple trees, realized price | 28% | 27% | 29% |
+
+Net income grows a little less than the multiplier because the kitchen (patron-limited) does
+not scale and seed spend does. Simulation
 result: 100 apple trees realize a **28%** average price and earn 58% of what a mixed 100-plot
 farm earns; the mixed farm's apples (20 plots) sell at 80%.
 
