@@ -51,6 +51,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public float QueuePick;
 
+        /// <summary>
+        /// Which work this worker claims first; assigned and periodically rebalanced by the coordinator
+        /// (issue #420). Changing it only affects the next claim — an in-progress task finishes.
+        /// </summary>
+        public FarmDuty Duty;
+
         private FarmAction _currentAction;
         private bool _hasAction;
         private bool _standRight;        // standing right of the target (preferred) vs left (fallback)
@@ -287,7 +293,7 @@ namespace PitHero.ECS.Components
             if (elapsedTimeInState < GameConfig.FarmMonsterIdlePollInterval)
                 return;
 
-            if (_coordinator.TryClaimAction(QueuePick, out _currentAction))
+            if (_coordinator.TryClaimAction(QueuePick, Duty, out _currentAction))
             {
                 _hasAction = true;
 

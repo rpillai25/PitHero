@@ -309,6 +309,38 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void WaterDutyCount_BothKindsOfWork_AtLeastHalfWater()
+        {
+            Assert.AreEqual(1, FarmTaskCoordinator.ComputeWaterDutyCount(1, true, true), "a lone worker waters first");
+            Assert.AreEqual(1, FarmTaskCoordinator.ComputeWaterDutyCount(2, true, true));
+            Assert.AreEqual(2, FarmTaskCoordinator.ComputeWaterDutyCount(3, true, true));
+            Assert.AreEqual(2, FarmTaskCoordinator.ComputeWaterDutyCount(4, true, true));
+        }
+
+        [TestMethod]
+        public void WaterDutyCount_OneSidedWork_EveryoneTakesIt()
+        {
+            Assert.AreEqual(4, FarmTaskCoordinator.ComputeWaterDutyCount(4, true, false));
+            Assert.AreEqual(0, FarmTaskCoordinator.ComputeWaterDutyCount(4, false, true));
+            Assert.AreEqual(2, FarmTaskCoordinator.ComputeWaterDutyCount(3, false, false));
+            Assert.AreEqual(0, FarmTaskCoordinator.ComputeWaterDutyCount(0, true, true));
+        }
+
+        [TestMethod]
+        public void TendDuty_ClaimsTillLikeWaterDuty_WhenNoWaterWork()
+        {
+            // Headless: no crop services, so water never validates and both duties fall through to till.
+            _tileState.SetFlag(new Point(125, 5), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(126, 5), TileStateFlag.ReadyToTill);
+
+            Assert.IsTrue(_coordinator.TryClaimAction(0f, FarmDuty.Tend, out var tend));
+            Assert.IsTrue(_coordinator.TryClaimAction(0f, FarmDuty.Water, out var water));
+            Assert.AreEqual(FarmActionType.Till, tend.Type);
+            Assert.AreEqual(FarmActionType.Till, water.Type);
+            Assert.AreNotEqual(tend.TargetTile, water.TargetTile);
+        }
+
+        [TestMethod]
         public void Constructor_ScansExistingFlags()
         {
             var tileState = new TileStateService();

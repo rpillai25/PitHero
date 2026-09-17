@@ -56,6 +56,9 @@ namespace PitHero.Services
         private DroppedCropService _droppedCropService;
 
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(16);
+
+        // Fixed-step accumulator for the periodic Water/Tend duty rebalance (issue #420)
+        private float _dutyElapsed;
         private readonly List<IMonsterWorkerHost> _peers = new List<IMonsterWorkerHost>(2);
         private Scene _scene;
 
@@ -187,11 +190,20 @@ namespace PitHero.Services
             }
 
             // Reap workers whose entities finished despawning
+            bool workersChanged = false;
             for (int i = _workers.Count - 1; i >= 0; i--)
             {
                 if (_workers[i].Entity.IsDestroyed)
+                {
                     _workers.RemoveAt(i);
+                    workersChanged = true;
+                }
             }
+
+            // Rebalance the Water/Tend split whenever the crew changes, and periodically as work shifts
+            _dutyElapsed += Time.DeltaTime;
+            if (workersChanged || _dutyElapsed >= GameConfig.FarmDutyReassessSeconds)
+                ReassignDuties();
         }
 
         private int FindWorkerIndex(AlliedMonster monster)
@@ -292,6 +304,7 @@ namespace PitHero.Services
 
             var worker = new ActiveWorker { Monster = monster, Entity = entity, Fsm = fsm };
             _workers.Add(worker);
+            ReassignDuties();
 
             Debug.Log($"[FarmTaskCoordinator] Spawned farming monster '{monster.Name}' ({typeName}) at house {house.UniqueId}");
         }
@@ -340,46 +353,101 @@ namespace PitHero.Services
             enumerator.Dispose();
         }
 
-        /// <summary>Claims the next valid action from the queues (priority: Pickup > Till > Destroy > Plant > Harvest > Water).</summary>
-        public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, out action);
+        /// <summary>Claims the next valid action from the queues as a Water-duty worker (see the duty overload).</summary>
+        public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, FarmDuty.Water, out action);
+
+        /// <summary>Claims near the given queue position as a Water-duty worker (see the duty overload).</summary>
+        public bool TryClaimAction(float queuePick, out FarmAction action) => TryClaimAction(queuePick, FarmDuty.Water, out action);
 
         /// <summary>
         /// Pops the next valid action near the given normalized queue position (0 = front,
-        /// 1 = back), with priority: Pickup > Till > Destroy > Plant > Harvest > Water.
+        /// 1 = back). Priority depends on the worker's duty (issue #420):
+        /// Water: Pickup > Water > Till > Destroy > Plant > Harvest;
+        /// Tend:  Pickup > Till > Destroy > Plant > Harvest > Water.
         /// Workers are given different positions so they spread across the field instead of clustering.
         /// A returned action is considered claimed until Complete/Release/ReportBlocked.
         /// Returns false when all queues are empty.
         /// </summary>
-        public bool TryClaimAction(float queuePick, out FarmAction action)
+        public bool TryClaimAction(float queuePick, FarmDuty duty, out FarmAction action)
         {
             // Priority 0: recover dropped crops back into storage before starting new work
             PopulatePickupQueue();
             if (TryClaimFromQueue(_pickupQueue, _pickupTracked, queuePick, ValidatePickup, out action))
                 return true;
-            // Priority 1: Till
+
+            // A dry crop makes no growth progress, so Water-duty workers water before anything else.
+            if (duty == FarmDuty.Water && TryClaimWater(queuePick, out action))
+                return true;
+
+            // Till
             if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
                 return true;
-            // Priority 2: Destroy — remove repeat crops whose plan changed (frees tile for swap-plant)
+            // Destroy — remove repeat crops whose plan changed (frees tile for swap-plant)
             PopulateDestroyQueue();
             if (TryClaimFromQueue(_destroyQueue, _destroyTracked, queuePick, ValidateDestroy, out action))
                 return true;
-            // Priority 3: Plant
+            // Plant
             if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
                 return true;
-            // Priority 4: Harvest — collect fully-grown crops before watering still-growing ones
+            // Harvest
             PopulateHarvestQueue();
             if (TryClaimFromQueue(_harvestQueue, _harvestTracked, queuePick, ValidateHarvest, out action))
                 return true;
-            // Priority 5: Water — only when no plant or destroy work remains (queued or in-progress);
-            // guards against watering a crop that is about to be destroyed for a swap.
-            if (_plantTracked.Count == 0 && _destroyTracked.Count == 0)
-            {
-                PopulateWaterQueue();
-                if (TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action))
-                    return true;
-            }
+
+            // Tend-duty workers water once nothing else is left
+            if (duty == FarmDuty.Tend && TryClaimWater(queuePick, out action))
+                return true;
+
             action = default;
             return false;
+        }
+
+        private bool TryClaimWater(float queuePick, out FarmAction action)
+        {
+            // Destroy candidates must be known first: ValidateWater skips crops about to be swap-destroyed.
+            PopulateDestroyQueue();
+            PopulateWaterQueue();
+            return TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action);
+        }
+
+        /// <summary>
+        /// How many of <paramref name="workerCount"/> farm workers take Water duty (issue #420). With both
+        /// kinds of work pending, at least half water (rounded up, so a lone worker waters first) and the
+        /// rest tend. When only one side has work, everyone takes it. Pure — unit-tested.
+        /// </summary>
+        public static int ComputeWaterDutyCount(int workerCount, bool hasWaterWork, bool hasTendWork)
+        {
+            if (workerCount <= 0)
+                return 0;
+            if (hasWaterWork && !hasTendWork)
+                return workerCount;
+            if (hasTendWork && !hasWaterWork)
+                return 0;
+            return (workerCount + 1) / 2;
+        }
+
+        /// <summary>
+        /// Rebalances the Water/Tend split from the currently claimable work. Duties are handed out in
+        /// worker list order (spawn order), so the split is deterministic for replays.
+        /// </summary>
+        private void ReassignDuties()
+        {
+            _dutyElapsed = 0f;
+            if (_workers.Count == 0)
+                return;
+
+            // Same lazy scans TryClaimAction runs; queued (unclaimed) entries are the work still up for grabs.
+            PopulatePickupQueue();
+            PopulateDestroyQueue();
+            PopulateHarvestQueue();
+            PopulateWaterQueue();
+            bool hasWaterWork = _waterQueue.Count > 0;
+            bool hasTendWork = _queue.Count > 0 || _destroyQueue.Count > 0 || _plantQueue.Count > 0
+                || _harvestQueue.Count > 0 || _pickupQueue.Count > 0;
+
+            int waterCount = ComputeWaterDutyCount(_workers.Count, hasWaterWork, hasTendWork);
+            for (int i = 0; i < _workers.Count; i++)
+                _workers[i].Fsm.Duty = i < waterCount ? FarmDuty.Water : FarmDuty.Tend;
         }
 
         private bool TryClaimFromQueue(Deque<FarmAction> queue, HashSet<Point> tracked, float queuePick,
@@ -457,6 +525,8 @@ namespace PitHero.Services
         {
             var cropGrowth = GetService<CropGrowthService>();
             return cropGrowth != null && cropGrowth.HasCrop(tile)
+                // Don't water a crop that is queued (or claimed) to be destroyed for a plan swap
+                && !_destroyTracked.Contains(tile)
                 && !_tileState.HasFlag(tile, TileStateFlag.Wet)
                 // Skip fully-grown crops: watering does nothing for them, so workers prioritize
                 // crops that are still growing.

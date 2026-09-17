@@ -238,6 +238,7 @@ namespace PitHero
         public const float TillBaseDurationSeconds = 3f;       // hoe time at FarmingProficiency 1
         public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
+        public const float FarmDutyReassessSeconds = 10f;       // seconds between rebalancing farm workers' Water/Tend duty split (issue #420)
         public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
         public const int FarmWanderMaxEastOffsetTiles = 5;      // idle wander goes at most this many tiles east of the rightmost farm object (building or tilled tile)
         // Crop market saturation (issue #417): each crop's demand drops in proportion to the base
