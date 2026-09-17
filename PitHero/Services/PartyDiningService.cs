@@ -543,6 +543,10 @@ namespace PitHero.Services
             if (combatant != null)
             {
                 Core.Services.GetService<MealBuffService>()?.ApplyMeal(combatant, ticket.Dish, ticket.IsDeluxe, expiresAtSeconds);
+                // A finished meal fully restores HP and MP (issue #420). Both RestoreHP/RestoreMP clamp to max;
+                // Mercenary.RestoreMP ignores -1, so pass the max explicitly.
+                combatant.RestoreHP(combatant.MaxHP);
+                combatant.RestoreMP(combatant.MaxMP);
                 Debug.Log($"[PartyDiningService] Slot {slot} finished eating {ticket.Dish}");
             }
 

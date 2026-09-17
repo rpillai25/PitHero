@@ -9,7 +9,8 @@ namespace PitHero.Services
     /// buffs are cleared at every battle boundary, so this service re-injects meal buffs at each
     /// battle start as BattleBuffs with RemainingTurns = -1 (until battle end). Records expire
     /// 6 in-game hours after eating (GameConfig.MealBuffDurationSeconds); the 6 AM ClearAll()
-    /// is kept as belt-and-braces. Food grants buffs only — HP/MP recovery is the inn's job.
+    /// is kept as belt-and-braces. The full HP/MP restore on finishing a meal (issue #420) happens in
+    /// PartyDiningService.FinishMember, not here, so reloading buffs never re-restores.
     /// </summary>
     public sealed class MealBuffService
     {
