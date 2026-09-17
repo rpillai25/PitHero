@@ -239,6 +239,19 @@ namespace PitHero.AI
         /// </summary>
         private void HandleItemPickup(HeroComponent hero, TreasureComponent treasureComponent)
         {
+            // Gold pouch (issue #417): credited first, whatever happens to the item below (a full
+            // bag sends the item to the vault; the gold is still found).
+            if (treasureComponent.ContainedGold > 0)
+            {
+                int gold = treasureComponent.ContainedGold;
+                treasureComponent.ContainedGold = 0;
+                Core.Services.GetService<GameStateService>()?.AddFunds(gold, "chest");
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.PayGold, _chestEntity.Transform.Position);
+                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleGoldFound,
+                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                    (gold.ToString(), Color.Gold));
+            }
+
             // Seed chest: award seeds and show crop pickup animation before checking for a normal item.
             if (treasureComponent.ContainedSeedType.HasValue)
             {

@@ -142,6 +142,9 @@ namespace PitHero.VirtualGame
         /// <summary>Gold earned from auto-selling excess items since this runner was created.</summary>
         public int AutoSellGold { get; private set; }
 
+        /// <summary>Total gold found in chest pouches on this pit level (issue #417).</summary>
+        public int ChestGold { get; private set; }
+
         // ── Bag access ───────────────────────────────────────────────────────────
 
         /// <summary>
@@ -274,8 +277,20 @@ namespace PitHero.VirtualGame
         /// </summary>
         public void CollectChestItem(IItem item)
         {
+            CollectChestItem(item, 0);
+        }
+
+        /// <summary>
+        /// Collects a chest's item plus its gold pouch (issue #417): the gold is credited to
+        /// <see cref="ChestGold"/> first, exactly like the live pickup credits the wallet before
+        /// the item is bagged, auto-sold or vaulted.
+        /// </summary>
+        public void CollectChestItem(IItem item, int gold)
+        {
             if (item == null) return;
             TreasuresOpened++;
+            if (gold > 0)
+                ChestGold += gold;
 
             ItemBag bag = _partyView.Bag;
             // Mirrors hero.TryAddItem (which is just Bag.TryAdd with consumable stacking).

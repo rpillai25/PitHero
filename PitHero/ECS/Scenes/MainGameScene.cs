@@ -250,6 +250,9 @@ namespace PitHero.ECS.Scenes
             // Register crop planting service so plan tracking and seed inventory are queryable.
             Core.Services.AddService(new Services.CropPlantingService());
 
+            // Crop market demand (issue #417): sim state, saved (v37), ticked in Update below.
+            Core.Services.AddService(new Services.CropMarketService());
+
             // Register harvested-crop storage so workers can deposit crops and the UI can view them.
             Core.Services.AddService(new Services.CropStorageInventoryService(
                 Core.Services.GetService<Services.BuildingService>()));
@@ -296,6 +299,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.LootShuffleService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
+            Core.Services.RemoveService(typeof(Services.CropMarketService));
             Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
             Core.Services.RemoveService(typeof(Services.DroppedCropService));
             Core.Services.RemoveService(typeof(Services.TilledTileService));
@@ -439,7 +443,8 @@ namespace PitHero.ECS.Scenes
             // Auto crop sell service sells designated crop stacks once they reach max stack size.
             var autoCropSellService = new Services.AutoCropSellService(
                 Core.Services.GetService<Services.CropStorageInventoryService>(),
-                Core.Services.GetService<Services.GameStateService>());
+                Core.Services.GetService<Services.GameStateService>(),
+                Core.Services.GetService<Services.CropMarketService>());
             Core.Services.AddService(autoCropSellService);
 
             // Auto-sell excess items service: the pre-jump sell-down sweep plus the full-bag chest safety net
@@ -3263,6 +3268,10 @@ namespace PitHero.ECS.Scenes
 
             Core.Services.GetService<InGameTimeService>()?.Update();
 
+            // Crop demand recovers on the same paused-aware clock as in-game time (fixed step = in-game minutes)
+            if (Core.Services.GetService<PauseService>()?.IsPaused != true)
+                Core.Services.GetService<Services.CropMarketService>()?.Update(Time.DeltaTime / 60f);
+
             // Update mercenary manager
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             mercenaryManager?.Update();
@@ -3326,6 +3335,10 @@ namespace PitHero.ECS.Scenes
                     cropGrowthService.GrowthSpeedMultiplier = Artifacts.LocalArtifactEffects.GetCropGrowthMultiplier(
                         Core.Services.GetService<Services.GameStateService>());
                     cropGrowthService.Update(Core.Services.GetService<TileStateService>(), cropsAtlas);
+                    // A fertilized farm sells that much more, so the market is that much deeper (issue #417)
+                    var market = Core.Services.GetService<Services.CropMarketService>();
+                    if (market != null)
+                        market.SaturationScale = cropGrowthService.GrowthSpeedMultiplier;
                 }
                 Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
                 Core.Services.GetService<Services.AutoCropSellService>()?.Update();
@@ -3600,6 +3613,7 @@ namespace PitHero.ECS.Scenes
             if (!replayActive)
                 HandleFridgeClicks();
             _refrigeratorDialog?.Update();
+            _addMonsterDialog?.Update();
             _farmStatsDialog?.Update();
             UpdateFridgeDialogGate();
             UpdateBuildingMenuGate();

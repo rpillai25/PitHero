@@ -327,7 +327,7 @@ namespace PitHero.VirtualGame
                     // Collect the chest at the hero's current tile (direct position, not adjacency).
                     if (_world.TryGetTreasureAt(chestPos.Value, out IItem directItem))
                     {
-                        BattleRunner.CollectChestItem(directItem);
+                        BattleRunner.CollectChestItem(directItem, _world.GetTreasureGold(chestPos.Value));
                         _world.RemoveTreasure(chestPos.Value);
                     }
                     // Also sweep any additional chests in the 8 surrounding tiles.
@@ -548,7 +548,7 @@ namespace PitHero.VirtualGame
                     if (_world.TryGetTreasureAt(tile, out IItem item))
                     {
                         Console.WriteLine($"[VirtualStateMachine] Collecting adjacent chest at ({tile.X},{tile.Y}): {item.Name}");
-                        BattleRunner.CollectChestItem(item);
+                        BattleRunner.CollectChestItem(item, _world.GetTreasureGold(tile));
                         _world.RemoveTreasure(tile);
                     }
                 }

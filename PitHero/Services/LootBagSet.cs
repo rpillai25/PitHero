@@ -28,6 +28,7 @@ namespace PitHero.Services
         private readonly ShuffleBag<int> _seedType;         // one marble per crop — full rotation
         private readonly ShuffleBag<bool> _consumableGate;  // CaveConsumableDropRate 60% => 3/5
         private readonly ShuffleBag<int> _potionType;       // HP/MP/Mix strict rotation
+        private readonly ShuffleBag<bool> _chestGoldGate;   // ChestGoldChanceMarbles of 20 item chests carry gold (#417)
 
         // Accessory share per cave equipment pool (AccessoryLootShare 10% => 1/10).
         private readonly ShuffleBag<bool> _accessoryCommon;
@@ -47,6 +48,7 @@ namespace PitHero.Services
 
             _seedGate = BuildGateBag(trueMarbles: 1, totalMarbles: 10);
             _consumableGate = BuildGateBag(trueMarbles: 3, totalMarbles: 5);
+            _chestGoldGate = BuildGateBag(trueMarbles: RolePlayingFramework.Balance.BalanceConfig.ChestGoldChanceMarbles, totalMarbles: 20);
 
             _seedType = new ShuffleBag<int>(CropTypeInfo.Count);
             for (var i = 0; i < CropTypeInfo.Count; i++)
@@ -114,6 +116,9 @@ namespace PitHero.Services
 
         /// <summary>Potion selector: 0 = HP, 1 = MP, 2 = Mix — strict rotation.</summary>
         public int DrawPotionType(float roll01) => _potionType.NextFromRoll(roll01);
+
+        /// <summary>Whether an item chest also holds a gold pouch (exactly ChestGoldChanceMarbles per 20, issue #417).</summary>
+        public bool DrawChestGoldGate(float roll01) => _chestGoldGate.NextFromRoll(roll01);
 
         /// <summary>Whether a cave equipment roll of the given treasure level yields an accessory (exactly 1 per 10).</summary>
         public bool DrawAccessoryShare(int treasureLevel, float roll01)

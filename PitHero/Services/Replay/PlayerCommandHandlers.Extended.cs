@@ -274,6 +274,9 @@ namespace PitHero.Services.Replay
                 case PlayerCommandType.MoveAllCropsToOtherStorages:
                     MainScene?.HarvestedCropsOverlay?.ApplyMoveAll(cmd.A);
                     return true;
+                case PlayerCommandType.SellCropStack:
+                    MainScene?.HarvestedCropsOverlay?.ApplySellStack(cmd.A, cmd.B, (PitHero.Farming.CropType)cmd.C);
+                    return true;
                 case PlayerCommandType.FridgeReturnSlot:
                     MainScene?.RefrigeratorDialog?.ApplyReturnSlot(cmd.A, (PitHero.Farming.CropType)cmd.B);
                     return true;

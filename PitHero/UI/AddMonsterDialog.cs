@@ -26,6 +26,7 @@ namespace PitHero.UI
 
         private int _houseId = -1;
         private bool _isVisible;
+        private bool _closePending; // set by ApplyPurchase (a command handler), consumed in Update (presentation)
 
         private const float SlotSize = 64f;
         private const int Columns = 6;
@@ -249,13 +250,25 @@ namespace PitHero.UI
             gameState.Funds -= cost;
 
             // Keep an open dialog for this house in sync: close if it just filled up, else refresh.
+            // The close is deferred to the presentation pass (Update): Close() unpauses the game,
+            // and a pause request raised from inside a command handler is presentation feeding the
+            // sim (replay system) — the handler's outcome must not depend on this dialog being open.
             if (_houseId == houseId && IsVisible)
             {
                 if (alliedManager.IsHouseFull(houseId))
-                    Close();
+                    _closePending = true;
                 else
                     Rebuild();
             }
+        }
+
+        /// <summary>Presentation-pass tick: performs a close requested by a command handler.</summary>
+        public void Update()
+        {
+            if (!_closePending)
+                return;
+            _closePending = false;
+            Close();
         }
 
         private Nez.Sprites.SpriteAtlas TryLoadActorsAtlas()

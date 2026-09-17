@@ -71,7 +71,7 @@ namespace PitHero.Tests
         public void TryPurchasePass_BuysUntilCoverageMet()
         {
             // 2 Wheat plans, 0 seeds, plenty of gold
-            // Wheat price = 25; 2 seeds needed
+            // 2 seeds needed at the Wheat seed price
             _cropPlanting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = 10, TileY = 5 });
             _cropPlanting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = 11, TileY = 5 });
             _gameState.Funds = 10000;
@@ -80,29 +80,29 @@ namespace PitHero.Tests
 
             Assert.AreEqual(2, _cropPlanting.SeedInventory[(int)CropType.Wheat],
                 "Should buy exactly as many seeds as there are unplanted plans");
-            Assert.AreEqual(10000 - 2 * 25, _gameState.Funds, "Should deduct 2× seed price from funds");
+            Assert.AreEqual(10000 - 2 * CropConfig.GetSeedPrice(CropType.Wheat), _gameState.Funds, "Should deduct 2× seed price from funds");
         }
 
         [TestMethod]
         public void TryPurchasePass_RespectsGoldBuffer_NoPurchaseWhenFundsTooLow()
         {
-            // Wheat price=25; GoldBuffer=200 (default); Funds=220 → Funds-price=195 < 200 → no buy
+            // GoldBuffer=200 (default); Funds = buffer + price - 1 → Funds-price < 200 → no buy
             _cropPlanting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = 10, TileY = 5 });
-            _gameState.Funds = 220;
+            _gameState.Funds = 200 + CropConfig.GetSeedPrice(CropType.Wheat) - 1;
 
             _service.TryPurchasePass();
 
             Assert.AreEqual(0, _cropPlanting.SeedInventory[(int)CropType.Wheat],
                 "Should not purchase when Funds - price < GoldBuffer");
-            Assert.AreEqual(220, _gameState.Funds, "Funds should be unchanged");
+            Assert.AreEqual(200 + CropConfig.GetSeedPrice(CropType.Wheat) - 1, _gameState.Funds, "Funds should be unchanged");
         }
 
         [TestMethod]
         public void TryPurchasePass_RespectsGoldBuffer_PurchasesWhenFundsExceedBuffer()
         {
-            // Wheat price=25; GoldBuffer=200; Funds=226 → Funds-price=201 >= 200 → buy 1
+            // GoldBuffer=200; Funds = buffer + price + 1 → Funds-price = 201 >= 200 → buy 1
             _cropPlanting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = 10, TileY = 5 });
-            _gameState.Funds = 226;
+            _gameState.Funds = 200 + CropConfig.GetSeedPrice(CropType.Wheat) + 1;
 
             _service.TryPurchasePass();
 
@@ -114,12 +114,12 @@ namespace PitHero.Tests
         [TestMethod]
         public void TryPurchasePass_TerminatesWhenGoldRunsOutMidDeficit()
         {
-            // 5 Wheat plans, only enough gold for 2 seeds (price=25 each, buffer=0)
+            // 5 Wheat plans, only enough gold for 2 seeds (buffer=0)
             _service.GoldBuffer = 0;
             for (int i = 0; i < 5; i++)
                 _cropPlanting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = 10 + i, TileY = 5 });
 
-            _gameState.Funds = 50; // exactly 2 seeds worth
+            _gameState.Funds = 2 * CropConfig.GetSeedPrice(CropType.Wheat); // exactly 2 seeds worth
 
             _service.TryPurchasePass();
 
@@ -173,7 +173,7 @@ namespace PitHero.Tests
 
             Assert.AreEqual(GameConfig.SeedInventoryMaxPerCrop, _cropPlanting.SeedInventory[(int)CropType.Wheat],
                 "Seed count should stop exactly at the per-crop cap");
-            Assert.AreEqual(100000 - 2 * 25, _gameState.Funds,
+            Assert.AreEqual(100000 - 2 * CropConfig.GetSeedPrice(CropType.Wheat), _gameState.Funds,
                 "Only the 2 seeds of headroom should have been paid for");
         }
 

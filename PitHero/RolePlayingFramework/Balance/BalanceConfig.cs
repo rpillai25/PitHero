@@ -484,6 +484,52 @@ namespace RolePlayingFramework.Balance
             return 5 + level * 3;
         }
 
+        // Chest gold (issue #417): about half of normal item chests also carry a gold pouch. The
+        // pouch follows a convex curve of effective depth (tier x 25 + level): about one monster
+        // kill's worth on the first floors (a 15-minute opening run must not out-earn the farm),
+        // four to eight kills' worth from the second cycle on, reaching the cap around depth 100.
+        // Doubled on boss floors and capped so deep cycles can't be farmed for easy gold.
+        /// <summary>Marbles of 20 on which an item chest also holds gold (10 = one chest in two).</summary>
+        public const int ChestGoldChanceMarbles = 10;
+        /// <summary>Flat gold every pouch carries before the depth curve and variance.</summary>
+        public const int ChestGoldBase = 8;
+        /// <summary>Multiplier on depth^ChestGoldDepthExponent (1.44 x 100^1.62 ≈ 2,500 = the cap at depth 100).</summary>
+        public const float ChestGoldDepthScale = 1.44f;
+        /// <summary>Exponent of the depth curve (> 1 so shallow pouches stay small).</summary>
+        public const float ChestGoldDepthExponent = 1.62f;
+        /// <summary>Low end of the pouch variance multiplier.</summary>
+        public const float ChestGoldVarianceMin = 0.75f;
+        /// <summary>High end of the pouch variance multiplier.</summary>
+        public const float ChestGoldVarianceMax = 1.25f;
+        /// <summary>Boss-floor chests carry this multiple.</summary>
+        public const float ChestGoldBossFloorMultiplier = 2f;
+        /// <summary>Hard cap on a single pouch.</summary>
+        public const int ChestGoldCap = 2500;
+
+        /// <summary>Pouch size at the given depth before variance and the boss double.</summary>
+        public static float GetChestGoldNominal(int effectiveDepth)
+        {
+            if (effectiveDepth < 1) effectiveDepth = 1;
+            return ChestGoldBase + ChestGoldDepthScale * (float)System.Math.Pow(effectiveDepth, ChestGoldDepthExponent);
+        }
+
+        /// <summary>
+        /// Gold found in a chest at the given effective depth: <c>(Base + Scale × depth^Exponent) ×
+        /// lerp(VarianceMin, VarianceMax, roll01)</c>, doubled on boss floors, clamped to [1, Cap].
+        /// Example nominals: depth 1 ≈ 9, 5 ≈ 27, 10 ≈ 68, 25 ≈ 273, 50 ≈ 823, 75 ≈ 1,580, 100 → cap.
+        /// </summary>
+        public static int CalculateChestGold(int effectiveDepth, bool bossFloor, float roll01)
+        {
+            if (roll01 < 0f) roll01 = 0f;
+            if (roll01 > 1f) roll01 = 1f;
+            float nominal = GetChestGoldNominal(effectiveDepth);
+            float scaled = nominal * (ChestGoldVarianceMin + (ChestGoldVarianceMax - ChestGoldVarianceMin) * roll01);
+            if (bossFloor) scaled *= ChestGoldBossFloorMultiplier;
+            int gold = (int)System.Math.Round(scaled);
+            if (gold > ChestGoldCap) gold = ChestGoldCap;
+            return gold < 1 ? 1 : gold;
+        }
+
         #endregion
 
         #region Equipment Stat Calculation Methods

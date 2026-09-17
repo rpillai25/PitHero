@@ -485,5 +485,30 @@ namespace PitHero.Tests
             Assert.AreEqual(555, ambientMetrics.RngSeed,
                 "Default constructor must capture the ambient Nez.Random seed");
         }
+
+        /// <summary>
+        /// Chest gold (issue #417): pouches appear on roughly half of item chests, credit the wallet,
+        /// never exceed the cap, and grow with effective depth across tiers.
+        /// </summary>
+        [TestMethod]
+        [TestCategory("BalanceTraversal")]
+        public void ChestGold_AppearsAndScalesAcrossTiers()
+        {
+            int[] depths = { 1, 10, 25, 50, 75, 100 };
+            int rowsWithGold = 0;
+            long shallow = 0, deep = 0;
+            for (int i = 0; i < depths.Length; i++)
+            {
+                var metrics = RunLevel(Seed, depths[i]);
+                Assert.IsTrue(metrics.ChestGold <= BalanceConfig.ChestGoldCap * System.Math.Max(metrics.TreasuresOpened, 1),
+                    $"depth {depths[i]}: chest gold {metrics.ChestGold} exceeds the cap for {metrics.TreasuresOpened} chests");
+                if (metrics.ChestGold > 0) rowsWithGold++;
+                if (depths[i] <= 10) shallow += metrics.ChestGold; else deep += metrics.ChestGold;
+                Assert.IsTrue(metrics.Wallet >= metrics.GoldEarned + metrics.ChestGold + GameConfig.NewGameStartingGold - 1
+                    || metrics.Wallet >= metrics.ChestGold, $"depth {depths[i]}: chest gold must be credited to the wallet");
+            }
+            Assert.IsTrue(rowsWithGold >= depths.Length / 2, $"only {rowsWithGold} of {depths.Length} sampled levels found any chest gold");
+            Assert.IsTrue(deep > shallow, "deeper levels must yield more chest gold than shallow ones");
+        }
     }
 }

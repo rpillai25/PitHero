@@ -8,13 +8,17 @@ namespace PitHero.UI
 {
     /// <summary>
     /// UI component for the Food tab (issue #319): pick the hero's favorite food (radio list of
-    /// all dishes with sprite, price and effects) and toggle "Eat at tavern" for the morning
-    /// breakfast trip.
+    /// dishes with sprite, price and effects) and toggle "Eat at tavern" for the auto-dine trips.
+    /// Dish progression (issue #417): dishes whose recipe crops are still locked are hidden;
+    /// soft-unlocked dishes show faded with a "View requirements" button; fully unlocked dishes
+    /// are selectable. The tab only reads unlock state — the gate itself lives in the kitchen.
     /// </summary>
     public class FoodTab
     {
         private Table _mainContainer;
         private TextService _textService;
+        private Stage _stage;
+        private Skin _skin;
 
         private HoverableCheckBox _eatAtTavernCheckBox;
         private readonly CheckBox[] _dishRadios = new CheckBox[DishTypeInfo.Count];
@@ -22,10 +26,16 @@ namespace PitHero.UI
         private readonly Label[] _dishNameLabels = new Label[DishTypeInfo.Count];
         private readonly Label[] _dishEffectsLabels = new Label[DishTypeInfo.Count];
         private readonly SineWaveLabel[] _dishMissingLabels = new SineWaveLabel[DishTypeInfo.Count];
+        private readonly TextButton[] _dishLockedButtons = new TextButton[DishTypeInfo.Count];
         private readonly Element[] _dishMissingPlaceholders = new Element[DishTypeInfo.Count];
         private readonly Cell[] _dishMissingCells = new Cell[DishTypeInfo.Count];
+        private readonly Table[] _dishRows = new Table[DishTypeInfo.Count];
+        private readonly Element[] _dishRowPlaceholders = new Element[DishTypeInfo.Count];
+        private readonly Cell[] _dishRowCells = new Cell[DishTypeInfo.Count];
         private ButtonGroup _dishGroup;
         private bool _refreshing;
+
+        private const float RowPadBottom = 6f;
 
         private static readonly Color DimmedSpriteColor = new Color(110, 110, 110, 200);
 
@@ -42,6 +52,8 @@ namespace PitHero.UI
         public Table CreateContent(Skin skin, Stage stage)
         {
             _textService = Core.Services.GetService<TextService>();
+            _stage = stage;
+            _skin = skin;
             _mainContainer = new Table();
             _mainContainer.SetFillParent(false);
 
@@ -64,7 +76,7 @@ namespace PitHero.UI
             container.Add(_eatAtTavernCheckBox).Left().SetPadBottom(10f);
             container.Row();
 
-            // Radio list of all dishes: sprite, name, price, effects
+            // Radio list of dishes in progression order: sprite, name, price, effects
             _dishGroup = new ButtonGroup();
             _dishGroup.SetMinCheckCount(1);
             _dishGroup.SetMaxCheckCount(1);
@@ -75,12 +87,15 @@ namespace PitHero.UI
             _nameFontColor = skin.Get<LabelStyle>("ph-default").FontColor;
             _dimmedNameFontColor = skin.Get<LabelStyle>("ph-grayed").FontColor;
 
-            for (int i = 0; i < DishTypeInfo.Count; i++)
+            var order = DishUnlockConfig.ProgressionOrder;
+            for (int o = 0; o < order.Length; o++)
             {
-                var dish = (DishType)i;
+                var dish = order[o];
+                int i = (int)dish;
                 var def = DishConfig.GetDefinition(dish);
 
                 var row = new Table();
+                _dishRows[i] = row;
 
                 var radio = new CheckBox("", skin, "ph-radio");
                 _dishRadios[i] = radio;
@@ -117,18 +132,23 @@ namespace PitHero.UI
                 _dishEffectsLabels[i] = effectsLabel;
                 infoTable.Add(effectsLabel).Left().SetExpandX().SetFillX();
 
-                // Red waving "Missing ingredients!" (same style as MonsterUI's Sleeping label),
-                // swapped in and out of a dedicated cell so available dishes reserve no space.
+                // Status cell: red waving "Missing ingredients!" (same style as MonsterUI's Sleeping label)
+                // or a "View requirements" button for a soft-unlocked dish, swapped in and out of a
+                // dedicated cell so ready dishes reserve no space.
                 var missingStyle = skin.Get<LabelStyle>("ph-sleeping")
                     ?? new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red };
                 _dishMissingLabels[i] = new SineWaveLabel(GetText(UITextKey.FoodMissingIngredients), missingStyle);
+                var lockedButton = new TextButton(GetText(UITextKey.FoodViewRequirements), skin, "ph-default");
+                lockedButton.OnClicked += (_) => new DishUnlockRequirementsDialog((DishType)dishIndex, _skin).Show(_stage);
+                _dishLockedButtons[i] = lockedButton;
                 _dishMissingPlaceholders[i] = new Element();
                 infoTable.Row();
                 _dishMissingCells[i] = infoTable.Add(_dishMissingPlaceholders[i]).Left();
 
                 row.Add(infoTable).Left().SetExpandX().SetFillX();
 
-                container.Add(row).Left().SetExpandX().SetFillX().SetPadBottom(6f);
+                _dishRowPlaceholders[i] = new Element();
+                _dishRowCells[i] = container.Add(row).Left().SetExpandX().SetFillX().SetPadBottom(RowPadBottom);
                 container.Row();
             }
 
@@ -150,7 +170,7 @@ namespace PitHero.UI
             return _mainContainer;
         }
 
-        /// <summary>Syncs the checkbox and radio states from PartyDiningService (e.g. after a load).</summary>
+        /// <summary>Syncs the checkbox and radio states from PartyDiningService (e.g. after a load or when the tab is shown).</summary>
         public void RefreshFromService()
         {
             var dining = Core.Services.GetService<PartyDiningService>();
@@ -170,9 +190,10 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Dims dishes whose recipe the kitchen (fridge + storage) can't currently cover and
-        /// appends a "Missing ingredients" note. Purely informational — the dish stays
-        /// selectable as a favorite for when stock catches up.
+        /// Applies dish progression and stock to every row: crop-locked dishes are hidden,
+        /// soft-unlocked dishes are dimmed with a "View requirements" button, and unlocked dishes
+        /// whose recipe the kitchen (fridge + storage) can't currently cover are dimmed with a
+        /// "Missing ingredients" note (still selectable as a favorite for when stock catches up).
         /// </summary>
         private void RefreshDishAvailability()
         {
@@ -182,12 +203,24 @@ namespace PitHero.UI
 
             for (int i = 0; i < DishTypeInfo.Count; i++)
             {
-                bool coverable = coordinator.CanCoverRecipe((DishType)i);
+                var dish = (DishType)i;
+                if (_dishRows[i] == null)
+                    continue;
+
+                bool soft = DishUnlockTracker.IsSoftUnlocked(dish);
+                bool full = soft && DishUnlockTracker.IsFullyUnlocked(dish);
+                bool coverable = full && coordinator.CanCoverRecipe(dish);
+
+                _dishRowCells[i].SetElement(soft ? _dishRows[i] : _dishRowPlaceholders[i]);
+                _dishRowCells[i].SetPadBottom(soft ? RowPadBottom : 0f);
+                _dishRadios[i]?.SetDisabled(!full);
 
                 _dishImages[i]?.SetColor(coverable ? Color.White : DimmedSpriteColor);
                 _dishNameLabels[i]?.SetFontColor(coverable ? _nameFontColor : _dimmedNameFontColor);
                 _dishEffectsLabels[i]?.SetFontColor(coverable ? EffectsFontColor : DimmedEffectsFontColor);
-                _dishMissingCells[i]?.SetElement(coverable ? _dishMissingPlaceholders[i] : _dishMissingLabels[i]);
+                Element status = !full ? _dishLockedButtons[i]
+                    : (coverable ? _dishMissingPlaceholders[i] : _dishMissingLabels[i]);
+                _dishMissingCells[i]?.SetElement(status);
             }
         }
 

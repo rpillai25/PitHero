@@ -75,6 +75,7 @@ namespace PitHero.Services.Replay
         UnmarkTillTile = 83,         // A = x, B = y (clears a ReadyToTill mark)
         FarmRescan = 84,             // farm menu closed: coordinator rescans plans
         AutoHirePass = 85,           // settings closed with auto-hire on: immediate hire pass
+        SellCropStack = 86,          // A = building id, B = slot, C = CropType shown when the player clicked (issue #417)
 
         // Shop
         BuyVaultItem = 90,           // A = vault stack index, B = quantity, C,D = packed dest SlotRef, S = item name

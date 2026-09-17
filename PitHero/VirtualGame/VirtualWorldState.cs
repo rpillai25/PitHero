@@ -32,6 +32,7 @@ namespace PitHero.VirtualGame
         // LastGeneratedTreasureLevels / LastGeneratedEquipmentTypes.
         // AddTreasure(Point, IItem) keeps all four in sync automatically.
         private readonly Dictionary<Point, IItem> _treasureInstances = new Dictionary<Point, IItem>(16);
+        private readonly Dictionary<Point, int> _treasureGold = new Dictionary<Point, int>(16);
 
         // ── Phase B: trap tile set ─────────────────────────────────────────────────
         /// <summary>
@@ -192,10 +193,29 @@ namespace PitHero.VirtualGame
         /// </summary>
         public void AddTreasure(Point position, IItem item)
         {
+            AddTreasure(position, item, 0);
+        }
+
+        /// <summary>
+        /// Adds a real <see cref="IItem"/> instance plus a gold pouch (issue #417; 0 = none) at the
+        /// given tile, mirroring a live chest's <c>ContainedItem</c> + <c>ContainedGold</c>.
+        /// </summary>
+        public void AddTreasure(Point position, IItem item, int gold)
+        {
             if (item == null) return;
             _treasureInstances[position] = item;
+            if (gold > 0)
+                _treasureGold[position] = gold;
+            else
+                _treasureGold.Remove(position);
             int inferredLevel = GetTreasureLevelFromRarity(item.Rarity);
             AddTreasure(position, item.Name, inferredLevel);
+        }
+
+        /// <summary>Gold pouch carried by the chest at the tile (0 when none or no chest).</summary>
+        public int GetTreasureGold(Point position)
+        {
+            return _treasureGold.TryGetValue(position, out int gold) ? gold : 0;
         }
 
         /// <summary>
@@ -214,6 +234,7 @@ namespace PitHero.VirtualGame
         public void RemoveTreasure(Point position)
         {
             _treasureInstances.Remove(position);
+            _treasureGold.Remove(position);
             if (_entities.TryGetValue("Treasures", out var list))
                 list.Remove(position);
         }

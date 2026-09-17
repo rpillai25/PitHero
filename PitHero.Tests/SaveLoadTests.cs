@@ -2148,7 +2148,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v35 = ms.ToArray();
-            int tail = V35Tail(original) + V36Tail(original);
+            int tail = V35Tail(original) + V36Tail(original) + V37Tail(original);
             var body = new byte[v35.Length - tail];
             Array.Copy(v35, 0, body, 0, body.Length);
             body[0] = 34; body[1] = 0; body[2] = 0; body[3] = 0;
@@ -2161,6 +2161,9 @@ namespace PitHero.Tests
 
         /// <summary>Byte length of the v36 section: a count plus two int halves per inventory item.</summary>
         private static int V36Tail(SaveData data) => 4 + 8 * data.InventoryItems.Count;
+
+        /// <summary>Byte length of the v37 section: a count-prefixed float array of crop demand.</summary>
+        private static int V37Tail(SaveData data) => 4 + 4 * data.CropDemand.Length;
 
         // ── v36 (issue #414): inventory acquisition order ────────────────────────────
 
@@ -2192,7 +2195,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v36 = ms.ToArray();
-            var v35 = new byte[v36.Length - V36Tail(original)];
+            var v35 = new byte[v36.Length - V36Tail(original) - V37Tail(original)];
             Array.Copy(v36, 0, v35, 0, v35.Length);
             v35[0] = 35; v35[1] = 0; v35[2] = 0; v35[3] = 0;
 
@@ -2247,7 +2250,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(msWith)) writer.Write(withMonster);
             byte[] v35 = msWithout.ToArray();
             byte[] v35With = msWith.ToArray();
-            int tail = V35Tail(without) + V36Tail(without);
+            int tail = V35Tail(without) + V36Tail(without) + V37Tail(without);
 
             int countOffset = 0;
             while (countOffset < v35.Length && v35[countOffset] == v35With[countOffset]) countOffset++;
@@ -2280,6 +2283,58 @@ namespace PitHero.Tests
             Assert.AreEqual(GameConfig.NewGameStartingWheatSeeds, loaded.SeedInventory[(int)PitHero.Farming.CropType.Wheat]);
             Assert.AreEqual(GameConfig.NewGameStartingCornSeeds, loaded.SeedInventory[(int)PitHero.Farming.CropType.Corn]);
             Assert.AreEqual(0, loaded.SeedInventory[(int)PitHero.Farming.CropType.Tomato], "Locked crops are not gifted");
+        }
+
+        // ── v37 (issue #417): crop market demand ─────────────────────────────────────
+
+        [TestMethod]
+        public void SaveData_V37_CropDemand_RoundTrip()
+        {
+            var original = new SaveData();
+            original.CropDemand[(int)PitHero.Farming.CropType.Wheat] = 0.45f;
+            original.CropDemand[(int)PitHero.Farming.CropType.AppleTree] = GameConfig.MarketDemandFloor;
+
+            var loaded = RoundTrip(original);
+
+            Assert.AreEqual(PitHero.Farming.CropTypeInfo.Count, loaded.CropDemand.Length);
+            Assert.AreEqual(0.45f, loaded.CropDemand[(int)PitHero.Farming.CropType.Wheat], 0.0001f);
+            Assert.AreEqual(GameConfig.MarketDemandFloor, loaded.CropDemand[(int)PitHero.Farming.CropType.AppleTree], 0.0001f);
+            Assert.AreEqual(1f, loaded.CropDemand[(int)PitHero.Farming.CropType.Corn], "untouched crops stay at full demand");
+        }
+
+        [TestMethod]
+        public void SaveData_V36_File_ReadsWithFullDemand()
+        {
+            var original = new SaveData();
+            original.HeroId = 7373;
+            original.InventoryItems.Add(new SavedItem { Name = "RustyBlade", SlotIndex = 3, AcquireSeq = 11 });
+            original.CropDemand[(int)PitHero.Farming.CropType.Wheat] = 0.3f;
+
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+                writer.Write(original);
+            byte[] v37 = ms.ToArray();
+            var v36 = new byte[v37.Length - V37Tail(original)];
+            Array.Copy(v37, 0, v36, 0, v36.Length);
+            v36[0] = 36; v36[1] = 0; v36[2] = 0; v36[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v36)))
+                rdr.ReadPersistableInto(loaded);
+
+            Assert.AreEqual(7373, loaded.HeroId);
+            Assert.AreEqual(11, loaded.InventoryItems[0].AcquireSeq, "The v36 section still reads in step");
+            Assert.AreEqual(PitHero.Farming.CropTypeInfo.Count, loaded.CropDemand.Length);
+            Assert.AreEqual(1f, loaded.CropDemand[(int)PitHero.Farming.CropType.Wheat], "A v36 file starts every crop at full demand");
+        }
+
+        [TestMethod]
+        public void SaveData_V37_Defaults()
+        {
+            var loaded = RoundTrip(new SaveData());
+            Assert.AreEqual(PitHero.Farming.CropTypeInfo.Count, loaded.CropDemand.Length);
+            for (int i = 0; i < loaded.CropDemand.Length; i++)
+                Assert.AreEqual(1f, loaded.CropDemand[i]);
         }
     }
 }

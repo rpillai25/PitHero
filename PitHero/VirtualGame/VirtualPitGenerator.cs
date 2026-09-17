@@ -170,8 +170,14 @@ namespace PitHero.VirtualGame
                         item = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(gearItem, tier, depthDelta);
                     }
 
-                    // AddTreasure(Point, IItem) stores the instance and keeps parity lists in sync.
-                    _worldState.AddTreasure(pos.Value, item);
+                    // Gold pouch (issue #417): same two rolls in the same order as the live chest —
+                    // gate always, amount only on a hit — off the per-depth Random so layout and
+                    // loot stay reproducible per cumulative depth.
+                    int gold = TreasureComponent.RollChestGold(displayedLevel, tier, _lootBags,
+                        (float)random.NextDouble(), () => (float)random.NextDouble());
+
+                    // AddTreasure(Point, IItem, gold) stores the instance and keeps parity lists in sync.
+                    _worldState.AddTreasure(pos.Value, item, gold);
                 }
             }
 

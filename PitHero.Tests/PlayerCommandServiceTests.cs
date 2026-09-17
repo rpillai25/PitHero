@@ -129,5 +129,40 @@ namespace PitHero.Tests
             direct.ResetImmediate();
             Assert.IsFalse(direct.IsPaused);
         }
+
+        /// <summary>
+        /// A command enqueued while a drain is running (a dialog closing itself after the command it
+        /// executed, e.g. AddMonsterDialog after a purchase fills the house) is recorded and applied on
+        /// the NEXT drain — never applied directly and never lost. The 2026-09-16 divergence: an
+        /// unpause raised inside the PurchaseMonster handler was applied directly, so the live game
+        /// resumed while the replay (dialog never open) stayed paused.
+        /// </summary>
+        [TestMethod]
+        public void Enqueue_DuringDrain_RunsOnTheNextDrain()
+        {
+            var pause = new PauseService();
+            var applied = new List<PlayerCommandType>();
+            bool requested = false;
+            _service.OnCommandApplied += (tick, cmd) =>
+            {
+                applied.Add(cmd.Type);
+                if (!requested)
+                {
+                    requested = true;
+                    pause.Unpause(); // presentation feedback from inside a drain
+                }
+            };
+            _service.Enqueue(PlayerCommand.Flag(PlayerCommandType.SetManualPause, true));
+
+            _service.Drain(10);
+            Assert.AreEqual(1, applied.Count, "the unpause must not run in the same drain");
+            Assert.AreEqual(1, _service.PendingCount, "the unpause was queued (and will be recorded), not applied directly");
+            Assert.IsFalse(pause.IsManualPauseRequested);
+
+            _service.Drain(11);
+            Assert.AreEqual(2, applied.Count);
+            Assert.AreEqual(PlayerCommandType.SetManualPause, applied[1]);
+            Assert.AreEqual(0, _service.PendingCount);
+        }
     }
 }

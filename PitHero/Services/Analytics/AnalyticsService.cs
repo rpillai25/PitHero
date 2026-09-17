@@ -182,7 +182,7 @@ namespace PitHero.Services.Analytics
 
         /// <summary>Logs a spawned treasure chest and its contents.</summary>
         [Conditional("DEBUG")]
-        public static void LogChestSpawned(int pitLevel, int x, int y, int chestLevel, IItem item, string seedType, int seedCount, string stencilPatternId)
+        public static void LogChestSpawned(int pitLevel, int x, int y, int chestLevel, IItem item, string seedType, int seedCount, string stencilPatternId, int gold = 0)
         {
 #if DEBUG
             if (!_enabled)
@@ -206,6 +206,7 @@ namespace PitHero.Services.Analytics
             {
                 _json.Field("stencilPatternId", stencilPatternId);
             }
+            _json.Field("gold", gold);
             EndEvent();
 #endif
         }
@@ -1055,6 +1056,20 @@ namespace PitHero.Services.Analytics
             if (!BeginEvent("crop_unlocked"))
                 return;
             _json.Field("crop", crop);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a dish becoming orderable through the cooking progression (issue #417).</summary>
+        [Conditional("DEBUG")]
+        public static void LogDishUnlocked(string dish)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("dish_unlocked"))
+                return;
+            _json.Field("dish", dish);
             EndEvent();
 #endif
         }

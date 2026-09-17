@@ -30,6 +30,7 @@ namespace PitHero.UI
         private Window _descWindow;
         private Label _descNameLabel;
         private Label _descDescLabel;
+        private Label _descDemandLabel;
 
         // The stack currently shown in the description dialog (for the Sell action).
         private int _descBuildingId;
@@ -230,7 +231,7 @@ namespace PitHero.UI
             int gold = 0;
             for (int s = 0; s < _displaySlots.Length; s++)
                 if (!_displaySlots[s].IsEmpty)
-                    gold += CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, _displaySlots[s].Count);
+                    gold += CropSellPricing.GetStackSellPrice(_displaySlots[s].Type, _displaySlots[s].Count);
 
             int totalGold = gold;
             string prompt = string.Format(GetText(UITextKey.DialogSellStorageCropsPrompt), totalGold);
@@ -268,8 +269,9 @@ namespace PitHero.UI
                 int sold = storage.TakeFromSlot(buildingId, s, _displaySlots[s].Count);
                 if (sold > 0)
                 {
-                    int stackGold = CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, sold);
+                    int stackGold = CropSellPricing.GetStackSellPrice(_displaySlots[s].Type, sold);
                     realized += stackGold;
+                    CropSellPricing.RecordSale(_displaySlots[s].Type, sold);
                     AnalyticsService.LogCropSold(_displaySlots[s].Type.ToString(), sold, stackGold, "manual");
                 }
             }
@@ -293,7 +295,7 @@ namespace PitHero.UI
                 storage.CopyDisplaySlots(all[b].UniqueId, _displaySlots);
                 for (int s = 0; s < _displaySlots.Length; s++)
                     if (!_displaySlots[s].IsEmpty)
-                        gold += CropConfig.GetHarvestStackSellPrice(_displaySlots[s].Type, _displaySlots[s].Count);
+                        gold += CropSellPricing.GetStackSellPrice(_displaySlots[s].Type, _displaySlots[s].Count);
             }
 
             int totalGold = gold;
@@ -497,7 +499,12 @@ namespace PitHero.UI
 
             _descDescLabel = new Label("", skin, "ph-default");
             _descDescLabel.SetWrap(true);
-            content.Add(_descDescLabel).Width(200f).SetPadBottom(10f);
+            content.Add(_descDescLabel).Width(200f).SetPadBottom(6f);
+            content.Row();
+
+            // Market demand readout (issue #417): explains why a wall of one crop pays less
+            _descDemandLabel = new Label("", skin, "ph-default");
+            content.Add(_descDemandLabel).SetPadBottom(10f);
             content.Row();
 
             var sellButton = new TextButton(GetText(UITextKey.ButtonSell), skin, "ph-default");
@@ -525,6 +532,7 @@ namespace PitHero.UI
 
             _descNameLabel.SetText(GetHarvestName(crop));
             _descDescLabel.SetText(GetText(CropConfig.GetDescriptionKey(crop)));
+            _descDemandLabel.SetText(string.Format(GetText(UITextKey.LabelCropDemand), CropSellPricing.GetDemandPercent(crop)));
             _descWindow.Pack();
             float w = _descWindow.GetWidth();
             float h = _descWindow.GetHeight();
@@ -538,42 +546,50 @@ namespace PitHero.UI
         /// <summary>Sells the single stack currently shown in the description dialog (with confirmation).</summary>
         private void OnSellStackClicked()
         {
-            int gold = CropConfig.GetHarvestStackSellPrice(_descCropType, _descCount);
+            int gold = CropSellPricing.GetStackSellPrice(_descCropType, _descCount);
             int buildingId = _descBuildingId;
             int slotIndex = _descSlotIndex;
 
             string prompt = string.Format(GetText(UITextKey.DialogSellCropStackPrompt),
                 GetHarvestName(_descCropType), gold);
+            var cropType = _descCropType;
             var dialog = new ConfirmationDialog(GetText(UITextKey.ButtonSell), prompt,
                 PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
-                    var storage = Core.Services.GetService<CropStorageInventoryService>();
-                    var gameState = Core.Services.GetService<GameStateService>();
-                    // Re-read the DISPLAY slot: auto-sell may have emptied it while the dialog
-                    // was open, and units held for transfer by a runner must not be sold.
-                    HarvestSlot liveSlot = default;
-                    if (storage != null)
-                    {
-                        storage.CopyDisplaySlots(buildingId, _displaySlots);
-                        liveSlot = _displaySlots[slotIndex];
-                    }
-                    if (!liveSlot.IsEmpty && liveSlot.Type == _descCropType)
-                    {
-                        int sold = storage.TakeFromSlot(buildingId, slotIndex, liveSlot.Count);
-                        if (sold > 0)
-                        {
-                            int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, sold);
-                            gameState?.AddFunds(liveGold, "sell_crops");
-                            Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
-                            AnalyticsService.LogCropSold(liveSlot.Type.ToString(), sold, liveGold, "manual");
-                        }
-                    }
-                    _descWindow.SetVisible(false);
-                    RefreshViewer();
+                    // Lands on a deterministic tick via the command queue; ApplySellStack re-reads the slot (replay system)
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SellCropStack, buildingId, slotIndex, (int)cropType));
                 });
             dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
+        }
+
+        /// <summary>Sells one storage slot's stack if it still holds the crop the player saw. Command handler entry point.</summary>
+        public void ApplySellStack(int buildingId, int slotIndex, CropType expectedType)
+        {
+            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (storage == null || buildingId < 0 || slotIndex < 0 || slotIndex >= _displaySlots.Length)
+                return;
+            // Re-read the DISPLAY slot: auto-sell may have emptied it while the dialog
+            // was open, and units held for transfer by a runner must not be sold.
+            storage.CopyDisplaySlots(buildingId, _displaySlots);
+            var liveSlot = _displaySlots[slotIndex];
+            if (!liveSlot.IsEmpty && liveSlot.Type == expectedType)
+            {
+                int sold = storage.TakeFromSlot(buildingId, slotIndex, liveSlot.Count);
+                if (sold > 0)
+                {
+                    int liveGold = CropSellPricing.GetStackSellPrice(liveSlot.Type, sold);
+                    gameState?.AddFunds(liveGold, "sell_crops");
+                    CropSellPricing.RecordSale(liveSlot.Type, sold);
+                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                    AnalyticsService.LogCropSold(liveSlot.Type.ToString(), sold, liveGold, "manual");
+                }
+            }
+            _descWindow?.SetVisible(false);
+            RefreshViewer();
         }
 
     }

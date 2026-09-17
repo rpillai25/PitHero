@@ -589,6 +589,8 @@ namespace PitHero.Services
                 gameState.CopyLocalArtifactOrdinals(data.LocalArtifacts);
                 data.CropHarvestedTotals = (int[])gameState.CropHarvestedTotals.Clone();
                 data.DishesServedTotals = (int[])gameState.DishesServedTotals.Clone();
+                var market = Core.Services.GetService<CropMarketService>();
+                data.CropDemand = market != null ? market.CopyDemand() : SaveData.FullDemand();
 
                 // Copy stencils (enum to int)
                 data.DiscoveredStencils = new Dictionary<string, int>(gameState.DiscoveredStencils.Count);
@@ -1204,6 +1206,8 @@ namespace PitHero.Services
                 gameState.SetLocalArtifacts(data.LocalArtifacts);
                 // Lifetime counters gate crop unlocks (sim-read), so they ride with the session too
                 gameState.SetProgressCounters(data.CropHarvestedTotals, data.DishesServedTotals);
+                // Crop market demand is sim state (issue #417): restore it with the wallet
+                Core.Services.GetService<CropMarketService>()?.SetDemand(data.CropDemand);
 
                 // Restore stencils (int back to enum)
                 gameState.DiscoveredStencils.Clear();

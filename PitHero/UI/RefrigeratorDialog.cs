@@ -368,8 +368,9 @@ namespace PitHero.UI
             var liveSlot = slots[slotIndex];
             if (!liveSlot.IsEmpty && liveSlot.Type == expectedType)
             {
-                int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, liveSlot.Count);
+                int liveGold = CropSellPricing.GetStackSellPrice(liveSlot.Type, liveSlot.Count);
                 gameState?.AddFunds(liveGold, "sell_crops");
+                CropSellPricing.RecordSale(liveSlot.Type, liveSlot.Count);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
                 AnalyticsService.LogCropSold(liveSlot.Type.ToString(), liveSlot.Count, liveGold, "manual");
                 liveFridge.ClearSlot(slotIndex);
@@ -387,7 +388,7 @@ namespace PitHero.UI
             if (shownSlot.IsEmpty || shownSlot.Type != _descCropType)
                 return;
 
-            int gold = CropConfig.GetHarvestStackSellPrice(shownSlot.Type, shownSlot.Count);
+            int gold = CropSellPricing.GetStackSellPrice(shownSlot.Type, shownSlot.Count);
             int slotIndex = _descSlotIndex;
 
             string prompt = string.Format(GetText(UITextKey.DialogSellCropStackPrompt),

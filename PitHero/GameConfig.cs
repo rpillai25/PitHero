@@ -240,6 +240,13 @@ namespace PitHero
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
         public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
         public const int FarmWanderMaxEastOffsetTiles = 5;      // idle wander goes at most this many tiles east of the rightmost farm object (building or tilled tile)
+        // Crop market saturation (issue #417): each crop's demand drops in proportion to the base
+        // gold the player sells of it and recovers at a constant rate, so income from a fixed farm
+        // settles into a steady state. Selling N plots' worth of one crop settles its demand near
+        // 1 - N / MarketSaturationPlots (floored), independent of tier and recovery speed.
+        public const float MarketDemandFloor = 0.15f;           // demand never drops below 15% of base price
+        public const float MarketSaturationPlots = 80f;         // plots of ONE crop that would drive its demand to zero without the floor
+        public const float MarketRecoveryPerHour = 0.05f;       // fraction of the remaining gap to full demand recovered per in-game hour (slow enough that a synchronized harvest burst cannot ride the recovery)
         public const float HarvestWaitSeconds = 5f;             // worker waits this long on the crop tile before harvesting
         public const float AppleHarvestWaitSeconds = 2f;        // worker waits this long under an apple tree before jumping
         public const float AppleHarvestJumpDurationSeconds = 0.6f; // duration of the apple-picking jump arc
@@ -346,6 +353,14 @@ namespace PitHero
         public const float DishTipChance = 0.5f;                // chance an unhired merc tips on finishing a meal
         public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
         public const float DishTipMaxPercent = 0.15f;
+        // Patron dish bag (issue #417): marbles(d) = clamp(round(maxPrice / price(d)), 1, DishBagMaxMarbles).
+        // With menu prices spanning ~100x the unclamped inverse-price weighting would make patrons
+        // order almost nothing but the cheapest dish and the kitchen would never scale with unlocks.
+        public const int DishBagMaxMarbles = 3;
+        // Dish progression (issue #417): a tier-N dish fully unlocks once every dish of a lower tier has
+        // been served DishUnlockServingsBase x min(N - tier, 3) times (and its recipe crops are unlocked).
+        public const int DishUnlockServingsBase = 10;
+        public const int DishUnlockTierGapCap = 3;
 
         // Automated monster job assignment (issue #321, backpressure scaling issue #375)
         public const float AutoJobReassessIntervalSeconds = 15f;   // scaled seconds between solve/apply passes (15 in-game minutes)
@@ -696,7 +711,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
-        public const int SimulationVersion = 1;
+        public const int SimulationVersion = 2; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

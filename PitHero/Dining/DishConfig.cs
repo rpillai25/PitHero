@@ -154,6 +154,7 @@ namespace PitHero.Dining
                     new RecipeEntry(CropType.Grapes, 1),
                     new RecipeEntry(CropType.Wheat, 2),
                     new RecipeEntry(CropType.Sugarcane, 1),
+                    new RecipeEntry(CropType.Watermelon, 1),
                 },
                 true, true,
                 new[]
@@ -303,8 +304,9 @@ namespace PitHero.Dining
 
         /// <summary>
         /// Cheap fallback dishes per job class, tried in order (index 0 then 1) when the
-        /// favorite can't be made or afforded — the party member still eats something on-theme
-        /// rather than skipping the meal.
+        /// favorite can't be made, afforded or isn't unlocked yet — the party member still eats
+        /// something on-theme rather than skipping the meal. The second fallback is always a
+        /// starter (tier 0) dish so a fresh party can eat before anything is unlocked (issue #417).
         /// </summary>
         public static DishType GetFallbackForJob(string jobName, int fallbackIndex)
         {
@@ -312,11 +314,11 @@ namespace PitHero.Dining
             {
                 case "Knight": return fallbackIndex == 0 ? DishType.CheesyMashedPotatoes : DishType.ButteredBread;
                 case "Mage":   return fallbackIndex == 0 ? DishType.GrapeJuice : DishType.ButteredBread;
-                case "Priest": return fallbackIndex == 0 ? DishType.GrapeJuice : DishType.TurnipOnionStew;
-                case "Thief":  return fallbackIndex == 0 ? DishType.TomatoCheeseBisque : DishType.RoastedOnionSkewers;
-                case "Monk":   return fallbackIndex == 0 ? DishType.GrilledCornWithButter : DishType.RoastedOnionSkewers;
-                case "Archer": return fallbackIndex == 0 ? DishType.RoastedOnionSkewers : DishType.GardenSalad;
-                default:       return fallbackIndex == 0 ? DishType.ButteredBread : DishType.TurnipOnionStew;
+                case "Priest": return fallbackIndex == 0 ? DishType.GrapeJuice : DishType.ButteredBread;
+                case "Thief":  return fallbackIndex == 0 ? DishType.TomatoCheeseBisque : DishType.GrilledCornWithButter;
+                case "Monk":   return fallbackIndex == 0 ? DishType.RoastedOnionSkewers : DishType.GrilledCornWithButter;
+                case "Archer": return fallbackIndex == 0 ? DishType.RoastedOnionSkewers : DishType.ButteredBread;
+                default:       return fallbackIndex == 0 ? DishType.ButteredBread : DishType.GrilledCornWithButter;
             }
         }
     }
