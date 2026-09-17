@@ -164,5 +164,34 @@ namespace PitHero.Tests
             Assert.AreEqual(PlayerCommandType.SetManualPause, applied[1]);
             Assert.AreEqual(0, _service.PendingCount);
         }
+
+        /// <summary>
+        /// Settings that used to be written straight from UI (Food tab, fridge slider, sell/purchase
+        /// priority lists) are commands now. Their numbers are stored in replay files: pin them.
+        /// </summary>
+        [TestMethod]
+        public void FormerlyDirectUiSettings_HaveStableCommandNumbers()
+        {
+            Assert.AreEqual(120, (int)PlayerCommandType.SetFavoriteDish);
+            Assert.AreEqual(121, (int)PlayerCommandType.SetEatAtTavern);
+            Assert.AreEqual(122, (int)PlayerCommandType.SetPreStockStackSize);
+            Assert.AreEqual(123, (int)PlayerCommandType.SetConsumablesFirst);
+        }
+
+        /// <summary>The new handlers re-validate and no-op headlessly instead of throwing.</summary>
+        [TestMethod]
+        public void FormerlyDirectUiSettings_DrainHeadlessWithoutThrowing()
+        {
+            var applied = new List<PlayerCommandType>();
+            _service.OnCommandApplied += (tick, cmd) => applied.Add(cmd.Type);
+
+            _service.Enqueue(new PlayerCommand(PlayerCommandType.SetFavoriteDish, 999));
+            _service.Enqueue(PlayerCommand.Flag(PlayerCommandType.SetEatAtTavern, false));
+            _service.Enqueue(new PlayerCommand(PlayerCommandType.SetPreStockStackSize, 5));
+            _service.Enqueue(new PlayerCommand(PlayerCommandType.SetConsumablesFirst, 1, 1));
+            _service.Drain(7);
+
+            Assert.AreEqual(4, applied.Count);
+        }
     }
 }

@@ -34,6 +34,7 @@ namespace PitHero.UI
         private Cell _scrollCell;
         private HoverableLabel _preStockLabel;
         private EnhancedSlider _preStockSlider;
+        private bool _syncingSlider;
         private uint _shownFrame;
         private int _lastSeenVersion = -1;
 
@@ -105,11 +106,11 @@ namespace PitHero.UI
             };
             _preStockSlider.OnValueCommitted += (value) =>
             {
-                var svc = Core.Services?.GetService<FridgeInventoryService>();
-                if (svc != null)
-                    svc.PreStockStackSize = (int)value;
-                // Raising the target means new deficits — queue the runner trips right away
-                Core.Services?.GetService<KitchenTaskCoordinator>()?.RecomputePreStockDeficits();
+                // Syncing the slider on Show must not touch the sim: it used to rerun the deficit
+                // recompute on every open, an unrecorded sim change that replays can't reproduce
+                if (_syncingSlider) return;
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetPreStockStackSize, (int)value));
             };
             sliderRow.Add(_preStockSlider).Width(160f).Left();
 
@@ -168,7 +169,9 @@ namespace PitHero.UI
             var svc = Core.Services?.GetService<FridgeInventoryService>();
             if (svc != null)
             {
+                _syncingSlider = true;
                 _preStockSlider.SetValueAndCommit(svc.PreStockStackSize);
+                _syncingSlider = false;
                 _preStockLabel.SetText(string.Format(GetText(UITextKey.FridgePreStockStackSize), svc.PreStockStackSize));
             }
             RebuildSlots();

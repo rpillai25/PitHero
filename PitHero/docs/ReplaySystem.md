@@ -334,6 +334,18 @@ artifacts rewind with the save, so charging for them is safe.
     `PersistBagOrdering` writes back over the bag. `InventoryGrid.SyncFromSimulation()` (called by
     the handlers' `GetGrid` and by `SecondChanceShopUI.ApplyItemPurchase`) rebinds to the current hero
     entity (also after a respawn) and rebuilds the picture before the command applies.
+14. **Settings controls are commands too, and syncing a control from the sim must not dispatch.**
+    Precedent (2026-09-17): the Food tab wrote `PartyDiningService.FavoriteDishId` and `EatAtTavern`
+    straight from its radio/checkbox handlers. A player who switched the favorite from Buttered Bread
+    (35g) to Corn Chowder (200g) got a 200g dinner live, but the replay kept the saved favorite and
+    paid 35g: `world` alone diverged (+165 gold) at the dinner order, `rng`/`hero`/`party` equal, and
+    only in the one session where the tab was touched. The same audit found the fridge pre-stock
+    slider (which also reran `RecomputePreStockDeficits` on every dialog open) and the sell/purchase
+    priority lists (`ConsumablesFirst`) writing services directly. They now dispatch
+    `SetFavoriteDish`, `SetEatAtTavern`, `SetPreStockStackSize` and `SetConsumablesFirst`. When a
+    dialog syncs a control from the service on open (`SetValueAndCommit`, `IsChecked`), guard the
+    control's handler (`_refreshing`, `_syncingSlider`) so the sync is not recorded as a player change.
+    Audit grep: `GetService<...>()...X = ` or `svc.X = ` in `PitHero/UI`.
 13. **The synergy grid is the bag only.** Hero and mercenary equipment cells never take part in
     pattern matching (`PartyGridLayout.FillSynergyGrid`). The old UI detection matched every cell, so
     mercenary gear that had been shown in the Party window could complete a pattern.
@@ -426,6 +438,13 @@ artifacts rewind with the save, so charging for them is safe.
 7. To read a recording offline, load it in a throwaway MSTest with `FileDataStore.Load(name, new
    ReplayData())` and dump `Commands` and `StateHashes`: seeing the recorded hero hash stay constant
    across a window, or equal the replay's post-command hash, tells you a command no-oped.
+8. **`world` only?** Its inputs are few (`SimulationStateHasher.HashWorld`: funds, local artifact
+   mask, pit level, pit tier, `InGameTimeService.AccumulatedSeconds`, pause flag), so recover which
+   one drifted by brute force in the same throwaway test: solve the replay's own (actual) hash for the
+   unknown mask/clock using the start blob (`ReplayIO.DeserializeSaveData(data.StateBlob)`) plus the
+   un-paused tick count, then search funds/clock/pause around those values for the recorded hash. The
+   gold delta usually matches a price in the live analytics (`gold_spent`/`gold_gained` rows).
+   Remember paused ticks do not advance the clock when mapping a tick to the analytics `gt` time.
 
 ## Debug vs Release
 

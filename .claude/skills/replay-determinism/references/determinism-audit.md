@@ -20,6 +20,11 @@ matters, and the fix. The invariants are numbered as in `PitHero/docs/ReplaySyst
 - [ ] Every UI path that changes sim state dispatches a `PlayerCommand`
       (`references/player-command-recipe.md`). Grep the new UI file for direct calls into
       `HeroComponent`, `InventoryGrid.SetSlotItem`, `FundsService`, managers and services.
+- [ ] Settings controls count: radios, checkboxes, sliders and reorder lists that set a service
+      field dispatch a command too (Food tab favorite dish was the 2026-09-17 precedent). grep
+      `PitHero/UI` for `svc.X = ` / `GetService<...>().X = `. A control synced from the service when
+      its window opens (`SetValueAndCommit`, `IsChecked`) guards its handler so the sync isn't
+      dispatched or recorded.
 - [ ] Hotkeys and context menus dispatch the same command as the button.
 - [ ] Handler resolves targets from the payload, re-validates, no-ops on failure.
 

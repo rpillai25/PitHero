@@ -101,6 +101,14 @@ namespace PitHero.Services.Replay
         SetCropKeepStacks = 116,         // A = stacks
         SetInventorySellPercent = 117,   // A = percent 0-100 (issue #411: pre-jump auto-sell threshold)
 
+        // Party dining (Food tab)
+        SetFavoriteDish = 120,           // A = DishType ordinal
+        SetEatAtTavern = 121,            // A = 0/1
+
+        // Kitchen / automation priorities
+        SetPreStockStackSize = 122,      // A = fridge pre-stock stack size (also recomputes deficits)
+        SetConsumablesFirst = 123,       // A = owner (0 sell excess, 1 purchase), B = 0/1
+
         // Debug
         DebugQueuePitLevel = 200,    // A = level
     }

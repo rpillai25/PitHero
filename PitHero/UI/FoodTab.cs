@@ -68,10 +68,13 @@ namespace PitHero.UI
             _eatAtTavernCheckBox = new HoverableCheckBox(
                 GetText(UITextKey.FoodEatAtTavern), skin,
                 GetText(UITextKey.FoodEatAtTavernTooltip), stage);
+            // Both Food-tab settings drive what the party orders, so they go through PlayerCommands:
+            // a direct write is never recorded and replays diverge on the next meal's price.
             _eatAtTavernCheckBox.OnChanged += (isChecked) =>
             {
-                var dining = Core.Services.GetService<PartyDiningService>();
-                if (dining != null) dining.EatAtTavern = isChecked;
+                if (_refreshing) return;
+                Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.Flag(
+                    Services.Replay.PlayerCommandType.SetEatAtTavern, isChecked));
             };
             container.Add(_eatAtTavernCheckBox).Left().SetPadBottom(10f);
             container.Row();
@@ -104,8 +107,8 @@ namespace PitHero.UI
                 radio.OnChanged += (isChecked) =>
                 {
                     if (_refreshing || !isChecked) return;
-                    var dining = Core.Services.GetService<PartyDiningService>();
-                    if (dining != null) dining.FavoriteDishId = dishIndex;
+                    Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                        Services.Replay.PlayerCommandType.SetFavoriteDish, dishIndex));
                 };
                 row.Add(radio).SetPadRight(6f);
 
