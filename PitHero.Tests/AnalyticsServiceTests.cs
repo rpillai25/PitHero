@@ -197,6 +197,23 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void GameStateService_SpendFunds_DecrementsFunds_AndLogsGoldSpent()
+        {
+            AnalyticsService.Initialize(_tempDir);
+            var gameState = new GameStateService();
+            gameState.Funds = 1000;
+            gameState.SpendFunds(250, "artifact");
+            gameState.SpendFunds(100, "merc_hire");
+            Assert.AreEqual(650, gameState.Funds);
+
+            var lines = ReadAllEventLines();
+            Assert.AreEqual(2, lines.Length);
+            StringAssert.Contains(lines[0], "\"e\":\"gold_spent\"");
+            StringAssert.Contains(lines[0], "\"amount\":250,\"source\":\"artifact\",\"sessionTotal\":250,\"currentGold\":750");
+            StringAssert.Contains(lines[1], "\"amount\":100,\"source\":\"merc_hire\",\"sessionTotal\":350,\"currentGold\":650");
+        }
+
+        [TestMethod]
         public void LogFarmingLifecycleEvents_WriteExpectedTypesAndFields()
         {
             AnalyticsService.Initialize(_tempDir);

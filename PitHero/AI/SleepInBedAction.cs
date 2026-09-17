@@ -327,7 +327,7 @@ namespace PitHero.AI
                 int innCost = Services.InnCostCalculator.GetCurrentPartyCost(hero.LinkedHero);
                 if (gameState != null && gameState.Funds >= innCost)
                 {
-                    gameState.Funds -= innCost;
+                    gameState.SpendFunds(innCost, "inn");
                     _hasPaidInnkeeper = true;
                     soundEffectManager.PlaySoundAt(SoundEffectType.PayGold, heroEntity.Transform.Position);
                     SpeechBubbleDialogue.SayInnkeeperGoodRest(Game1.Scene?.FindEntity("innkeeper"));

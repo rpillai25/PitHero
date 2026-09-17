@@ -569,48 +569,69 @@ namespace PitHero.Tests
         #region Chest Gold (issue #417)
 
         [TestMethod]
-        public void CalculateChestGold_GrowsWithDepth_UntilTheCap()
+        public void CalculateChestGold_TierDrivesThePouch_FloorsAddAtMostHalf()
         {
-            int prev = 0;
-            for (int depth = 1; depth <= 120; depth++)
+            const int cycle = 25;
+            for (int tier = 1; tier <= 6; tier++)
             {
-                int gold = BalanceConfig.CalculateChestGold(depth, false, 0.5f);
-                Assert.IsTrue(gold >= prev, $"depth {depth}: {gold} < {prev}");
-                Assert.IsTrue(gold <= BalanceConfig.ChestGoldCap);
-                prev = gold;
+                int first = BalanceConfig.CalculateChestGold(tier, 1, cycle, false, 0.5f);
+                int last = BalanceConfig.CalculateChestGold(tier, cycle, cycle, false, 0.5f);
+                Assert.AreEqual(25 * tier * tier, first, $"tier {tier} first floor");
+                Assert.AreEqual((int)System.Math.Round(25 * tier * tier * 1.5f), last, $"tier {tier} last floor");
+
+                int prev = 0;
+                for (int level = 1; level <= cycle; level++)
+                {
+                    int gold = BalanceConfig.CalculateChestGold(tier, level, cycle, false, 0.5f);
+                    Assert.IsTrue(gold >= prev, $"tier {tier} level {level}: {gold} < {prev}");
+                    prev = gold;
+                }
+
+                // Same floor, next tier pays more (from tier 5 on a tier's last floors overlap the next
+                // tier's first floors, since (t+1)²/t² < 1.5 — accepted)
+                if (tier > 1)
+                    Assert.IsTrue(first > BalanceConfig.CalculateChestGold(tier - 1, 1, cycle, false, 0.5f), $"tier {tier} beats tier {tier - 1}");
             }
-            Assert.AreEqual(BalanceConfig.ChestGoldCap, BalanceConfig.CalculateChestGold(120, false, 1f), "deep cycles hit the cap");
         }
 
         [TestMethod]
-        public void CalculateChestGold_VarianceBand_AndBossDouble()
+        public void CalculateChestGold_WithinTierGrowth_IndependentOfCycleLength()
         {
-            float nominal = BalanceConfig.GetChestGoldNominal(10);
-            int low = BalanceConfig.CalculateChestGold(10, false, 0f);
-            int mid = BalanceConfig.CalculateChestGold(10, false, 0.5f);
-            int high = BalanceConfig.CalculateChestGold(10, false, 1f);
+            // A 100-floor tier (future multi-biome cycle) spreads the same +50% over more floors
+            Assert.AreEqual(BalanceConfig.CalculateChestGold(3, 25, 25, false, 0.5f),
+                BalanceConfig.CalculateChestGold(3, 100, 100, false, 0.5f));
+            Assert.AreEqual(BalanceConfig.CalculateChestGold(3, 1, 25, false, 0.5f),
+                BalanceConfig.CalculateChestGold(3, 1, 100, false, 0.5f));
+            Assert.IsTrue(BalanceConfig.CalculateChestGold(3, 50, 100, false, 0.5f) < BalanceConfig.CalculateChestGold(3, 50, 50, false, 0.5f));
+        }
+
+        [TestMethod]
+        public void CalculateChestGold_VarianceBand_BossDouble_AndCap()
+        {
+            float nominal = BalanceConfig.GetChestGoldNominal(2, 10, 25);
+            int low = BalanceConfig.CalculateChestGold(2, 10, 25, false, 0f);
+            int mid = BalanceConfig.CalculateChestGold(2, 10, 25, false, 0.5f);
+            int high = BalanceConfig.CalculateChestGold(2, 10, 25, false, 1f);
             Assert.AreEqual((int)System.Math.Round(nominal * BalanceConfig.ChestGoldVarianceMin), low);
             Assert.AreEqual((int)System.Math.Round(nominal), mid);
             Assert.AreEqual((int)System.Math.Round(nominal * BalanceConfig.ChestGoldVarianceMax), high);
-            Assert.AreEqual((int)System.Math.Round(nominal * 2f), BalanceConfig.CalculateChestGold(10, true, 0.5f), "boss floors double the pouch");
-            Assert.AreEqual(BalanceConfig.CalculateChestGold(1, false, 0f), BalanceConfig.CalculateChestGold(-5, false, -1f), "degenerate inputs clamp to depth 1 and the low roll");
+            Assert.AreEqual((int)System.Math.Round(nominal * 2f), BalanceConfig.CalculateChestGold(2, 10, 25, true, 0.5f), "boss floors double the pouch");
+            Assert.AreEqual(BalanceConfig.CalculateChestGold(1, 1, 25, false, 0f), BalanceConfig.CalculateChestGold(-5, -3, 25, false, -1f), "degenerate inputs clamp to tier 1, level 1 and the low roll");
+
+            Assert.IsTrue(BalanceConfig.CalculateChestGold(13, 1, 25, false, 0.5f) < BalanceConfig.ChestGoldCap, "tier 13 opens under the cap");
+            Assert.AreEqual(BalanceConfig.ChestGoldCap, BalanceConfig.CalculateChestGold(14, 1, 25, false, 1f), "tier 14+ hits the cap");
+            Assert.AreEqual(BalanceConfig.ChestGoldCap, BalanceConfig.CalculateChestGold(99, 25, 25, true, 1f));
         }
 
         [TestMethod]
-        public void CalculateChestGold_StartsAtOneKill_AndGrowsToSeveral()
+        public void CalculateChestGold_WholeFirstTier_StaysPocketChange()
         {
-            // Shallow pouches are pocket change (about one kill) so an opening run cannot out-earn the
-            // farm; by the second cycle a pouch is worth several kills of a depth-appropriate monster
-            int[] depths = { 1, 5, 10, 25, 50, 75 };
-            float[] minKills = { 0.5f, 0.8f, 1f, 1.5f, 3f, 4f };
-            float[] maxKills = { 2f, 2f, 2.5f, 4f, 8f, 8f };
-            for (int i = 0; i < depths.Length; i++)
+            // Every tier-1 pouch (even a lucky boss-floor roll) stays small so the pit's first cycle
+            // cannot out-earn the ~600 g/real-hour starter farm
+            for (int level = 1; level <= 25; level++)
             {
-                int level = BalanceConfig.EstimatePlayerLevelForPitLevel(depths[i]);
-                int kill = BalanceConfig.CalculateMonsterGoldYield(level);
-                int pouch = BalanceConfig.CalculateChestGold(depths[i], false, 0.5f);
-                Assert.IsTrue(pouch >= minKills[i] * kill && pouch <= maxKills[i] * kill,
-                    $"depth {depths[i]}: pouch {pouch} vs kill {kill} ({pouch / (float)kill:F1} kills)");
+                int pouch = BalanceConfig.CalculateChestGold(1, level, 25, level % 5 == 0, 1f);
+                Assert.IsTrue(pouch <= 100, $"tier 1 level {level}: {pouch}");
             }
         }
 

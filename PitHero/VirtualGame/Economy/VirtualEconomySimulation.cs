@@ -458,7 +458,7 @@ namespace PitHero.VirtualGame.Economy
                 int price = CropConfig.GetSeedPrice(crop);
                 while (_seeds[c] < needed && _gameState.Funds - price >= _scenario.GoldBuffer)
                 {
-                    _gameState.Funds -= price;
+                    _gameState.SpendFunds(price, "seeds");
                     _seeds[c]++;
                     _metrics.SpendSeeds += price;
                 }
@@ -654,7 +654,7 @@ namespace PitHero.VirtualGame.Economy
                 return;
             }
             int price = DishConfig.GetPrice(dish);
-            _gameState.Funds -= price;
+            _gameState.SpendFunds(price, "party_meal");
             _metrics.SpendMeals += price;
             TryWithdrawRecipe(dish);
             RecordServed(dish);

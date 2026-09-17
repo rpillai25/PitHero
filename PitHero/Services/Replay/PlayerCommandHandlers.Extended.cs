@@ -378,7 +378,7 @@ namespace PitHero.Services.Replay
             int totalPrice = unitPrice * qty;
             if (gameState.Funds < totalPrice)
                 return;
-            gameState.Funds -= totalPrice;
+            gameState.SpendFunds(totalPrice, "seeds");
             cropPlantingService.AddSeeds(crop, qty);
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
             AnalyticsService.LogSeedPurchased(crop.ToString(), qty, totalPrice, "manual", gameState.Funds);
@@ -407,7 +407,7 @@ namespace PitHero.Services.Replay
             if (ArtifactService.Current?.Grant(type) != true)
                 return;
             if (PitHero.Artifacts.ArtifactCatalog.IsLocal(type))
-                gameState.Funds -= price;
+                gameState.SpendFunds(price, "artifact");
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
         }
 

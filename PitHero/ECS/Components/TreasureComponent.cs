@@ -1037,8 +1037,8 @@ namespace PitHero.ECS.Components
                 : gateRoll < BalanceConfig.ChestGoldChanceMarbles / 20f;
             if (!hasGold)
                 return 0;
-            int depth = BiomeProgressionConfig.GetEffectiveDepth(pitLevel, pitTier);
-            return BalanceConfig.CalculateChestGold(depth, CaveBiomeConfig.IsBossFloor(pitLevel), amountRoll());
+            return BalanceConfig.CalculateChestGold(pitTier, pitLevel, BiomeProgressionConfig.MaxBiomeLevel,
+                CaveBiomeConfig.IsBossFloor(pitLevel), amountRoll());
         }
     }
 }

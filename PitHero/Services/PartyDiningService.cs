@@ -327,7 +327,7 @@ namespace PitHero.Services
                     bool refundGold = ticket.CropsRefundable; // not yet cooked → no penalty
                     coordinator?.CancelTicket(ticket);
                     if (refundGold && _slots[slot].HasPaid && gameState != null)
-                        gameState.Funds += DishConfig.GetPrice(ticket.Dish);
+                        gameState.AddFunds(DishConfig.GetPrice(ticket.Dish), "refund");
                     _slots[slot].OrderedDishId = -1;
                     _slots[slot].HasPaid = false;
                     _tickets[slot] = null;
@@ -507,7 +507,7 @@ namespace PitHero.Services
                 var gameState = Core.Services.GetService<GameStateService>();
                 if (gameState != null)
                 {
-                    gameState.Funds -= DishConfig.GetPrice(ticket.Dish);
+                    gameState.SpendFunds(DishConfig.GetPrice(ticket.Dish), "party_meal");
                     PlaySoundAtHero(SoundEffectType.PayGold);
                 }
             }
