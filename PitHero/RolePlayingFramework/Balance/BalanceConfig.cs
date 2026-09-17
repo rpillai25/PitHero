@@ -485,18 +485,16 @@ namespace RolePlayingFramework.Balance
         }
 
         // Chest gold (issue #417): about half of normal item chests also carry a gold pouch. The
-        // pouch follows a convex curve of effective depth (tier x 25 + level): about one monster
-        // kill's worth on the first floors (a 15-minute opening run must not out-earn the farm),
-        // four to eight kills' worth from the second cycle on, reaching the cap around depth 100.
-        // Doubled on boss floors and capped so deep cycles can't be farmed for easy gold.
+        // pouch is keyed on the pit TIER (base x tier²) and grows only slightly across a tier's
+        // floors (the last floor of a cycle pays 1.5x the first), so a whole first cycle stays
+        // pocket change next to the starter farm and each new cycle is clearly richer. Doubled on
+        // boss floors and capped so very deep tiers can't be farmed for easy gold.
         /// <summary>Marbles of 20 on which an item chest also holds gold (10 = one chest in two).</summary>
         public const int ChestGoldChanceMarbles = 10;
-        /// <summary>Flat gold every pouch carries before the depth curve and variance.</summary>
-        public const int ChestGoldBase = 8;
-        /// <summary>Multiplier on depth^ChestGoldDepthExponent (1.44 x 100^1.62 ≈ 2,500 = the cap at depth 100).</summary>
-        public const float ChestGoldDepthScale = 1.44f;
-        /// <summary>Exponent of the depth curve (> 1 so shallow pouches stay small).</summary>
-        public const float ChestGoldDepthExponent = 1.62f;
+        /// <summary>Pouch on the first floor of tier 1 before variance; multiplied by tier².</summary>
+        public const int ChestGoldTierBase = 25;
+        /// <summary>Extra fraction the last floor of a tier pays over its first (0.5 = +50%).</summary>
+        public const float ChestGoldWithinTierGrowth = 0.5f;
         /// <summary>Low end of the pouch variance multiplier.</summary>
         public const float ChestGoldVarianceMin = 0.75f;
         /// <summary>High end of the pouch variance multiplier.</summary>
@@ -504,25 +502,33 @@ namespace RolePlayingFramework.Balance
         /// <summary>Boss-floor chests carry this multiple.</summary>
         public const float ChestGoldBossFloorMultiplier = 2f;
         /// <summary>Hard cap on a single pouch.</summary>
-        public const int ChestGoldCap = 2500;
+        public const int ChestGoldCap = 5000;
 
-        /// <summary>Pouch size at the given depth before variance and the boss double.</summary>
-        public static float GetChestGoldNominal(int effectiveDepth)
+        /// <summary>
+        /// Pouch size before variance and the boss double: <c>TierBase × tier² × (1 + WithinTierGrowth ×
+        /// progress)</c>, where progress runs 0 on a tier's first floor to 1 on its last
+        /// (<paramref name="cycleLength"/> floors per tier). Tier 1: 25 → 37.5, tier 2: 100 → 150,
+        /// tier 4: 400 → 600, tier 10: 2,500 → 3,750.
+        /// </summary>
+        public static float GetChestGoldNominal(int pitTier, int pitLevel, int cycleLength)
         {
-            if (effectiveDepth < 1) effectiveDepth = 1;
-            return ChestGoldBase + ChestGoldDepthScale * (float)System.Math.Pow(effectiveDepth, ChestGoldDepthExponent);
+            if (pitTier < 1) pitTier = 1;
+            if (cycleLength < 1) cycleLength = 1;
+            if (pitLevel < 1) pitLevel = 1;
+            if (pitLevel > cycleLength) pitLevel = cycleLength;
+            float progress = cycleLength > 1 ? (pitLevel - 1) / (float)(cycleLength - 1) : 0f;
+            return ChestGoldTierBase * (float)pitTier * pitTier * (1f + ChestGoldWithinTierGrowth * progress);
         }
 
         /// <summary>
-        /// Gold found in a chest at the given effective depth: <c>(Base + Scale × depth^Exponent) ×
-        /// lerp(VarianceMin, VarianceMax, roll01)</c>, doubled on boss floors, clamped to [1, Cap].
-        /// Example nominals: depth 1 ≈ 9, 5 ≈ 27, 10 ≈ 68, 25 ≈ 273, 50 ≈ 823, 75 ≈ 1,580, 100 → cap.
+        /// Gold found in a chest: <see cref="GetChestGoldNominal"/> × lerp(VarianceMin, VarianceMax, roll01),
+        /// doubled on boss floors, clamped to [1, Cap].
         /// </summary>
-        public static int CalculateChestGold(int effectiveDepth, bool bossFloor, float roll01)
+        public static int CalculateChestGold(int pitTier, int pitLevel, int cycleLength, bool bossFloor, float roll01)
         {
             if (roll01 < 0f) roll01 = 0f;
             if (roll01 > 1f) roll01 = 1f;
-            float nominal = GetChestGoldNominal(effectiveDepth);
+            float nominal = GetChestGoldNominal(pitTier, pitLevel, cycleLength);
             float scaled = nominal * (ChestGoldVarianceMin + (ChestGoldVarianceMax - ChestGoldVarianceMin) * roll01);
             if (bossFloor) scaled *= ChestGoldBossFloorMultiplier;
             int gold = (int)System.Math.Round(scaled);

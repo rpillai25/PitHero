@@ -153,13 +153,28 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
 - **Monster kills**: `BalanceConfig.CalculateMonsterGoldYield(level) = 5 + level × 3`
   (caps at 302 when the monster level caps at 99).
 - **Chest pouches** (issue #417): one item chest in two (a 10-of-20 shuffle bag in
-  `LootBagSet`) also carries gold: `(8 + 1.44 × effectiveDepth^1.62) × [0.75, 1.25]`, doubled on
-  boss floors, capped at `ChestGoldCap = 2,500` (`BalanceConfig.CalculateChestGold`). Seed,
-  stencil and boss epic chests never carry gold. A convex curve: about one kill's worth on the first floors (an opening 15-minute run must not out-earn the farm), several kills' worth from the second cycle on.
+  `LootBagSet`) also carries gold (`BalanceConfig.CalculateChestGold`):
 
-| Effective depth | 1 | 5 (boss) | 10 | 25 (boss) | 50 (boss) | 75 | 100 |
-|---|---|---|---|---|---|
-| Pouch range | 7–12 | 41–68 | 51–85 | 410–683 | 1,235–2,058 | 1,185–1,975 | cap 2,500 |
+  ```
+  progress = (pitLevel − 1) / (cycleLength − 1)      // 0 on a tier's first floor, 1 on its last
+  pouch    = 25 × tier² × (1 + 0.5 × progress) × [0.75, 1.25]
+  ```
+
+  doubled on boss floors, capped at `ChestGoldCap = 5,000`. `cycleLength` is
+  `BiomeProgressionConfig.MaxBiomeLevel` (25 today; a multi-biome tier of ~100 floors spreads the
+  same +50% over its floors with no retuning). Seed, stencil and boss epic chests never carry gold.
+
+  The **tier** drives the pouch; floors within a tier add at most 50%. A whole first cycle is pocket
+  change next to the ~600 g/h starter farm, and the cap is a late-game milestone (tier 14+), not a
+  first-cycle one. The first version keyed a convex curve on effective depth and hit the cap by tier 4
+  (owner playtest session_20260916_083852: chests were 30% of all income and out-earned the farm for
+  8 real hours). From tier 5 on a tier's last floors pay slightly more than the next tier's first
+  (tier 5 ends 938, tier 6 opens 900) — accepted.
+
+| Tier | 1 | 2 | 3 | 4 | 6 | 10 | 14+ |
+|---|---|---|---|---|---|---|---|
+| Nominal pouch, first → last floor | 25 → 38 | 100 → 150 | 225 → 338 | 400 → 600 | 900 → 1,350 | 2,500 → 3,750 | cap 5,000 |
+| Chest gold per real hour (~12 pouches) | ~380 | ~1,500 | ~3,400 | ~6,000 | ~13,500 | ~37,000 | ~60,000 |
 
 ---
 
