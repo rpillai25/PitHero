@@ -244,12 +244,12 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Hero heal priority 1 (highest priority healing action)
         /// </summary>
-        public HeroHealPriority HealPriority1 { get; set; } = HeroHealPriority.HealingItem;
+        public HeroHealPriority HealPriority1 { get; set; } = HeroHealPriority.HealingSkill;
 
         /// <summary>
         /// Hero heal priority 2 (medium priority healing action)
         /// </summary>
-        public HeroHealPriority HealPriority2 { get; set; } = HeroHealPriority.HealingSkill;
+        public HeroHealPriority HealPriority2 { get; set; } = HeroHealPriority.HealingItem;
 
         /// <summary>
         /// Hero heal priority 3 (lowest priority healing action)

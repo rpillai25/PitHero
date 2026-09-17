@@ -705,6 +705,11 @@ namespace PitHero.ECS.Scenes
                 // InGameTimeService survives a quit to title, so a fresh hero must start the clock over
                 Core.Services.GetService<InGameTimeService>()?.ResetToDefault();
                 SetupNewGameFarmContent();
+                // New-game automation defaults (issue #420). Pre-tick setup like the farm content, so
+                // replays of a new game reproduce it; loads restore the saved value instead.
+                var newGameCropSell = Core.Services.GetService<Services.AutoCropSellService>();
+                if (newGameCropSell != null)
+                    newGameCropSell.KeepStacks = GameConfig.NewGameAutoSellKeepStacks;
                 return;
             }
 

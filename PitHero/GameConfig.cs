@@ -512,6 +512,7 @@ namespace PitHero
 
         // Starter farming Slime housed in the new-game Monster House (job levels 1-9)
         public const int NewGameStarterSlimeFarmingProficiency = MonsterJobStartingLevel;
+        public const int NewGameAutoSellKeepStacks = 1;           // auto-sell crops keeps this many full stacks per crop on a new game (issue #420)
         public const int NewGameStarterSlimeFishingProficiency = MonsterJobStartingLevel;
         public const int NewGameStarterSlimeCookingProficiency = MonsterJobStartingLevel;
 

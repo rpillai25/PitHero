@@ -29,6 +29,16 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void HeroComponent_DefaultHealPriorities_SkillThenItemThenInn()
+        {
+            var healPriorities = _heroComponent.GetHealPrioritiesInOrder();
+
+            CollectionAssert.AreEqual(
+                new[] { HeroHealPriority.HealingSkill, HeroHealPriority.HealingItem, HeroHealPriority.Inn },
+                healPriorities, "New heroes heal with skills first, then items, then the inn (issue #420)");
+        }
+
+        [TestMethod]
         public void HeroComponent_GetPrioritiesInOrder_ShouldReturnCorrectOrder()
         {
             // Act
