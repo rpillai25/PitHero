@@ -349,6 +349,8 @@ namespace PitHero
         public const string ConsoleSkillAttack = "ConsoleSkillAttack";
         public const string ConsoleBattleHealConsumable = "ConsoleBattleHealConsumable";
         public const string ConsoleOutBattleHealConsumable = "ConsoleOutBattleHealConsumable";
+        public const string ConsoleOutBattleRestoreMpConsumable = "ConsoleOutBattleRestoreMpConsumable";
+        public const string ConsoleOutBattleRestoreHpMpConsumable = "ConsoleOutBattleRestoreHpMpConsumable";
         public const string ConsoleHealSkill = "ConsoleHealSkill";
         public const string ConsoleBuffSkill = "ConsoleBuffSkill";
         public const string ConsoleAttackMiss = "ConsoleAttackMiss";

@@ -313,6 +313,8 @@ ConsoleAttack,{0} attacks {1} for {2} damage!
 ConsoleSkillAttack,{0} uses {1} on {2} for {3} damage!
 ConsoleBattleHealConsumable,{0} uses {1} on {2}. Restored {3} HP.
 ConsoleOutBattleHealConsumable,{0} used {1}. Restored {2} HP.
+ConsoleOutBattleRestoreMpConsumable,{0} used {1}. Restored {2} MP.
+ConsoleOutBattleRestoreHpMpConsumable,{0} used {1}. Restored {2} HP and {3} MP.
 ConsoleHealSkill,{0} uses {1} on {2}. Restored {3} HP.
 ConsoleBuffSkill,{0} casts {1} on {2}. {3}!
 ConsoleAttackMiss,{0} attacks {1} but misses!

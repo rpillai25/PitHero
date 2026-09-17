@@ -77,8 +77,18 @@ namespace PitHero.AI
         /// </summary>
         public override bool Execute(HeroComponent hero)
         {
-            // Find the most critical target considering both HP and MP
-            var target = FindMostCriticalTarget(hero, out bool isHero, out Entity targetEntity);
+            // HP-critical members first (issue #420); only when none can be helped, MP-critical ones
+            if (TryUseOnMostCriticalTarget(hero, true) || TryUseOnMostCriticalTarget(hero, false))
+                return true;
+
+            Debug.Log("[UseHealingItemAction] No healing or MP items available");
+            hero.HealingItemExhausted = true;
+            return true;
+        }
+
+        private bool TryUseOnMostCriticalTarget(HeroComponent hero, bool hpCriticalOnly)
+        {
+            var target = FindMostCriticalTarget(hero, hpCriticalOnly, out bool isHero, out Entity targetEntity);
             if (target != null)
             {
                 int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
@@ -102,10 +112,7 @@ namespace PitHero.AI
                     }
                 }
             }
-
-            Debug.Log("[UseHealingItemAction] No healing or MP items available");
-            hero.HealingItemExhausted = true;
-            return true;
+            return false;
         }
 
         /// <summary>
@@ -118,11 +125,11 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the most critical target (hero or mercenary) that needs HP or MP restoration.
-        /// Checks both HP-critical and MP-critical states. Prioritizes the target with the
-        /// lowest resource percentage (most in need).
+        /// Find the most critical target (hero or mercenary) that needs restoration: HP-critical members
+        /// only when <paramref name="hpCriticalOnly"/>, otherwise HP- or MP-critical members. Prioritizes
+        /// the target with the lowest resource percentage (most in need).
         /// </summary>
-        private object FindMostCriticalTarget(HeroComponent heroComponent, out bool isHero, out Entity targetEntity)
+        private object FindMostCriticalTarget(HeroComponent heroComponent, bool hpCriticalOnly, out bool isHero, out Entity targetEntity)
         {
             isHero = true;
             targetEntity = null;
@@ -140,7 +147,7 @@ namespace PitHero.AI
                 bool hpCritical = heroComponent.IsHeroHPCritical();
                 bool mpCritical = heroComponent.IsHeroMPCritical();
 
-                if ((hpCritical || mpCritical) && minPercent < lowestPercent)
+                if ((hpCritical || (!hpCriticalOnly && mpCritical)) && minPercent < lowestPercent)
                 {
                     bestTarget = hero;
                     isHero = true;
@@ -168,7 +175,7 @@ namespace PitHero.AI
                         bool hpCritical = heroComponent.IsMercenaryHPCritical(merc, mercComp);
                         bool mpCritical = heroComponent.IsMercenaryMPCritical(merc, mercComp);
 
-                        if ((hpCritical || mpCritical) && minPercent < lowestPercent)
+                        if ((hpCritical || (!hpCriticalOnly && mpCritical)) && minPercent < lowestPercent)
                         {
                             bestTarget = mercenary;
                             isHero = false;
@@ -197,6 +204,9 @@ namespace PitHero.AI
             int hpBefore = isHero
                 ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP
                 : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+            int mpBefore = isHero
+                ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP
+                : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
 
             // Use the consumable's Consume method which handles both Hero and Mercenary contexts
             bool consumed = consumable.Consume(target);
@@ -220,17 +230,40 @@ namespace PitHero.AI
                     : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
 
                 int hpRestored = currentHP - hpBefore;
+                int currentMP = isHero
+                    ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
+                int mpRestored = currentMP - mpBefore;
 
-                Debug.Log($"[UseHealingItemAction] Used {consumable.Name} on {targetName}. Current HP: {currentHP}/{maxHP}");
+                Debug.Log($"[UseHealingItemAction] Used {consumable.Name} on {targetName}. Current HP: {currentHP}/{maxHP}, MP: {currentMP}");
 
-                if (hpRestored > 0)
-                {
+                if (hpRestored > 0 || mpRestored > 0)
                     Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, targetEntity);
 
-                    Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleOutBattleHealConsumable,
+                // Every restore is announced — an MP-only potion used to be silent, which made a heal
+                // followed by an MP potion look like a free heal (issue #420)
+                var events = Core.Services.GetService<GameEventService>();
+                if (hpRestored > 0 && mpRestored > 0)
+                {
+                    events?.EmitLocalized(UITextKey.ConsoleOutBattleRestoreHpMpConsumable,
+                        (targetName, GameConfig.ConsoleColorHeroName),
+                        (consumable.DisplayName, RarityUtils.GetRarityColor(consumable.Rarity)),
+                        (hpRestored.ToString(), Color.White),
+                        (mpRestored.ToString(), Color.White));
+                }
+                else if (hpRestored > 0)
+                {
+                    events?.EmitLocalized(UITextKey.ConsoleOutBattleHealConsumable,
                         (targetName, GameConfig.ConsoleColorHeroName),
                         (consumable.DisplayName, RarityUtils.GetRarityColor(consumable.Rarity)),
                         (hpRestored.ToString(), Color.White));
+                }
+                else if (mpRestored > 0)
+                {
+                    events?.EmitLocalized(UITextKey.ConsoleOutBattleRestoreMpConsumable,
+                        (targetName, GameConfig.ConsoleColorHeroName),
+                        (consumable.DisplayName, RarityUtils.GetRarityColor(consumable.Rarity)),
+                        (mpRestored.ToString(), Color.White));
                 }
 
                 // Consume the item from the hero's bag

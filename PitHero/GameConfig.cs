@@ -713,7 +713,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
-        public const int SimulationVersion = 3; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier
+        public const int SimulationVersion = 4; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge
