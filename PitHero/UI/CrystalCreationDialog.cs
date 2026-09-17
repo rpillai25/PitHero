@@ -357,7 +357,7 @@ namespace PitHero.UI
                 return false;
 
             // Deduct only after the crystal actually landed in the inventory
-            gameState.Funds -= GameConfig.CrystalCreationFee;
+            gameState.SpendFunds(GameConfig.CrystalCreationFee, "crystal_creation");
             return true;
         }
 

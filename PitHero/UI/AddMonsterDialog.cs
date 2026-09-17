@@ -247,7 +247,7 @@ namespace PitHero.UI
             var added = alliedManager.AddPurchasedMonster(enemy, houseId);
             if (added == null) return;
 
-            gameState.Funds -= cost;
+            gameState.SpendFunds(cost, "monster");
 
             // Keep an open dialog for this house in sync: close if it just filled up, else refresh.
             // The close is deferred to the presentation pass (Update): Close() unpauses the game,

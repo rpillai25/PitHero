@@ -29,6 +29,7 @@ namespace PitHero.Services.Analytics
         private static readonly JsonLineBuilder _json = new JsonLineBuilder(_buffer);
         private static float _flushTimer;
         private static long _sessionGoldGained;
+        private static long _sessionGoldSpent;
         private static int _monstersDefeated;
         private static DateTime _sessionStartUtc;
 #endif
@@ -137,6 +138,7 @@ namespace PitHero.Services.Analytics
             _sessionStarted = true;
             _sessionStartUtc = DateTime.UtcNow;
             _sessionGoldGained = 0;
+            _sessionGoldSpent = 0;
             _monstersDefeated = 0;
             if (!BeginEvent("session_start"))
                 return;
@@ -156,6 +158,7 @@ namespace PitHero.Services.Analytics
             if (!BeginEvent("session_end"))
                 return;
             _json.Field("goldGainedTotal", _sessionGoldGained);
+            _json.Field("goldSpentTotal", _sessionGoldSpent);
             _json.Field("monstersDefeated", _monstersDefeated);
             _json.Field("durationSec", (int)(DateTime.UtcNow - _sessionStartUtc).TotalSeconds);
             EndEvent();
@@ -517,6 +520,24 @@ namespace PitHero.Services.Analytics
             _json.Field("amount", amount);
             _json.Field("source", source);
             _json.Field("sessionTotal", _sessionGoldGained);
+            _json.Field("currentGold", currentGold);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a gold spend, its source, the session running total and the player's current gold.</summary>
+        [Conditional("DEBUG")]
+        public static void LogGoldSpent(int amount, string source, int currentGold)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            _sessionGoldSpent += amount;
+            if (!BeginEvent("gold_spent"))
+                return;
+            _json.Field("amount", amount);
+            _json.Field("source", source);
+            _json.Field("sessionTotal", _sessionGoldSpent);
             _json.Field("currentGold", currentGold);
             EndEvent();
 #endif

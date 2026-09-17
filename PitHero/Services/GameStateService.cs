@@ -40,6 +40,13 @@ namespace PitHero.Services
             Analytics.AnalyticsService.LogGoldGained(amount, source, Funds);
         }
 
+        /// <summary>Removes gold from Funds and records the spend with its source for balance analytics. Callers check affordability first.</summary>
+        public void SpendFunds(int amount, string source)
+        {
+            Funds -= amount;
+            Analytics.AnalyticsService.LogGoldSpent(amount, source, Funds);
+        }
+
         private int _runnerCarryLevel = GameConfig.KitchenRunnerCarryLevelMin;
 
         /// <summary>

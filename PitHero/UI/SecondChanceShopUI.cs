@@ -1241,7 +1241,7 @@ namespace PitHero.UI
                 return;
             }
 
-            gameState.Funds -= totalPrice;
+            gameState.SpendFunds(totalPrice, "item_purchase");
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
 
             var item = vaultStack.ItemTemplate;
@@ -1525,7 +1525,7 @@ namespace PitHero.UI
                 return;
             }
 
-            gameState.Funds -= price;
+            gameState.SpendFunds(price, "crystal_purchase");
 
             bool placed = crystalService.TryAddToInventory(crystal);
             if (!placed)

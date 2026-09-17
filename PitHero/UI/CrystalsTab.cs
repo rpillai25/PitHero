@@ -485,7 +485,7 @@ namespace PitHero.UI
             if (result != null)
             {
                 svc.TryAddToInventory(result);
-                gameState.Funds -= fee;
+                gameState.SpendFunds(fee, "crystal_forge");
                 RefreshAll();
                 HideCrystalCard();
             }

@@ -89,7 +89,7 @@ namespace PitHero.Services
                 int ownedBefore = owned;
                 while (owned < needed && _gameState.Funds - price >= GoldBuffer)
                 {
-                    _gameState.Funds -= price;
+                    _gameState.SpendFunds(price, "seeds");
                     _cropPlanting.AddSeeds(crop, 1);
                     owned++;
                     boughtAnything = true;

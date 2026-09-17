@@ -260,7 +260,7 @@ namespace PitHero.Services
                 return false;
 
             int price = bestGear.Price;
-            _gameState.Funds -= price;
+            _gameState.SpendFunds(price, "item_purchase");
             _vault.RemoveQuantity(bestStack, 1);
             bag.TryAdd(bestGear);
             purchasedOut?.Add(bestGear);
@@ -397,7 +397,7 @@ namespace PitHero.Services
             bag.SetSlotItem(freeIndex, fresh);
 
             int totalPrice = template.Price * qty;
-            _gameState.Funds -= totalPrice;
+            _gameState.SpendFunds(totalPrice, "item_purchase");
             _vault.RemoveQuantity(stack, qty);
             purchasedOut?.Add(fresh);
 

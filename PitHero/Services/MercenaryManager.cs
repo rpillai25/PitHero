@@ -989,7 +989,7 @@ namespace PitHero.Services
                 Debug.Warn("[MercenaryManager] Cannot hire - not enough gold");
                 return false;
             }
-            gameState.Funds -= hireCost;
+            gameState.SpendFunds(hireCost, "merc_hire");
 
             // Cancel any outstanding dining ticket and remove patron status before joining the party
             Core.Services.GetService<KitchenTaskCoordinator>()?.CancelTicketForPatron(mercEntity);

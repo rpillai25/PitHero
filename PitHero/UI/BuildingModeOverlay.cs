@@ -586,7 +586,7 @@ namespace PitHero.UI
             var gameState = Core.Services.GetService<GameStateService>();
             if (gameState == null || gameState.Funds < cost)
                 return;
-            gameState.Funds -= cost;
+            gameState.SpendFunds(cost, "building");
 
             var finalPos = BuildingConfig.GetWorldPos(tileX, tileY, type);
 
