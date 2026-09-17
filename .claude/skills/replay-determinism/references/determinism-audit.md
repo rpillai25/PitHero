@@ -65,6 +65,10 @@ matters, and the fix. The invariants are numbered as in `PitHero/docs/ReplaySyst
       respawn leaves it pointing at the old hero.
 - [ ] Nothing derived (stats, passives, protection) is only recomputed on window open, hover, or
       drag. If it has to be current for the sim, recompute it in the sim on the change itself.
+- [ ] No `Apply*` handler on a UI executor closes its own window, or calls `PauseService.Pause()` /
+      `Unpause()`, `SetFarmModePause`, or anything else that reaches the sim, as a side effect of the
+      command it applied. Set a flag and act on it in the presentation pass (`AddMonsterDialog.Update`).
+      Grep each executor's `Apply*` body for `Close()`, `Hide()`, `Pause`, `Unpause`.
 
 ### Cosmetics and seeks (invariant 8)
 - [ ] Purely visual components (floating numbers, rising text, pickup arcs, Y-sort, indicators,

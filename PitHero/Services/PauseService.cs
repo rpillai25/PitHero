@@ -51,7 +51,7 @@ namespace PitHero.Services
         public void SetFarmModePause(bool active)
         {
             _requestedFarmModePause = active;
-            if (PlayerCommandService.ShouldApplyDirectly)
+            if (PlayerCommandService.Current == null)
             {
                 ApplyFarmModePause(active);
                 return;
@@ -83,10 +83,17 @@ namespace PitHero.Services
             RequestManualPause(!_requestedManualPause);
         }
 
+        /// <summary>
+        /// Pause requests always go through the command queue while a session exists — even when a
+        /// command handler is running. The handlers call <see cref="ApplyManualPause"/> directly, so a
+        /// request that arrives mid-handler is presentation feedback (a dialog closing itself after
+        /// the command it executed); applying it directly would change the sim without a recorded
+        /// command and diverge every replay (2026-09-16: an Orc purchase that filled a house).
+        /// </summary>
         private void RequestManualPause(bool value)
         {
             _requestedManualPause = value;
-            if (PlayerCommandService.ShouldApplyDirectly)
+            if (PlayerCommandService.Current == null)
             {
                 ApplyManualPause(value);
                 return;

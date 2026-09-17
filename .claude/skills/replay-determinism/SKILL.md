@@ -61,6 +61,7 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 | Feature works live, replay skips it | The mutation never became a `PlayerCommand`; playback has nothing to inject |
 | `hero` part diverges only during seeks, RNG equal | Update-order drift: something reorders components/entities by history. Nez `ComponentList` uses a stable sort for this reason; never sort update lists with `Array.Sort` on tied keys |
 | Handler works live, no-ops on replay | Handler resolved its target through UI state (selected row, open window) instead of a stable index/id/name in the payload |
+| `rng` + `world` diverge a few ticks after a command, hero/party equal, world differs only in the pause flag | The handler's UI executor closed itself and unpaused from inside the handler. Live: unpause applied directly (never recorded). Replay: dialog never open, stays paused. Defer UI teardown to the presentation pass (`AddMonsterDialog.Update`); `PauseService` requests always queue while a session exists |
 | `hero` diverges a few ticks after a `SwapSlots`/`SellBagItem`/`BuyVaultItem`, RNG equal | A grid-executed handler ran on a stale slot picture and `PersistBagOrdering` wrote it over the bag. Live hides it because opening a window reconnects the grid. Handlers must call `InventoryGrid.SyncFromSimulation()` first (`GetGrid` does) |
 | One-shot animation plays late after a seek | Component froze under `CosmeticUpdatesSuspended` instead of finishing instantly |
 | Timer drifts between live and replay | Stored `Time.TotalTime`; store `SimulationClock.Now` |

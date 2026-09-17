@@ -3613,6 +3613,7 @@ namespace PitHero.ECS.Scenes
             if (!replayActive)
                 HandleFridgeClicks();
             _refrigeratorDialog?.Update();
+            _addMonsterDialog?.Update();
             _farmStatsDialog?.Update();
             UpdateFridgeDialogGate();
             UpdateBuildingMenuGate();

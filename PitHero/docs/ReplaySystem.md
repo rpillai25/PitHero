@@ -320,6 +320,13 @@ artifacts rewind with the save, so charging for them is safe.
    fought with different passives depending on which windows had been opened, and a replay (which
    opens none) diverged at the first deflect roll. Detection now runs in the sim
    (`HeroSynergyResolver`, every tick a bag slot changes) and the grid only mirrors the result.
+   Second precedent (2026-09-16): `AddMonsterDialog.ApplyPurchase` closed the dialog when the
+   purchase filled the house, and `Close()` unpauses; because a handler was running,
+   `PauseService` applied the unpause directly instead of queuing it, so nothing was recorded — the
+   live game resumed while the replay (dialog never open) stayed paused: `rng` and `world` (pause
+   flag) diverged 50 ticks after `PurchaseMonster`. Rule: a handler never closes, pauses or unpauses
+   from inside itself. UI teardown a command triggers is deferred to the presentation pass, and
+   `PauseService` requests always queue while a session exists (handlers use `ApplyManualPause`).
 12. **A UI object used as a command executor must be rebound and refreshed from the sim first.** The
     UI overlay is constructed before the hero entity is spawned, so a grid whose window was never
     opened this session is not connected to the hero — in a replay that is every grid — and a swap or
