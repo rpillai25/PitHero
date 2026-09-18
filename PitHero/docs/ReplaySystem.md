@@ -445,6 +445,21 @@ artifacts rewind with the save, so charging for them is safe.
    un-paused tick count, then search funds/clock/pause around those values for the recorded hash. The
    gold delta usually matches a price in the live analytics (`gold_spent`/`gold_gained` rows).
    Remember paused ticks do not advance the clock when mapping a tick to the analytics `gt` time.
+9. **`hero` only, and at tick 0?** The session never got off the ground: the new-game/load path built
+   a different hero. `HashHero`'s inputs are just as few as `HashWorld`'s (tile, `CurrentHP`,
+   `CurrentMP`, `Level`, `Experience`, `InsidePit`, `StoppedAdventure`, the FSM state *if the
+   component exists*, `IsBattleInProgress`, then `Bag.Count` and every non-empty `(slotIndex,
+   item.Name)`), so solve both hashes by brute force in a throwaway MSTest — build the candidates
+   from **real objects** (`JobFactory.CreateJob` + `new Hero(...)` for vitals, a real `ItemBag` with
+   real items for the slots) rather than hand-typed values: `item.Name` is the identity name
+   (`"HPPotion"`), not the `Inv_*_Name` text key, and a hand-built model silently fails to reproduce
+   even the side whose state you can already read in the log. Recovering both sides names the drift
+   outright — 2026-09-17 resolved to *recorded = Thief (hp 75/mp 25), actual = Knight (95/22)*, which
+   pointed straight at the start blob: `GatherCurrentState` read `data.JobName` off the hero entity
+   only, a NewGame blob is captured before that entity exists, and `HeroDesign` turns an empty job
+   into `"Knight"` (see "A NewGame replay re-runs the new-game path" in `AGENTS.md`). A tick-0 `hero`
+   divergence is always worth solving this way: it reproduces on every playback, needs no seeking,
+   and the state space is tiny.
 
 ## Debug vs Release
 

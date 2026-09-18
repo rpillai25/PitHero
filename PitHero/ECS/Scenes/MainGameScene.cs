@@ -592,8 +592,10 @@ namespace PitHero.ECS.Scenes
 
         /// <summary>
         /// Restores the global services a save carries that the scene's new-game path leaves alone:
-        /// the defeated-monster record and the Second Chance vault contents. Used by ApplyPendingLoadData
-        /// for loads and by Begin for NewGame-kind replays.
+        /// the defeated-monster record and the Second Chance vault contents. Called by Begin for
+        /// NewGame-kind replays. The hero design is NOT restored here — ReplayPlaybackService has
+        /// already put it back via SaveLoadService.ApplyLoadedState on the same blob, before the
+        /// scene swap, so that SpawnHero builds the recorded hero rather than the current one.
         /// </summary>
         private static void RestoreGlobalServicesFromSave(SaveData data)
         {
