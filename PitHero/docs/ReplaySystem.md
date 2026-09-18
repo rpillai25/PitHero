@@ -457,7 +457,10 @@ artifacts rewind with the save, so charging for them is safe.
    outright — 2026-09-17 resolved to *recorded = Thief (hp 75/mp 25), actual = Knight (95/22)*, which
    pointed straight at the start blob: `GatherCurrentState` read `data.JobName` off the hero entity
    only, a NewGame blob is captured before that entity exists, and `HeroDesign` turns an empty job
-   into `"Knight"` (see "A NewGame replay re-runs the new-game path" in `AGENTS.md`). A tick-0 `hero`
+   into `"Knight"` (see "A NewGame replay re-runs the new-game path" in `AGENTS.md`). The same
+   ordering catches scene-scoped **services**, which are registered later in `Begin` than the blob
+   capture: gather from one and the null fallback must equal the new-game default, pinned by a test
+   (`FarmTaskCoordinatorTests.DefaultOrder_MatchesSaveDataDefault`). A tick-0 `hero`
    divergence is always worth solving this way: it reproduces on every playback, needs no seeking,
    and the state space is tiny.
 
