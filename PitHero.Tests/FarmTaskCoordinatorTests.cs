@@ -341,6 +341,80 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void SmartMode_IsTheDefault()
+        {
+            Assert.IsTrue(_coordinator.MonstersDecide, "new games start with the game picking the order");
+            var order = _coordinator.CopyPriorityOrderArray();
+            CollectionAssert.AreEqual(new[] { 0, 1, 2, 3 }, order, "default order is Water, Till, Plant, Harvest");
+        }
+
+        [TestMethod]
+        public void DefaultOrder_MatchesSaveDataDefault()
+        {
+            // The NewGame replay start blob is gathered before the coordinator exists, so
+            // SaveLoadService falls back to SaveData.DefaultFarmPriorityOrder(). If that ever drifts
+            // from the coordinator's own default, a NewGame replay silently farms to a different
+            // policy than the live run did.
+            CollectionAssert.AreEqual(SaveData.DefaultFarmPriorityOrder(), _coordinator.CopyPriorityOrderArray());
+            Assert.IsTrue(new SaveData().FarmMonstersDecidePriority, "SaveData default must match the coordinator default");
+        }
+
+        [TestMethod]
+        public void ManualMode_IgnoresDuty()
+        {
+            _coordinator.MonstersDecide = false;
+            _tileState.SetFlag(new Point(125, 5), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(126, 5), TileStateFlag.ReadyToTill);
+
+            Assert.IsTrue(_coordinator.TryClaimAction(0f, FarmDuty.Water, out var water));
+            Assert.IsTrue(_coordinator.TryClaimAction(0f, FarmDuty.Tend, out var tend));
+            Assert.AreEqual(FarmActionType.Till, water.Type);
+            Assert.AreEqual(FarmActionType.Till, tend.Type);
+        }
+
+        [TestMethod]
+        public void ManualMode_OrderIsAPreferenceNotAFilter()
+        {
+            // Harvest ranked first, but the only work available is tilling — nobody idles.
+            _coordinator.MonstersDecide = false;
+            _coordinator.SetPriorityOrder(3, 0, 2, 1); // Harvest, Water, Plant, Till
+            _tileState.SetFlag(new Point(125, 5), TileStateFlag.ReadyToTill);
+
+            Assert.IsTrue(_coordinator.TryClaimAction(0f, FarmDuty.Water, out var action));
+            Assert.AreEqual(FarmActionType.Till, action.Type);
+        }
+
+        [TestMethod]
+        public void SetPriorityOrder_RejectsNonPermutations()
+        {
+            var before = _coordinator.CopyPriorityOrderArray();
+
+            _coordinator.SetPriorityOrder(0, 0, 1, 2);   // duplicate
+            CollectionAssert.AreEqual(before, _coordinator.CopyPriorityOrderArray());
+            _coordinator.SetPriorityOrder(0, 1, 2, 4);   // out of range high
+            CollectionAssert.AreEqual(before, _coordinator.CopyPriorityOrderArray());
+            _coordinator.SetPriorityOrder(-1, 1, 2, 3);  // out of range low
+            CollectionAssert.AreEqual(before, _coordinator.CopyPriorityOrderArray());
+        }
+
+        [TestMethod]
+        public void SetPriorityOrder_AcceptsEveryPermutation()
+        {
+            var values = new[] { 0, 1, 2, 3 };
+            for (int a = 0; a < 4; a++)
+                for (int b = 0; b < 4; b++)
+                    for (int c = 0; c < 4; c++)
+                        for (int d = 0; d < 4; d++)
+                        {
+                            var candidate = new[] { values[a], values[b], values[c], values[d] };
+                            if (!SaveData.IsFarmPriorityPermutation(candidate))
+                                continue;
+                            _coordinator.SetPriorityOrder(candidate[0], candidate[1], candidate[2], candidate[3]);
+                            CollectionAssert.AreEqual(candidate, _coordinator.CopyPriorityOrderArray());
+                        }
+        }
+
+        [TestMethod]
         public void Constructor_ScansExistingFlags()
         {
             var tileState = new TileStateService();

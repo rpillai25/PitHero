@@ -2022,7 +2022,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v34 = ms.ToArray();
-            int tail = 4 + 4 * localArtifactCount + 4 + V35Tail(original) + V36Tail(original);
+            int tail = 4 + 4 * localArtifactCount + 4 + V35Tail(original) + V36Tail(original) + V37Tail(original) + V38Tail(original);
             var v33 = new byte[v34.Length - tail];
             Array.Copy(v34, 0, v33, 0, v33.Length);
             v33[0] = 33;
@@ -2148,7 +2148,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v35 = ms.ToArray();
-            int tail = V35Tail(original) + V36Tail(original) + V37Tail(original);
+            int tail = V35Tail(original) + V36Tail(original) + V37Tail(original) + V38Tail(original);
             var body = new byte[v35.Length - tail];
             Array.Copy(v35, 0, body, 0, body.Length);
             body[0] = 34; body[1] = 0; body[2] = 0; body[3] = 0;
@@ -2164,6 +2164,9 @@ namespace PitHero.Tests
 
         /// <summary>Byte length of the v37 section: a count-prefixed float array of crop demand.</summary>
         private static int V37Tail(SaveData data) => 4 + 4 * data.CropDemand.Length;
+
+        /// <summary>v38 tail: the Monsters-Decide bool (1 byte) plus the count-prefixed 4-entry order.</summary>
+        private static int V38Tail(SaveData data) => 1 + 4 + 4 * SaveData.FarmPriorityCount;
 
         // ── v36 (issue #414): inventory acquisition order ────────────────────────────
 
@@ -2195,7 +2198,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v36 = ms.ToArray();
-            var v35 = new byte[v36.Length - V36Tail(original) - V37Tail(original)];
+            var v35 = new byte[v36.Length - V36Tail(original) - V37Tail(original) - V38Tail(original)];
             Array.Copy(v36, 0, v35, 0, v35.Length);
             v35[0] = 35; v35[1] = 0; v35[2] = 0; v35[3] = 0;
 
@@ -2250,7 +2253,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(msWith)) writer.Write(withMonster);
             byte[] v35 = msWithout.ToArray();
             byte[] v35With = msWith.ToArray();
-            int tail = V35Tail(without) + V36Tail(without) + V37Tail(without);
+            int tail = V35Tail(without) + V36Tail(without) + V37Tail(without) + V38Tail(without);
 
             int countOffset = 0;
             while (countOffset < v35.Length && v35[countOffset] == v35With[countOffset]) countOffset++;
@@ -2314,7 +2317,7 @@ namespace PitHero.Tests
             using (var writer = new BinaryPersistableWriter(ms))
                 writer.Write(original);
             byte[] v37 = ms.ToArray();
-            var v36 = new byte[v37.Length - V37Tail(original)];
+            var v36 = new byte[v37.Length - V37Tail(original) - V38Tail(original)];
             Array.Copy(v37, 0, v36, 0, v36.Length);
             v36[0] = 36; v36[1] = 0; v36[2] = 0; v36[3] = 0;
 
@@ -2335,6 +2338,69 @@ namespace PitHero.Tests
             Assert.AreEqual(PitHero.Farming.CropTypeInfo.Count, loaded.CropDemand.Length);
             for (int i = 0; i < loaded.CropDemand.Length; i++)
                 Assert.AreEqual(1f, loaded.CropDemand[i]);
+        }
+
+        // ── v38: farm task priority ──────────────────────────────────────────────────
+
+        [TestMethod]
+        public void SaveData_V38_FarmPriority_RoundTrip()
+        {
+            var original = new SaveData();
+            original.FarmMonstersDecidePriority = false;
+            original.FarmPriorityOrder = new[] { 3, 0, 2, 1 };
+
+            var loaded = RoundTrip(original);
+
+            Assert.IsFalse(loaded.FarmMonstersDecidePriority);
+            CollectionAssert.AreEqual(new[] { 3, 0, 2, 1 }, loaded.FarmPriorityOrder);
+        }
+
+        [TestMethod]
+        public void SaveData_V37_File_ReadsWithSmartFarmPriority()
+        {
+            var original = new SaveData();
+            original.HeroId = 8484;
+            original.CropDemand[(int)PitHero.Farming.CropType.Wheat] = 0.3f;
+            original.FarmMonstersDecidePriority = false;
+            original.FarmPriorityOrder = new[] { 3, 2, 1, 0 };
+
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+                writer.Write(original);
+            byte[] v38 = ms.ToArray();
+            var v37 = new byte[v38.Length - V38Tail(original)];
+            Array.Copy(v38, 0, v37, 0, v37.Length);
+            v37[0] = 37; v37[1] = 0; v37[2] = 0; v37[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v37)))
+                rdr.ReadPersistableInto(loaded);
+
+            Assert.AreEqual(8484, loaded.HeroId);
+            Assert.AreEqual(0.3f, loaded.CropDemand[(int)PitHero.Farming.CropType.Wheat], 0.0001f,
+                "The v37 section still reads in step");
+            Assert.IsTrue(loaded.FarmMonstersDecidePriority, "A v37 file keeps the Water/Tend split it was written with");
+            CollectionAssert.AreEqual(SaveData.DefaultFarmPriorityOrder(), loaded.FarmPriorityOrder);
+        }
+
+        [TestMethod]
+        public void SaveData_V38_Defaults()
+        {
+            var loaded = RoundTrip(new SaveData());
+            Assert.IsTrue(loaded.FarmMonstersDecidePriority);
+            CollectionAssert.AreEqual(SaveData.DefaultFarmPriorityOrder(), loaded.FarmPriorityOrder);
+        }
+
+        [TestMethod]
+        public void SaveData_V38_CorruptOrder_FallsBackToDefault()
+        {
+            var original = new SaveData();
+            original.FarmPriorityOrder = new[] { 2, 2, 2, 2 }; // not a permutation
+
+            var loaded = RoundTrip(original);
+
+            CollectionAssert.AreEqual(SaveData.DefaultFarmPriorityOrder(), loaded.FarmPriorityOrder,
+                "a corrupt order must never reach the claim loop");
         }
     }
 }

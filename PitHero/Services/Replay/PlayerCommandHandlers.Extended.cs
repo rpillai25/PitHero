@@ -244,6 +244,21 @@ namespace PitHero.Services.Replay
                         svc.KeepStacks = cmd.A;
                     return true;
                 }
+                case PlayerCommandType.SetFarmMonstersDecide:
+                {
+                    var farm = Services?.GetService<FarmTaskCoordinator>();
+                    if (farm != null)
+                        farm.MonstersDecide = cmd.ABool;
+                    return true;
+                }
+                case PlayerCommandType.SetFarmPriorityOrder:
+                {
+                    // Absolute, not relative: each reorder click carries the whole resulting order,
+                    // so the handler never depends on its own prior view of the list. SetPriorityOrder
+                    // re-validates and ignores anything that is not a permutation of 0..3.
+                    Services?.GetService<FarmTaskCoordinator>()?.SetPriorityOrder(cmd.A, cmd.B, cmd.C, cmd.D);
+                    return true;
+                }
 
                 // ── Inventory / shop ─────────────────────────────────────────────────
                 case PlayerCommandType.SwapSlots:

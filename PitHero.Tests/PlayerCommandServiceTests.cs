@@ -193,5 +193,27 @@ namespace PitHero.Tests
 
             Assert.AreEqual(4, applied.Count);
         }
+
+        /// <summary>Farm priority command numbers are stored in replay files: pin them.</summary>
+        [TestMethod]
+        public void FarmPriority_HasStableCommandNumbers()
+        {
+            Assert.AreEqual(124, (int)PlayerCommandType.SetFarmMonstersDecide);
+            Assert.AreEqual(125, (int)PlayerCommandType.SetFarmPriorityOrder);
+        }
+
+        /// <summary>A junk order payload is ignored by the handler rather than throwing or applying.</summary>
+        [TestMethod]
+        public void FarmPriority_DrainsHeadlessWithoutThrowing()
+        {
+            var applied = new List<PlayerCommandType>();
+            _service.OnCommandApplied += (tick, cmd) => applied.Add(cmd.Type);
+
+            _service.Enqueue(PlayerCommand.Flag(PlayerCommandType.SetFarmMonstersDecide, false));
+            _service.Enqueue(new PlayerCommand(PlayerCommandType.SetFarmPriorityOrder, 9, 9, 9, 9));
+            _service.Drain(7);
+
+            Assert.AreEqual(2, applied.Count);
+        }
     }
 }

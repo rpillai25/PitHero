@@ -1133,6 +1133,17 @@ namespace PitHero.Services
                 data.AutoSellInventorySellPercent = autoSellExcessService.InventorySellPercent;
             }
 
+            // Farm task priority (v38). The coordinator is scene-scoped and does NOT exist yet when
+            // MainGameScene captures a NewGame replay start blob (CaptureSessionStartBlob runs before
+            // the registration in Begin), so the null fallback MUST be the new-game default — the same
+            // hazard that made NewGame replays rebuild the wrong hero job. Pinned by
+            // FarmTaskCoordinatorTests.DefaultOrder_MatchesSaveDataDefault.
+            var farmCoordinator = Core.Services.GetService<FarmTaskCoordinator>();
+            data.FarmMonstersDecidePriority = farmCoordinator?.MonstersDecide ?? true;
+            data.FarmPriorityOrder = farmCoordinator != null
+                ? farmCoordinator.CopyPriorityOrderArray()
+                : SaveData.DefaultFarmPriorityOrder();
+
             // Auto-purchase items (v23+)
             var autoItemPurchaseService = Core.Services.GetService<AutoItemPurchaseService>();
             if (autoItemPurchaseService != null)

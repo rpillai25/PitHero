@@ -200,7 +200,13 @@ namespace PitHero.Services
                 }
             }
 
-            // Rebalance the Water/Tend split whenever the crew changes, and periodically as work shifts
+            // Rebalance the Water/Tend split whenever the crew changes, and periodically as work shifts.
+            // This deliberately keeps running while MonstersDecide is false, even though manual mode
+            // ignores Duty. Do not "optimize" it away: ReassignDuties calls PopulatePickupQueue, which
+            // has a side effect (relocating drops that ended up on unreachable tiles), so skipping it
+            // would change drop-relocation timing — a sim-visible change unrelated to priority. Keeping
+            // it also means Duty is never stale, so re-checking the box resumes a correct split on the
+            // very next claim.
             _dutyElapsed += Time.DeltaTime;
             if (workersChanged || _dutyElapsed >= GameConfig.FarmDutyReassessSeconds)
                 ReassignDuties();
@@ -360,6 +366,72 @@ namespace PitHero.Services
         private static readonly FarmPriorityKind[] SmartTendOrder =
             { FarmPriorityKind.Till, FarmPriorityKind.Plant, FarmPriorityKind.Harvest, FarmPriorityKind.Water };
 
+        /// <summary>Number of player-orderable priorities (Water, Till, Plant, Harvest).</summary>
+        public const int PriorityCount = 4;
+
+        /// <summary>
+        /// True (the default) when the game picks each worker's claim order from the Water/Tend duty
+        /// split. False hands the order to the player, and the duty split stops mattering: every
+        /// worker claims in PlayerOrder. Written only by the SetFarmMonstersDecide command handler
+        /// and the load path — never from UI code directly.
+        /// </summary>
+        public bool MonstersDecide { get; set; } = true;
+
+        // The player's claim order, used only while MonstersDecide is false. Same default as
+        // SaveData.DefaultFarmPriorityOrder(); FarmTaskCoordinatorTests pins the two together.
+        private readonly FarmPriorityKind[] _playerOrder =
+            { FarmPriorityKind.Water, FarmPriorityKind.Till, FarmPriorityKind.Plant, FarmPriorityKind.Harvest };
+
+        /// <summary>
+        /// Sets the player's claim order from four FarmPriorityKind ordinals. The single
+        /// re-validation point for both the command handler and the load path: anything that is not
+        /// a permutation of 0..3 (a truncated payload, a corrupt save) is ignored outright, leaving
+        /// the previous order in place. Allocation-free.
+        /// </summary>
+        public void SetPriorityOrder(int a, int b, int c, int d)
+        {
+            bool seen0 = false, seen1 = false, seen2 = false, seen3 = false;
+            if (!MarkSeen(a, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+            if (!MarkSeen(b, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+            if (!MarkSeen(c, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+            if (!MarkSeen(d, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+
+            _playerOrder[0] = (FarmPriorityKind)a;
+            _playerOrder[1] = (FarmPriorityKind)b;
+            _playerOrder[2] = (FarmPriorityKind)c;
+            _playerOrder[3] = (FarmPriorityKind)d;
+        }
+
+        /// <summary>Flags one ordinal as seen; false when out of range or already used.</summary>
+        private static bool MarkSeen(int value, ref bool seen0, ref bool seen1, ref bool seen2, ref bool seen3)
+        {
+            switch (value)
+            {
+                case 0: if (seen0) return false; seen0 = true; return true;
+                case 1: if (seen1) return false; seen1 = true; return true;
+                case 2: if (seen2) return false; seen2 = true; return true;
+                case 3: if (seen3) return false; seen3 = true; return true;
+                default: return false;
+            }
+        }
+
+        /// <summary>Copies the player's claim order into dest (length PriorityCount) for the UI and the save gather.</summary>
+        public void CopyPriorityOrder(int[] dest)
+        {
+            if (dest == null || dest.Length < PriorityCount)
+                return;
+            for (int i = 0; i < PriorityCount; i++)
+                dest[i] = (int)_playerOrder[i];
+        }
+
+        /// <summary>The player's claim order as a fresh array, for the save gather.</summary>
+        public int[] CopyPriorityOrderArray()
+        {
+            var copy = new int[PriorityCount];
+            CopyPriorityOrder(copy);
+            return copy;
+        }
+
         /// <summary>Claims the next valid action from the queues as a Water-duty worker (see the duty overload).</summary>
         public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, FarmDuty.Water, out action);
 
@@ -368,9 +440,13 @@ namespace PitHero.Services
 
         /// <summary>
         /// Pops the next valid action near the given normalized queue position (0 = front,
-        /// 1 = back). Priority depends on the worker's duty (issue #420):
+        /// 1 = back). While MonstersDecide is true, priority depends on the worker's duty (issue #420):
         /// Water: Pickup > Water > Till > Destroy > Plant > Harvest;
         /// Tend:  Pickup > Till > Destroy > Plant > Harvest > Water.
+        /// While it is false, every worker uses the player's order instead and duty is ignored.
+        /// Either way Pickup comes first and Destroy runs immediately before Plant. The order is a
+        /// preference, never a filter: a worker whose top priority has no work falls through to the
+        /// next one, so nobody idles while work exists.
         /// Workers are given different positions so they spread across the field instead of clustering.
         /// A returned action is considered claimed until Complete/Release/ReportBlocked.
         /// Returns false when all queues are empty.
@@ -383,7 +459,10 @@ namespace PitHero.Services
             if (TryClaimFromQueue(_pickupQueue, _pickupTracked, queuePick, ValidatePickup, out action))
                 return true;
 
-            var order = duty == FarmDuty.Water ? SmartWaterOrder : SmartTendOrder;
+            // Manual mode ignores the worker's duty entirely: one player-chosen order for everyone.
+            var order = MonstersDecide
+                ? (duty == FarmDuty.Water ? SmartWaterOrder : SmartTendOrder)
+                : _playerOrder;
             for (int i = 0; i < order.Length; i++)
             {
                 switch (order[i])

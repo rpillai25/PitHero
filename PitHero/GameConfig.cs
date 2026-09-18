@@ -713,7 +713,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
-        public const int SimulationVersion = 6; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon)
+        public const int SimulationVersion = 7; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path)
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

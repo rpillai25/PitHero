@@ -880,6 +880,17 @@ namespace PitHero.ECS.Scenes
             var autoJobSvc = Core.Services.GetService<Services.AutoJobAssignmentService>();
             if (autoJobSvc != null)
                 autoJobSvc.Enabled = pendingData.AutomateMonsterJobs;
+            // Farm task priority (v38). Applied here rather than in SaveLoadService.ApplyLoadedState
+            // because FarmTaskCoordinator is scene-scoped: it does not exist before the scene swap.
+            var farmCoordinatorSvc = Core.Services.GetService<Services.FarmTaskCoordinator>();
+            if (farmCoordinatorSvc != null)
+            {
+                farmCoordinatorSvc.MonstersDecide = pendingData.FarmMonstersDecidePriority;
+                var savedOrder = pendingData.FarmPriorityOrder;
+                if (savedOrder != null && savedOrder.Length == SaveData.FarmPriorityCount)
+                    farmCoordinatorSvc.SetPriorityOrder(savedOrder[0], savedOrder[1], savedOrder[2], savedOrder[3]);
+            }
+
             var autoSellExcessSvc = Core.Services.GetService<Services.AutoSellExcessItemsService>();
             if (autoSellExcessSvc != null)
             {
