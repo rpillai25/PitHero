@@ -15,6 +15,13 @@ namespace PitHero.UI
     public class MonsterInfoPanel : Window
     {
         private const float ContentPadding = 6f;
+
+        /// <summary>
+        /// Fixed content width. MonsterUI.PositionWindow derives the roster X from this card every
+        /// frame, so a Pack()-driven width would slide the whole window sideways the moment a counter
+        /// crossed 9 to 10 and the caption column grew.
+        /// </summary>
+        public const float PanelWidth = 180f;
         private const float CaptionGap = 12f;
         /// <summary>Vertical gap between stat rows, so the labels do not run together.</summary>
         private const float RowGap = 4f;
@@ -50,7 +57,7 @@ namespace PitHero.UI
 
             Add(_contentTable).Expand().Fill().Pad(ContentPadding);
             SetVisible(false);
-            Pack();
+            PackFixedWidth();
         }
 
         /// <summary>Recomputes the counts from the roster and resizes the card to fit.</summary>
@@ -62,7 +69,14 @@ namespace PitHero.UI
             _farmValue.SetText(stats.FarmWorkers.ToString());
             _kitchenValue.SetText(stats.KitchenWorkers.ToString());
             _idleValue.SetText(stats.IdleWorkers.ToString());
+            PackFixedWidth();
+        }
+
+        /// <summary>Packs, then pins the width back so the card never resizes under the layout.</summary>
+        private void PackFixedWidth()
+        {
             Pack();
+            SetSize(PanelWidth, GetHeight());
         }
 
         /// <summary>

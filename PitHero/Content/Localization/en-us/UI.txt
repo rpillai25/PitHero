@@ -517,6 +517,15 @@ MonsterInfoFarmWorkers,Current Farm Workers:
 MonsterInfoKitchenWorkers,Current Kitchen Workers:
 MonsterInfoIdleWorkers,Current Idle Workers:
 
+# Monster Farm Priority
+WindowMonsterFarmPriority,Monster Farm Priority
+MonsterFarmPriorityMonstersDecide,Monsters Decide
+MonsterFarmPriorityMonstersDecideTooltip,Smart determination of priority by monsters
+FarmPriorityWater,Water
+FarmPriorityTill,Till
+FarmPriorityPlant,Plant
+FarmPriorityHarvest,Harvest
+
 # Threat system
 ConsoleThreatTarget,{0} has the monsters' attention!
 ConsoleBattleProvoke,{0} provokes the enemy to protect {1}!

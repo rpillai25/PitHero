@@ -41,8 +41,11 @@ namespace PitHero.UI
         // Aggregate view only: one page per Monster House. Empty in the per-house view.
         private PagerRow _pagerRow;
 
-        // Aggregate view only: workforce summary card docked to the right of the roster window.
+        // Aggregate view only: workforce summary card docked to the LEFT of the roster window.
         private MonsterInfoPanel _infoPanel;
+
+        // Aggregate view only: farm claim-order card docked to the right of the roster window.
+        private MonsterFarmPriorityPanel _farmPriorityPanel;
 
         // Graphical close button anchored outside the roster window's left edge (issue #399).
         private WindowCloseButton _closeButton;
@@ -217,12 +220,16 @@ namespace PitHero.UI
             _monsterWindow.SetVisible(false);
 
             _infoPanel = new MonsterInfoPanel(skin);
+            _farmPriorityPanel = new MonsterFarmPriorityPanel(skin, _stage);
 
             _closeButton = WindowCloseButton.Create(_monsterWindow,
                 GetText(TextType.UI, UITextKey.ButtonClose), ToggleMonsterWindow);
 
             // The close button joins the envelope so a click on it is not also read as an outside click.
-            _dismissEnvelope = new System.Collections.Generic.List<Element>(3) { _monsterWindow, _infoPanel, _closeButton };
+            // Every docked card must be in here too, or a click inside it reads as an outside click and
+            // closes the whole window. Hidden entries are skipped, so the per-house view is unaffected.
+            _dismissEnvelope = new System.Collections.Generic.List<Element>(4)
+                { _monsterWindow, _infoPanel, _closeButton, _farmPriorityPanel };
         }
 
         private void ToggleMonsterWindow()
@@ -235,9 +242,11 @@ namespace PitHero.UI
                 _stage.AddElement(_monsterWindow);
                 _monsterWindow.SetVisible(true);
                 _monsterWindow.ToFront();
-                // Added after the roster window so the card sits above it when the two overlap.
+                // Added after the roster window so the cards sit above it when they overlap.
                 _stage.AddElement(_infoPanel);
                 _infoPanel.ToFront();
+                _stage.AddElement(_farmPriorityPanel);
+                _farmPriorityPanel.ToFront();
                 _closeButton.ShowOn(_stage);
                 PositionWindow();
                 var pauseService = Core.Services.GetService<PauseService>();
@@ -254,6 +263,10 @@ namespace PitHero.UI
                 _monsterWindow.Remove();
                 _infoPanel.SetVisible(false);
                 _infoPanel.Remove();
+                // SetVisible before Remove: GetStage() stays non-null after Remove, so a card left
+                // visible would strand its hover tooltip over the game world.
+                _farmPriorityPanel.SetVisible(false);
+                _farmPriorityPanel.Remove();
                 _closeButton.HideAndDetach();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
@@ -319,8 +332,13 @@ namespace PitHero.UI
             // subset that the roster-wide totals would not describe.
             bool aggregateView = _houseFilterId < 0;
             _infoPanel.SetVisible(aggregateView);
+            _farmPriorityPanel.SetVisible(aggregateView);
             if (aggregateView)
+            {
                 _infoPanel.Refresh(manager?.AlliedMonsters, timeService?.IsNighttime ?? false);
+                // Mirror the simulation into the controls. Records nothing: see SyncFromCoordinator.
+                _farmPriorityPanel.SyncFromCoordinator();
+            }
 
             // One page per Monster House in the aggregate view; the per-house view is never paged.
             var houses = GetMonsterHouses();
@@ -611,20 +629,36 @@ namespace PitHero.UI
             }
             float winW = _monsterWindow.GetWidth();
 
-            // The info card docks to the right of the roster window, so the pair is placed as one
-            // block — otherwise the flip-to-the-left fallback would still leave the card off-stage.
+            // The cards dock either side of the roster, so all of it is placed as one block:
+            // [info][gap][close][roster][gap][farm priority]. Placing them independently would let
+            // the flip-to-the-left fallback leave a card off-stage.
             bool infoShown = _infoPanel != null && _infoPanel.IsVisible();
-            float blockW = winW + (infoShown ? InfoPanelGap + _infoPanel.GetWidth() : 0f);
+            bool farmShown = _farmPriorityPanel != null && _farmPriorityPanel.IsVisible();
+            float closeW = _closeButton != null ? _closeButton.GetWidth() : 0f;
 
-            float winX = btnX + btnW + GameConfig.UIWindowBelowBarGap;
-            if (winX + blockW > stageW) winX = btnX - GameConfig.UIWindowBelowBarGap - blockW;
-            if (winX < 0) winX = 0;
+            // Everything drawn left of the roster. Zero in the per-house view, where both cards are
+            // hidden — which collapses the math below back to the original two-term form.
+            float leftW = infoShown ? MonsterInfoPanel.PanelWidth + InfoPanelGap + closeW : 0f;
+            float rightW = farmShown ? InfoPanelGap + MonsterFarmPriorityPanel.PanelWidth : 0f;
+            float blockW = leftW + winW + rightW;
+
+            float winX = btnX + btnW + GameConfig.UIWindowBelowBarGap + leftW;
+            if (winX - leftW + blockW > stageW)
+                winX = btnX - GameConfig.UIWindowBelowBarGap - blockW + leftW;
+            // Clamp the BLOCK, not the roster: the info card must never run off the left edge. The
+            // dismissal poll is a bounding box over these elements, so a negative left edge would make
+            // the whole left half of the screen count as "inside" and outside-clicks stop dismissing.
+            if (winX - leftW < 0) winX = leftW;
 
             winY = UILayout.ClampY(winY, winH, stageH);
             _monsterWindow.SetPosition(winX, winY);
 
             if (infoShown)
-                _infoPanel.SetPosition(winX + winW + InfoPanelGap, UILayout.ClampY(winY, _infoPanel.GetHeight(), stageH));
+                _infoPanel.SetPosition(winX - closeW - InfoPanelGap - MonsterInfoPanel.PanelWidth,
+                    UILayout.ClampY(winY, _infoPanel.GetHeight(), stageH));
+            if (farmShown)
+                _farmPriorityPanel.SetPosition(winX + winW + InfoPanelGap,
+                    UILayout.ClampY(winY, _farmPriorityPanel.GetHeight(), stageH));
 
             _closeButton?.SyncPosition(_stage);
         }
@@ -654,6 +688,8 @@ namespace PitHero.UI
                 _monsterWindow?.Remove();
                 _infoPanel?.SetVisible(false);
                 _infoPanel?.Remove();
+                _farmPriorityPanel?.SetVisible(false);
+                _farmPriorityPanel?.Remove();
                 _closeButton?.HideAndDetach();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
