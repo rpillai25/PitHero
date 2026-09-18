@@ -592,8 +592,10 @@ namespace PitHero.ECS.Scenes
 
         /// <summary>
         /// Restores the global services a save carries that the scene's new-game path leaves alone:
-        /// the defeated-monster record and the Second Chance vault contents. Used by ApplyPendingLoadData
-        /// for loads and by Begin for NewGame-kind replays.
+        /// the defeated-monster record and the Second Chance vault contents. Called by Begin for
+        /// NewGame-kind replays. The hero design is NOT restored here — ReplayPlaybackService has
+        /// already put it back via SaveLoadService.ApplyLoadedState on the same blob, before the
+        /// scene swap, so that SpawnHero builds the recorded hero rather than the current one.
         /// </summary>
         private static void RestoreGlobalServicesFromSave(SaveData data)
         {
@@ -705,6 +707,11 @@ namespace PitHero.ECS.Scenes
                 // InGameTimeService survives a quit to title, so a fresh hero must start the clock over
                 Core.Services.GetService<InGameTimeService>()?.ResetToDefault();
                 SetupNewGameFarmContent();
+                // New-game automation defaults (issue #420). Pre-tick setup like the farm content, so
+                // replays of a new game reproduce it; loads restore the saved value instead.
+                var newGameCropSell = Core.Services.GetService<Services.AutoCropSellService>();
+                if (newGameCropSell != null)
+                    newGameCropSell.KeepStacks = GameConfig.NewGameAutoSellKeepStacks;
                 return;
             }
 
@@ -873,6 +880,17 @@ namespace PitHero.ECS.Scenes
             var autoJobSvc = Core.Services.GetService<Services.AutoJobAssignmentService>();
             if (autoJobSvc != null)
                 autoJobSvc.Enabled = pendingData.AutomateMonsterJobs;
+            // Farm task priority (v38). Applied here rather than in SaveLoadService.ApplyLoadedState
+            // because FarmTaskCoordinator is scene-scoped: it does not exist before the scene swap.
+            var farmCoordinatorSvc = Core.Services.GetService<Services.FarmTaskCoordinator>();
+            if (farmCoordinatorSvc != null)
+            {
+                farmCoordinatorSvc.MonstersDecide = pendingData.FarmMonstersDecidePriority;
+                var savedOrder = pendingData.FarmPriorityOrder;
+                if (savedOrder != null && savedOrder.Length == SaveData.FarmPriorityCount)
+                    farmCoordinatorSvc.SetPriorityOrder(savedOrder[0], savedOrder[1], savedOrder[2], savedOrder[3]);
+            }
+
             var autoSellExcessSvc = Core.Services.GetService<Services.AutoSellExcessItemsService>();
             if (autoSellExcessSvc != null)
             {

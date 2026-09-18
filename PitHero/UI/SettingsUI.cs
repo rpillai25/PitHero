@@ -1640,17 +1640,19 @@ namespace PitHero.UI
         /// <summary>Writes the reordered sell priority (top entry sells first) to the service.</summary>
         private void OnSellPriorityReordered(int from, int to, string item)
         {
-            var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
-            if (svc != null && _sellPriorityItems != null && _sellPriorityItems.Count > 0)
-                svc.ConsumablesFirst = _sellPriorityItems[0] == GetText(TextType.UI, UITextKey.SellPriorityConsumables);
+            if (_sellPriorityItems != null && _sellPriorityItems.Count > 0)
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetConsumablesFirst, 0,
+                    _sellPriorityItems[0] == GetText(TextType.UI, UITextKey.SellPriorityConsumables) ? 1 : 0));
         }
 
         /// <summary>Writes the reordered purchase priority (top entry buys first) to the service.</summary>
         private void OnPurchasePriorityReordered(int from, int to, string item)
         {
-            var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-            if (svc != null && _purchasePriorityItems != null && _purchasePriorityItems.Count > 0)
-                svc.ConsumablesFirst = _purchasePriorityItems[0] == GetText(TextType.UI, UITextKey.SellPriorityConsumables);
+            if (_purchasePriorityItems != null && _purchasePriorityItems.Count > 0)
+                Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                    Services.Replay.PlayerCommandType.SetConsumablesFirst, 1,
+                    _purchasePriorityItems[0] == GetText(TextType.UI, UITextKey.SellPriorityConsumables) ? 1 : 0));
         }
 
         /// <summary>

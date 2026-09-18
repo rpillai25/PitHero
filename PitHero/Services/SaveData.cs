@@ -279,7 +279,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 37; // v37: per-crop market demand appended (issue #417, economy)
+        public const int CurrentVersion = 38; // v38: farm task priority (Monsters Decide + the player order)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -545,6 +545,35 @@ namespace PitHero.Services
         // Auto-sell priority (v22)
         /// <summary>Sell priority for auto-selling excess items: true sells consumables before gear (default).</summary>
         public bool AutoSellConsumablesFirst = true;
+
+        // Farm task priority (v38)
+        /// <summary>Number of player-orderable farm priorities (Water, Till, Plant, Harvest).</summary>
+        public const int FarmPriorityCount = 4;
+
+        /// <summary>True (default) when the game picks each farm worker's claim order from the Water/Tend split.</summary>
+        public bool FarmMonstersDecidePriority = true;
+
+        /// <summary>The player's farm claim order as FarmPriorityKind ordinals. Always a permutation of 0..3.</summary>
+        public int[] FarmPriorityOrder = DefaultFarmPriorityOrder();
+
+        /// <summary>True when values is a permutation of 0..FarmPriorityCount-1 (a usable claim order).</summary>
+        public static bool IsFarmPriorityPermutation(int[] values)
+        {
+            if (values == null || values.Length != FarmPriorityCount)
+                return false;
+            int mask = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                int v = values[i];
+                if (v < 0 || v >= FarmPriorityCount)
+                    return false;
+                int bit = 1 << v;
+                if ((mask & bit) != 0)
+                    return false;
+                mask |= bit;
+            }
+            return true;
+        }
 
         // Gear sell types (v23)
         /// <summary>Which gear categories may be auto-sold, indexed by GearCategory. Null until Recover normalizes it.</summary>
@@ -1191,7 +1220,19 @@ namespace PitHero.Services
 
             // 52. Crop market demand (v37, issue #417): one float per CropType
             WriteFloatArray(writer, CropDemand);
+
+            // 53. Farm task priority (v38): the Monsters-Decide flag and the player's claim order
+            writer.Write(FarmMonstersDecidePriority);
+            WriteIntArray(writer, FarmPriorityOrder);
         }
+
+        /// <summary>
+        /// The claim order a new game starts with: Water, Till, Plant, Harvest. Must stay identical
+        /// to FarmTaskCoordinator's field initializer — FarmTaskCoordinatorTests pins the two
+        /// together, because the NewGame replay start blob is gathered before the coordinator exists
+        /// and falls back to this.
+        /// </summary>
+        public static int[] DefaultFarmPriorityOrder() => new[] { 0, 1, 2, 3 };
 
         /// <summary>A demand array with every crop at full (1.0) demand.</summary>
         public static float[] FullDemand()
@@ -1886,6 +1927,21 @@ namespace PitHero.Services
             CropDemand = fileVersion >= 37
                 ? ReadFloatArray(reader, Farming.CropTypeInfo.Count, 1f)
                 : FullDemand();
+
+            // 53. Farm task priority (section added in v38). Older files keep the Water/Tend split
+            // and the default order, which is exactly how they behaved when they were written.
+            if (fileVersion >= 38)
+            {
+                FarmMonstersDecidePriority = reader.ReadBool();
+                FarmPriorityOrder = ReadIntArray(reader, FarmPriorityCount);
+                if (!IsFarmPriorityPermutation(FarmPriorityOrder))
+                    FarmPriorityOrder = DefaultFarmPriorityOrder(); // corrupt file: never reach the claim loop
+            }
+            else
+            {
+                FarmMonstersDecidePriority = true;
+                FarmPriorityOrder = DefaultFarmPriorityOrder();
+            }
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
             // value. Older files carried two; reproduce the old EFFECTIVE sell floor (raised to the

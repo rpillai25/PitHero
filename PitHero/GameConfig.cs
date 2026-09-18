@@ -238,6 +238,7 @@ namespace PitHero
         public const float TillBaseDurationSeconds = 3f;       // hoe time at FarmingProficiency 1
         public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
+        public const float FarmDutyReassessSeconds = 10f;       // seconds between rebalancing farm workers' Water/Tend duty split (issue #420)
         public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
         public const int FarmWanderMaxEastOffsetTiles = 5;      // idle wander goes at most this many tiles east of the rightmost farm object (building or tilled tile)
         // Crop market saturation (issue #417): each crop's demand drops in proportion to the base
@@ -511,6 +512,7 @@ namespace PitHero
 
         // Starter farming Slime housed in the new-game Monster House (job levels 1-9)
         public const int NewGameStarterSlimeFarmingProficiency = MonsterJobStartingLevel;
+        public const int NewGameAutoSellKeepStacks = 1;           // auto-sell crops keeps this many full stacks per crop on a new game (issue #420)
         public const int NewGameStarterSlimeFishingProficiency = MonsterJobStartingLevel;
         public const int NewGameStarterSlimeCookingProficiency = MonsterJobStartingLevel;
 
@@ -711,7 +713,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
-        public const int SimulationVersion = 3; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier
+        public const int SimulationVersion = 7; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path)
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

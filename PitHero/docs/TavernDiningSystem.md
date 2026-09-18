@@ -342,9 +342,15 @@ Issue #392. `TavernScheduleConfig.IsKitchenClosed(hour)` returns true for hours 
   everyone home via `RequestReturnHome`. The crew therefore delivers every in-flight dish,
   waits out the last eaters, busses the final plates, sinks any abandoned food, and only then
   drains — leaving every table clean for overnight arrivals (a crew that left at the last
-  delivery stranded dirty tables all night and door-waiters piled up). This is independent of
-  `IsAsleep`, which means nocturnal workers (Orc, Skeleton, GhostMiner — awake 10 PM–6 AM) are
-  also excluded from kitchen duty overnight.
+  delivery stranded dirty tables all night and door-waiters piled up). The asleep check runs
+  first, so day workers (asleep from 10 PM) are never kept on by this rule; it keeps nocturnal
+  workers (Orc, Skeleton, GhostMiner — awake 10 PM–6 AM) on only while closing work remains.
+- **Serving-table drain at shift end** (issue #420): a server told to go home at a real shift end
+  (`IsAsleep` or kitchen closed) first delivers every dish already on the serving tables (and
+  sinks orphans) before `ReturnHome`: `ServerDecide_Tick` checks `HasReadyDishForZone` inside the
+  `_goHome` branch. A `Plated` ticket always has a patron still waiting (a departed patron's dish
+  becomes an orphan), and no orders are taken while closed, so the drain ends. Unstarted and
+  in-progress cooking is not finished. A mid-shift role change still leaves immediately.
 - **Shift-end speech bubble**: `ReturnHome_Enter` now says the shift-end bubble when
   `IsAsleep(...) || IsKitchenClosed(hour)` (so nocturnal workers' closing-time departure looks
   like a real shift end, not a role change).
@@ -409,7 +415,8 @@ per member per **meal period** (`HasEatenThisMeal`, reset by `ResetForNewMealPer
 (the last dinner buff expires ~4 AM; the 6 AM clear removes any stragglers).
 
 **The hero pays at order time** (`OnPartyOrderTaken`), unlike patrons who pay after eating.
-Eating runs on `GetEatSeconds` (5/7/10s by class); `FinishMember` applies the meal buff, logs
+Eating runs on `GetEatSeconds` (5/7/10s by class); `FinishMember` applies the meal buff, fully restores the
+member's HP and MP (issue #420; also on the fast-track path), logs
 `dish_served` (party=true, tip=0), and notifies the coordinator. Resuming play mid-meal
 cancels outstanding tickets (refunding gold only while `CropsRefundable` and `HasPaid`), but
 a `Delivered` dish is fast-tracked — buffs still granted. `CheckAllDone` holds the trip open
@@ -431,7 +438,8 @@ mercs), adding each non-expired dish buff as `BattleBuff(type, magnitude, -1, "m
 = -1 means "until battle end". Injection is pure list writes: **it consumes no battle RNG**
 (RNG call order is a contract — see `VirtualGameLogicLayer.md`). Deluxe meals scale magnitude
 ×1.5 rounded up. MagicUp feeds skill formulas via `ICombatant.GetSkillStats()`; HP/MP regen
-ticks at end of round. Food never restores HP/MP directly — that's the inn's job.
+ticks at end of round. Separately from the buff, finishing a meal fully restores that member's
+HP and MP (issue #420) — see Party dining; reloading a save re-registers buffs without restoring.
 
 **UI display:** the active meal shows read-only under the STR/AGI/VIT/MAG line in the Hero Info
 tab (`HeroCrystalTab`) and in each Mercenaries tab row (`MercenariesTab`) as `Meal Buffs` /

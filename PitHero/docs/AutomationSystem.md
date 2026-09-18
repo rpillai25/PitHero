@@ -206,7 +206,8 @@ hoverableLabel.SetTooltipEnabled(active);   // hoverable labels only
 `PitHeroSkin` provides `ph-grayed` variants of `LabelStyle`, `TextButtonStyle` and `CheckBoxStyle`.
 Helpers in `SettingsUI`: `SetButtonActive` (shared), `SetDesignateCropsActive`,
 `SetExcessItemControlsActive`, `SetItemPurchaseControlsActive`, `SetConsumablePurchaseControlsActive`,
-`SetAutoHireControlsActive`. `ReorderableTableList` has its own `SetGrayed(bool)`.
+`SetAutoHireControlsActive`. `ReorderableTableList` has its own `SetGrayed(bool)`, used by the sell/purchase
+lists and by `MonsterFarmPriorityPanel.SetControlsActive`.
 
 Gotchas:
 

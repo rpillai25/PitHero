@@ -453,6 +453,11 @@ namespace PitHero.Services
                 data.HairColor = design.HairColor;
                 data.HairstyleIndex = design.HairstyleIndex;
                 data.ShirtColor = design.ShirtColor;
+                // The job the design was created with. A NewGame replay start blob is captured at the
+                // top of Begin, before the hero entity exists, so the live-hero block below cannot
+                // supply one: without this the blob carries no job and the replay rebuilds the hero
+                // as the JobFactory default (Knight). A real save still wins in the block below.
+                data.JobName = design.JobName;
             }
 
             // Find hero entity
@@ -1127,6 +1132,17 @@ namespace PitHero.Services
                 // Inventory sell percent (v34+)
                 data.AutoSellInventorySellPercent = autoSellExcessService.InventorySellPercent;
             }
+
+            // Farm task priority (v38). The coordinator is scene-scoped and does NOT exist yet when
+            // MainGameScene captures a NewGame replay start blob (CaptureSessionStartBlob runs before
+            // the registration in Begin), so the null fallback MUST be the new-game default — the same
+            // hazard that made NewGame replays rebuild the wrong hero job. Pinned by
+            // FarmTaskCoordinatorTests.DefaultOrder_MatchesSaveDataDefault.
+            var farmCoordinator = Core.Services.GetService<FarmTaskCoordinator>();
+            data.FarmMonstersDecidePriority = farmCoordinator?.MonstersDecide ?? true;
+            data.FarmPriorityOrder = farmCoordinator != null
+                ? farmCoordinator.CopyPriorityOrderArray()
+                : SaveData.DefaultFarmPriorityOrder();
 
             // Auto-purchase items (v23+)
             var autoItemPurchaseService = Core.Services.GetService<AutoItemPurchaseService>();

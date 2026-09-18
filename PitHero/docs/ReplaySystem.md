@@ -334,6 +334,18 @@ artifacts rewind with the save, so charging for them is safe.
     `PersistBagOrdering` writes back over the bag. `InventoryGrid.SyncFromSimulation()` (called by
     the handlers' `GetGrid` and by `SecondChanceShopUI.ApplyItemPurchase`) rebinds to the current hero
     entity (also after a respawn) and rebuilds the picture before the command applies.
+14. **Settings controls are commands too, and syncing a control from the sim must not dispatch.**
+    Precedent (2026-09-17): the Food tab wrote `PartyDiningService.FavoriteDishId` and `EatAtTavern`
+    straight from its radio/checkbox handlers. A player who switched the favorite from Buttered Bread
+    (35g) to Corn Chowder (200g) got a 200g dinner live, but the replay kept the saved favorite and
+    paid 35g: `world` alone diverged (+165 gold) at the dinner order, `rng`/`hero`/`party` equal, and
+    only in the one session where the tab was touched. The same audit found the fridge pre-stock
+    slider (which also reran `RecomputePreStockDeficits` on every dialog open) and the sell/purchase
+    priority lists (`ConsumablesFirst`) writing services directly. They now dispatch
+    `SetFavoriteDish`, `SetEatAtTavern`, `SetPreStockStackSize` and `SetConsumablesFirst`. When a
+    dialog syncs a control from the service on open (`SetValueAndCommit`, `IsChecked`), guard the
+    control's handler (`_refreshing`, `_syncingSlider`) so the sync is not recorded as a player change.
+    Audit grep: `GetService<...>()...X = ` or `svc.X = ` in `PitHero/UI`.
 13. **The synergy grid is the bag only.** Hero and mercenary equipment cells never take part in
     pattern matching (`PartyGridLayout.FillSynergyGrid`). The old UI detection matched every cell, so
     mercenary gear that had been shown in the Party window could complete a pattern.
@@ -426,6 +438,31 @@ artifacts rewind with the save, so charging for them is safe.
 7. To read a recording offline, load it in a throwaway MSTest with `FileDataStore.Load(name, new
    ReplayData())` and dump `Commands` and `StateHashes`: seeing the recorded hero hash stay constant
    across a window, or equal the replay's post-command hash, tells you a command no-oped.
+8. **`world` only?** Its inputs are few (`SimulationStateHasher.HashWorld`: funds, local artifact
+   mask, pit level, pit tier, `InGameTimeService.AccumulatedSeconds`, pause flag), so recover which
+   one drifted by brute force in the same throwaway test: solve the replay's own (actual) hash for the
+   unknown mask/clock using the start blob (`ReplayIO.DeserializeSaveData(data.StateBlob)`) plus the
+   un-paused tick count, then search funds/clock/pause around those values for the recorded hash. The
+   gold delta usually matches a price in the live analytics (`gold_spent`/`gold_gained` rows).
+   Remember paused ticks do not advance the clock when mapping a tick to the analytics `gt` time.
+9. **`hero` only, and at tick 0?** The session never got off the ground: the new-game/load path built
+   a different hero. `HashHero`'s inputs are just as few as `HashWorld`'s (tile, `CurrentHP`,
+   `CurrentMP`, `Level`, `Experience`, `InsidePit`, `StoppedAdventure`, the FSM state *if the
+   component exists*, `IsBattleInProgress`, then `Bag.Count` and every non-empty `(slotIndex,
+   item.Name)`), so solve both hashes by brute force in a throwaway MSTest — build the candidates
+   from **real objects** (`JobFactory.CreateJob` + `new Hero(...)` for vitals, a real `ItemBag` with
+   real items for the slots) rather than hand-typed values: `item.Name` is the identity name
+   (`"HPPotion"`), not the `Inv_*_Name` text key, and a hand-built model silently fails to reproduce
+   even the side whose state you can already read in the log. Recovering both sides names the drift
+   outright — 2026-09-17 resolved to *recorded = Thief (hp 75/mp 25), actual = Knight (95/22)*, which
+   pointed straight at the start blob: `GatherCurrentState` read `data.JobName` off the hero entity
+   only, a NewGame blob is captured before that entity exists, and `HeroDesign` turns an empty job
+   into `"Knight"` (see "A NewGame replay re-runs the new-game path" in `AGENTS.md`). The same
+   ordering catches scene-scoped **services**, which are registered later in `Begin` than the blob
+   capture: gather from one and the null fallback must equal the new-game default, pinned by a test
+   (`FarmTaskCoordinatorTests.DefaultOrder_MatchesSaveDataDefault`). A tick-0 `hero`
+   divergence is always worth solving this way: it reproduces on every playback, needs no seeking,
+   and the state space is tiny.
 
 ## Debug vs Release
 

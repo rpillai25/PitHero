@@ -253,6 +253,16 @@ namespace PitHero.ECS.Components
                 for (int i = 0; i < _takenOrders.Count; i++)
                     _coordinator.PostTicket(_takenOrders[i]);
                 _takenOrders.Clear();
+
+                // At shift end, food already on the serving tables still reaches its patrons before
+                // we leave (issue #420). A Plated ticket always has a patron still waiting (a departed
+                // patron's dish becomes an orphan, which we sink on the way). No new orders are taken
+                // while closed, so this drain is finite; mid-shift role changes leave immediately.
+                if (IsShiftEnding() && _coordinator.HasReadyDishForZone(Zone))
+                {
+                    CurrentState = KitchenMonsterState.ServerWalkToPickup;
+                    return;
+                }
                 CurrentState = KitchenMonsterState.ReturnHome;
                 return;
             }
@@ -1313,13 +1323,19 @@ namespace PitHero.ECS.Components
             }
             // Only bubble on a real shift end (worker going to sleep or kitchen closing —
             // not a mid-shift role change).
+            if (IsShiftEnding())
+                SpeechBubbleDialogue.SayWorkerShiftEnd(Entity);
+        }
+
+        /// <summary>True when leaving is a real shift end (worker's bedtime or kitchen closing), not a role change.</summary>
+        private bool IsShiftEnding()
+        {
             var timeService = Core.Instance != null
                 ? Core.Services.GetService<InGameTimeService>()
                 : null;
-            if (timeService != null
+            return timeService != null
                 && (MonsterScheduleConfig.IsAsleep(_monster.MonsterTypeName, timeService)
-                    || TavernScheduleConfig.IsKitchenClosed(timeService.Hour)))
-                SpeechBubbleDialogue.SayWorkerShiftEnd(Entity);
+                    || TavernScheduleConfig.IsKitchenClosed(timeService.Hour));
         }
 
         private void ReturnHome_Tick()

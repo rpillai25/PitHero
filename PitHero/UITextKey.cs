@@ -349,6 +349,8 @@ namespace PitHero
         public const string ConsoleSkillAttack = "ConsoleSkillAttack";
         public const string ConsoleBattleHealConsumable = "ConsoleBattleHealConsumable";
         public const string ConsoleOutBattleHealConsumable = "ConsoleOutBattleHealConsumable";
+        public const string ConsoleOutBattleRestoreMpConsumable = "ConsoleOutBattleRestoreMpConsumable";
+        public const string ConsoleOutBattleRestoreHpMpConsumable = "ConsoleOutBattleRestoreHpMpConsumable";
         public const string ConsoleHealSkill = "ConsoleHealSkill";
         public const string ConsoleBuffSkill = "ConsoleBuffSkill";
         public const string ConsoleAttackMiss = "ConsoleAttackMiss";
@@ -420,6 +422,13 @@ namespace PitHero
         public const string MonsterInfoFarmWorkers = "MonsterInfoFarmWorkers";
         public const string MonsterInfoKitchenWorkers = "MonsterInfoKitchenWorkers";
         public const string MonsterInfoIdleWorkers = "MonsterInfoIdleWorkers";
+        public const string WindowMonsterFarmPriority = "WindowMonsterFarmPriority";
+        public const string MonsterFarmPriorityMonstersDecide = "MonsterFarmPriorityMonstersDecide";
+        public const string MonsterFarmPriorityMonstersDecideTooltip = "MonsterFarmPriorityMonstersDecideTooltip";
+        public const string FarmPriorityWater = "FarmPriorityWater";
+        public const string FarmPriorityTill = "FarmPriorityTill";
+        public const string FarmPriorityPlant = "FarmPriorityPlant";
+        public const string FarmPriorityHarvest = "FarmPriorityHarvest";
         public const string ConsoleTrapTriggered = "ConsoleTrapTriggered";
         public const string ConsoleTrapDisarmed = "ConsoleTrapDisarmed";
         public const string TabAutomation = "TabAutomation";

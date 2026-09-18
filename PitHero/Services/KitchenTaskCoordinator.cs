@@ -623,8 +623,10 @@ namespace PitHero.Services
             // plate bussed. Only then does the reconcile path send everyone home via
             // RequestReturnHome(). Leaving before the last plates are cleared strands dirty
             // tables all night (no runner) and overnight arrivals pile up at the door.
-            // This is evaluated independently of IsAsleep (nocturnal workers are awake 10 PM–6 AM
-            // but must never be wanted while the kitchen is closed).
+            // Nocturnal workers (awake 10 PM–6 AM) are only wanted while closing work remains. Day
+            // workers are asleep by then and dropped below, but a departing server still delivers
+            // any dish already on the serving tables before walking home (issue #420, see
+            // KitchenMonsterStateMachine.ServerDecide_Tick).
             bool closed = timeService != null && TavernScheduleConfig.IsKitchenClosed(timeService.Hour);
             bool hasClosingWork = false;
             if (closed)

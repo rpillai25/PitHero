@@ -200,11 +200,63 @@ namespace PitHero.Services.Replay
                         svc.Designations[cmd.A] = cmd.B != 0;
                     return true;
                 }
+                case PlayerCommandType.SetFavoriteDish:
+                {
+                    var dining = Services?.GetService<PartyDiningService>();
+                    if (dining != null && cmd.A >= 0 && cmd.A < Dining.DishTypeInfo.Count)
+                        dining.FavoriteDishId = cmd.A;
+                    return true;
+                }
+                case PlayerCommandType.SetEatAtTavern:
+                {
+                    var dining = Services?.GetService<PartyDiningService>();
+                    if (dining != null)
+                        dining.EatAtTavern = cmd.ABool;
+                    return true;
+                }
+                case PlayerCommandType.SetPreStockStackSize:
+                {
+                    var fridge = Services?.GetService<FridgeInventoryService>();
+                    if (fridge != null)
+                        fridge.PreStockStackSize = cmd.A; // setter clamps
+                    // Raising the target means new deficits — queue the runner trips right away
+                    Services?.GetService<KitchenTaskCoordinator>()?.RecomputePreStockDeficits();
+                    return true;
+                }
+                case PlayerCommandType.SetConsumablesFirst:
+                {
+                    if (cmd.A == 0)
+                    {
+                        var sell = Services?.GetService<AutoSellExcessItemsService>();
+                        if (sell != null) sell.ConsumablesFirst = cmd.B != 0;
+                    }
+                    else
+                    {
+                        var purchase = Services?.GetService<AutoItemPurchaseService>();
+                        if (purchase != null) purchase.ConsumablesFirst = cmd.B != 0;
+                    }
+                    return true;
+                }
                 case PlayerCommandType.SetCropKeepStacks:
                 {
                     var svc = Services?.GetService<AutoCropSellService>();
                     if (svc != null)
                         svc.KeepStacks = cmd.A;
+                    return true;
+                }
+                case PlayerCommandType.SetFarmMonstersDecide:
+                {
+                    var farm = Services?.GetService<FarmTaskCoordinator>();
+                    if (farm != null)
+                        farm.MonstersDecide = cmd.ABool;
+                    return true;
+                }
+                case PlayerCommandType.SetFarmPriorityOrder:
+                {
+                    // Absolute, not relative: each reorder click carries the whole resulting order,
+                    // so the handler never depends on its own prior view of the list. SetPriorityOrder
+                    // re-validates and ignores anything that is not a permutation of 0..3.
+                    Services?.GetService<FarmTaskCoordinator>()?.SetPriorityOrder(cmd.A, cmd.B, cmd.C, cmd.D);
                     return true;
                 }
 

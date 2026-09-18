@@ -101,6 +101,19 @@ namespace PitHero.Services.Replay
         SetCropKeepStacks = 116,         // A = stacks
         SetInventorySellPercent = 117,   // A = percent 0-100 (issue #411: pre-jump auto-sell threshold)
 
+        // Party dining (Food tab)
+        SetFavoriteDish = 120,           // A = DishType ordinal
+        SetEatAtTavern = 121,            // A = 0/1
+
+        // Kitchen / automation priorities
+        SetPreStockStackSize = 122,      // A = fridge pre-stock stack size (also recomputes deficits)
+        SetConsumablesFirst = 123,       // A = owner (0 sell excess, 1 purchase), B = 0/1
+
+        // Farm task priority (Monster Farm Priority dialog). Two commands because a 4-item order
+        // fills A..D completely; a fifth orderable priority would need L or a third command.
+        SetFarmMonstersDecide = 124,     // A = 0/1 (1 = the game picks the order, the default)
+        SetFarmPriorityOrder = 125,      // A,B,C,D = FarmPriorityKind ordinals in claim order
+
         // Debug
         DebugQueuePitLevel = 200,    // A = level
     }

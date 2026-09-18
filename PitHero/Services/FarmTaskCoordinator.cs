@@ -56,6 +56,9 @@ namespace PitHero.Services
         private DroppedCropService _droppedCropService;
 
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(16);
+
+        // Fixed-step accumulator for the periodic Water/Tend duty rebalance (issue #420)
+        private float _dutyElapsed;
         private readonly List<IMonsterWorkerHost> _peers = new List<IMonsterWorkerHost>(2);
         private Scene _scene;
 
@@ -187,11 +190,26 @@ namespace PitHero.Services
             }
 
             // Reap workers whose entities finished despawning
+            bool workersChanged = false;
             for (int i = _workers.Count - 1; i >= 0; i--)
             {
                 if (_workers[i].Entity.IsDestroyed)
+                {
                     _workers.RemoveAt(i);
+                    workersChanged = true;
+                }
             }
+
+            // Rebalance the Water/Tend split whenever the crew changes, and periodically as work shifts.
+            // This deliberately keeps running while MonstersDecide is false, even though manual mode
+            // ignores Duty. Do not "optimize" it away: ReassignDuties calls PopulatePickupQueue, which
+            // has a side effect (relocating drops that ended up on unreachable tiles), so skipping it
+            // would change drop-relocation timing — a sim-visible change unrelated to priority. Keeping
+            // it also means Duty is never stale, so re-checking the box resumes a correct split on the
+            // very next claim.
+            _dutyElapsed += Time.DeltaTime;
+            if (workersChanged || _dutyElapsed >= GameConfig.FarmDutyReassessSeconds)
+                ReassignDuties();
         }
 
         private int FindWorkerIndex(AlliedMonster monster)
@@ -292,6 +310,7 @@ namespace PitHero.Services
 
             var worker = new ActiveWorker { Monster = monster, Entity = entity, Fsm = fsm };
             _workers.Add(worker);
+            ReassignDuties();
 
             Debug.Log($"[FarmTaskCoordinator] Spawned farming monster '{monster.Name}' ({typeName}) at house {house.UniqueId}");
         }
@@ -340,46 +359,194 @@ namespace PitHero.Services
             enumerator.Dispose();
         }
 
-        /// <summary>Claims the next valid action from the queues (priority: Pickup > Till > Destroy > Plant > Harvest > Water).</summary>
-        public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, out action);
+        // The two duty orders as data. These reproduce the previous hand-written claim sequences
+        // call-for-call, so "Monsters Decide" behaviour is unchanged by the switch to a driven loop.
+        private static readonly FarmPriorityKind[] SmartWaterOrder =
+            { FarmPriorityKind.Water, FarmPriorityKind.Till, FarmPriorityKind.Plant, FarmPriorityKind.Harvest };
+        private static readonly FarmPriorityKind[] SmartTendOrder =
+            { FarmPriorityKind.Till, FarmPriorityKind.Plant, FarmPriorityKind.Harvest, FarmPriorityKind.Water };
+
+        /// <summary>Number of player-orderable priorities (Water, Till, Plant, Harvest).</summary>
+        public const int PriorityCount = 4;
+
+        /// <summary>
+        /// True (the default) when the game picks each worker's claim order from the Water/Tend duty
+        /// split. False hands the order to the player, and the duty split stops mattering: every
+        /// worker claims in PlayerOrder. Written only by the SetFarmMonstersDecide command handler
+        /// and the load path — never from UI code directly.
+        /// </summary>
+        public bool MonstersDecide { get; set; } = true;
+
+        // The player's claim order, used only while MonstersDecide is false. Same default as
+        // SaveData.DefaultFarmPriorityOrder(); FarmTaskCoordinatorTests pins the two together.
+        private readonly FarmPriorityKind[] _playerOrder =
+            { FarmPriorityKind.Water, FarmPriorityKind.Till, FarmPriorityKind.Plant, FarmPriorityKind.Harvest };
+
+        /// <summary>
+        /// Sets the player's claim order from four FarmPriorityKind ordinals. The single
+        /// re-validation point for both the command handler and the load path: anything that is not
+        /// a permutation of 0..3 (a truncated payload, a corrupt save) is ignored outright, leaving
+        /// the previous order in place. Allocation-free.
+        /// </summary>
+        public void SetPriorityOrder(int a, int b, int c, int d)
+        {
+            bool seen0 = false, seen1 = false, seen2 = false, seen3 = false;
+            if (!MarkSeen(a, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+            if (!MarkSeen(b, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+            if (!MarkSeen(c, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+            if (!MarkSeen(d, ref seen0, ref seen1, ref seen2, ref seen3)) return;
+
+            _playerOrder[0] = (FarmPriorityKind)a;
+            _playerOrder[1] = (FarmPriorityKind)b;
+            _playerOrder[2] = (FarmPriorityKind)c;
+            _playerOrder[3] = (FarmPriorityKind)d;
+        }
+
+        /// <summary>Flags one ordinal as seen; false when out of range or already used.</summary>
+        private static bool MarkSeen(int value, ref bool seen0, ref bool seen1, ref bool seen2, ref bool seen3)
+        {
+            switch (value)
+            {
+                case 0: if (seen0) return false; seen0 = true; return true;
+                case 1: if (seen1) return false; seen1 = true; return true;
+                case 2: if (seen2) return false; seen2 = true; return true;
+                case 3: if (seen3) return false; seen3 = true; return true;
+                default: return false;
+            }
+        }
+
+        /// <summary>Copies the player's claim order into dest (length PriorityCount) for the UI and the save gather.</summary>
+        public void CopyPriorityOrder(int[] dest)
+        {
+            if (dest == null || dest.Length < PriorityCount)
+                return;
+            for (int i = 0; i < PriorityCount; i++)
+                dest[i] = (int)_playerOrder[i];
+        }
+
+        /// <summary>The player's claim order as a fresh array, for the save gather.</summary>
+        public int[] CopyPriorityOrderArray()
+        {
+            var copy = new int[PriorityCount];
+            CopyPriorityOrder(copy);
+            return copy;
+        }
+
+        /// <summary>Claims the next valid action from the queues as a Water-duty worker (see the duty overload).</summary>
+        public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, FarmDuty.Water, out action);
+
+        /// <summary>Claims near the given queue position as a Water-duty worker (see the duty overload).</summary>
+        public bool TryClaimAction(float queuePick, out FarmAction action) => TryClaimAction(queuePick, FarmDuty.Water, out action);
 
         /// <summary>
         /// Pops the next valid action near the given normalized queue position (0 = front,
-        /// 1 = back), with priority: Pickup > Till > Destroy > Plant > Harvest > Water.
+        /// 1 = back). While MonstersDecide is true, priority depends on the worker's duty (issue #420):
+        /// Water: Pickup > Water > Till > Destroy > Plant > Harvest;
+        /// Tend:  Pickup > Till > Destroy > Plant > Harvest > Water.
+        /// While it is false, every worker uses the player's order instead and duty is ignored.
+        /// Either way Pickup comes first and Destroy runs immediately before Plant. The order is a
+        /// preference, never a filter: a worker whose top priority has no work falls through to the
+        /// next one, so nobody idles while work exists.
         /// Workers are given different positions so they spread across the field instead of clustering.
         /// A returned action is considered claimed until Complete/Release/ReportBlocked.
         /// Returns false when all queues are empty.
         /// </summary>
-        public bool TryClaimAction(float queuePick, out FarmAction action)
+        public bool TryClaimAction(float queuePick, FarmDuty duty, out FarmAction action)
         {
-            // Priority 0: recover dropped crops back into storage before starting new work
+            // Priority 0: recover dropped crops back into storage before starting new work. Hidden
+            // and non-configurable — a dropped crop is finished work sitting unbanked.
             PopulatePickupQueue();
             if (TryClaimFromQueue(_pickupQueue, _pickupTracked, queuePick, ValidatePickup, out action))
                 return true;
-            // Priority 1: Till
-            if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
-                return true;
-            // Priority 2: Destroy — remove repeat crops whose plan changed (frees tile for swap-plant)
-            PopulateDestroyQueue();
-            if (TryClaimFromQueue(_destroyQueue, _destroyTracked, queuePick, ValidateDestroy, out action))
-                return true;
-            // Priority 3: Plant
-            if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
-                return true;
-            // Priority 4: Harvest — collect fully-grown crops before watering still-growing ones
-            PopulateHarvestQueue();
-            if (TryClaimFromQueue(_harvestQueue, _harvestTracked, queuePick, ValidateHarvest, out action))
-                return true;
-            // Priority 5: Water — only when no plant or destroy work remains (queued or in-progress);
-            // guards against watering a crop that is about to be destroyed for a swap.
-            if (_plantTracked.Count == 0 && _destroyTracked.Count == 0)
+
+            // Manual mode ignores the worker's duty entirely: one player-chosen order for everyone.
+            var order = MonstersDecide
+                ? (duty == FarmDuty.Water ? SmartWaterOrder : SmartTendOrder)
+                : _playerOrder;
+            for (int i = 0; i < order.Length; i++)
             {
-                PopulateWaterQueue();
-                if (TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action))
-                    return true;
+                switch (order[i])
+                {
+                    case FarmPriorityKind.Water:
+                        // A dry crop makes no growth progress. TryClaimWater populates the destroy
+                        // queue first, which is what keeps ValidateWater correct wherever Water sits.
+                        if (TryClaimWater(queuePick, out action))
+                            return true;
+                        break;
+
+                    case FarmPriorityKind.Till:
+                        if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
+                            return true;
+                        break;
+
+                    case FarmPriorityKind.Plant:
+                        // Destroy is a hidden priority that always runs immediately before Plant,
+                        // wherever Plant sits: it frees the tile the swap-plant needs.
+                        PopulateDestroyQueue();
+                        if (TryClaimFromQueue(_destroyQueue, _destroyTracked, queuePick, ValidateDestroy, out action))
+                            return true;
+                        if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
+                            return true;
+                        break;
+
+                    case FarmPriorityKind.Harvest:
+                        PopulateHarvestQueue();
+                        if (TryClaimFromQueue(_harvestQueue, _harvestTracked, queuePick, ValidateHarvest, out action))
+                            return true;
+                        break;
+                }
             }
+
             action = default;
             return false;
+        }
+
+        private bool TryClaimWater(float queuePick, out FarmAction action)
+        {
+            // Destroy candidates must be known first: ValidateWater skips crops about to be swap-destroyed.
+            PopulateDestroyQueue();
+            PopulateWaterQueue();
+            return TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action);
+        }
+
+        /// <summary>
+        /// How many of <paramref name="workerCount"/> farm workers take Water duty (issue #420). With both
+        /// kinds of work pending, at least half water (rounded up, so a lone worker waters first) and the
+        /// rest tend. When only one side has work, everyone takes it. Pure — unit-tested.
+        /// </summary>
+        public static int ComputeWaterDutyCount(int workerCount, bool hasWaterWork, bool hasTendWork)
+        {
+            if (workerCount <= 0)
+                return 0;
+            if (hasWaterWork && !hasTendWork)
+                return workerCount;
+            if (hasTendWork && !hasWaterWork)
+                return 0;
+            return (workerCount + 1) / 2;
+        }
+
+        /// <summary>
+        /// Rebalances the Water/Tend split from the currently claimable work. Duties are handed out in
+        /// worker list order (spawn order), so the split is deterministic for replays.
+        /// </summary>
+        private void ReassignDuties()
+        {
+            _dutyElapsed = 0f;
+            if (_workers.Count == 0)
+                return;
+
+            // Same lazy scans TryClaimAction runs; queued (unclaimed) entries are the work still up for grabs.
+            PopulatePickupQueue();
+            PopulateDestroyQueue();
+            PopulateHarvestQueue();
+            PopulateWaterQueue();
+            bool hasWaterWork = _waterQueue.Count > 0;
+            bool hasTendWork = _queue.Count > 0 || _destroyQueue.Count > 0 || _plantQueue.Count > 0
+                || _harvestQueue.Count > 0 || _pickupQueue.Count > 0;
+
+            int waterCount = ComputeWaterDutyCount(_workers.Count, hasWaterWork, hasTendWork);
+            for (int i = 0; i < _workers.Count; i++)
+                _workers[i].Fsm.Duty = i < waterCount ? FarmDuty.Water : FarmDuty.Tend;
         }
 
         private bool TryClaimFromQueue(Deque<FarmAction> queue, HashSet<Point> tracked, float queuePick,
@@ -457,6 +624,8 @@ namespace PitHero.Services
         {
             var cropGrowth = GetService<CropGrowthService>();
             return cropGrowth != null && cropGrowth.HasCrop(tile)
+                // Don't water a crop that is queued (or claimed) to be destroyed for a plan swap
+                && !_destroyTracked.Contains(tile)
                 && !_tileState.HasFlag(tile, TileStateFlag.Wet)
                 // Skip fully-grown crops: watering does nothing for them, so workers prioritize
                 // crops that are still growing.
