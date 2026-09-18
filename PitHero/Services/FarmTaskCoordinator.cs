@@ -353,6 +353,13 @@ namespace PitHero.Services
             enumerator.Dispose();
         }
 
+        // The two duty orders as data. These reproduce the previous hand-written claim sequences
+        // call-for-call, so "Monsters Decide" behaviour is unchanged by the switch to a driven loop.
+        private static readonly FarmPriorityKind[] SmartWaterOrder =
+            { FarmPriorityKind.Water, FarmPriorityKind.Till, FarmPriorityKind.Plant, FarmPriorityKind.Harvest };
+        private static readonly FarmPriorityKind[] SmartTendOrder =
+            { FarmPriorityKind.Till, FarmPriorityKind.Plant, FarmPriorityKind.Harvest, FarmPriorityKind.Water };
+
         /// <summary>Claims the next valid action from the queues as a Water-duty worker (see the duty overload).</summary>
         public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, FarmDuty.Water, out action);
 
@@ -370,33 +377,46 @@ namespace PitHero.Services
         /// </summary>
         public bool TryClaimAction(float queuePick, FarmDuty duty, out FarmAction action)
         {
-            // Priority 0: recover dropped crops back into storage before starting new work
+            // Priority 0: recover dropped crops back into storage before starting new work. Hidden
+            // and non-configurable — a dropped crop is finished work sitting unbanked.
             PopulatePickupQueue();
             if (TryClaimFromQueue(_pickupQueue, _pickupTracked, queuePick, ValidatePickup, out action))
                 return true;
 
-            // A dry crop makes no growth progress, so Water-duty workers water before anything else.
-            if (duty == FarmDuty.Water && TryClaimWater(queuePick, out action))
-                return true;
+            var order = duty == FarmDuty.Water ? SmartWaterOrder : SmartTendOrder;
+            for (int i = 0; i < order.Length; i++)
+            {
+                switch (order[i])
+                {
+                    case FarmPriorityKind.Water:
+                        // A dry crop makes no growth progress. TryClaimWater populates the destroy
+                        // queue first, which is what keeps ValidateWater correct wherever Water sits.
+                        if (TryClaimWater(queuePick, out action))
+                            return true;
+                        break;
 
-            // Till
-            if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
-                return true;
-            // Destroy — remove repeat crops whose plan changed (frees tile for swap-plant)
-            PopulateDestroyQueue();
-            if (TryClaimFromQueue(_destroyQueue, _destroyTracked, queuePick, ValidateDestroy, out action))
-                return true;
-            // Plant
-            if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
-                return true;
-            // Harvest
-            PopulateHarvestQueue();
-            if (TryClaimFromQueue(_harvestQueue, _harvestTracked, queuePick, ValidateHarvest, out action))
-                return true;
+                    case FarmPriorityKind.Till:
+                        if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
+                            return true;
+                        break;
 
-            // Tend-duty workers water once nothing else is left
-            if (duty == FarmDuty.Tend && TryClaimWater(queuePick, out action))
-                return true;
+                    case FarmPriorityKind.Plant:
+                        // Destroy is a hidden priority that always runs immediately before Plant,
+                        // wherever Plant sits: it frees the tile the swap-plant needs.
+                        PopulateDestroyQueue();
+                        if (TryClaimFromQueue(_destroyQueue, _destroyTracked, queuePick, ValidateDestroy, out action))
+                            return true;
+                        if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
+                            return true;
+                        break;
+
+                    case FarmPriorityKind.Harvest:
+                        PopulateHarvestQueue();
+                        if (TryClaimFromQueue(_harvestQueue, _harvestTracked, queuePick, ValidateHarvest, out action))
+                            return true;
+                        break;
+                }
+            }
 
             action = default;
             return false;
