@@ -20,8 +20,23 @@ namespace PitHero.UI
     {
         private const float ContentPadding = 6f;
 
-        /// <summary>Fixed content width, so a reorder never re-Packs the card to a new size.</summary>
-        public const float PanelWidth = 240f;
+        /// <summary>Breathing room on the right of the list, so the Down buttons are not flush to the frame.</summary>
+        private const float RightPadding = 14f;
+
+        /// <summary>
+        /// Left inset applied to the checkbox so its caption lines up with the priority captions,
+        /// which sit one column in behind the rank number.
+        /// </summary>
+        private const float CheckBoxIndent = RankColumnWidth;
+
+        /// <summary>Width of ReorderableTableList's rank-number column (its cell sets this minimum).</summary>
+        private const float RankColumnWidth = 30f;
+
+        /// <summary>
+        /// Measured once at construction and fixed thereafter, so a reorder never re-Packs the card
+        /// to a new size under MonsterUI.PositionWindow (which reads it every frame).
+        /// </summary>
+        public float PanelWidth { get; private set; }
 
         /// <summary>One orderable priority, carrying its ordinal so the order never round-trips through display text.</summary>
         private sealed class FarmPriorityItem
@@ -74,13 +89,25 @@ namespace PitHero.UI
 
             var content = new Table();
             content.Top().Left();
-            content.Add(_decideCheck).Left().SetPadBottom(6f);
+            // Indent the checkbox so its caption starts where the priority captions do, one column
+            // in behind the rank number, instead of hanging out to their left.
+            content.Add(_decideCheck).Left().SetPadLeft(CheckBoxIndent).SetPadBottom(6f);
             content.Row();
-            content.Add(_list).Left().Width(PanelWidth);
+            content.Add(_list).Left().SetPadRight(RightPadding);
 
             Add(content).Expand().Fill().Pad(ContentPadding);
             SetVisible(false);
-            PackFixedWidth();
+            MeasurePanelWidth();
+        }
+
+        /// <summary>
+        /// Packs once and keeps the resulting width. Measured rather than hardcoded so the card fits
+        /// its longest localized priority caption; every later Pack is pinned back to this.
+        /// </summary>
+        private void MeasurePanelWidth()
+        {
+            Pack();
+            PanelWidth = GetWidth();
         }
 
         /// <summary>
@@ -140,7 +167,7 @@ namespace PitHero.UI
         private void PackFixedWidth()
         {
             Pack();
-            SetSize(PanelWidth + ContentPadding * 2f, GetHeight());
+            SetSize(PanelWidth, GetHeight());
         }
 
         private string GetText(string key)

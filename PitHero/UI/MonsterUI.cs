@@ -59,6 +59,14 @@ namespace PitHero.UI
         private const float SpriteSize = 32f;
         // Gap between the roster window and the info card, matching HeroCrystalCard's dock spacing.
         private const float InfoPanelGap = 10f;
+        // Job icon geometry. The Dismiss button is sized and positioned from these same constants so
+        // it lines up with the job icons on the y-axis: the icons sit JobTableCellPadV + JobButtonPad
+        // above the row's bottom edge, so a bottom-aligned Dismiss with that inset and the same
+        // height shares both their top and bottom edge. Keep them in sync by using the constants.
+        private const float JobButtonSize = 32f;
+        private const float JobButtonPad = 1f;
+        private const float JobTableCellPadV = 2f;
+        private const float DismissBottomInset = JobTableCellPadV + JobButtonPad;
         // Wide enough for [portrait][name + levels][Dismiss][Job: x + 4 icons] on one row (issue #413)
         private const float MonsterWindowWidth = 560f;
         private const float MonsterWindowHeight = 340f; // design height at GameConfig.VirtualHeight = 360
@@ -474,7 +482,10 @@ namespace PitHero.UI
                 var dismissMonster = monster;
                 var dismissBtn = new TextButton(GetText(TextType.UI, UITextKey.ButtonDismiss), _skin, "ph-default");
                 dismissBtn.OnClicked += (_) => ShowDismissConfirmation(dismissMonster);
-                rowTable.Add(dismissBtn).Left().SetMinWidth(72f).SetMinHeight(GameConfig.DialogButtonMinHeight).Pad(2f, 4f, 2f, 4f);
+                // Bottom-aligned with the job icons' own inset, and the same height, so the two align
+                // exactly on the y-axis regardless of how tall the "Job: x" header above them renders.
+                rowTable.Add(dismissBtn).Left().Bottom().SetMinWidth(72f).Height(JobButtonSize)
+                    .Pad(2f, 4f, DismissBottomInset, 4f);
 
                 // --- Right: jobTable with current job label + 4 job buttons ---
                 var jobTable = new Table();
@@ -553,18 +564,18 @@ namespace PitHero.UI
                         if (disabledByClosure)
                             jobBtn.SetHoverText(GetText(TextType.UI, UITextKey.JobKitchenClosed));
 
-                        buttonsTable.Add(jobBtn).Size(32f, 32f).Pad(1f);
+                        buttonsTable.Add(jobBtn).Size(JobButtonSize, JobButtonSize).Pad(JobButtonPad);
                     }
                     else
                     {
                         var fallbackLabel = new Label(jobName.Substring(0, 1), BrownStyle());
-                        buttonsTable.Add(fallbackLabel).Size(32f, 32f).Pad(1f);
+                        buttonsTable.Add(fallbackLabel).Size(JobButtonSize, JobButtonSize).Pad(JobButtonPad);
                     }
                 }
 
                 jobTable.Add(buttonsTable).Right();
 
-                rowTable.Add(jobTable).Right().SetExpandX().Pad(2f, 0f, 2f, 2f);
+                rowTable.Add(jobTable).Right().SetExpandX().Pad(2f, 0f, JobTableCellPadV, 2f);
 
                 _monsterListTable.Add(rowTable).Left().SetExpandX().SetFillX().Pad(4f, 2f, 0f, 2f);
                 _monsterListTable.Row();
@@ -638,13 +649,25 @@ namespace PitHero.UI
 
             // Everything drawn left of the roster. Zero in the per-house view, where both cards are
             // hidden — which collapses the math below back to the original two-term form.
-            float leftW = infoShown ? MonsterInfoPanel.PanelWidth + InfoPanelGap + closeW : 0f;
-            float rightW = farmShown ? InfoPanelGap + MonsterFarmPriorityPanel.PanelWidth : 0f;
+            float leftW = infoShown ? _infoPanel.PanelWidth + InfoPanelGap + closeW : 0f;
+            float rightW = farmShown ? InfoPanelGap + _farmPriorityPanel.PanelWidth : 0f;
             float blockW = leftW + winW + rightW;
 
-            float winX = btnX + btnW + GameConfig.UIWindowBelowBarGap + leftW;
-            if (winX - leftW + blockW > stageW)
-                winX = btnX - GameConfig.UIWindowBelowBarGap - blockW + leftW;
+            float winX;
+            if (infoShown || farmShown)
+            {
+                // The aggregate block is much wider than the roster alone and reaches both sides of
+                // the Monsters button, so anchoring it to the button throws it off to one side.
+                // Centre it on the stage instead. The per-house view (no cards) keeps the original
+                // button anchoring below.
+                winX = (stageW - blockW) * 0.5f + leftW;
+            }
+            else
+            {
+                winX = btnX + btnW + GameConfig.UIWindowBelowBarGap + leftW;
+                if (winX - leftW + blockW > stageW)
+                    winX = btnX - GameConfig.UIWindowBelowBarGap - blockW + leftW;
+            }
             // Clamp the BLOCK, not the roster: the info card must never run off the left edge. The
             // dismissal poll is a bounding box over these elements, so a negative left edge would make
             // the whole left half of the screen count as "inside" and outside-clicks stop dismissing.
@@ -654,7 +677,7 @@ namespace PitHero.UI
             _monsterWindow.SetPosition(winX, winY);
 
             if (infoShown)
-                _infoPanel.SetPosition(winX - closeW - InfoPanelGap - MonsterInfoPanel.PanelWidth,
+                _infoPanel.SetPosition(winX - closeW - InfoPanelGap - _infoPanel.PanelWidth,
                     UILayout.ClampY(winY, _infoPanel.GetHeight(), stageH));
             if (farmShown)
                 _farmPriorityPanel.SetPosition(winX + winW + InfoPanelGap,
