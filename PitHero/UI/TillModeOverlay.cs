@@ -22,8 +22,9 @@ namespace PitHero.UI
         private readonly TmxMap _map;
         private Stage _stage;
 
-        private Entity _cursorEntity;
-        private PrototypeSpriteRenderer _cursorRenderer;
+        private readonly TileBrush _brush;
+        private readonly System.Func<Point, bool> _isTillablePredicate;
+        private BuildingService _frameBuildingService; // refreshed once per Update, read by the predicate
 
         private readonly Dictionary<Point, Entity> _overlayEntities = new Dictionary<Point, Entity>();
 
@@ -45,6 +46,8 @@ namespace PitHero.UI
         {
             _scene = scene;
             _map   = map;
+            _brush = new TileBrush(scene, "till-cursor");
+            _isTillablePredicate = IsTillable;
         }
 
         public void SetStage(Stage stage) => _stage = stage;
@@ -113,26 +116,17 @@ namespace PitHero.UI
             RecalculateNeighborhood(tile);
         }
 
-        /// <summary>Per-frame update: moves the cursor, updates its color, and handles left/right click.</summary>
+        /// <summary>Per-frame update: steps the brush, moves the cursors, and handles left/right click.</summary>
         public void Update()
         {
+            _brush.HandleSizeInput(_stage);
+
             var worldPos = _scene.Camera.MouseToWorldPoint();
             int tileX = (int)(worldPos.X / GameConfig.TileSize);
             int tileY = (int)(worldPos.Y / GameConfig.TileSize);
 
-            var buildingService = Core.Services.GetService<BuildingService>();
-            bool occupiedByBuilding = buildingService != null && buildingService.IsTileOccupied(tileX, tileY);
-            bool tillable = tileX >= GameConfig.FarmMinTillTileX && tileY >= GameConfig.FarmMinTillTileY && !occupiedByBuilding;
-
-            if (_cursorEntity != null)
-            {
-                float cx = tileX * GameConfig.TileSize + GameConfig.TileSize / 2f;
-                float cy = tileY * GameConfig.TileSize + GameConfig.TileSize / 2f;
-                _cursorEntity.SetPosition(cx, cy);
-
-                if (_cursorRenderer != null)
-                    _cursorRenderer.Color = tillable ? CursorTillableColor : CursorUntillableColor;
-            }
+            _frameBuildingService = Core.Services.GetService<BuildingService>();
+            _brush.UpdateCursors(new Point(tileX, tileY), _isTillablePredicate, CursorTillableColor, CursorUntillableColor);
 
             // Don't place tiles while the mouse is over any UI element (buttons, dialogs, etc.).
             // GetMousePosition() already returns stage-space (virtual-screen) coords for a non-fullscreen
@@ -157,18 +151,27 @@ namespace PitHero.UI
             bool shiftHeld = Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
                           || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
 
+            // The brush dispatches one command per covered tile: each is re-validated in
+            // ApplyMarkTill/ApplyUnmarkTill, and all of them land on the same tick's drain in
+            // dispatch order, so a 3x3 stroke replays exactly as it played.
+            int brushTiles = _brush.TileCount;
+
             if (Input.LeftMouseButtonDown && !shiftHeld)
             {
                 _lastUnmarkDragTile = NoTile;
                 if (tile != _lastMarkDragTile)
                 {
                     _lastMarkDragTile = tile;
-                    if (tillable && !tileService.HasFlag(tile, TileStateFlag.ReadyToTill)
-                        && !tileService.HasFlag(tile, TileStateFlag.Tilled))
+                    for (int i = 0; i < brushTiles; i++)
                     {
-                        // Lands on a deterministic tick via the command queue (replay system)
-                        Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
-                            Services.Replay.PlayerCommandType.TillTile, tile.X, tile.Y));
+                        var brushTile = _brush.GetTile(tile, i);
+                        if (IsTillable(brushTile) && !tileService.HasFlag(brushTile, TileStateFlag.ReadyToTill)
+                            && !tileService.HasFlag(brushTile, TileStateFlag.Tilled))
+                        {
+                            // Lands on a deterministic tick via the command queue (replay system)
+                            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                                Services.Replay.PlayerCommandType.TillTile, brushTile.X, brushTile.Y));
+                        }
                     }
                 }
             }
@@ -178,10 +181,14 @@ namespace PitHero.UI
                 if (tile != _lastUnmarkDragTile)
                 {
                     _lastUnmarkDragTile = tile;
-                    if (tileService.HasFlag(tile, TileStateFlag.ReadyToTill))
+                    for (int i = 0; i < brushTiles; i++)
                     {
-                        Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
-                            Services.Replay.PlayerCommandType.UnmarkTillTile, tile.X, tile.Y));
+                        var brushTile = _brush.GetTile(tile, i);
+                        if (tileService.HasFlag(brushTile, TileStateFlag.ReadyToTill))
+                        {
+                            Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
+                                Services.Replay.PlayerCommandType.UnmarkTillTile, brushTile.X, brushTile.Y));
+                        }
                     }
                 }
             }
@@ -192,26 +199,17 @@ namespace PitHero.UI
             }
         }
 
-        private void CreateCursor()
+        // A tile can be marked for tilling when it is inside the farm bounds and no building sits on it.
+        private bool IsTillable(Point tile)
         {
-            if (_cursorEntity != null)
-                return;
-
-            _cursorEntity = _scene.CreateEntity("till-cursor");
-            _cursorRenderer = _cursorEntity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-            _cursorRenderer.Color = CursorTillableColor;
-            _cursorRenderer.SetRenderLayer(GameConfig.RenderLayerTop);
+            if (tile.X < GameConfig.FarmMinTillTileX || tile.Y < GameConfig.FarmMinTillTileY)
+                return false;
+            return _frameBuildingService == null || !_frameBuildingService.IsTileOccupied(tile.X, tile.Y);
         }
 
-        private void DestroyCursor()
-        {
-            if (_cursorEntity == null)
-                return;
+        private void CreateCursor() => _brush.CreateCursors();
 
-            _cursorEntity.Destroy();
-            _cursorEntity   = null;
-            _cursorRenderer = null;
-        }
+        private void DestroyCursor() => _brush.DestroyCursors();
 
         private void RestoreOverlays()
         {

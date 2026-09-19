@@ -44,8 +44,21 @@ namespace PitHero.ECS.Components
         /// The pit transition the hero's current GOAP plan intends. Set by HeroStateMachine at
         /// plan formation, cleared by the InsidePit setter once the flag reaches the intended
         /// state. Transient — not saved; the hero replans within a second of load.
+        /// Also adjusts movement speed on change: a hero heading out of the pit runs (issue #422).
         /// </summary>
-        public HeroPitIntent PitIntent { get; set; }
+        public HeroPitIntent PitIntent
+        {
+            get => _pitIntent;
+            set
+            {
+                if (_pitIntent == value)
+                    return;
+
+                _pitIntent = value;
+                ApplyMovementSpeedForPitState();
+            }
+        }
+        private HeroPitIntent _pitIntent;
 
         /// <summary>
         /// True from inn-sleep completion until the first post-inn trip resolves. Drives the
@@ -879,8 +892,12 @@ namespace PitHero.ECS.Components
             float newSpeed;
             if (_insidePit)
             {
-                // Inside pit: use slow speed if fog cooldown is active, otherwise use normal pit speed
-                newSpeed = _fogCooldown > 0f ? GameConfig.HeroPitMovementSpeed : GameConfig.HeroMovementSpeed;
+                // On the way out the hero runs: he is retracing explored ground to the inner edge, so
+                // the fog-clearing crawl only made the party outrun him (issue #422). Otherwise:
+                // slow speed while fog cooldown is active, normal pit speed once it expires.
+                newSpeed = (_fogCooldown > 0f && _pitIntent != HeroPitIntent.ExitingPit)
+                    ? GameConfig.HeroPitMovementSpeed
+                    : GameConfig.HeroMovementSpeed;
             }
             else
             {

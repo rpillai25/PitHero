@@ -61,15 +61,6 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Calculate maximum number of monsters based on pit level
-        /// </summary>
-        private int MaxMonsters(int level)
-        {
-            return Math.Clamp(
-                (int)Math.Round(2 + 8 * Math.Max(level - 10, 0) / 90.0), 2, 10);
-        }
-
-        /// <summary>
         /// Calculate maximum number of chests/treasures based on pit level
         /// </summary>
         private int MaxChests(int level)
@@ -374,7 +365,7 @@ namespace PitHero
             Debug.Log($"[PitGenerator] Valid placement area for level {level}: tiles ({validMinX},{validMinY}) to ({validMaxX},{validMaxY})");
 
             // Calculate entity counts based on level
-            int maxMonsters = MaxMonsters(level);
+            PitPopulationConfig.GetMonsterRange(level, out int minMonsters, out int maxMonsters);
             int maxChests = MaxChests(level);
             int minObstacles = MinObstacles(level);
             int maxObstacles = MaxObstacles(level);
@@ -383,10 +374,10 @@ namespace PitHero
             bool isBossFloor = CaveBiomeConfig.IsBossFloor(level);
             int obstacleCount = Nez.Random.Range(minObstacles, maxObstacles + 1);
             int chestCount = Nez.Random.Range(maxChests / 2, maxChests + 1);
-            int monsterCount = isBossFloor ? 1 : Nez.Random.Range(maxMonsters / 2, maxMonsters + 1);
+            int monsterCount = isBossFloor ? 1 : Nez.Random.Range(minMonsters, maxMonsters + 1);
 
             Debug.Log($"[PitGenerator] Level {level} calculated amounts:");
-            Debug.Log($"[PitGenerator]   Max Monsters: {maxMonsters}, Actual: {monsterCount}");
+            Debug.Log($"[PitGenerator]   Monsters: {minMonsters}-{maxMonsters}, Actual: {monsterCount}");
             Debug.Log($"[PitGenerator]   Max Chests: {maxChests}, Actual: {chestCount}");
             Debug.Log($"[PitGenerator]   Min Obstacles: {minObstacles}");
             Debug.Log($"[PitGenerator]   Max Obstacles: {maxObstacles}, Actual: {obstacleCount}");

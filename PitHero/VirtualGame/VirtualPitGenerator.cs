@@ -96,7 +96,8 @@ namespace PitHero.VirtualGame
         private void GenerateEntitiesForLevel(int depth, int displayedLevel, int tier, int minX, int minY, int maxX, int maxY)
         {
             // Entity count formulas scale with cumulative depth so tier-2+ floors have more content.
-            int maxMonsters = Math.Clamp((int)Math.Round(2 + 8 * Math.Max(depth - 10, 0) / 90.0), 2, 10);
+            // Monsters come from the shared curve the live PitGenerator uses (issue #422).
+            PitPopulationConfig.GetMonsterRange(displayedLevel, out int minMonsters, out int maxMonsters);
             int maxChests = Math.Clamp((int)Math.Round(2 + 8 * Math.Max(depth - 10, 0) / 90.0), 2, 10);
             int minObstacles = Math.Clamp((int)Math.Round(5 + 35 * Math.Max(depth - 10, 0) / 90.0), 5, 40);
             int maxObstacles = Math.Clamp((int)Math.Round(10 + 40 * Math.Max(depth - 10, 0) / 90.0), 10, 50);
@@ -105,10 +106,10 @@ namespace PitHero.VirtualGame
             var random = new Random(depth); // Deterministic based on cumulative depth
             int obstacleCount = random.Next(minObstacles, maxObstacles + 1);
             int chestCount = random.Next(maxChests / 2, maxChests + 1);
-            int monsterCount = random.Next(maxMonsters / 2, maxMonsters + 1);
+            int monsterCount = random.Next(minMonsters, maxMonsters + 1);
 
             Console.WriteLine($"[VirtualPitGenerator] Level {depth} calculated amounts:");
-            Console.WriteLine($"[VirtualPitGenerator]   Max Monsters: {maxMonsters}, Actual: {monsterCount}");
+            Console.WriteLine($"[VirtualPitGenerator]   Monsters: {minMonsters}-{maxMonsters}, Actual: {monsterCount}");
             Console.WriteLine($"[VirtualPitGenerator]   Max Chests: {maxChests}, Actual: {chestCount}");
             Console.WriteLine($"[VirtualPitGenerator]   Min Obstacles: {minObstacles}");
             Console.WriteLine($"[VirtualPitGenerator]   Max Obstacles: {maxObstacles}, Actual: {obstacleCount}");
