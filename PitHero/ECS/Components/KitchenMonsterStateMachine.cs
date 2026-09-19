@@ -280,6 +280,14 @@ namespace PitHero.ECS.Components
             //    Without one, a plate that has waited too long still bumps ahead of everything —
             //    in a busy tavern priorities 1-2 always have work, so plates would otherwise pile
             //    up and block arriving patrons at the door forever.
+            //    A patron already stuck at the door overrides the runner gate outright (issue #422):
+            //    a runner away on a fetch run would leave them there for the whole 90s window.
+            if (_coordinator.AnyPatronWaitingAtTavernDoor && _coordinator.TryClaimBusJob(out _busJob))
+            {
+                _busPickedUp = false;
+                CurrentState = KitchenMonsterState.ServerBusPlate;
+                return;
+            }
             if (!_coordinator.HasActiveRunner
                 && _coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out _busJob))
             {
@@ -547,7 +555,7 @@ namespace PitHero.ECS.Components
                 // plate in hand as they set the new dish down, then busses it to the sink once
                 // their remaining deliveries are done (a Ticket-less ToSink leg shows the plate
                 // sprite carried to the sink)
-                if (_coordinator.TryClaimBusJobAtPosition(platePos, out var stalePlate))
+                if (_coordinator.TryClaimBusJobAtSeat(c.Ticket.SeatTile, out var stalePlate))
                 {
                     if (stalePlate.DishEntity != null && !stalePlate.DishEntity.IsDestroyed)
                         stalePlate.DishEntity.Destroy();

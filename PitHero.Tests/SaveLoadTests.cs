@@ -2402,5 +2402,66 @@ namespace PitHero.Tests
             CollectionAssert.AreEqual(SaveData.DefaultFarmPriorityOrder(), loaded.FarmPriorityOrder,
                 "a corrupt order must never reach the claim loop");
         }
+
+        /// <summary>
+        /// Allied-monster job task counters were whole ints through v38. A v38 file must still read
+        /// them, and the read must consume exactly the v38 bytes (issue #422 widened them to float).
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V38TaskProgress_ReadsWholeIntsAndStopsThere()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                writer.Write(4);   // fishing tasks
+                writer.Write(0);   // cooking tasks
+                writer.Write(17);  // farming tasks
+                writer.Write(42);  // sentinel proving the v38 read stopped after three ints
+            }
+
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+            {
+                Assert.AreEqual(4f, SaveData.ReadTaskProgress(rdr, 38), 0.0001f, "v38 fishing tasks");
+                Assert.AreEqual(0f, SaveData.ReadTaskProgress(rdr, 38), 0.0001f, "v38 cooking tasks");
+                Assert.AreEqual(17f, SaveData.ReadTaskProgress(rdr, 38), 0.0001f, "v38 farming tasks");
+                Assert.AreEqual(42, rdr.ReadInt(), "the v38 read must not consume bytes past the three counters");
+            }
+        }
+
+        /// <summary>Files older than v35 carried no task progress at all and must default to zero.</summary>
+        [TestMethod]
+        public void SaveData_PreV35TaskProgress_DefaultsToZeroWithoutReading()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+                writer.Write(42);
+
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+            {
+                Assert.AreEqual(0f, SaveData.ReadTaskProgress(rdr, 34), 0.0001f, "pre-v35 files have no task progress");
+                Assert.AreEqual(42, rdr.ReadInt(), "a pre-v35 read must not consume any bytes");
+            }
+        }
+
+        /// <summary>From v39 the counters are fractional, so a tenth of a task survives a save.</summary>
+        [TestMethod]
+        public void SaveData_V39TaskProgress_RoundTripsFractionalValues()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                writer.Write(0.1f);
+                writer.Write(12.75f);
+                writer.Write(42);
+            }
+
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+            {
+                Assert.AreEqual(0.1f, SaveData.ReadTaskProgress(rdr, SaveData.CurrentVersion), 0.0001f,
+                    "a single tilled tile's credit must survive the round trip");
+                Assert.AreEqual(12.75f, SaveData.ReadTaskProgress(rdr, SaveData.CurrentVersion), 0.0001f);
+                Assert.AreEqual(42, rdr.ReadInt(), "the v39 read must not overrun the two floats");
+            }
+        }
     }
 }

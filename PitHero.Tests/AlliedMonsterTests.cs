@@ -131,5 +131,77 @@ namespace PitHero.Tests
             Assert.AreEqual(0, monster.GetTasks(MonsterJob.Cooking));
             Assert.AreEqual(7, monster.GetTasks(MonsterJob.Farming));
         }
+
+        /// <summary>
+        /// Tilling credits a fraction of a farm task (issue #422): ten tilled tiles equal one task,
+        /// and the displayed whole-task count only moves once a whole task is banked.
+        /// </summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_RecordTask_FractionalCreditBanksAWholeTaskAfterTen()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 1, 1);
+
+            for (int i = 0; i < 9; i++)
+            {
+                Assert.IsFalse(monster.RecordTask(MonsterJob.Farming, GameConfig.TillFarmTaskCredit),
+                    "a tenth of a task never levels anything up");
+                Assert.AreEqual(0, monster.FarmingTasks, "partial progress reads out as zero whole tasks");
+            }
+
+            monster.RecordTask(MonsterJob.Farming, GameConfig.TillFarmTaskCredit);
+            Assert.AreEqual(1, monster.FarmingTasks, "ten tenths bank one whole task");
+            Assert.AreEqual(1, monster.FarmingProficiency, "one task is nowhere near a level");
+        }
+
+        /// <summary>Fractional and whole credit accumulate into the same counter.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_RecordTask_FractionalCreditReachesTheNextLevel()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 1, 1);
+            int required = monster.GetTasksRequired(MonsterJob.Farming); // 20 at level 1
+
+            // 10 tenths per whole task, one short of the level-up
+            for (int i = 0; i < required * 10 - 1; i++)
+                Assert.IsFalse(monster.RecordTask(MonsterJob.Farming, 0.1f),
+                    "must not level up before the full requirement is credited");
+
+            Assert.IsTrue(monster.RecordTask(MonsterJob.Farming, 0.1f), "the last tenth levels the job up");
+            Assert.AreEqual(2, monster.FarmingProficiency);
+        }
+
+        /// <summary>Non-positive credit is ignored rather than rewinding progress.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_RecordTask_IgnoresNonPositiveCredit()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 1, 1);
+            monster.RecordTask(MonsterJob.Farming);
+            Assert.AreEqual(1, monster.FarmingTasks);
+
+            Assert.IsFalse(monster.RecordTask(MonsterJob.Farming, 0f));
+            Assert.IsFalse(monster.RecordTask(MonsterJob.Farming, -5f));
+            Assert.AreEqual(1, monster.FarmingTasks, "progress must not move backwards");
+        }
+
+        /// <summary>Fractional progress survives a save round-trip through SetTaskProgress.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_SetTaskProgress_RoundTripsFractionalValues()
+        {
+            var monster = new AlliedMonster("Test", MonsterTextKey.Monster_Slime, 1, 1, 1);
+            monster.SetTaskProgress(1.5f, 2.25f, 3.75f);
+
+            Assert.AreEqual(1.5f, monster.FishingTasksRaw, 0.0001f);
+            Assert.AreEqual(2.25f, monster.CookingTasksRaw, 0.0001f);
+            Assert.AreEqual(3.75f, monster.FarmingTasksRaw, 0.0001f);
+            Assert.AreEqual(1, monster.FishingTasks, "display floors the fraction");
+            Assert.AreEqual(2, monster.CookingTasks, "display floors the fraction");
+            Assert.AreEqual(3, monster.FarmingTasks, "display floors the fraction");
+
+            monster.SetTaskProgress(-1f, -0.5f, -99f);
+            Assert.AreEqual(0f, monster.FarmingTasksRaw, 0.0001f, "negative saved progress clamps to zero");
+        }
     }
 }

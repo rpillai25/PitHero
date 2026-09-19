@@ -19,6 +19,13 @@ namespace PitHero.ECS.Components
         /// <summary>True if this mercenary is waiting in the tavern</summary>
         public bool IsWaitingInTavern { get; set; }
 
+        /// <summary>
+        /// True while this patron is parked at the tavern door because every free seat still has an
+        /// un-bussed plate. Servers treat it as bussing urgency (issue #422). Transient — a patron
+        /// entity that goes away while waiting takes the flag with it.
+        /// </summary>
+        public bool IsWaitingAtTavernDoor { get; set; }
+
         /// <summary>True if this mercenary was hired while the party was asleep; state machine deferred until wake-up.</summary>
         public bool IsHiredDuringSleep { get; set; }
 

@@ -15,12 +15,15 @@ namespace PitHero.Services
     {
         private static readonly Color LevelUpColor = new Color(255, 220, 90);
 
-        /// <summary>Records one completed task for the job and announces a level-up when it happens.</summary>
-        public static void Record(AlliedMonster monster, MonsterJob job)
+        /// <summary>
+        /// Records completed work for the job and announces a level-up when it happens.
+        /// <paramref name="credit"/> defaults to one whole task; tilling passes a fraction.
+        /// </summary>
+        public static void Record(AlliedMonster monster, MonsterJob job, float credit = 1f)
         {
             if (monster == null || job == MonsterJob.None)
                 return;
-            if (!monster.RecordTask(job))
+            if (!monster.RecordTask(job, credit))
                 return;
 
             int level = monster.GetLevel(job);

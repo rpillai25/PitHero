@@ -222,10 +222,11 @@ namespace PitHero.Services
         public int FarmingProficiency;
         public int MonsterJobId;
         public int MonsterHouseId;
-        // Task progress toward the next level per job (v35, issue #413)
-        public int FishingTasks;
-        public int CookingTasks;
-        public int FarmingTasks;
+        // Task progress toward the next level per job (v35, issue #413).
+        // Fractional since v39 (issue #422): tilling credits a tenth of a farm task.
+        public float FishingTasks;
+        public float CookingTasks;
+        public float FarmingTasks;
     }
 
     /// <summary>Lightweight struct representing a saved hired mercenary.</summary>
@@ -279,7 +280,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 38; // v38: farm task priority (Monsters Decide + the player order)
+        public const int CurrentVersion = 39; // v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -871,7 +872,7 @@ namespace PitHero.Services
                 writer.Write(monster.FarmingProficiency);
                 writer.Write(monster.MonsterJobId);
                 writer.Write(monster.MonsterHouseId);
-                // v35: task progress toward the next level (issue #413)
+                // v35: task progress toward the next level (issue #413); fractional since v39 (#422)
                 writer.Write(monster.FishingTasks);
                 writer.Write(monster.CookingTasks);
                 writer.Write(monster.FarmingTasks);
@@ -1298,6 +1299,20 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// Reads one allied-monster job task counter in the layout of the given file version:
+        /// absent before v35, a whole int through v38, fractional from v39 (issue #422). Public so
+        /// the backwards-compatibility path is unit-testable per version.
+        /// </summary>
+        public static float ReadTaskProgress(IPersistableReader reader, int fileVersion)
+        {
+            if (fileVersion >= 39)
+                return reader.ReadFloat();
+            if (fileVersion >= 35)
+                return reader.ReadInt();
+            return 0f;
+        }
+
+        /// <summary>
         /// Reads one SavedDiningRecord in the layout of the given file version. Public so the
         /// backwards-compatibility path is unit-testable per version.
         /// </summary>
@@ -1458,10 +1473,11 @@ namespace PitHero.Services
                 monster.FarmingProficiency = reader.ReadInt();
                 monster.MonsterJobId = reader.ReadInt();
                 monster.MonsterHouseId = reader.ReadInt();
-                // v35: task progress (issue #413); older files start every job at zero progress
-                monster.FishingTasks = fileVersion >= 35 ? reader.ReadInt() : 0;
-                monster.CookingTasks = fileVersion >= 35 ? reader.ReadInt() : 0;
-                monster.FarmingTasks = fileVersion >= 35 ? reader.ReadInt() : 0;
+                // v35: task progress (issue #413); older files start every job at zero progress.
+                // v39 widened the three counters from int to float (issue #422).
+                monster.FishingTasks = ReadTaskProgress(reader, fileVersion);
+                monster.CookingTasks = ReadTaskProgress(reader, fileVersion);
+                monster.FarmingTasks = ReadTaskProgress(reader, fileVersion);
                 AlliedMonsters.Add(monster);
             }
 

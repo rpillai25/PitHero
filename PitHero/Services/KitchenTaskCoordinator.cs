@@ -41,6 +41,7 @@ namespace PitHero.Services
         {
             public Entity DishEntity;  // plate entity on the table to be bussed
             public Vector2 WorldPos;   // where to pick it up from
+            public Point SeatTile;     // the seat this plate belongs to — the identity lookups key on
             public float EnqueuedTime; // SimulationClock.Now when queued — drives anti-starvation priority
         }
 
@@ -141,6 +142,21 @@ namespace PitHero.Services
         /// it while this is false, so a cook+server-only kitchen still clears its tables.
         /// </summary>
         public bool HasActiveRunner => _runner1WorkerIdx >= 0;
+
+        /// <summary>
+        /// True while an arriving patron is stuck at the tavern door waiting for a plate to be
+        /// cleared. Servers buss immediately when this holds, runner on shift or not (issue #422):
+        /// a runner busy on a fetch or pre-stock run would otherwise leave the plate for its 90s
+        /// starvation window and park the patron at the door for all of it.
+        /// </summary>
+        public bool AnyPatronWaitingAtTavernDoor
+        {
+            get
+            {
+                EnsureServices();
+                return _mercenaryManager != null && _mercenaryManager.AnyPatronWaitingAtTavernDoor();
+            }
+        }
 
         /// <summary>
         /// After closing time, work that must finish before the crew drains home: undelivered
@@ -1168,6 +1184,7 @@ namespace PitHero.Services
                 {
                     DishEntity = t.PlatedDishEntity,
                     WorldPos = t.PlatedDishEntity.Transform.Position,
+                    SeatTile = t.SeatTile,
                     EnqueuedTime = SimulationClock.Now,
                 });
                 t.PlatedDishEntity = null;
@@ -1327,6 +1344,7 @@ namespace PitHero.Services
                     {
                         DishEntity = emptyPlate,
                         WorldPos = platePos,
+                        SeatTile = t.SeatTile,
                         EnqueuedTime = SimulationClock.Now,
                     });
                 }
@@ -1627,33 +1645,35 @@ namespace PitHero.Services
         public bool HasPendingBusJob => _busJobs.Count > 0;
 
         /// <summary>
-        /// True while a pending (unclaimed) bus job's plate sits at the given world position
-        /// (within half a tile). Arriving patrons wait at the tavern door while this holds so
-        /// they never sit down at a table with a dirty plate; once a server claims the job the
-        /// plate is moments from being cleared, so the patron may start walking in.
+        /// True while a pending (unclaimed) bus job's plate sits at the given seat. Arriving patrons
+        /// wait at the tavern door while this holds for every free seat, so they never sit down at a
+        /// table with a dirty plate; once a server claims the job the plate is moments from being
+        /// cleared, so the patron may start walking in.
+        /// Matched by seat identity, not proximity: the four plate spots on one table are only
+        /// 11-12 px apart, so the old half-tile radius reported all three of a table's seats dirty
+        /// from a single plate and parked patrons at the door with clean seats free (issue #422).
         /// </summary>
-        public bool HasPendingBusJobAt(Vector2 platePos)
+        public bool HasPendingBusJobAtSeat(Point seatTile)
         {
-            const float maxDistSq = 16f * 16f;
             for (int i = 0; i < _busJobs.Count; i++)
             {
-                if (Vector2.DistanceSquared(_busJobs[i].WorldPos, platePos) <= maxDistSq)
+                if (_busJobs[i].SeatTile == seatTile)
                     return true;
             }
             return false;
         }
 
         /// <summary>
-        /// Claims the pending bus job whose plate sits at the given world position (within half a
-        /// tile), if any. Called by a delivering server right before it sets a new dish down, so a
-        /// new meal is never stacked on top of an un-bussed empty plate.
+        /// Claims the pending bus job for the given seat, if any. Called by a delivering server right
+        /// before it sets a new dish down, so a new meal is never stacked on top of an un-bussed empty
+        /// plate. Seat-keyed for the same reason as HasPendingBusJobAtSeat — a radius match here also
+        /// destroyed a neighbouring seat's plate and left this one dirty forever.
         /// </summary>
-        public bool TryClaimBusJobAtPosition(Vector2 platePos, out BusJob job)
+        public bool TryClaimBusJobAtSeat(Point seatTile, out BusJob job)
         {
-            const float maxDistSq = 16f * 16f;
             for (int i = 0; i < _busJobs.Count; i++)
             {
-                if (Vector2.DistanceSquared(_busJobs[i].WorldPos, platePos) > maxDistSq)
+                if (_busJobs[i].SeatTile != seatTile)
                     continue;
                 job = _busJobs[i];
                 _busJobs.RemoveAt(i);

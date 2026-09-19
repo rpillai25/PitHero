@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero;
+using PitHero.Config;
 using PitHero.Dining;
 using PitHero.Farming;
 using PitHero.ECS.Components;
@@ -759,7 +760,12 @@ namespace PitHero.Tests
 
         // ── Bus queue (issue #327: runners own plate clearing) ──
 
+        private static readonly Point TestSeatTile = new Point(97, 6);
+
         private static KitchenTaskCoordinator.BusJob MakeBusJob(Vector2 pos, float enqueuedTime)
+            => MakeBusJob(pos, enqueuedTime, TestSeatTile);
+
+        private static KitchenTaskCoordinator.BusJob MakeBusJob(Vector2 pos, float enqueuedTime, Point seatTile)
         {
             var plate = new Entity("test-plate");
             plate.SetPosition(pos);
@@ -767,6 +773,7 @@ namespace PitHero.Tests
             {
                 DishEntity = plate,
                 WorldPos = pos,
+                SeatTile = seatTile,
                 EnqueuedTime = enqueuedTime,
             };
         }
@@ -780,7 +787,7 @@ namespace PitHero.Tests
             // The runner walking to the plate is sent home before picking it up
             _coordinator.ReleaseBusJob(job);
             Assert.IsTrue(_coordinator.HasPendingBusJob);
-            Assert.IsTrue(_coordinator.HasPendingBusJobAt(pos),
+            Assert.IsTrue(_coordinator.HasPendingBusJobAtSeat(TestSeatTile),
                 "a released plate is still on the table, so arriving patrons must still see it");
 
             Assert.IsTrue(_coordinator.TryClaimBusJob(out var reclaimed));
@@ -803,6 +810,53 @@ namespace PitHero.Tests
             // A plate already in hand had its entity destroyed at pickup — nothing to put back
             _coordinator.ReleaseBusJob(default);
             Assert.IsFalse(_coordinator.HasPendingBusJob);
+        }
+
+        /// <summary>
+        /// A dirty plate belongs to one seat, not to the whole table (issue #422). The four plate
+        /// spots on a table sit 11-12 px apart, so the old half-tile radius match reported all three
+        /// of a table's seats dirty from a single plate and parked arriving patrons at the door.
+        /// </summary>
+        [TestMethod]
+        public void BusJob_OnlyMarksItsOwnSeatDirty_NotTheRestOfTheTable()
+        {
+            var above = new Point(97, 6); // above table (97,7)
+            var left  = new Point(96, 7); // left of the same table
+            var right = new Point(98, 7); // right of the same table
+
+            Assert.IsTrue(TavernSeatConfig.TryGetPlateWorldPosition(above, out var abovePlate));
+            Assert.IsTrue(TavernSeatConfig.TryGetPlateWorldPosition(left, out var leftPlate));
+            Assert.IsTrue(Vector2.Distance(abovePlate, leftPlate) < 16f,
+                "precondition: these two plate spots are closer than the old half-tile match radius");
+
+            _coordinator.ReleaseBusJob(MakeBusJob(abovePlate, 0f, above));
+
+            Assert.IsTrue(_coordinator.HasPendingBusJobAtSeat(above), "the seat whose plate it is reads dirty");
+            Assert.IsFalse(_coordinator.HasPendingBusJobAtSeat(left),
+                "a neighbouring seat at the same table must stay seatable");
+            Assert.IsFalse(_coordinator.HasPendingBusJobAtSeat(right),
+                "a neighbouring seat at the same table must stay seatable");
+        }
+
+        /// <summary>
+        /// A server setting a new dish down claims only its own seat's stale plate, so it can never
+        /// destroy a neighbour's plate and leave that seat dirty forever (issue #422).
+        /// </summary>
+        [TestMethod]
+        public void BusJob_ClaimBySeat_LeavesANeighbouringSeatsPlateAlone()
+        {
+            var above = new Point(97, 6);
+            var left  = new Point(96, 7);
+
+            Assert.IsTrue(TavernSeatConfig.TryGetPlateWorldPosition(above, out var abovePlate));
+            _coordinator.ReleaseBusJob(MakeBusJob(abovePlate, 0f, above));
+
+            Assert.IsFalse(_coordinator.TryClaimBusJobAtSeat(left, out _),
+                "delivering to the left seat must not claim the plate sitting at the seat above");
+            Assert.IsTrue(_coordinator.TryClaimBusJobAtSeat(above, out var claimed),
+                "the plate's own seat still claims it");
+            Assert.AreEqual(above, claimed.SeatTile);
+            Assert.IsFalse(_coordinator.HasPendingBusJob, "the queue is empty once the right seat claimed it");
         }
 
         // ── Runner fetch route (issue #327 follow-up: visit the storages that hold the crops) ──

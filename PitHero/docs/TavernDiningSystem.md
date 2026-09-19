@@ -297,13 +297,28 @@ midnight, and re-arming the full overnight interval per leaver starves the entir
 arrivals. Net effect: first night patron ~11 PM–midnight, then one every 1–2 game-hours,
 each sitting ~2.5 game-hours (1/4 patience) — one or two night patrons at a time for ambiance.
 
-At the seat a `TavernPatronComponent` is added. **A patron never sits down at a table that still
+At the seat a `TavernPatronComponent` is added. **A patron never sits down at a seat that still
 has an un-bussed plate.** `GetAvailableTavernPosition` prefers a free seat that is already
 cleared, and `TryReseatToClearedSeat` re-checks (plates appear and get bussed during the walk
 in) — only when *every* free seat is dirty does the patron wait at the tavern door (100,6),
 retrying the reseat every 0.25s until a plate is cleared. Waiting patrons are unseated, so they
 add no ordering pressure while the backlog drains. When full, the oldest patron in
 `FinishedEating` is walked off to free a seat — never one still waiting or eating.
+
+**Dirtiness is per seat, matched by seat identity** (`KitchenTaskCoordinator.BusJob.SeatTile`,
+`HasPendingBusJobAtSeat`, `TryClaimBusJobAtSeat`) — **never by proximity**. The four plate spots
+on one table (`TavernSeatConfig`, offsets 4/14/24 px) sit only 11–12 px apart, so the original
+half-tile (16 px) radius match made a single plate report all three of that table's seats dirty
+and parked arriving patrons at the door with physically clean seats free; the same radius let a
+delivering server claim and destroy a *neighbouring* seat's plate, leaving the target seat dirty
+with no bus job at all (issue #422). Any new plate/table lookup must key on the seat tile.
+
+**A patron already at the door is bussing urgency.** `MercenaryComponent.IsWaitingAtTavernDoor` is
+set around the door-wait loop and surfaces as `KitchenTaskCoordinator.AnyPatronWaitingAtTavernDoor`;
+while it holds, a server busses immediately at priority 0 regardless of `HasActiveRunner`. Without
+that override a runner tied up on a fetch or pre-stock run leaves the plate for the full
+`ServerBusPlateMaxWaitSeconds` (90 s) starvation window and the patron waits at the door for all
+of it.
 
 `PatronState`: `WaitingToOrder → Ordered → FoodDelivered → Eating → FinishedEating`.
 Patience: 10 min pre-order and post-order (expiry cancels the ticket and leaves immediately);

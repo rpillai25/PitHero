@@ -76,7 +76,8 @@ namespace PitHero.VirtualGame.Economy
         private Plot[] _plots;
         private Worker[] _workers;
         private int[] _seeds;
-        private float _workerSpeed;
+        private float _workerSpeed;      // water/plant duration multiplier for the worker level
+        private float _harvestDuration;  // seconds a worker of that level spends picking one crop
 
         private readonly List<Patron> _patrons = new List<Patron>(TavernSeats);
         private int[] _cookBusyUntil;
@@ -180,7 +181,8 @@ namespace PitHero.VirtualGame.Economy
             for (int i = 0; i < _workers.Length; i++)
                 _workers[i] = new Worker { Charges = GameConfig.WateringCanMaxCharges };
             int level = _scenario.FarmWorkerLevel < 1 ? 1 : (_scenario.FarmWorkerLevel > 9 ? 9 : _scenario.FarmWorkerLevel);
-            _workerSpeed = 1f - GameConfig.TillProficiencySpeedStep * (level - 1);
+            _workerSpeed = FarmWorkDurations.GetSpeedScale(level);
+            _harvestDuration = FarmWorkDurations.GetHarvestDuration(level);
         }
 
         private void SetupKitchen()
@@ -272,7 +274,7 @@ namespace PitHero.VirtualGame.Economy
             plot = FindPlot(planted: true, grown: true, wet: null);
             if (plot >= 0)
             {
-                StartTask(w, TaskKind.Harvest, plot, minute, GameConfig.HarvestWaitSeconds + travel);
+                StartTask(w, TaskKind.Harvest, plot, minute, _harvestDuration + travel);
                 return true;
             }
             plot = FindUnplantedPlotWithSeeds();

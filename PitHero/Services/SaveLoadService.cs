@@ -646,9 +646,9 @@ namespace PitHero.Services
                     saved.FarmingProficiency = monster.FarmingProficiency;
                     saved.MonsterJobId = (int)monster.Job;
                     saved.MonsterHouseId = monster.MonsterHouseId;
-                    saved.FishingTasks = monster.FishingTasks;
-                    saved.CookingTasks = monster.CookingTasks;
-                    saved.FarmingTasks = monster.FarmingTasks;
+                    saved.FishingTasks = monster.FishingTasksRaw;
+                    saved.CookingTasks = monster.CookingTasksRaw;
+                    saved.FarmingTasks = monster.FarmingTasksRaw;
                     data.AlliedMonsters.Add(saved);
                 }
             }
