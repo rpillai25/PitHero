@@ -61,7 +61,8 @@ namespace PitHero.UI
                 bool reqLocked = !CropUnlockTracker.IsUnlocked(req.Crop);
 
                 var cell = new Table();
-                cell.Add(new RequirementCell(sprite, have, req.Required, reqLocked))
+                cell.Add(new RequirementCell(sprite, have, req.Required, reqLocked,
+                        CropUnlockTracker.GetUnlockProgress(req.Crop)))
                     .Size(GameConfig.CropUnlockRequirementCellSize, GameConfig.CropUnlockRequirementCellSize);
                 cell.Row();
                 string nameText = reqLocked

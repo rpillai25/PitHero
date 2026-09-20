@@ -59,7 +59,9 @@ namespace PitHero.UI
                 bool reqLocked = !DishUnlockTracker.IsSoftUnlocked(req.Dish);
 
                 var cell = new Table();
-                cell.Add(new RequirementCell(sprite, have, req.Required, reqLocked))
+                // Dish soft-unlock has no single progress measure (crop harvests gate it, dishes
+                // served gate the cooking side), so a locked dish stays flat dark for now.
+                cell.Add(new RequirementCell(sprite, have, req.Required, reqLocked, 0f))
                     .Size(GameConfig.CropUnlockRequirementCellSize, GameConfig.CropUnlockRequirementCellSize);
                 cell.Row();
                 string nameText = reqLocked ? GetText(UITextKey.LabelCropUnknown) : GetText(reqDef.NameKey);

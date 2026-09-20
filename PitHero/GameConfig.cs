@@ -456,6 +456,22 @@ namespace PitHero
         /// </summary>
         public static readonly Color SeedShopLockedTint = new Color(28, 28, 28, 255);
 
+        /// <summary>
+        /// Sprite tint for a locked crop at the given unlock progress (0-1, from
+        /// CropUnlockTracker.GetUnlockProgress): near-black with nothing done, warming toward full
+        /// colour as the requirements fill in, so the player can see a crop is nearly within reach.
+        /// Both ends are opaque, so the result never hits the premultiplied-blend glow described on
+        /// SeedShopLockedTint.
+        /// </summary>
+        public static Color GetLockedCropTint(float unlockProgress)
+        {
+            if (unlockProgress <= 0f)
+                return SeedShopLockedTint;
+            if (unlockProgress >= 1f)
+                return Color.White;
+            return Color.Lerp(SeedShopLockedTint, Color.White, unlockProgress);
+        }
+
         // Top-level UI vertical offsets (applied when window shrinks so text/buttons are not clipped at top)
         public const int TopUiYOffsetNormal = 0;
         public const int TopUiYOffsetHalf = 6;      // adjust as needed for Hud2x font height

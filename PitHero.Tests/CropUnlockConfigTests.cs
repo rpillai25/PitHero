@@ -67,5 +67,82 @@ namespace PitHero.Tests
             int mask = CropUnlockConfig.GetUnlockedMask(null);
             Assert.AreEqual((1 << (int)CropType.Wheat) | (1 << (int)CropType.Corn), mask);
         }
+
+        // ── Unlock progress (issue #422): drives how much colour a locked crop's sprite shows ──
+
+        [TestMethod]
+        public void UnlockProgress_IsZeroWithNothingHarvested()
+        {
+            Assert.AreEqual(0f, CropUnlockConfig.GetUnlockProgress(CropType.Tomato, null), 0.0001f);
+            Assert.AreEqual(0f, CropUnlockConfig.GetUnlockProgress(CropType.AppleTree, new int[0]), 0.0001f);
+        }
+
+        [TestMethod]
+        public void UnlockProgress_IsOneForCropsWithNoRequirements()
+        {
+            Assert.AreEqual(1f, CropUnlockConfig.GetUnlockProgress(CropType.Wheat, null), 0.0001f);
+            Assert.AreEqual(1f, CropUnlockConfig.GetUnlockProgress(CropType.Corn, null), 0.0001f);
+        }
+
+        [TestMethod]
+        public void UnlockProgress_ReachesExactlyOneWhenTheCropUnlocks()
+        {
+            // Tier 1 (Tomato/Eggplant) wants 9 Wheat and 9 Corn
+            var totals = Totals((CropType.Wheat, 9), (CropType.Corn, 9));
+            Assert.IsTrue(CropUnlockConfig.IsUnlocked(CropType.Tomato, totals));
+            Assert.AreEqual(1f, CropUnlockConfig.GetUnlockProgress(CropType.Tomato, totals), 0f,
+                "progress must land on exactly 1 the moment IsUnlocked flips");
+        }
+
+        [TestMethod]
+        public void UnlockProgress_AveragesRequirementsEqually()
+        {
+            // One of the two tier-1 requirements fully met, the other untouched
+            var half = Totals((CropType.Wheat, 9));
+            Assert.AreEqual(0.5f, CropUnlockConfig.GetUnlockProgress(CropType.Tomato, half), 0.0001f);
+
+            // Both a third of the way there
+            var third = Totals((CropType.Wheat, 3), (CropType.Corn, 3));
+            Assert.AreEqual(1f / 3f, CropUnlockConfig.GetUnlockProgress(CropType.Tomato, third), 0.0001f);
+        }
+
+        [TestMethod]
+        public void UnlockProgress_ClampsPerRequirementSoOvershootCannotMaskAnother()
+        {
+            // A thousand Wheat still only covers its own half of the tier-1 requirement
+            var lopsided = Totals((CropType.Wheat, 1000));
+            Assert.AreEqual(0.5f, CropUnlockConfig.GetUnlockProgress(CropType.Tomato, lopsided), 0.0001f);
+            Assert.IsFalse(CropUnlockConfig.IsUnlocked(CropType.Tomato, lopsided));
+        }
+
+        [TestMethod]
+        public void UnlockProgress_StaysInRangeAndRisesWithHarvests()
+        {
+            float previous = -1f;
+            for (int harvested = 0; harvested <= 60; harvested += 5)
+            {
+                var totals = Totals((CropType.Wheat, harvested), (CropType.Corn, harvested),
+                    (CropType.Tomato, harvested), (CropType.Eggplant, harvested));
+                float progress = CropUnlockConfig.GetUnlockProgress(CropType.Sugarcane, totals);
+                Assert.IsTrue(progress >= 0f && progress <= 1f, $"progress {progress} out of range at {harvested}");
+                Assert.IsTrue(progress >= previous, $"progress must never fall as harvests grow (at {harvested})");
+                previous = progress;
+            }
+        }
+
+        [TestMethod]
+        public void UnlockProgress_BelowOneForEveryStillLockedCrop()
+        {
+            // Enough for tier 1 only: every crop above it must read as partially done, never complete
+            var totals = Totals((CropType.Wheat, 9), (CropType.Corn, 9));
+            for (int i = 0; i < CropUnlockConfig.ProgressionOrder.Length; i++)
+            {
+                var crop = CropUnlockConfig.ProgressionOrder[i];
+                if (CropUnlockConfig.IsUnlocked(crop, totals))
+                    continue;
+                float progress = CropUnlockConfig.GetUnlockProgress(crop, totals);
+                Assert.IsTrue(progress < 1f, $"{crop} is locked but reads as fully progressed");
+            }
+        }
     }
 }
