@@ -603,7 +603,6 @@ namespace PitHero.UI
         {
             // Inventory-slot background drawn at the same translucency as the inventory UI.
             private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
-            private static readonly Color LockedSpriteColor = new Color(255, 255, 255, GameConfig.SeedShopLockedAlpha);
             private const string LockedBadge = "?";
 
             private readonly Sprite     _sprite;
@@ -648,7 +647,7 @@ namespace PitHero.UI
                 // Locked crop (issue #413): barely visible with a "?" badge; clicking explains the unlock
                 if (!CropUnlockTracker.IsUnlocked((CropType)_inventoryIndex))
                 {
-                    _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), LockedSpriteColor);
+                    _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), GameConfig.SeedShopLockedTint);
                     if (_hovered && _selectBox != null)
                         new SpriteDrawable(_selectBox).Draw(
                             batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);

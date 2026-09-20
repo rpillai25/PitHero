@@ -218,8 +218,8 @@ namespace PitHero
         public const int SeedInventoryMaxPerCrop = 999;
         /// <summary>Scale amplitude of the attention pulse on seed shop slots with unmet planned demand (0.1 = ±10%).</summary>
         public const float SeedShopPulseAmplitude = 0.1f;
-        // Locked crops (issue #413) draw at this alpha (0-255) with a "?" badge in the shop and planting palette
-        public const int SeedShopLockedAlpha = 28;
+        // Locked crops (issue #413) draw dark with a "?" badge in the shop and planting palette —
+        // see GameConfig.SeedShopLockedTint down in the Colors block.
         public const float CropUnlockRequirementCellSize = 40f;
         public const int CropUnlockRequirementsPerRow = 6;
         /// <summary>Angular speed (radians/sec) of the seed shop attention pulse.</summary>
@@ -446,6 +446,15 @@ namespace PitHero
         public static readonly Color TownColor = Color.Green;
         public static readonly Color BackgroundColor = Color.Black;
         public static readonly Color TransparentMenu = new Color(255, 255, 255, 230);
+        /// <summary>
+        /// Tint for a locked crop's sprite in the seed shop, the planting palette and the unlock
+        /// requirement cells — a near-black silhouette, barely visible behind its "?" badge.
+        /// It is a dark OPAQUE tint rather than a low alpha on purpose: Nez draws with
+        /// BlendState.AlphaBlend (premultiplied), so a white sprite at low alpha keeps its
+        /// full-brightness RGB while barely occluding the background and reads as an additive
+        /// bloom — the locked crops looked lit up instead of faded.
+        /// </summary>
+        public static readonly Color SeedShopLockedTint = new Color(28, 28, 28, 255);
 
         // Top-level UI vertical offsets (applied when window shrinks so text/buttons are not clipped at top)
         public const int TopUiYOffsetNormal = 0;

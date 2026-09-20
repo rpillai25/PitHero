@@ -14,7 +14,6 @@ namespace PitHero.UI
     {
         private static readonly Color MetColor = new Color(120, 255, 140);
         private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
-        private static readonly Color LockedSpriteColor = new Color(255, 255, 255, GameConfig.SeedShopLockedAlpha);
 
         private readonly SpriteDrawable _draw;
         private readonly SpriteDrawable _background;
@@ -22,13 +21,13 @@ namespace PitHero.UI
         private readonly Color _badgeColor;
         private readonly Color _spriteColor;
 
-        /// <summary>Builds a cell; a locked requirement draws its sprite at the shop's locked alpha.</summary>
+        /// <summary>Builds a cell; a locked requirement draws its sprite at the shop's locked tint.</summary>
         public RequirementCell(Sprite sprite, int have, int required, bool locked)
         {
             _draw = sprite != null ? new SpriteDrawable(sprite) : null;
             _badge = have + "/" + required;
             _badgeColor = have >= required ? MetColor : Color.White;
-            _spriteColor = locked ? LockedSpriteColor : Color.White;
+            _spriteColor = locked ? GameConfig.SeedShopLockedTint : Color.White;
             SetTouchable(Touchable.Disabled);
             SetSize(GameConfig.CropUnlockRequirementCellSize, GameConfig.CropUnlockRequirementCellSize);
 
