@@ -40,8 +40,8 @@ namespace PitHero.UI
             var table = new Table();
             table.Pad(12f);
 
-            string cropName = GetText(CropConfig.GetDisplayNameKey(crop));
-            var hint = new Label(string.Format(GetText(UITextKey.LabelUnlockRequirementsHint), cropName), skin, "ph-default");
+            // No crop name: which crop this unlocks stays a mystery until it is unlocked.
+            var hint = new Label(GetText(UITextKey.LabelUnlockRequirementsHint), skin, "ph-default");
             hint.SetWrap(true);
             hint.SetAlignment(Nez.UI.Align.Center);
             table.Add(hint).Width(TextWidth).SetPadBottom(8f);
