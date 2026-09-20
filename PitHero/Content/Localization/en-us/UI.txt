@@ -493,7 +493,7 @@ WindowRefrigerator,Refrigerator
 WindowUnlockRequirements,Unlock Requirements
 LabelCropUnknown,???
 LabelCropDemand,Market demand: {0}%
-LabelUnlockRequirementsHint,Harvest these crops to unlock {0}:
+LabelUnlockRequirementsHint,Harvest these crops to unlock:
 LabelDishUnlockRequirementsHint,Serve these dishes to unlock {0}:
 LabelFarmStatsLocked,{0} (locked)
 WindowFarmStats,Farm Stats

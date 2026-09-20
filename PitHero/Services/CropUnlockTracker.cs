@@ -30,6 +30,16 @@ namespace PitHero.Services
             return gameState == null || CropUnlockConfig.IsUnlocked(crop, gameState.CropHarvestedTotals);
         }
 
+        /// <summary>
+        /// How far along the crop's unlock requirements are, 0-1 (1 headlessly, matching IsUnlocked).
+        /// Drives how much colour a locked crop's sprite shows in the seed shop and planting palette.
+        /// </summary>
+        public static float GetUnlockProgress(CropType crop)
+        {
+            var gameState = GameState;
+            return gameState == null ? 1f : CropUnlockConfig.GetUnlockProgress(crop, gameState.CropHarvestedTotals);
+        }
+
         /// <summary>Lifetime harvested units of a crop (0 headlessly).</summary>
         public static int GetHarvestedTotal(CropType crop)
         {

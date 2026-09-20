@@ -64,6 +64,8 @@ namespace PitHero.ECS.Components
         private bool _returnReachedExit; // ReturnHome phase: walked to the exit tile, stepping into the door
         private float _tillDuration;
         private float _waterDuration;
+        private float _harvestDuration;      // seconds on the crop tile before the crop is picked (farming-level scaled)
+        private float _appleHarvestWait;     // seconds under an apple tree before the jump (farming-level scaled)
 
         // Seconds between Digging sound plays while the tilling animation loops
         private const float DigSfxIntervalSeconds = 0.4f;
@@ -485,8 +487,7 @@ namespace PitHero.ECS.Components
         {
             _facing?.SetFacing(_standRight ? Direction.Left : Direction.Right);
 
-            float proficiencyScale = 1f - GameConfig.TillProficiencySpeedStep * (_monster.FarmingProficiency - 1);
-            _tillDuration = GameConfig.TillBaseDurationSeconds * proficiencyScale;
+            _tillDuration = FarmWorkDurations.GetTillDuration(_monster.FarmingProficiency);
 
             // First Digging sound plays on the first tick, then repeats every interval
             _digSfxTimer = DigSfxIntervalSeconds;
@@ -520,6 +521,9 @@ namespace PitHero.ECS.Components
             // Complete before TillTile so the ReadyToTill-cleared event is a no-op for the queue
             _coordinator.CompleteAction(in _currentAction);
             _tilledTileService?.TillTile(_currentAction.TargetTile);
+            // Tilling earns a fraction of a farm task: a whole field's worth of hoeing counts, but
+            // one tile does not weigh the same as a plant/water/harvest (issue #422).
+            MonsterJobTaskRecorder.Record(_monster, MonsterJob.Farming, GameConfig.TillFarmTaskCredit);
             _hasAction = false;
             CurrentState = FarmingMonsterState.Idle;
         }
@@ -535,8 +539,7 @@ namespace PitHero.ECS.Components
         {
             _facing?.SetFacing(_standRight ? Direction.Left : Direction.Right);
 
-            float proficiencyScale = 1f - GameConfig.TillProficiencySpeedStep * (_monster.FarmingProficiency - 1);
-            _tillDuration = GameConfig.TillBaseDurationSeconds * proficiencyScale;
+            _tillDuration = FarmWorkDurations.GetTillDuration(_monster.FarmingProficiency);
 
             if (HoeAnimator != null)
             {
@@ -641,8 +644,7 @@ namespace PitHero.ECS.Components
         {
             _facing?.SetFacing(_standRight ? Direction.Left : Direction.Right);
 
-            float proficiencyScale = 1f - GameConfig.TillProficiencySpeedStep * (_monster.FarmingProficiency - 1);
-            _waterDuration = GameConfig.WaterBaseDurationSeconds * proficiencyScale;
+            _waterDuration = GameConfig.WaterBaseDurationSeconds * FarmWorkDurations.GetSpeedScale(_monster.FarmingProficiency);
 
             if (WateringCanAnimator != null)
             {
@@ -763,6 +765,8 @@ namespace PitHero.ECS.Components
         {
             _harvestPickedUp = false;
             _appleJumping = false;
+            _harvestDuration = FarmWorkDurations.GetHarvestDuration(_monster.FarmingProficiency);
+            _appleHarvestWait = FarmWorkDurations.GetAppleHarvestWaitDuration(_monster.FarmingProficiency);
             bool isApple = _harvestCropType == Farming.CropType.AppleTree;
             _facing?.SetFacing(isApple ? Direction.Up : Direction.Down);
             if (BodyAnimator != null)
@@ -786,7 +790,7 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            if (elapsedTimeInState < GameConfig.HarvestWaitSeconds)
+            if (elapsedTimeInState < _harvestDuration)
                 return;
 
             if (TryBeginCarry())
@@ -807,7 +811,7 @@ namespace PitHero.ECS.Components
         private void PerformAppleHarvest_Tick()
         {
             // Phase 1: wait under the tree
-            if (!_appleJumping && elapsedTimeInState < GameConfig.AppleHarvestWaitSeconds)
+            if (!_appleJumping && elapsedTimeInState < _appleHarvestWait)
                 return;
 
             // Begin the jump

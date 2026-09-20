@@ -17,9 +17,12 @@ namespace RolePlayingFramework.AlliedMonsters
         private int _fishingLevel;
         private int _cookingLevel;
         private int _farmingLevel;
-        private int _fishingTasks;
-        private int _cookingTasks;
-        private int _farmingTasks;
+        // Task progress is fractional under the hood (issue #422): tilling credits a tenth of a task,
+        // everything else a whole one. Every public reader floors it to a whole number so a progress
+        // readout can never show "20/20" a tick before the level-up actually fires.
+        private float _fishingTasks;
+        private float _cookingTasks;
+        private float _farmingTasks;
 
         /// <summary>Fishing skill level, 1–9.</summary>
         public int FishingProficiency => _fishingLevel;
@@ -30,14 +33,23 @@ namespace RolePlayingFramework.AlliedMonsters
         /// <summary>Farming skill level, 1–9.</summary>
         public int FarmingProficiency => _farmingLevel;
 
-        /// <summary>Fishing tasks completed toward the next fishing level.</summary>
-        public int FishingTasks => _fishingTasks;
+        /// <summary>Whole fishing tasks completed toward the next fishing level.</summary>
+        public int FishingTasks => Floor(_fishingTasks);
 
-        /// <summary>Kitchen tasks completed toward the next cooking level.</summary>
-        public int CookingTasks => _cookingTasks;
+        /// <summary>Whole kitchen tasks completed toward the next cooking level.</summary>
+        public int CookingTasks => Floor(_cookingTasks);
 
-        /// <summary>Farm tasks completed toward the next farming level.</summary>
-        public int FarmingTasks => _farmingTasks;
+        /// <summary>Whole farm tasks completed toward the next farming level.</summary>
+        public int FarmingTasks => Floor(_farmingTasks);
+
+        /// <summary>Exact fractional fishing progress toward the next level (save round-trip only).</summary>
+        public float FishingTasksRaw => _fishingTasks;
+
+        /// <summary>Exact fractional cooking progress toward the next level (save round-trip only).</summary>
+        public float CookingTasksRaw => _cookingTasks;
+
+        /// <summary>Exact fractional farming progress toward the next level (save round-trip only).</summary>
+        public float FarmingTasksRaw => _farmingTasks;
 
         /// <summary>Current job assignment for this monster.</summary>
         public MonsterJob Job { get; set; } = MonsterJob.None;
@@ -89,15 +101,21 @@ namespace RolePlayingFramework.AlliedMonsters
             }
         }
 
-        /// <summary>Tasks completed toward the next level of the given job (0 for None).</summary>
+        /// <summary>Whole tasks completed toward the next level of the given job (0 for None).</summary>
         public int GetTasks(MonsterJob job)
+        {
+            return Floor(GetTasksRaw(job));
+        }
+
+        /// <summary>Exact fractional progress toward the next level of the given job (0 for None).</summary>
+        public float GetTasksRaw(MonsterJob job)
         {
             switch (job)
             {
                 case MonsterJob.Farming: return _farmingTasks;
                 case MonsterJob.Cooking: return _cookingTasks;
                 case MonsterJob.Fishing: return _fishingTasks;
-                default: return 0;
+                default: return 0f;
             }
         }
 
@@ -114,44 +132,56 @@ namespace RolePlayingFramework.AlliedMonsters
         }
 
         /// <summary>
-        /// Records one completed task for the job. Returns true when this task raised the job's level.
-        /// Progress stops accumulating at the maximum level.
+        /// Records completed work for the job and returns true when it raised the job's level.
+        /// <paramref name="credit"/> is one whole task by default; tilling passes a fraction
+        /// (GameConfig.TillFarmTaskCredit). Progress stops accumulating at the maximum level.
         /// </summary>
-        public bool RecordTask(MonsterJob job)
+        public bool RecordTask(MonsterJob job, float credit = 1f)
         {
             switch (job)
             {
-                case MonsterJob.Farming: return Advance(job, ref _farmingLevel, ref _farmingTasks);
-                case MonsterJob.Cooking: return Advance(job, ref _cookingLevel, ref _cookingTasks);
-                case MonsterJob.Fishing: return Advance(job, ref _fishingLevel, ref _fishingTasks);
+                case MonsterJob.Farming: return Advance(job, credit, ref _farmingLevel, ref _farmingTasks);
+                case MonsterJob.Cooking: return Advance(job, credit, ref _cookingLevel, ref _cookingTasks);
+                case MonsterJob.Fishing: return Advance(job, credit, ref _fishingLevel, ref _fishingTasks);
                 default: return false;
             }
         }
 
-        private static bool Advance(MonsterJob job, ref int level, ref int tasks)
+        private static bool Advance(MonsterJob job, float credit, ref int level, ref float tasks)
         {
             if (level >= PitHero.GameConfig.MonsterJobLevelMax)
             {
-                tasks = 0;
+                tasks = 0f;
                 return false;
             }
-            tasks++;
+            if (credit <= 0f)
+                return false;
+
+            tasks += credit;
             int required = TasksRequiredForLevel(job, level);
             if (tasks < required)
                 return false;
             tasks -= required;
             level++;
             if (level >= PitHero.GameConfig.MonsterJobLevelMax)
-                tasks = 0;
+                tasks = 0f;
             return true;
         }
 
         /// <summary>Restores task progress from a save (values are clamped to be non-negative).</summary>
-        public void SetTaskProgress(int fishingTasks, int cookingTasks, int farmingTasks)
+        public void SetTaskProgress(float fishingTasks, float cookingTasks, float farmingTasks)
         {
-            _fishingTasks = fishingTasks < 0 ? 0 : fishingTasks;
-            _cookingTasks = cookingTasks < 0 ? 0 : cookingTasks;
-            _farmingTasks = farmingTasks < 0 ? 0 : farmingTasks;
+            _fishingTasks = fishingTasks < 0f ? 0f : fishingTasks;
+            _cookingTasks = cookingTasks < 0f ? 0f : cookingTasks;
+            _farmingTasks = farmingTasks < 0f ? 0f : farmingTasks;
+        }
+
+        // Fractional progress always reads out as the whole tasks actually banked.
+        private static int Floor(float tasks)
+        {
+            if (tasks <= 0f)
+                return 0;
+            return (int)System.Math.Floor(tasks);
         }
     }
 }

@@ -136,7 +136,7 @@ namespace PitHero.Tests
                 
                 var output = stringWriter.ToString();
                 Assert.IsTrue(output.Contains("calculated amounts"), "Should show actual PitGenerator calculations");
-                Assert.IsTrue(output.Contains("Max Monsters:"), "Should show monster calculations");
+                Assert.IsTrue(output.Contains("Monsters:"), "Should show monster calculations");
                 Assert.IsTrue(output.Contains("Max Chests:"), "Should show chest calculations");
                 Assert.IsTrue(output.Contains("Max Obstacles:"), "Should show obstacle calculations");
                 

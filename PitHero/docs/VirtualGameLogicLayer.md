@@ -211,8 +211,11 @@ reuses the real pricing, progression and market code — `CropConfig`, `CropUnlo
 and models only what needs a scene:
 
 - crop growth: the exact wet-gated math of `CropGrowthService.Update`, Wet cleared at 6 AM;
-- farm workers: water → harvest → plant priority, base durations from `GameConfig` plus a
-  flat `TravelOverheadSeconds`, watering-can charges, day shift 6 AM–10 PM;
+- farm workers: water → harvest → plant priority, durations from the shared
+  `Farming.FarmWorkDurations` helper (level-scaled exactly as the live state machine — tilling and
+  harvesting lerp between their level-1/level-9 endpoints, water and plant use the fixed step) plus
+  a flat `TravelOverheadSeconds`, watering-can charges, day shift 6 AM–10 PM. Tilling has no
+  `TaskKind` here, so the till curve is deliberately invisible to the economy sim;
 - seed auto-purchase: the `AutoSeedPurchaseService` rule over the scenario's plots;
 - the tavern: arrivals per `TavernScheduleConfig` and `MercenaryManager`'s intervals, nine
   seats, patience, cook/server throughput, tips, the party's three meals (hero pays).

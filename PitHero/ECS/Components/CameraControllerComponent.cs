@@ -48,6 +48,13 @@ namespace PitHero.ECS.Components
         public System.Func<bool> HasKeyboardFocus;
 
         /// <summary>
+        /// Optional hook set by the scene; returns true when a placement mode owns SHIFT+wheel
+        /// (the till / restore-grass brush size, issue #422). Plain wheel still zooms and CTRL+wheel
+        /// still resizes the window, so only the modifier the mode needs is given up.
+        /// </summary>
+        public System.Func<bool> IsShiftWheelClaimed;
+
+        /// <summary>
         /// Gets whether this component should respect the manual pause state.
         /// We shouldn't modify camera size or zoom while paused from menu.
         /// The farm-mode pause gate is deliberately ignored so the player can pan/zoom the map
@@ -226,6 +233,11 @@ namespace PitHero.ECS.Components
             if (ctrlDown)
             {
                 HandleWindowResizeZoom(wheelDelta);
+            }
+            // SHIFT + scroll belongs to the active placement mode's brush size while one claims it.
+            else if (shiftDown && IsShiftWheelClaimed?.Invoke() == true)
+            {
+                // Consumed by the mode overlay later this frame — no camera change.
             }
             // Plain or SHIFT + scroll: camera zoom. The modifier-less path is skipped while the
             // pointer is over UI so scrolling a UI list doesn't also zoom the camera underneath.

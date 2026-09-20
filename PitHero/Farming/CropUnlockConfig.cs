@@ -144,6 +144,34 @@ namespace PitHero.Farming
             return true;
         }
 
+        /// <summary>
+        /// How far along a crop's tier requirements are, 0-1. Each requirement contributes its own
+        /// clamped have/required ratio and they are averaged, so every requirement counts the same
+        /// and overshooting one can never mask another that has not started. A crop with no
+        /// requirements is 1, and the result reaches exactly 1 precisely when
+        /// <see cref="IsUnlocked"/> does.
+        /// </summary>
+        public static float GetUnlockProgress(CropType crop, int[] harvestedTotals)
+        {
+            var reqs = GetRequirements(crop);
+            if (reqs.Length == 0)
+                return 1f;
+
+            float sum = 0f;
+            for (int i = 0; i < reqs.Length; i++)
+            {
+                int required = reqs[i].Required;
+                if (required <= 0)
+                {
+                    sum += 1f;
+                    continue;
+                }
+                float ratio = GetTotal(harvestedTotals, reqs[i].Crop) / (float)required;
+                sum += ratio > 1f ? 1f : ratio;
+            }
+            return sum / reqs.Length;
+        }
+
         /// <summary>Bit per unlocked crop ((int)CropType), for cheap before/after comparisons.</summary>
         public static int GetUnlockedMask(int[] harvestedTotals)
         {

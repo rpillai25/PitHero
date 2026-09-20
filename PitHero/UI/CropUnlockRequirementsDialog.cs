@@ -40,8 +40,8 @@ namespace PitHero.UI
             var table = new Table();
             table.Pad(12f);
 
-            string cropName = GetText(CropConfig.GetDisplayNameKey(crop));
-            var hint = new Label(string.Format(GetText(UITextKey.LabelUnlockRequirementsHint), cropName), skin, "ph-default");
+            // No crop name: which crop this unlocks stays a mystery until it is unlocked.
+            var hint = new Label(GetText(UITextKey.LabelUnlockRequirementsHint), skin, "ph-default");
             hint.SetWrap(true);
             hint.SetAlignment(Nez.UI.Align.Center);
             table.Add(hint).Width(TextWidth).SetPadBottom(8f);
@@ -61,7 +61,8 @@ namespace PitHero.UI
                 bool reqLocked = !CropUnlockTracker.IsUnlocked(req.Crop);
 
                 var cell = new Table();
-                cell.Add(new RequirementCell(sprite, have, req.Required, reqLocked))
+                cell.Add(new RequirementCell(sprite, have, req.Required, reqLocked,
+                        CropUnlockTracker.GetUnlockProgress(req.Crop)))
                     .Size(GameConfig.CropUnlockRequirementCellSize, GameConfig.CropUnlockRequirementCellSize);
                 cell.Row();
                 string nameText = reqLocked

@@ -218,8 +218,8 @@ namespace PitHero
         public const int SeedInventoryMaxPerCrop = 999;
         /// <summary>Scale amplitude of the attention pulse on seed shop slots with unmet planned demand (0.1 = ±10%).</summary>
         public const float SeedShopPulseAmplitude = 0.1f;
-        // Locked crops (issue #413) draw at this alpha (0-255) with a "?" badge in the shop and planting palette
-        public const int SeedShopLockedAlpha = 28;
+        // Locked crops (issue #413) draw dark with a "?" badge in the shop and planting palette —
+        // see GameConfig.SeedShopLockedTint down in the Colors block.
         public const float CropUnlockRequirementCellSize = 40f;
         public const int CropUnlockRequirementsPerRow = 6;
         /// <summary>Angular speed (radians/sec) of the seed shop attention pulse.</summary>
@@ -235,8 +235,14 @@ namespace PitHero
         public const int FarmMinTillTileX = 120;         // tiles at x >= this can be marked for tilling
         public const int FarmMinTillTileY = 1;           // tiles at y >= this can be marked for tilling
         public const int FarmMinWanderTileX = 118;       // farming monsters wander at x >= this
-        public const float TillBaseDurationSeconds = 3f;       // hoe time at FarmingProficiency 1
-        public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
+        // Till and harvest interpolate linearly between their level-1 and level-9 endpoints (issue
+        // #422) so a farmer's level is plainly visible in the field. Water and plant keep the older
+        // "reduced by a fixed step per level" shape (FarmProficiencySpeedStep).
+        public const float TillDurationAtLevel1Seconds = 7f;    // hoe time at FarmingProficiency 1
+        public const float TillDurationAtLevel9Seconds = 3f;    // hoe time at FarmingProficiency 9
+        public const float TillFarmTaskCredit = 0.1f;           // farm-task credit per tilled tile (10 tiles = one whole task)
+        public const float FarmProficiencySpeedStep = 0.06f;    // water/plant duration reduced 6% per proficiency point above 1
+        public const int TileBrushMaxSize = 3;                  // largest NxN footprint for the till / restore-grass brush
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
         public const float FarmDutyReassessSeconds = 10f;       // seconds between rebalancing farm workers' Water/Tend duty split (issue #420)
         public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
@@ -248,8 +254,9 @@ namespace PitHero
         public const float MarketDemandFloor = 0.15f;           // demand never drops below 15% of base price
         public const float MarketSaturationPlots = 80f;         // plots of ONE crop that would drive its demand to zero without the floor
         public const float MarketRecoveryPerHour = 0.05f;       // fraction of the remaining gap to full demand recovered per in-game hour (slow enough that a synchronized harvest burst cannot ride the recovery)
-        public const float HarvestWaitSeconds = 5f;             // worker waits this long on the crop tile before harvesting
-        public const float AppleHarvestWaitSeconds = 2f;        // worker waits this long under an apple tree before jumping
+        public const float HarvestDurationAtLevel1Seconds = 5f; // worker waits this long on the crop tile before harvesting at FarmingProficiency 1
+        public const float HarvestDurationAtLevel9Seconds = 1f; // ...and this long at FarmingProficiency 9
+        public const float AppleHarvestWaitSeconds = 2f;        // apple-tree pre-jump wait at FarmingProficiency 1 (scales with the harvest curve)
         public const float AppleHarvestJumpDurationSeconds = 0.6f; // duration of the apple-picking jump arc
         public const float AppleTreeTopHarvestOffsetPx = 26f;   // worker sprite centre rises to this many px below the apple-tree top
         public const float HarvestDepositSeconds = 2f;          // worker stays hidden "inside" the storage building this long after delivering
@@ -439,6 +446,31 @@ namespace PitHero
         public static readonly Color TownColor = Color.Green;
         public static readonly Color BackgroundColor = Color.Black;
         public static readonly Color TransparentMenu = new Color(255, 255, 255, 230);
+        /// <summary>
+        /// Tint for a locked crop's sprite in the seed shop, the planting palette and the unlock
+        /// requirement cells — a near-black silhouette, barely visible behind its "?" badge.
+        /// It is a dark OPAQUE tint rather than a low alpha on purpose: Nez draws with
+        /// BlendState.AlphaBlend (premultiplied), so a white sprite at low alpha keeps its
+        /// full-brightness RGB while barely occluding the background and reads as an additive
+        /// bloom — the locked crops looked lit up instead of faded.
+        /// </summary>
+        public static readonly Color SeedShopLockedTint = new Color(28, 28, 28, 255);
+
+        /// <summary>
+        /// Sprite tint for a locked crop at the given unlock progress (0-1, from
+        /// CropUnlockTracker.GetUnlockProgress): near-black with nothing done, warming toward full
+        /// colour as the requirements fill in, so the player can see a crop is nearly within reach.
+        /// Both ends are opaque, so the result never hits the premultiplied-blend glow described on
+        /// SeedShopLockedTint.
+        /// </summary>
+        public static Color GetLockedCropTint(float unlockProgress)
+        {
+            if (unlockProgress <= 0f)
+                return SeedShopLockedTint;
+            if (unlockProgress >= 1f)
+                return Color.White;
+            return Color.Lerp(SeedShopLockedTint, Color.White, unlockProgress);
+        }
 
         // Top-level UI vertical offsets (applied when window shrinks so text/buttons are not clipped at top)
         public const int TopUiYOffsetNormal = 0;
@@ -461,6 +493,17 @@ namespace PitHero
         // Trap configuration (Phase 6 — minimal trap system)
         public const int TrapMinPerFloor = 0; // Minimum traps spawned per pit floor
         public const int TrapMaxPerFloor = 2; // Maximum traps spawned per pit floor
+
+        // Pit monster population (issue #422): a linear ramp across the biome's floors, replacing the
+        // old formula that could not reach past 1-2 monsters a floor. Keyed on the DISPLAYED pit level
+        // because that is how floors are numbered and how the hero re-progresses after a death — a
+        // respawned party re-enters at floor 1 of the new tier and needs the ramp to restart with it.
+        public const int PitMonsterRampStartLevel = 1;
+        public const int PitMonsterRampEndLevel = Config.CaveBiomeConfig.CaveEndLevel;
+        public const int PitMonsterMinAtFirstFloor = 3;
+        public const int PitMonsterMaxAtFirstFloor = 5;
+        public const int PitMonsterMinAtLastFloor = 10;  // the issue's "at least 10 monsters by floor 25"
+        public const int PitMonsterMaxAtLastFloor = 14;
 
         // New-game starting resources
         public const int NewGameStartingGold = 200; // Gold the player starts with in a new game
@@ -499,8 +542,9 @@ namespace PitHero
         // Monster job skill levels (issue #413). Every recruit starts at MonsterJobStartingLevel in
         // every job; reaching the next level takes (current level × that job's TasksPerLevel) tasks.
         // Farm tasks come thick and fast (plant/water/harvest per tile), so farming needs twice the
-        // kitchen's count per level. The max stays 9 because the work-speed formulas
-        // (1 - step × (level-1)) assume it.
+        // kitchen's count per level. The max stays 9 because the work-speed formulas assume it —
+        // both the step form (1 - FarmProficiencySpeedStep × (level-1)) used by water/plant/cooking
+        // and the level-1-to-level-9 endpoint lerps used by tilling and harvesting.
         public const int MonsterJobLevelMin = 1;
         public const int MonsterJobLevelMax = 9;
         public const int MonsterJobStartingLevel = 1;
@@ -713,7 +757,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
-        public const int SimulationVersion = 7; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path)
+        public const int SimulationVersion = 8; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

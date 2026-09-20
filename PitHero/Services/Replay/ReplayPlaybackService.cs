@@ -119,6 +119,7 @@ namespace PitHero.Services.Replay
         private ReplayData _returnSession; // the live session set aside while a saved replay plays
         private PitHero.ECS.Components.CameraViewState? _returnView; // the player's view when the replay started
         private PitHero.ECS.Components.CameraViewState? _pendingView; // view to apply to the next rebuilt scene
+        private UIWindowManager.WindowSizeMode? _returnWindowSize; // the player's window-size preference before the replay
         private readonly System.Diagnostics.Stopwatch _seekStopwatch = new System.Diagnostics.Stopwatch();
         private long _startAtTick;
         private bool _pastEndUnpauseInjected; // per scene instance: the future's pause release has been injected
@@ -159,6 +160,19 @@ namespace PitHero.Services.Replay
             // The view is the player's, not the recording's: keep it across every scene rebuild
             _returnView = CaptureView();
             _pendingView = _returnView;
+
+            // A replay is there to be watched, so it plays at the full window height even if the
+            // player was working in half-height mode; FinishExit puts their preference back. The
+            // PERSISTENT preference has to change, not just the current size: the rebuild runs
+            // UIWindowManager.ResetForNewScene, which re-applies whatever the preference says.
+            // Only the first Start captures it — picking another replay from inside replay mode
+            // would otherwise record the Normal we just set as the player's preference.
+            if (!_returnWindowSize.HasValue)
+            {
+                _returnWindowSize = UIWindowManager.PersistentWindowSize;
+                UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Normal);
+                UIWindowManager.ApplyPersistentWindowSize();
+            }
             _isCurrentSession = isCurrentSession;
             _liveHeroId = Core.Services.GetService<GameStateService>()?.HeroId ?? 0;
 
@@ -612,6 +626,16 @@ namespace PitHero.Services.Replay
             var settings = Core.Services.GetService<SettingsUI>();
             settings?.FastFUI?.SetSpeedUp(false);
             settings?.ExitReplayMode();
+
+            // Hand the player's window-size preference back last, so every UI element re-lays out
+            // against the size they end up at rather than the full height the replay was watched in.
+            if (_returnWindowSize.HasValue)
+            {
+                UIWindowManager.SetPersistentWindowSize(_returnWindowSize.Value);
+                _returnWindowSize = null;
+                UIWindowManager.ApplyPersistentWindowSize();
+            }
+
             Debug.Log("[ReplayPlayback] Exited replay; live play resumes");
         }
 

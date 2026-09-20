@@ -14,7 +14,6 @@ namespace PitHero.UI
     {
         private static readonly Color MetColor = new Color(120, 255, 140);
         private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
-        private static readonly Color LockedSpriteColor = new Color(255, 255, 255, GameConfig.SeedShopLockedAlpha);
 
         private readonly SpriteDrawable _draw;
         private readonly SpriteDrawable _background;
@@ -22,13 +21,18 @@ namespace PitHero.UI
         private readonly Color _badgeColor;
         private readonly Color _spriteColor;
 
-        /// <summary>Builds a cell; a locked requirement draws its sprite at the shop's locked alpha.</summary>
-        public RequirementCell(Sprite sprite, int have, int required, bool locked)
+        /// <summary>
+        /// Builds a cell. A locked requirement draws its sprite at the locked tint for
+        /// <paramref name="lockedProgress"/> (0-1 toward its own unlock): near-black at 0, warming
+        /// toward full colour as it nears unlocking. Pass 0 where no progress measure exists.
+        /// The tint is a snapshot — these cells live in a dialog that is rebuilt each time it opens.
+        /// </summary>
+        public RequirementCell(Sprite sprite, int have, int required, bool locked, float lockedProgress)
         {
             _draw = sprite != null ? new SpriteDrawable(sprite) : null;
             _badge = have + "/" + required;
             _badgeColor = have >= required ? MetColor : Color.White;
-            _spriteColor = locked ? LockedSpriteColor : Color.White;
+            _spriteColor = locked ? GameConfig.GetLockedCropTint(lockedProgress) : Color.White;
             SetTouchable(Touchable.Disabled);
             SetSize(GameConfig.CropUnlockRequirementCellSize, GameConfig.CropUnlockRequirementCellSize);
 

@@ -363,10 +363,16 @@ namespace PitHero.Services
 
                 mercEntity.GetComponent<ActorFacingComponent>()?.SetFacing(Direction.Left);
                 Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} waiting at the door for a dirty table to be cleared");
+                // Flagged so servers bump bussing to the front even with a runner on shift — a plate
+                // left for the runner's 90s starvation window parks this patron for that whole time.
+                mercComponent.IsWaitingAtTavernDoor = true;
                 while (HasUnbussedPlateAtSeat(tavernPosition))
                 {
                     if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                    {
+                        mercComponent.IsWaitingAtTavernDoor = false;
                         yield break;
+                    }
                     // A seat elsewhere may free up (or get bussed) while we wait — take it
                     var freed = TryReseatToClearedSeat(mercComponent, tavernPosition);
                     if (freed.HasValue)
@@ -376,6 +382,7 @@ namespace PitHero.Services
                     }
                     yield return Coroutine.WaitForSeconds(0.25f);
                 }
+                mercComponent.IsWaitingAtTavernDoor = false;
             }
 
             yield return WalkMercPath(mercEntity, tavernPosition);
@@ -473,14 +480,13 @@ namespace PitHero.Services
             }
         }
 
-        /// <summary>True while the seat's table plate spot still holds an un-bussed empty plate.</summary>
+        /// <summary>True while the seat's own plate spot still holds an un-bussed empty plate.</summary>
         private static bool HasUnbussedPlateAtSeat(Point seatTile)
         {
             var coordinator = Core.Services.GetService<KitchenTaskCoordinator>();
             if (coordinator == null)
                 return false;
-            return Config.TavernSeatConfig.TryGetPlateWorldPosition(seatTile, out var platePos)
-                && coordinator.HasPendingBusJobAt(platePos);
+            return coordinator.HasPendingBusJobAtSeat(seatTile);
         }
 
         /// <summary>Coroutine to walk mercenary offscreen (pathfind to exit point, then slide 64 pixels down) then remove them</summary>
@@ -815,6 +821,24 @@ namespace PitHero.Services
                     count++;
             }
             return count;
+        }
+
+        /// <summary>
+        /// True while any arriving patron is parked at the tavern door because every free seat still
+        /// has an un-bussed plate. Servers use it as bussing urgency (issue #422).
+        /// </summary>
+        public bool AnyPatronWaitingAtTavernDoor()
+        {
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                if (entity == null)
+                    continue;
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp != null && !comp.IsHired && comp.IsWaitingAtTavernDoor)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
