@@ -255,7 +255,7 @@ player had, which is all a replay ever is.
 
 | Scope | Belongs to | Persisted in | Price | Read by |
 |---|---|---|---|---|
-| **Global** | the player — owned forever, across every hero and slot | the **system save** (`SystemSaveData`, `%LOCALAPPDATA%\FeedTheHero\system.bin`, own format version), written the moment one is granted; New Game and loading a slot never touch it | **proof of wealth** — the merchant only needs to see the gold, nothing is deducted | presentation only (replay gates, speed rungs, tabs) |
+| **Global** | the player — owned forever, across every hero and slot | the **system save** (`SystemSaveData`, `%LOCALAPPDATA%\PitHarvest\system.bin`, own format version), written the moment one is granted; New Game and loading a slot never touch it | **proof of wealth** — the merchant only needs to see the gold, nothing is deducted | presentation only (replay gates, speed rungs, tabs) |
 | **Local** | the current hero | the regular session save (`SaveData.LocalArtifacts`, v34) — cleared by New Game (`TitleMenuUI.StartGame`), restored by `SaveLoadService.ApplyLoadedState` | **deducted** — a real purchase | the **simulation** (crop growth, worker speed) |
 
 Global artifacts are granted rather than bought on purpose: they live outside the save, so deducting
@@ -413,7 +413,7 @@ artifacts rewind with the save, so charging for them is safe.
 
 ### Diagnose "Diverged at"
 
-1. Open `%LOCALAPPDATA%\FeedTheHero\replays\replay_divergence.log`: the block names the first tick and
+1. Open `%LOCALAPPDATA%\PitHarvest\replays\replay_divergence.log`: the block names the first tick and
    which of `rng` / `hero` / `party` / `world` differed.
 2. `rng` alone with everything else equal = an extra or missing roll (invariant 3 or 4). Flip
    `GameConfig.ReplaySeekSkipsCosmetics` to A/B a cosmetic suspect and
@@ -431,7 +431,7 @@ artifacts rewind with the save, so charging for them is safe.
    battle/command events with ticks (round starts, monster target picks with roll and candidates,
    Provoke, attacks, buffs, threat, grid swaps). The in-sync sample IS the recorded state at that
    tick for everything the hash covers; unhashed fields (deflect, synergies, gear) are the replay's.
-6. Cross-check against the **live session's analytics** (`%LOCALAPPDATA%\FeedTheHero\analytics\
+6. Cross-check against the **live session's analytics** (`%LOCALAPPDATA%\PitHarvest\analytics\
    session_*.jsonl`, the long `mode=load`/`new` one — playback writes a stub with no events). Wall
    time of a tick ≈ session start + tick/60 s. An attack the trace shows but analytics lacks was a
    deflect (deflects write no row). `party_snapshot` rows carry the live hero's skills and gear.

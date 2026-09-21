@@ -106,7 +106,7 @@ The scrubber shows the first tick where a recorded fingerprint mismatched and wh
 `state` or `decision` sample. Playback keeps going; a diverged replay is still a valid game, just not
 the recorded one.
 
-1. Open `%LOCALAPPDATA%\FeedTheHero\replays\replay_divergence.log`. Each block lists the tick and the
+1. Open `%LOCALAPPDATA%\PitHarvest\replays\replay_divergence.log`. Each block lists the tick and the
    four part hashes (`rng`, `hero`, `party`, `world`) expected vs actual.
 2. Read the parts:
 

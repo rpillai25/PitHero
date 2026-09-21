@@ -6,7 +6,7 @@ interpretation caveats that are not obvious from the raw data.
 
 ## Where the data lives
 
-- **Path:** `%LOCALAPPDATA%\FeedTheHero\analytics\session_yyyyMMdd_HHmmss.jsonl`
+- **Path:** `%LOCALAPPDATA%\PitHarvest\analytics\session_yyyyMMdd_HHmmss.jsonl`
   (the folder is derived from the executable name at runtime, so it always matches the save-file root)
 - **Format:** JSONL — one JSON object per line, one line per event.
 - **Rotation:** a new file per session. Returning to the title screen and starting/loading

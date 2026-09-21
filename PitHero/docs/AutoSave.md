@@ -185,7 +185,7 @@ without `Core`. Production wiring is in `Game1`.
 ## Manual verification checklist
 
 1. New game, wait 30 s: the SaveIcon pulses lower-right for at least 1.5 s and one
-   `%LOCALAPPDATA%\FeedTheHero\autosave_<hex>.bin` appears with no `.tmp` beside it. No frame hitch.
+   `%LOCALAPPDATA%\PitHarvest\autosave_<hex>.bin` appears with no `.tmp` beside it. No frame hitch.
 2. Settings → Session while the icon shows: Save is greyed and hovering it reads "Autosave in
    progress"; it re-enables when the icon goes away.
 3. Window → Half size: the icon is the crisp 2x version and stays in the corner; opening any window

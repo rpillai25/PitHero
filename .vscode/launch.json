@@ -11,7 +11,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "dotnet: build (Debug)",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.dll",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHarvest.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PitHero",
             "stopAtEntry": false,
@@ -21,7 +21,7 @@
             "name": ".NET: Launch Without Building",
             "type": "coreclr",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.dll",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHarvest.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PitHero",
             "stopAtEntry": false,
@@ -34,7 +34,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "dotnet: build (Release)",
-            "program": "${workspaceFolder}/PitHero/bin/Release/FeedTheHero.dll",
+            "program": "${workspaceFolder}/PitHero/bin/Release/PitHarvest.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PitHero",
             "stopAtEntry": false,
@@ -44,7 +44,7 @@
             "name": ".NET: Launch Without Building (Release)",
             "type": "coreclr",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Release/FeedTheHero.dll",
+            "program": "${workspaceFolder}/PitHero/bin/Release/PitHarvest.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PitHero",
             "stopAtEntry": false,
@@ -61,7 +61,7 @@
             "name": "Launch (Mac)",
             "type": "mono",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHarvest.exe",
             "cwd": "${workspaceFolder}/PitHero",
             "preLaunchTask": "Build (Debug)",
             "osx":{
@@ -75,7 +75,7 @@
             "name": "Launch Without Building (Mac)",
             "type": "mono",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHarvest.exe",
             "cwd": "${workspaceFolder}",
             "osx":{
                 "env": {
@@ -88,7 +88,7 @@
             "name": "Launch (Windows)",
             "type": "clr",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHarvest.exe",
             "cwd": "${workspaceFolder}/PitHero",
             "preLaunchTask": "Build (Debug)"
         },
@@ -97,7 +97,7 @@
             "name": "Launch Without Building (Windows)",
             "type": "clr",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHarvest.exe",
             "cwd": "${workspaceFolder}"
         },
 
