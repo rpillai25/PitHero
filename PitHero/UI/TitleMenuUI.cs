@@ -53,15 +53,16 @@ namespace PitHero.UI
 
         private void CreateTitleLogo()
         {
-            // Load the UI atlas and get the Everpit title sprite
+            // Load the UI atlas and get the Pit Harvest title sprite
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-            var titleSprite = uiAtlas.GetSprite("EverpitTitle");
+            var titleSprite = uiAtlas.GetSprite("PitHarvestTitle");
             _titleLogo = new Image(titleSprite);
             _titleSpriteWidth = titleSprite.SourceRect.Width;
 
-            // Center the logo horizontally and position it higher to allow more space for buttons
+            // Center the logo horizontally and hug the top of the stage, leaving the rest of the
+            // strip for the buttons.
             float logoX = (_stage.GetWidth() - _titleSpriteWidth) / 2f;
-            float logoY = _stage.GetHeight() * 0.30f; // 30% from top (moved higher)
+            float logoY = GameConfig.TitleLogoTopMargin;
 
             _titleLogo.SetPosition(logoX, logoY);
             _stage.AddElement(_titleLogo);
@@ -189,7 +190,7 @@ namespace PitHero.UI
                 _lastStageWidth = stageW;
                 _lastStageHeight = stageH;
 
-                _titleLogo?.SetPosition((stageW - _titleSpriteWidth) / 2f, stageH * 0.30f);
+                _titleLogo?.SetPosition((stageW - _titleSpriteWidth) / 2f, GameConfig.TitleLogoTopMargin);
                 _mainMenuTable?.SetY(stageH * 0.25f);
                 _quitConfirmationDialog?.SetPosition(
                     (stageW - _quitConfirmationDialog.GetWidth()) / 2,

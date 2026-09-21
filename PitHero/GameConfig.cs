@@ -35,6 +35,8 @@ namespace PitHero
         public const float ShortcutDockGap = 16f;
         /// <summary>Distance from the bottom of the stage to the baseline HUD labels (Pit Lv / Gold).</summary>
         public const float HudBottomLabelOffsetY = 10f;
+        /// <summary>Distance from the top of the stage to the top of the title-screen logo.</summary>
+        public const float TitleLogoTopMargin = 16f;
 
         // Window Configuration
         public const bool AlwaysOnTop = false;   // off by default: the strip should not sit over other apps unless the player opts in (Settings > Session)
