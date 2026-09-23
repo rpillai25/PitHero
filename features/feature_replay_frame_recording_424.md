@@ -104,7 +104,9 @@ pre-measurement draft.
 Sprites whose texture has no name (per-entity RenderTextures) are never captured; that is why
 composites capture their layers. **Measured (#425): atlas textures are unnamed too**:
 `SpriteAtlasLoader` never sets `Name`, so every sprite in the game has an empty `Texture2D.Name` until
-the loader is fixed (see §6.1). String and nine-patch keys are interned the same way. Tables are
+the loader is fixed (see §6.1). **#427 owns the fix**: a one-line fork change in
+`SpriteAtlasLoader.ParseSpriteAtlas` setting `texture.Name` to the atlas image path (details on the
+issue). String and nine-patch keys are interned the same way. Tables are
 persisted incrementally: each chunk carries the entries first seen in that chunk, so a reader
 rebuilds the full table by scanning chunk headers once at open.
 
