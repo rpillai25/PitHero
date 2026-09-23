@@ -756,6 +756,8 @@ namespace PitHero
         public const bool ReplaySeekSkipsCosmetics = true;       // Seeks skip purely visual per-step work (particles, floating text, Y-sort); flip to A/B a divergence
         public const bool ReplaySeekQuietLogging = true;        // Seeks drop Debug.Log output (and its interpolation); flip to A/B a divergence
         public const bool ReplayDivergenceSnapshots = true;     // Playback describes the sim at every matching sample so a divergence report can show the last in-sync state next to the drifted one
+        public const bool ReplayFrameCensus = false;             // Issue #425 spike: log a renderable / change-rate / byte census to replays/frame_census.log during live play
+        public const int ReplayFrameCensusWindowTicks = 3600;    // Census report window: one real minute of simulation at 1x (= one in-game hour)
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.

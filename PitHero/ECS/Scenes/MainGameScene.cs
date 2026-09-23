@@ -290,6 +290,9 @@ namespace PitHero.ECS.Scenes
             // scene's bar keeps intercepting skill drops in the next game session (its stale
             // handler runs first and cancels the drag before the new bar can handle it).
             _shortcutBar?.DisconnectFromStaticEvents();
+            // Final partial census report while the map service is still registered (issue #425 spike)
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Detach();
             Core.Services.RemoveService(typeof(Rendering.ColorGradingController));
             _colorGrading?.Dispose();
             _colorGrading = null;
@@ -388,6 +391,8 @@ namespace PitHero.ECS.Scenes
                 ? replayBootstrap.Data.StateBlob
                 : CaptureSessionStartBlob(isNewGame);
             _replayRecorder.Initialize(replayKind, masterSeed, startBlob, replayBootstrap?.Data);
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Start();
             if (replayBootstrap?.Data != null)
                 _replayRecorder.IsRecording = false; // playback: the recording IS the list; resume on exit
 
@@ -3381,6 +3386,10 @@ namespace PitHero.ECS.Scenes
             if (tick % GameConfig.ReplayHashIntervalTicks == 0)
                 Services.Replay.ReplayTripwire.ReportStateHash(Services.Replay.SimulationStateHasher.Sample(tick));
 
+            // Issue #425 spike: read-only renderable census for the replay frame-stream budget
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.SampleTick(this, tick);
+
             // Always last: this step is complete
             _simulationClock?.Advance();
         }
@@ -3443,6 +3452,9 @@ namespace PitHero.ECS.Scenes
 
             _settingsUI?.Update();
             _eventConsolePanel?.Update();
+
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.PresentationUpdate(this);
 
             // AutoSave (issue #409): wall-clock countdown, presentation-only. The gate also drives the
             // Session → Save button, so manual saves obey the same transitional-state rules.

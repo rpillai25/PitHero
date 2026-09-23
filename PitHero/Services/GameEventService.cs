@@ -91,6 +91,8 @@ namespace PitHero.Services
         {
             if (Suppressed)
                 return;
+            if (GameConfig.ReplayFrameCensus)
+                Replay.Frames.ReplayFrameCensus.Current?.OnConsoleLine(1, message?.Length ?? 0);
             OnEvent?.Invoke(new[] { new ConsoleSegment(message, Color.White) }, priority);
         }
 
@@ -99,7 +101,20 @@ namespace PitHero.Services
         {
             if (Suppressed)
                 return;
+            if (GameConfig.ReplayFrameCensus)
+                CountCensusLine(segments);
             OnEvent?.Invoke(segments, priority);
+        }
+
+        private static void CountCensusLine(ConsoleSegment[] segments)
+        {
+            var census = Replay.Frames.ReplayFrameCensus.Current;
+            if (census == null || segments == null)
+                return;
+            int chars = 0;
+            for (int i = 0; i < segments.Length; i++)
+                chars += segments[i].Text?.Length ?? 0;
+            census.OnConsoleLine(segments.Length, chars);
         }
 
         /// <summary>Looks up the UI localized format for key and emits a Normal-priority colored segment row.</summary>

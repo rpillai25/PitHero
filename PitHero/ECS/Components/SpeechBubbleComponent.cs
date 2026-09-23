@@ -60,6 +60,9 @@ namespace PitHero.ECS.Components
 
         // State
         private bool _active;
+
+        /// <summary>True while a bubble is on screen (read by the replay frame census).</summary>
+        public bool IsShowing => _active;
         private string _wrappedText;
         private readonly StringBuilder _visibleText = new StringBuilder(256);
         private ICoroutine _revealRoutine;
