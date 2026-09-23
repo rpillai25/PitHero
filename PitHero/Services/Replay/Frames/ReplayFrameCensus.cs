@@ -21,8 +21,10 @@ namespace PitHero.Services.Replay.Frames
     /// Measurement spike for issue #425 (behind <see cref="GameConfig.ReplayFrameCensus"/>): walks the
     /// scene's renderables once per simulation tick and reports, once per
     /// <see cref="GameConfig.ReplayFrameCensusWindowTicks"/>, what a Braid-style frame stream (design doc
-    /// features/feature_replay_frame_recording_424.md §3.1) would have to store. Output goes to
-    /// frame_census.log next to the replay files, so Release builds report too.
+    /// features/feature_replay_frame_recording_424.md §3.1) would have to store. Five encoding variants
+    /// are written as real byte streams and deflated per chunk, so their compressed sizes are measured
+    /// rather than estimated. Output goes to frame_census.log next to the replay files, so Release
+    /// builds report too.
     /// Strictly read-only over the scene: never rolls Nez.Random, never reads Input, never mutates a
     /// component. The Stopwatch only times the census itself and feeds nothing back into the sim.
     /// </summary>
@@ -36,8 +38,8 @@ namespace PitHero.Services.Replay.Frames
             KPausableAnimator = 4, KEnemyAnimation = 5, KHeroLayer = 6, KMultiSprite = 7, KStaticCompositor = 8,
             KTextRender = 9, KRisingText = 10, KBouncyText = 11, KBouncyDigit = 12, KSpeechBubble = 13,
             KMonsterHpBar = 14, KBuildingOutline = 15, KSelectBox = 16, KActionQueueViz = 17, KCloudOverlay = 18,
-            KTreeBand = 19, KGraphicalHud = 20, KTiledMap = 21, KParticleEmitter = 22, KOther = 23;
-        private const int KindCount = 24;
+            KTreeBand = 19, KGraphicalHud = 20, KTiledMap = 21, KParticleEmitter = 22, KUiCanvas = 23, KOther = 24;
+        private const int KindCount = 25;
         private static readonly string[] KindNames =
         {
             "SpriteRenderer", "YSortSpriteRenderer", "PrototypeSpriteRenderer", "SpriteAnimator",
@@ -45,14 +47,25 @@ namespace PitHero.Services.Replay.Frames
             "StaticSpriteCompositor", "TextRenderComponent", "RisingTextComponent", "BouncyTextComponent",
             "BouncyDigitComponent", "SpeechBubbleComponent", "MonsterHPBarComponent", "BuildingOutlineRenderComponent",
             "SelectBoxRenderComponent", "ActionQueueVisualizationComponent", "CloudOverlayComponent", "TreeBandComponent",
-            "GraphicalHUD", "TiledMapRenderer", "ParticleEmitter", "other",
+            "GraphicalHUD", "TiledMapRenderer", "ParticleEmitter", "UICanvas", "other",
         };
 
-        // Op sizes from issue #425 / design §3.1, plus the per-entity header (id u16 + opsLen u16)
+        // Op classes and the issue #425 op sizes (used for the "naive" estimate only; the streams use the §3.1 layout)
         private const int OpNone = 0, OpSprite = 1, OpComposite = 2, OpText = 3, OpRect = 4, OpHpBar = 5, OpSpeech = 6;
         private const int SpriteOpBytes = 20, CompositeOpBytes = 8, CompositeLayerBytes = 13, TextOpBytes = 16,
             RectOpBytes = 21, NinePatchOpBytes = 22, EntityHeaderBytes = 4, TombstoneBytes = 4;
         private const int HudRecordBytes = 40, TileEventBytes = 11, ConsoleLineBytes = 4, ConsoleSegmentBytes = 8;
+
+        // Encoding variants written as real byte streams
+        private const int SA = 0, SB = 1, SC = 2, SD = 3, SE = 4, StreamCount = 5;
+        private static readonly string[] StreamNames =
+        {
+            "A design: delta vs chunk base, f32 positions",
+            "B delta vs previous tick, f32 positions",
+            "C delta vs previous tick, i16 pixel positions",
+            "D = C + composite 'moved' op (position/depth only)",
+            "E = C sampled every 2nd tick (30 Hz)",
+        };
 
         // Tick buckets
         private const int BOutOfPit = 0, BInPit = 1, BBattle = 2, BPaused = 3, BucketCount = 4;
@@ -66,7 +79,7 @@ namespace PitHero.Services.Replay.Frames
         {
             public ushort Id;
             public byte Kind;
-            public bool Enabled;
+            public bool Enabled, Captured;
             public float X, Y, Depth;
             public int Layer;
             public uint Color;
@@ -78,9 +91,50 @@ namespace PitHero.Services.Replay.Frames
         private struct TickSample
         {
             public byte Bucket;
-            public bool BaseFrame;
-            public int Renderables, Captured, ChangedAll, ChangedCaptured, ChangedVsBase, Bytes, TileOps, ConsoleLines;
+            public bool BaseFrame, Sampled30;
+            public int Renderables, Captured, ChangedAll, ChangedCaptured, ChangedCapturedQ, ChangedVsBase, Bytes, TileOps, ConsoleLines;
+            public int Bytes0, Bytes1, Bytes2, Bytes3, Bytes4;
+            public int Emit0, Emit1, Emit2, Emit3, Emit4;
             public long CostTicks;
+        }
+
+        private sealed class StreamBuf
+        {
+            public byte[] Buf = new byte[256 * 1024];
+            public byte[] Pending = new byte[256 * 1024];
+            public int Len, PendingLen, TickBytes, TickEmitted;
+
+            public void Ensure(int extra)
+            {
+                if (Len + extra <= Buf.Length)
+                    return;
+                // Warm-up growth only
+                var grown = new byte[Buf.Length * 2];
+                System.Buffer.BlockCopy(Buf, 0, grown, 0, Len);
+                Buf = grown;
+            }
+            public void U8(byte v) { Ensure(1); Buf[Len++] = v; TickBytes++; }
+            public void U16(ushort v) { Ensure(2); Buf[Len++] = (byte)v; Buf[Len++] = (byte)(v >> 8); TickBytes += 2; }
+            public void I16(int v) => U16((ushort)(short)v);
+            public void U32(uint v)
+            {
+                Ensure(4);
+                Buf[Len++] = (byte)v; Buf[Len++] = (byte)(v >> 8);
+                Buf[Len++] = (byte)(v >> 16); Buf[Len++] = (byte)(v >> 24);
+                TickBytes += 4;
+            }
+            public void F32(float v) => U32((uint)System.BitConverter.SingleToInt32Bits(v));
+
+            public void EndChunk()
+            {
+                if (PendingLen == 0)
+                {
+                    var tmp = Pending; Pending = Buf; Buf = tmp;
+                    PendingLen = Len;
+                }
+                // else: the presentation pass has not caught up; this chunk is not measured for compression
+                Len = 0;
+            }
         }
 
         private sealed class Stat
@@ -96,40 +150,48 @@ namespace PitHero.Services.Replay.Frames
 
         private sealed class Window
         {
-            public long Ticks, RawBytes, BaseFrames, ChunkRaw, ChunkDeflateOptimal, ChunkDeflateFastest, ChunksCompressed;
+            public long Ticks, RawBytes, BaseFrames;
             public long TileOps, TileNoOps, ConsoleLines, ConsoleSegments, ConsoleChars, DroppedSamples;
             public readonly long[] TileOpsByLayer = new long[LayerNames.Length];
             public readonly long[] BucketTicks = new long[BucketCount];
-            public readonly Stat[] ChangedAll = NewStats(), ChangedCaptured = NewStats(), ChangedVsBase = NewStats(), Bytes = NewStats();
-            public readonly Stat Captured = new Stat(), Renderables = new Stat(), Cost = new Stat(), CompressMicros = new Stat();
+            public readonly Stat[] ChangedAll = NewStats(), ChangedCaptured = NewStats(), ChangedCapturedQ = NewStats(), ChangedVsBase = NewStats(), Bytes = NewStats();
+            public readonly Stat Captured = new Stat(), Renderables = new Stat(), Cost = new Stat(), DeflateMicros = new Stat();
+            public readonly long[] StreamRaw = new long[StreamCount], StreamDeflated = new long[StreamCount], StreamChunks = new long[StreamCount],
+                StreamEmitted = new long[StreamCount], StreamDeltaTicks = new long[StreamCount];
 
             private static Stat[] NewStats() { var s = new Stat[BucketCount]; for (int i = 0; i < BucketCount; i++) s[i] = new Stat(); return s; }
 
             public void Reset()
             {
-                Ticks = RawBytes = BaseFrames = ChunkRaw = ChunkDeflateOptimal = ChunkDeflateFastest = ChunksCompressed = 0;
+                Ticks = RawBytes = BaseFrames = 0;
                 TileOps = TileNoOps = ConsoleLines = ConsoleSegments = ConsoleChars = DroppedSamples = 0;
                 for (int i = 0; i < TileOpsByLayer.Length; i++) TileOpsByLayer[i] = 0;
                 for (int i = 0; i < BucketCount; i++)
                 {
-                    BucketTicks[i] = 0; ChangedAll[i].Reset(); ChangedCaptured[i].Reset(); ChangedVsBase[i].Reset(); Bytes[i].Reset();
+                    BucketTicks[i] = 0; ChangedAll[i].Reset(); ChangedCaptured[i].Reset(); ChangedCapturedQ[i].Reset(); ChangedVsBase[i].Reset(); Bytes[i].Reset();
                 }
-                Captured.Reset(); Renderables.Reset(); Cost.Reset(); CompressMicros.Reset();
+                for (int i = 0; i < StreamCount; i++)
+                    StreamRaw[i] = StreamDeflated[i] = StreamChunks[i] = StreamEmitted[i] = StreamDeltaTicks[i] = 0;
+                Captured.Reset(); Renderables.Reset(); Cost.Reset(); DeflateMicros.Reset();
             }
 
             public void Merge(Window o)
             {
-                Ticks += o.Ticks; RawBytes += o.RawBytes; BaseFrames += o.BaseFrames; ChunkRaw += o.ChunkRaw;
-                ChunkDeflateOptimal += o.ChunkDeflateOptimal; ChunkDeflateFastest += o.ChunkDeflateFastest; ChunksCompressed += o.ChunksCompressed;
+                Ticks += o.Ticks; RawBytes += o.RawBytes; BaseFrames += o.BaseFrames;
                 TileOps += o.TileOps; TileNoOps += o.TileNoOps; ConsoleLines += o.ConsoleLines; ConsoleSegments += o.ConsoleSegments;
                 ConsoleChars += o.ConsoleChars; DroppedSamples += o.DroppedSamples;
                 for (int i = 0; i < TileOpsByLayer.Length; i++) TileOpsByLayer[i] += o.TileOpsByLayer[i];
                 for (int i = 0; i < BucketCount; i++)
                 {
                     BucketTicks[i] += o.BucketTicks[i]; ChangedAll[i].Merge(o.ChangedAll[i]); ChangedCaptured[i].Merge(o.ChangedCaptured[i]);
-                    ChangedVsBase[i].Merge(o.ChangedVsBase[i]); Bytes[i].Merge(o.Bytes[i]);
+                    ChangedCapturedQ[i].Merge(o.ChangedCapturedQ[i]); ChangedVsBase[i].Merge(o.ChangedVsBase[i]); Bytes[i].Merge(o.Bytes[i]);
                 }
-                Captured.Merge(o.Captured); Renderables.Merge(o.Renderables); Cost.Merge(o.Cost); CompressMicros.Merge(o.CompressMicros);
+                for (int i = 0; i < StreamCount; i++)
+                {
+                    StreamRaw[i] += o.StreamRaw[i]; StreamDeflated[i] += o.StreamDeflated[i]; StreamChunks[i] += o.StreamChunks[i];
+                    StreamEmitted[i] += o.StreamEmitted[i]; StreamDeltaTicks[i] += o.StreamDeltaTicks[i];
+                }
+                Captured.Merge(o.Captured); Renderables.Merge(o.Renderables); Cost.Merge(o.Cost); DeflateMicros.Merge(o.DeflateMicros);
             }
         }
 
@@ -145,9 +207,12 @@ namespace PitHero.Services.Replay.Frames
 
         private static readonly string[] LayerNames = { "Base", "Detail", "FogOfWar", "Collision", "Top", "(other)" };
 
-        // Per-tick state (sim side; read-only over the scene)
+        // Per-tick state (sim side; read-only over the scene). Three snapshot dictionaries rotate each tick:
+        // cur (this tick), prev (last tick), prev2 (two ticks ago, for the 30 Hz variant).
+        private Dictionary<RenderableComponent, Snap> _prev2 = new Dictionary<RenderableComponent, Snap>(1024);
         private Dictionary<RenderableComponent, Snap> _prev = new Dictionary<RenderableComponent, Snap>(1024);
         private Dictionary<RenderableComponent, Snap> _cur = new Dictionary<RenderableComponent, Snap>(1024);
+        private int _prev2Captured, _prevCaptured, _curCaptured;
         private readonly Dictionary<RenderableComponent, Snap> _base = new Dictionary<RenderableComponent, Snap>(1024);
         private readonly Dictionary<Sprite, ushort> _spriteIds = new Dictionary<Sprite, ushort>(2048);
         private ushort _nextEntityId = 1;
@@ -156,10 +221,7 @@ namespace PitHero.Services.Replay.Frames
         private Entity _heroEntity;
         private HeroComponent _heroComponent;
 
-        // Synthetic op stream, double-buffered: the sim fills one chunk, the presentation pass deflates the other
-        private byte[] _chunkBuf = new byte[256 * 1024];
-        private byte[] _pendingBuf = new byte[256 * 1024];
-        private int _chunkLen, _pendingLen;
+        private readonly StreamBuf[] _streams = new StreamBuf[StreamCount];
         private readonly MemoryStream _deflateOut = new MemoryStream(256 * 1024);
 
         // Sim → presentation handoff
@@ -189,6 +251,8 @@ namespace PitHero.Services.Replay.Frames
         {
             _logPath = logPath;
             _startedUtc = System.DateTime.UtcNow;
+            for (int i = 0; i < StreamCount; i++)
+                _streams[i] = new StreamBuf();
         }
 
         /// <summary>Creates the census for a new scene (called from MainGameScene.Begin when the const is on).</summary>
@@ -198,7 +262,12 @@ namespace PitHero.Services.Replay.Frames
             var files = Core.Services.GetService<ReplayFileService>();
             string dir = files != null ? files.Directory_ : Path.GetTempPath();
             Current = new ReplayFrameCensus(Path.Combine(dir, LogFileName));
-            Current.Append("=== frame census started " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+#if DEBUG
+            const string build = "Debug";
+#else
+            const string build = "Release";
+#endif
+            Current.Append("=== frame census started " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " build=" + build
                 + " window=" + GameConfig.ReplayFrameCensusWindowTicks + " ticks, chunk model=" + ChunkTicks + " ticks ===\n");
         }
 
@@ -258,14 +327,22 @@ namespace PitHero.Services.Replay.Frames
             long t0 = Stopwatch.GetTimestamp();
 
             bool baseFrame = _chunkTick == 0;
-            var swap = _prev; _prev = _cur; _cur = swap;
+            bool sampled30 = (_chunkTick & 1) == 0;
+            var rot = _prev2; _prev2 = _prev; _prev = _cur; _cur = rot;
+            _prev2Captured = _prevCaptured; _prevCaptured = _curCaptured; _curCaptured = 0;
             _cur.Clear();
             if (baseFrame)
                 _base.Clear();
+            for (int i = 0; i < StreamCount; i++)
+            {
+                _streams[i].TickBytes = 0;
+                _streams[i].TickEmitted = 0;
+            }
 
             var list = scene.RenderableComponents;
             int n = list.Count;
-            int captured = 0, changedAll = 0, changedCaptured = 0, changedVsBase = 0, matchedPrev = 0, matchedBase = 0, bytes = 0;
+            int captured = 0, changedAll = 0, changedCaptured = 0, changedCapturedQ = 0, changedVsBase = 0;
+            int matchedPrev = 0, matchedPrevCaptured = 0, matchedPrev2Captured = 0, matchedBase = 0, bytes = 0;
 
             for (int i = 0; i < n; i++)
             {
@@ -278,52 +355,93 @@ namespace PitHero.Services.Replay.Frames
                 var s = Build(rc, kind);
                 s.Id = had ? p.Id : _nextEntityId++;
                 if (_nextEntityId == 0) _nextEntityId = 1;
-                _cur[rc] = s;
 
                 bool differsFromPrev = !had || !Same(ref p, ref s);
                 if (had) matchedPrev++;
                 if (differsFromPrev) changedAll++;
 
                 int opClass = s.Enabled ? OpClassOf(rc, kind) : OpNone;
-                if (opClass == OpNone)
+                s.Captured = opClass != OpNone;
+                _cur[rc] = s;
+                if (!s.Captured)
                     continue;
 
                 captured++;
-                if (differsFromPrev) changedCaptured++;
+                _curCaptured++;
+                bool hadCaptured = had && p.Captured;
+                if (hadCaptured) matchedPrevCaptured++;
+                bool diffPrev = !hadCaptured || differsFromPrev;
+                bool diffPrevQ = !hadCaptured || !SameQ(ref p, ref s);
+                if (diffPrev) changedCaptured++;
+                if (diffPrevQ) changedCapturedQ++;
                 if (!had) NoteSprites(rc, kind);
 
-                bool emit;
+                // A: the design as written, entity deltas vs the chunk base
+                bool emitA;
                 if (baseFrame)
                 {
                     _base[rc] = s;
-                    emit = true;
+                    emitA = true;
                 }
                 else if (_base.TryGetValue(rc, out var b))
                 {
                     matchedBase++;
-                    emit = !Same(ref b, ref s);
+                    emitA = !Same(ref b, ref s);
                 }
                 else
                 {
-                    emit = true;
+                    emitA = true;
                 }
-
-                if (emit)
+                if (emitA)
                 {
                     if (!baseFrame) changedVsBase++;
                     bytes += EntityHeaderBytes + OpBytesOf(rc, opClass);
-                    WriteOps(rc, ref s, opClass);
+                    WriteOps(_streams[SA], rc, ref s, opClass, quantized: false);
+                }
+
+                // B: deltas vs the previous tick
+                if (baseFrame || diffPrev)
+                    WriteOps(_streams[SB], rc, ref s, opClass, quantized: false);
+
+                // C: B with integer-pixel positions
+                if (baseFrame || diffPrevQ)
+                    WriteOps(_streams[SC], rc, ref s, opClass, quantized: true);
+
+                // D: C plus a composite "moved" op when only position/depth changed
+                if (baseFrame || diffPrevQ)
+                {
+                    if (!baseFrame && hadCaptured && opClass == OpComposite && MovedOnly(ref p, ref s))
+                        WriteMoved(_streams[SD], ref s);
+                    else
+                        WriteOps(_streams[SD], rc, ref s, opClass, quantized: true);
+                }
+
+                // E: C sampled every second tick (deltas vs the snapshot two ticks ago)
+                if (sampled30)
+                {
+                    bool had2 = _prev2.TryGetValue(rc, out var p2) && p2.Captured;
+                    if (had2) matchedPrev2Captured++;
+                    if (baseFrame || !had2 || !SameQ(ref p2, ref s))
+                        WriteOps(_streams[SE], rc, ref s, opClass, quantized: true);
                 }
             }
 
-            // Renderables gone since the previous tick count as changes; captured ones gone since the base are tombstones
+            // Renderables gone since the previous tick count as changes; captured ones gone are tombstones
             changedAll += _prev.Count - matchedPrev;
             if (!baseFrame)
             {
-                int tombstones = _base.Count - matchedBase;
-                changedVsBase += tombstones;
-                bytes += tombstones * TombstoneBytes;
-                for (int t = 0; t < tombstones; t++) { WriteU16(0); WriteU16(0xFFFF); }
+                int tombstonesA = _base.Count - matchedBase;
+                changedVsBase += tombstonesA;
+                bytes += tombstonesA * TombstoneBytes;
+                WriteTombstones(_streams[SA], tombstonesA);
+                int tombstonesPrev = _prevCaptured - matchedPrevCaptured;
+                changedCaptured += tombstonesPrev;
+                changedCapturedQ += tombstonesPrev;
+                WriteTombstones(_streams[SB], tombstonesPrev);
+                WriteTombstones(_streams[SC], tombstonesPrev);
+                WriteTombstones(_streams[SD], tombstonesPrev);
+                if (sampled30)
+                    WriteTombstones(_streams[SE], _prev2Captured - matchedPrev2Captured);
             }
 
             // HUD record: full in the base, a flag byte per delta plus a full record once per sim second (clock)
@@ -339,14 +457,20 @@ namespace PitHero.Services.Replay.Frames
                 {
                     Bucket = (byte)ClassifyTick(scene),
                     BaseFrame = baseFrame,
+                    Sampled30 = sampled30,
                     Renderables = n,
                     Captured = captured,
                     ChangedAll = changedAll,
                     ChangedCaptured = changedCaptured,
+                    ChangedCapturedQ = changedCapturedQ,
                     ChangedVsBase = changedVsBase,
                     Bytes = bytes,
                     TileOps = _tileOpsThisTick,
                     ConsoleLines = _consoleLinesThisTick,
+                    Bytes0 = _streams[0].TickBytes, Bytes1 = _streams[1].TickBytes, Bytes2 = _streams[2].TickBytes,
+                    Bytes3 = _streams[3].TickBytes, Bytes4 = _streams[4].TickBytes,
+                    Emit0 = _streams[0].TickEmitted, Emit1 = _streams[1].TickEmitted, Emit2 = _streams[2].TickEmitted,
+                    Emit3 = _streams[3].TickEmitted, Emit4 = _streams[4].TickEmitted,
                     CostTicks = cost,
                 };
                 _ringCount++;
@@ -360,13 +484,8 @@ namespace PitHero.Services.Replay.Frames
             if (++_chunkTick >= ChunkTicks)
             {
                 _chunkTick = 0;
-                if (_pendingLen == 0)
-                {
-                    var tmp = _pendingBuf; _pendingBuf = _chunkBuf; _chunkBuf = tmp;
-                    _pendingLen = _chunkLen;
-                }
-                // else: the presentation pass has not caught up; this chunk is not measured for compression
-                _chunkLen = 0;
+                for (int i = 0; i < StreamCount; i++)
+                    _streams[i].EndChunk();
             }
         }
 
@@ -384,6 +503,7 @@ namespace PitHero.Services.Replay.Frames
                 w.BucketTicks[s.Bucket]++;
                 w.ChangedAll[s.Bucket].Add(s.ChangedAll);
                 w.ChangedCaptured[s.Bucket].Add(s.ChangedCaptured);
+                w.ChangedCapturedQ[s.Bucket].Add(s.ChangedCapturedQ);
                 if (!s.BaseFrame)
                 {
                     w.ChangedVsBase[s.Bucket].Add(s.ChangedVsBase);
@@ -394,6 +514,13 @@ namespace PitHero.Services.Replay.Frames
                     w.BaseFrames++;
                 }
                 w.RawBytes += s.Bytes;
+                w.StreamRaw[0] += s.Bytes0; w.StreamRaw[1] += s.Bytes1; w.StreamRaw[2] += s.Bytes2; w.StreamRaw[3] += s.Bytes3; w.StreamRaw[4] += s.Bytes4;
+                if (!s.BaseFrame)
+                {
+                    w.StreamEmitted[0] += s.Emit0; w.StreamEmitted[1] += s.Emit1; w.StreamEmitted[2] += s.Emit2; w.StreamEmitted[3] += s.Emit3;
+                    for (int i = 0; i < SE; i++) w.StreamDeltaTicks[i]++;
+                    if (s.Sampled30) { w.StreamEmitted[4] += s.Emit4; w.StreamDeltaTicks[4]++; }
+                }
                 w.Captured.Add(s.Captured);
                 w.Renderables.Add(s.Renderables);
                 w.Cost.Add(s.CostTicks);
@@ -407,18 +534,19 @@ namespace PitHero.Services.Replay.Frames
                 }
             }
 
-            if (_pendingLen > 0)
+            for (int i = 0; i < StreamCount; i++)
             {
+                var sb = _streams[i];
+                if (sb.PendingLen == 0)
+                    continue;
                 long t0 = Stopwatch.GetTimestamp();
-                long optimal = Deflate(_pendingBuf, _pendingLen, CompressionLevel.Optimal);
+                long deflated = Deflate(sb.Pending, sb.PendingLen, CompressionLevel.Optimal);
                 long micros = (Stopwatch.GetTimestamp() - t0) * 1000000L / Stopwatch.Frequency;
-                long fastest = Deflate(_pendingBuf, _pendingLen, CompressionLevel.Fastest);
-                _window.ChunkRaw += _pendingLen;
-                _window.ChunkDeflateOptimal += optimal;
-                _window.ChunkDeflateFastest += fastest;
-                _window.ChunksCompressed++;
-                _window.CompressMicros.Add(micros);
-                _pendingLen = 0;
+                _window.StreamDeflated[i] += deflated;
+                _window.StreamChunks[i]++;
+                if (i == SA)
+                    _window.DeflateMicros.Add(micros);
+                sb.PendingLen = 0;
             }
         }
 
@@ -450,6 +578,7 @@ namespace PitHero.Services.Replay.Frames
             if (rc is GraphicalHUD) return KGraphicalHud;
             if (rc is TiledMapRenderer) return KTiledMap;
             if (rc is ParticleEmitter) return KParticleEmitter;
+            if (rc is UICanvas) return KUiCanvas;
             return KOther;
         }
 
@@ -484,7 +613,7 @@ namespace PitHero.Services.Replay.Frames
                 case KSelectBox:
                     return OpRect;
                 default:
-                    // Live-only (clouds, tree band, HUD, action queue), tile maps (tile events), particles (v1 skip), unknown
+                    // Live-only (clouds, tree band, HUD, action queue, UI canvas), tile maps (tile events), particles (v1 skip), unknown
                     return OpNone;
             }
         }
@@ -585,9 +714,20 @@ namespace PitHero.Services.Replay.Frames
             return s;
         }
 
+        private static int Px(float v) => (int)System.MathF.Round(v);
+
+        private static bool SameNonPositional(ref Snap a, ref Snap b)
+            => a.Enabled == b.Enabled && a.Layer == b.Layer && a.Color == b.Color && a.Fx == b.Fx
+               && ReferenceEquals(a.Sprite, b.Sprite) && a.Content == b.Content;
+
         private static bool Same(ref Snap a, ref Snap b)
-            => a.Enabled == b.Enabled && a.X == b.X && a.Y == b.Y && a.Depth == b.Depth && a.Layer == b.Layer
-               && a.Color == b.Color && a.Fx == b.Fx && ReferenceEquals(a.Sprite, b.Sprite) && a.Content == b.Content;
+            => SameNonPositional(ref a, ref b) && a.X == b.X && a.Y == b.Y && a.Depth == b.Depth;
+
+        /// <summary>Equality with positions compared at integer-pixel precision.</summary>
+        private static bool SameQ(ref Snap a, ref Snap b)
+            => SameNonPositional(ref a, ref b) && Px(a.X) == Px(b.X) && Px(a.Y) == Px(b.Y) && a.Depth == b.Depth;
+
+        private static bool MovedOnly(ref Snap a, ref Snap b) => SameNonPositional(ref a, ref b);
 
         // ───────────────────────────── sprite keys ─────────────────────────────
 
@@ -632,80 +772,98 @@ namespace PitHero.Services.Replay.Frames
             return id;
         }
 
-        // ───────────────────────────── synthetic op stream ─────────────────────────────
+        // ───────────────────────────── synthetic op streams (§3.1 layout) ─────────────────────────────
 
-        private void WriteOps(RenderableComponent rc, ref Snap s, int opClass)
+        private static int StreamOpBytes(RenderableComponent rc, int opClass, bool q)
         {
-            WriteU16(s.Id);
-            WriteU16((ushort)OpBytesOf(rc, opClass));
+            // Sprite: id u16, x, y, depth f32, layer u16, color u32, flags u8. Quantized: x,y as i16.
+            int pos2 = q ? 4 : 8;
+            switch (opClass)
+            {
+                case OpSprite: return 2 + pos2 + 4 + 2 + 4 + 1;
+                case OpComposite: return 1 + CompositeLayerCount(rc) * (2 + pos2 + 4 + 1) + pos2 + 4 + 2;
+                case OpText: return 2 + pos2 + 4 + 4 + 1 + 1;
+                case OpRect: return pos2 * 2 + 4 + 1;
+                case OpHpBar: return (2 + pos2 + 4 + 4 + 1 + 1) + 2 * (pos2 * 2 + 4 + 1);
+                case OpSpeech: return (2 + pos2 * 2 + 4) + (2 + pos2 + 4 + 4 + 1 + 1);
+                default: return 0;
+            }
+        }
+
+        private static void Pos(StreamBuf b, float x, float y, bool q)
+        {
+            if (q) { b.I16(Px(x)); b.I16(Px(y)); }
+            else { b.F32(x); b.F32(y); }
+        }
+
+        private void WriteOps(StreamBuf b, RenderableComponent rc, ref Snap s, int opClass, bool quantized)
+        {
+            bool q = quantized;
+            b.TickEmitted++;
+            b.U16(s.Id);
+            b.U16((ushort)StreamOpBytes(rc, opClass, q));
             switch (opClass)
             {
                 case OpSprite:
-                    WriteU16(NoteSprite(s.Sprite, s.Kind));
-                    WriteF32(s.X); WriteF32(s.Y); WriteF32(s.Depth);
-                    WriteU16((ushort)s.Layer); WriteU32(s.Color); WriteU8(s.Fx);
+                    b.U16(NoteSprite(s.Sprite, s.Kind));
+                    Pos(b, s.X, s.Y, q); b.F32(s.Depth);
+                    b.U16((ushort)s.Layer); b.U32(s.Color); b.U8(s.Fx);
                     break;
                 case OpComposite:
                     if (rc is MultiSpriteAnimator m)
                     {
-                        WriteU8((byte)m.LayerCount);
+                        b.U8((byte)m.LayerCount);
                         for (int j = 0; j < m.LayerCount; j++)
                         {
                             var layer = m.GetLayer(j);
-                            WriteU16(NoteSprite(layer?.Sprite, s.Kind));
-                            WriteF32(layer != null ? layer.LocalOffset.X : 0f); WriteF32(layer != null ? layer.LocalOffset.Y : 0f);
-                            WriteU32(layer != null ? layer.LayerColor.PackedValue : 0u); WriteU8((byte)(layer != null && layer.FlipX ? 1 : 0));
+                            b.U16(NoteSprite(layer?.Sprite, s.Kind));
+                            Pos(b, layer != null ? layer.LocalOffset.X : 0f, layer != null ? layer.LocalOffset.Y : 0f, q);
+                            b.U32(layer != null ? layer.LayerColor.PackedValue : 0u); b.U8((byte)(layer != null && layer.FlipX ? 1 : 0));
                         }
                     }
                     else if (rc is StaticSpriteCompositor c)
                     {
-                        WriteU8((byte)c.LayerCount);
+                        b.U8((byte)c.LayerCount);
                         for (int j = 0; j < c.LayerCount; j++)
                         {
                             var layer = c.GetLayer(j);
-                            WriteU16(NoteSprite(layer?.Sprite, s.Kind));
-                            WriteF32(layer != null ? layer.LocalOffset.X : 0f); WriteF32(layer != null ? layer.LocalOffset.Y : 0f);
-                            WriteU32(layer != null ? layer.Color.PackedValue : 0u); WriteU8(layer != null ? (byte)layer.SpriteEffects : (byte)0);
+                            b.U16(NoteSprite(layer?.Sprite, s.Kind));
+                            Pos(b, layer != null ? layer.LocalOffset.X : 0f, layer != null ? layer.LocalOffset.Y : 0f, q);
+                            b.U32(layer != null ? layer.Color.PackedValue : 0u); b.U8(layer != null ? (byte)layer.SpriteEffects : (byte)0);
                         }
                     }
-                    WriteF32(s.X); WriteF32(s.Y); WriteF32(s.Depth); WriteU16((ushort)s.Layer);
+                    Pos(b, s.X, s.Y, q); b.F32(s.Depth); b.U16((ushort)s.Layer);
                     break;
                 case OpText:
-                    WriteU16((ushort)s.Kind); WriteF32(s.X); WriteF32(s.Y); WriteU32(s.Color); WriteU8(0); WriteU8(0);
+                    b.U16((ushort)s.Kind); Pos(b, s.X, s.Y, q); b.U32(s.Color); b.F32(1f); b.U8(0); b.U8(0);
                     break;
                 case OpRect:
-                    WriteF32(s.X); WriteF32(s.Y); WriteF32(0f); WriteF32(0f); WriteU32(s.Color); WriteU8(0);
+                    Pos(b, s.X, s.Y, q); Pos(b, 0f, 0f, q); b.U32(s.Color); b.U8(0);
                     break;
                 case OpHpBar:
-                    WriteU16((ushort)s.Kind); WriteF32(s.X); WriteF32(s.Y); WriteU32(s.Color); WriteU8(0); WriteU8(0);
-                    for (int r = 0; r < 2; r++) { WriteF32(s.X); WriteF32(s.Y); WriteF32(0f); WriteF32(0f); WriteU32(s.Color); WriteU8(0); }
+                    b.U16((ushort)s.Kind); Pos(b, s.X, s.Y, q); b.U32(s.Color); b.F32(1f); b.U8(0); b.U8(0);
+                    for (int r = 0; r < 2; r++) { Pos(b, s.X, s.Y, q); Pos(b, 0f, 0f, q); b.U32(s.Color); b.U8(0); }
                     break;
                 case OpSpeech:
-                    WriteU16(1); WriteF32(s.X); WriteF32(s.Y); WriteF32(0f); WriteF32(0f); WriteU32(s.Color);
-                    WriteU16((ushort)s.Kind); WriteF32(s.X); WriteF32(s.Y); WriteU32(s.Color); WriteU8(0); WriteU8(0);
+                    b.U16(1); Pos(b, s.X, s.Y, q); Pos(b, 0f, 0f, q); b.U32(s.Color);
+                    b.U16((ushort)s.Kind); Pos(b, s.X, s.Y, q); b.U32(s.Color); b.F32(1f); b.U8(0); b.U8(0);
                     break;
             }
         }
 
-        private void Ensure(int extra)
+        /// <summary>Composite "moved" op: id, opsLen, x i16, y i16, depth f32 (12 B).</summary>
+        private static void WriteMoved(StreamBuf b, ref Snap s)
         {
-            if (_chunkLen + extra <= _chunkBuf.Length)
-                return;
-            // Warm-up growth only: a chunk that outgrows the buffer doubles both halves once
-            var grown = new byte[_chunkBuf.Length * 2];
-            System.Buffer.BlockCopy(_chunkBuf, 0, grown, 0, _chunkLen);
-            _chunkBuf = grown;
+            b.TickEmitted++;
+            b.U16(s.Id);
+            b.U16(8);
+            b.I16(Px(s.X)); b.I16(Px(s.Y)); b.F32(s.Depth);
         }
 
-        private void WriteU8(byte v) { Ensure(1); _chunkBuf[_chunkLen++] = v; }
-        private void WriteU16(ushort v) { Ensure(2); _chunkBuf[_chunkLen++] = (byte)v; _chunkBuf[_chunkLen++] = (byte)(v >> 8); }
-        private void WriteU32(uint v)
+        private static void WriteTombstones(StreamBuf b, int count)
         {
-            Ensure(4);
-            _chunkBuf[_chunkLen++] = (byte)v; _chunkBuf[_chunkLen++] = (byte)(v >> 8);
-            _chunkBuf[_chunkLen++] = (byte)(v >> 16); _chunkBuf[_chunkLen++] = (byte)(v >> 24);
+            for (int t = 0; t < count; t++) { b.U16(0); b.U16(0xFFFF); }
         }
-        private void WriteF32(float v) => WriteU32((uint)System.BitConverter.SingleToInt32Bits(v));
 
         private long Deflate(byte[] buf, int len, CompressionLevel level)
         {
@@ -798,31 +956,35 @@ namespace PitHero.Services.Replay.Frames
 
             sb.Append("  [1] renderables min/mean/max ").Append(w.Renderables.Format())
               .Append("; captured (enabled, drawn from a frame) ").Append(w.Captured.Format()).Append('\n');
-            sb.Append("  [2] changed per tick vs previous tick (all renderables | captured only | captured vs chunk base), min/mean/max:\n");
+            sb.Append("  [2] changed per tick, min/mean/max: all renderables vs prev | captured vs prev | captured vs prev at pixel precision | captured vs chunk base\n");
             for (int b = 0; b < BucketCount; b++)
             {
                 if (w.BucketTicks[b] == 0) continue;
                 sb.Append("      ").Append(BucketNames[b]).Append(": ").Append(w.ChangedAll[b].Format())
-                  .Append(" | ").Append(w.ChangedCaptured[b].Format()).Append(" | ").Append(w.ChangedVsBase[b].Format()).Append('\n');
+                  .Append(" | ").Append(w.ChangedCaptured[b].Format()).Append(" | ").Append(w.ChangedCapturedQ[b].Format())
+                  .Append(" | ").Append(w.ChangedVsBase[b].Format()).Append('\n');
             }
-            sb.Append("  [3] naive delta-frame bytes/tick (vs base, incl. header/tombstones/HUD/events), min/mean/max:\n");
+            sb.Append("  [3] naive delta-frame bytes/tick with the issue's op sizes (vs base, incl. header/tombstones/HUD/events), min/mean/max:\n");
             for (int b = 0; b < BucketCount; b++)
             {
                 if (w.BucketTicks[b] == 0) continue;
                 sb.Append("      ").Append(BucketNames[b]).Append(": ").Append(w.Bytes[b].Format()).Append('\n');
             }
-            double rawPerHour = w.RawBytes / ticks * 216000.0;
             sb.Append("      all ticks incl. base frames: ").Append((w.RawBytes / ticks).ToString("0")).Append(" B/tick mean, ")
-              .Append(w.BaseFrames).Append(" base frames, raw ").Append(Mb(rawPerHour)).Append(" MB/h\n");
-            if (w.ChunkRaw > 0)
+              .Append(w.BaseFrames).Append(" base frames, raw ").Append(Mb(w.RawBytes / ticks * 216000.0)).Append(" MB/h\n");
+            sb.Append("  [3b] encoding variants, real §3.1-layout streams, deflate optimal per 120-tick chunk (per hour of play):\n");
+            for (int i = 0; i < StreamCount; i++)
             {
-                double ro = (double)w.ChunkRaw / System.Math.Max(1, w.ChunkDeflateOptimal);
-                double rf = (double)w.ChunkRaw / System.Math.Max(1, w.ChunkDeflateFastest);
-                sb.Append("      synthetic op stream deflate (").Append(w.ChunksCompressed).Append(" chunks): optimal ")
-                  .Append(ro.ToString("0.0")).Append("x -> ").Append(Mb(rawPerHour / ro)).Append(" MB/h, fastest ")
-                  .Append(rf.ToString("0.0")).Append("x -> ").Append(Mb(rawPerHour / rf)).Append(" MB/h; optimal deflate us/chunk ")
-                  .Append(w.CompressMicros.Format()).Append('\n');
+                double rawPerHour = w.StreamRaw[i] / ticks * 216000.0;
+                double deflPerChunk = w.StreamChunks[i] > 0 ? (double)w.StreamDeflated[i] / w.StreamChunks[i] : 0;
+                double deflPerHour = deflPerChunk * 1800.0;
+                double ratio = deflPerHour > 0 ? rawPerHour / deflPerHour : 0;
+                double emitted = w.StreamDeltaTicks[i] > 0 ? (double)w.StreamEmitted[i] / w.StreamDeltaTicks[i] : 0;
+                sb.Append("      ").Append(StreamNames[i]).Append(": raw ").Append(Mb(rawPerHour)).Append(" MB/h, deflated ")
+                  .Append(Mb(deflPerHour)).Append(" MB/h (").Append(ratio.ToString("0.0")).Append("x), ")
+                  .Append(emitted.ToString("0.0")).Append(" entities per delta frame, ").Append(w.StreamChunks[i]).Append(" chunks\n");
             }
+            sb.Append("      deflate us per chunk (stream A) min/mean/max ").Append(w.DeflateMicros.Format()).Append('\n');
             sb.Append("  [4] tile mutations: ").Append(w.TileOps).Append(" (").Append((w.TileOps / minutes).ToString("0")).Append("/min), same-gid no-ops ")
               .Append(w.TileNoOps).Append("; by layer:");
             for (int l = 0; l < LayerNames.Length; l++)
@@ -830,7 +992,7 @@ namespace PitHero.Services.Replay.Frames
             sb.Append('\n');
             sb.Append("  [5] console lines: ").Append(w.ConsoleLines).Append(" (").Append((w.ConsoleLines / minutes).ToString("0.0"))
               .Append("/min), segments ").Append(w.ConsoleSegments).Append(", chars ").Append(w.ConsoleChars).Append('\n');
-            sb.Append("  [7] census cost us/tick min/mean/max ").Append(w.Cost.Format(usPerTick)).Append('\n');
+            sb.Append("  [7] census cost us/tick (walk + all five streams) min/mean/max ").Append(w.Cost.Format(usPerTick)).Append('\n');
         }
 
         private void AppendSessionOnly(StringBuilder sb)
