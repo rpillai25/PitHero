@@ -294,8 +294,9 @@ the scrubber never says "Seeking" while watching.
 | Knob | Default | Note |
 |---|---|---|
 | `ReplayFrameCaptureEnabled` | true | Kill switch; off = today's behaviour |
-| `ReplayFrameChunkTicks` | 120 | Braid's 2 s GOP |
-| `ReplayTileKeyframeIntervalChunks` | 30 | Full mutable-layer snapshot every 60 s |
+| `ReplayFrameChunkTicks` | 120 | Braid's 2 s GOP. Confirmed by #425: bases are ~4% of the bytes |
+| `ReplayFrameCaptureEveryNTicks` | 1 | 1 = every tick (60 Hz, 33 MB/h measured), 2 = every 2nd tick (30 Hz, 21 MB/h). Decided in #428 on screen, see §6.2; the format is identical either way |
+| `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable-layer snapshot every chunk; ~1 KB deflated (#425), so cross-chunk event replay is not worth its complexity. Was 30 before measurement |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | RAM ring; spill beyond |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | Across `replays/`; oldest `.frames` first |
 | `ReplayFrameFormatVersion` | 1 | Bump breaks old sidecars (they are caches; rebuilt) |
@@ -379,7 +380,7 @@ What the variants say:
 | 1 | #425 | Census spike: measure renderables, change rate and naive bytes per tick; verify `Texture2D.Name` keys | — | S |
 | 2 | #426 | Frame model, chunk codec, store and sidecar file (headless, fully tested) | 1 | M |
 | 3 | #427 | Capture: adapters, `SpriteKeyRegistry`, `FrameRecorder`, hooks (tick, tiles, console), session sidecar writes | 2 | M |
-| 4 | #428 | Frame viewer for Replay Current Session: renderer, shadow tiles, HUD/console feed, cursor, Nez filter; Exit instant; Time Travel behind a frozen frame | 3 | L |
+| 4 | #428 | Frame viewer for Replay Current Session: renderer, shadow tiles, HUD/console feed, cursor, Nez filter; Exit instant; Time Travel behind a frozen frame. **Decides `ReplayFrameCaptureEveryNTicks` on screen** (60 Hz vs 30 Hz at 1x; position interpolation between frames is the cheap way to make 30 Hz look like 60) | 3 | L |
 | 5 | #429 | Saved replays: sidecar save/rename, identity, lazy loading, disk budget, Replay tab mark; FrameView for cached saved replays | 4 | M |
 | 6 | #430 | Transcode for uncached or stale saved replays: buffering status, growing range, finalise sidecar | 5 | M |
 | 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, action-queue capture, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rule for new renderables, remove dead code | 4–6 | M |
