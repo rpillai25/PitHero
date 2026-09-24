@@ -758,6 +758,16 @@ namespace PitHero
         public const bool ReplayDivergenceSnapshots = true;     // Playback describes the sim at every matching sample so a divergence report can show the last in-sync state next to the drifted one
         public const bool ReplayFrameCensus = false;             // Issue #425 spike: log a renderable / change-rate / byte census to replays/frame_census.log during live play
         public const int ReplayFrameCensusWindowTicks = 3600;    // Census report window: one real minute of simulation at 1x (= one in-game hour)
+
+        // Replay frame stream (issue #424): one presentation frame per tick, recorded beside the command
+        // recording so watching a replay never re-simulates. Headless model in Services/Replay/Frames.
+        public const bool ReplayFrameCaptureEnabled = true;                    // Kill switch; off = today's pure re-simulation playback
+        public const int ReplayFrameChunkTicks = 120;                          // Ticks per chunk (Braid's 2 s GOP): base frame + previous-tick deltas, deflated as one unit
+        public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB deflated, so every chunk)
+        public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
+        public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
+        public const int ReplayFrameFormatVersion = 1;                         // Sidecar cache format; bumping orphans old .frames (rebuilt by transcoding), never a .bin
+        public const string ReplayFrameFileExtension = ".frames";              // Sidecar next to the .bin it caches
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
