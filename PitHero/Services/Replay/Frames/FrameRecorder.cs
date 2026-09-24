@@ -328,18 +328,46 @@ namespace PitHero.Services.Replay.Frames
             if (!IsInitialized)
                 return;
             _sidecar?.Poll(Store);
-#if DEBUG
             _logTimer += wallDeltaSeconds;
             if (_logTimer >= GameConfig.ReplayFrameDebugLogIntervalSeconds)
             {
                 _logTimer = 0f;
-                double usPerTick = 1_000_000.0 / Stopwatch.Frequency;
-                Debug.Log($"[FrameRecorder] chunks {Store.ChunkCount} ({Store.MemoryChunkCount} in RAM, {_sidecar?.SpilledChunkCount ?? 0} on disk), RAM {Store.MemoryBytes / 1024} KB, disk {(_sidecar?.BytesOnDisk ?? 0) / 1024} KB, capture {MeanCaptureMicros:0.0} us/tick mean, {_captureTicksMax * usPerTick:0} us max over {_captureCount} ticks, sprites {Registry.SpriteCount}, strings {Registry.StringCount}, ids {_ids.LiveCount}");
+                if (_captureCount > 0)
+                    WriteStats();
                 _captureTicksSum = 0;
                 _captureTicksMax = 0;
                 _captureCount = 0;
             }
+        }
+
+        /// <summary>
+        /// One line of capture statistics: Debug.Log in Debug builds and, while
+        /// <see cref="GameConfig.ReplayFrameStatsLog"/> is on, appended to replays/frame_recorder.log in
+        /// every build (Debug.Log is compiled out in Release, and the capture cost has to be read there).
+        /// </summary>
+        private void WriteStats()
+        {
+            double usPerTick = 1_000_000.0 / Stopwatch.Frequency;
+#if DEBUG
+            const string build = "Debug";
+#else
+            const string build = "Release";
 #endif
+            string line = $"[FrameRecorder] {DateTime.Now:HH:mm:ss} {build}: chunks {Store.ChunkCount} ({Store.MemoryChunkCount} in RAM, {_sidecar?.SpilledChunkCount ?? 0} on disk), RAM {Store.MemoryBytes / 1024} KB, disk {(_sidecar?.BytesOnDisk ?? 0) / 1024} KB, capture {MeanCaptureMicros:0.0} us/tick mean, {_captureTicksMax * usPerTick:0} us max over {_captureCount} ticks, sprites {Registry.SpriteCount}, strings {Registry.StringCount}, ids {_ids.LiveCount}";
+            Debug.Log(line);
+            if (!GameConfig.ReplayFrameStatsLog || _sidecar == null)
+                return;
+            try
+            {
+                File.AppendAllText(Path.Combine(Path.GetDirectoryName(_sidecar.Path), GameConfig.ReplayFrameStatsLogFileName), line + Environment.NewLine);
+            }
+            catch (IOException)
+            {
+                // Stats are a courtesy; never let them interrupt play
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
 
         /// <summary>
