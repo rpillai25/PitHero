@@ -15,7 +15,7 @@ namespace PitHero.ECS.Components
     /// trees may spill slightly over the map edge for an organic seam while anything beyond that is
     /// clipped for free by the texture bounds.
     /// </summary>
-    public class TreeBandComponent : RenderableComponent
+    public class TreeBandComponent : RenderableComponent, Services.Replay.Frames.ILiveOnlyRenderable
     {
         private readonly Sprite _tree;
         private readonly Sprite _tree2;

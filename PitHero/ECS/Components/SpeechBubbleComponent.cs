@@ -23,8 +23,40 @@ namespace PitHero.ECS.Components
     /// 32 px above origin). Call <see cref="Say"/> to display dialogue.
     /// Entity-agnostic: the same component works on mercenaries later.
     /// </remarks>
-    public sealed class SpeechBubbleComponent : RenderableComponent
+    public sealed class SpeechBubbleComponent : RenderableComponent, Services.Replay.Frames.IFrameCapturable
     {
+        /// <summary>
+        /// Replay frame: the bubble body as a constant-screen-size NinePatch op anchored on the tail tip
+        /// (the viewer draws the tail for this patch), plus the revealed slice of the wrapped text.
+        /// </summary>
+        public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
+        {
+            if (!_active || _bubbleSprite == null || _activeFont == null)
+                return;
+            float s = _activeScale;
+            float anchorX = Entity.Position.X;
+            float anchorY = Entity.Position.Y + GetTailTipOffsetY();
+            float bubbleDx = -GameConfig.SpeechBubbleWidth * s / 2f;
+            float bubbleDy = -(TailSpriteH * s - GameConfig.SpeechBubbleTailOverlap * s + _activeDesignHeight * s);
+            w.WriteNinePatch(ctx.NinePatchId(BubbleSpriteName), anchorX, anchorY, bubbleDx, bubbleDy,
+                GameConfig.SpeechBubbleWidth * s, _activeDesignHeight * s, BubbleColor.PackedValue,
+                Services.Replay.Frames.FrameOpFlags.ConstantScreenSize);
+            if (_visibleText.Length > 0 && _wrappedText != null)
+            {
+                int count = _visibleText.Length < ushort.MaxValue ? _visibleText.Length : ushort.MaxValue - 1;
+                int start = _revealedCount - _visibleText.Length;
+                if (start < 0) start = 0;
+                w.WriteText(ctx.StringId(_wrappedText), anchorX, anchorY,
+                    bubbleDx + GameConfig.SpeechBubblePadding * s, bubbleDy + GameConfig.SpeechBubblePadding * s,
+                    TextColor.PackedValue, 1f,
+                    s >= 2 ? Services.Replay.Frames.FrameFontId.SpeechBubble2x : Services.Replay.Frames.FrameFontId.SpeechBubble,
+                    Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, (ushort)start, (ushort)count);
+            }
+        }
+
+        // Characters of _wrappedText revealed so far (the visible text is its tail after scrolling)
+        private int _revealedCount;
+
         // Atlas and sprite keys
         private const string AtlasPath = "Content/Atlases/UI.atlas";
         private const string BubbleSpriteName = "NinePatchSpeechBubble";
@@ -185,6 +217,7 @@ namespace PitHero.ECS.Components
                 : GameConfig.SpeechBubbleVisibleLinesNormal;
 
             _visibleText.Clear();
+            _revealedCount = 0;
             _wrappedText = _activeFont.WrapText(localizedText, TextWrapWidth * _activeScale);
             _active = true;
 
@@ -325,6 +358,7 @@ namespace PitHero.ECS.Components
                     var c = _wrappedText[revealed];
                     _visibleText.Append(c);
                     revealed++;
+                    _revealedCount = revealed;
 
                     if (c == '\n')
                         ScrollVisibleTextIfNeeded();

@@ -90,9 +90,18 @@ their tick, not per frame.
 |---|---|---|
 | `Sprite` | spriteId u16, x f32, y f32, layerDepth f32, renderLayer i16, color u32 (RGBA), flags u8 (flipX, flipY, screenSpace) | `SpriteRenderer`, all `SpriteAnimator` subclasses (`Sprite`, `Color`, `SpriteEffects`, `LayerDepth`, `RenderLayer`, entity position + `LocalOffset`) |
 | `Composite` | count u8, then per layer: spriteId u16, dx f32, dy f32, color u32, flags u8; then x, y, layerDepth, renderLayer | `MultiSpriteAnimator` / `StaticSpriteCompositor` via `ICompositeLayer` (never their private RenderTexture) |
-| `Text` | stringId u16, x f32, y f32, color u32, scale f32, fontId u8, flags u8 (screenSpace, centered) | `TextRenderComponent`, `RisingTextComponent`, `BouncyTextComponent`, `BouncyDigitComponent`, `SpeechBubbleComponent` (text + revealed char count), `MonsterHPBarComponent` (name) |
-| `Rect` | x f32, y f32, w f32, h f32, color u32, flags u8 (filled/outline, screenSpace) | `MonsterHPBarComponent` (bars), `BuildingOutlineRenderComponent`, `SelectBoxRenderComponent` |
-| `NinePatch` | patchId u16, x, y, w, h, color u32 | `SpeechBubbleComponent` bubble body |
+| `Text` | stringId u16, x i16, y i16, dx i16, dy i16, color u32, scale f32, fontId u8, flags u8, charStart u16, charCount u16 | `TextRenderComponent`, `RisingTextComponent`, `BouncyTextComponent`, `BouncyDigitComponent` (one op per character), `SpeechBubbleComponent` (wrapped text interned once; charStart/charCount = the revealed, unscrolled slice), `MonsterHPBarComponent` (name) |
+| `Rect` | x i16, y i16, dx i16, dy i16, w i16, h i16, color u32, flags u8 (filled/outline) | `MonsterHPBarComponent` (bars), `BuildingOutlineRenderComponent`, `SelectBoxRenderComponent`, stock `PrototypeSpriteRenderer` (filled) |
+| `NinePatch` | patchId u16, x i16, y i16, dx i16, dy i16, w i16, h i16, color u32, flags u8 | `SpeechBubbleComponent` bubble body (the viewer draws the tail for this patch) |
+
+**As shipped in #426/#427:** positions are i16 pixels (below), and the overlay ops (Text, Rect,
+NinePatch) carry a `dx/dy` offset plus the `ConstantScreenSize` flag: the anchor is a world point and
+dx/dy/w/h are *screen* pixels applied after the world-to-screen transform, so damage numbers, HP bars
+and speech bubbles keep their on-screen size at any zoom without baking the capture-time camera into
+the stream. Text/Rect/NinePatch ops carry no render layer or depth: the viewer draws them after the
+sprite ops (they are all overlays on layers 0–2 or screen space). `TiledMapRenderer`, `UICanvas`,
+`ParticleEmitter` and anything on `TransparentPauseOverlay` are skipped silently; hero paperdoll
+layers are captured through their `MultiSpriteAnimator`, whose tint is folded into each layer color.
 
 **Measured (#425, §6.2): store every position as i16 pixels, not f32, and delta against the
 previous tick.** That single change cuts the compressed stream by 37%; the layouts above are the
@@ -115,7 +124,8 @@ rebuilds the full table by scanning chunk headers once at open.
 ```csharp
 public interface IFrameCapturable          // custom RenderableComponents implement this
 {
-    void CaptureFrame(ref FrameWriter w);  // emit 0..n ops for the current tick; no allocation
+    void CaptureFrame(ref FrameWriter w, FrameCaptureContext ctx);  // emit 0..n ops for the current tick; no allocation
+                                           // ctx interns sprites (by Texture2D.Name + rect), strings and nine-patch names
 }
 public interface ILiveOnlyRenderable { }   // keep drawing the LIVE component while viewing
 ```

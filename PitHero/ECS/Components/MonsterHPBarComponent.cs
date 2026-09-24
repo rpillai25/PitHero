@@ -12,10 +12,30 @@ namespace PitHero.ECS.Components
     /// Component that renders a HP bar above a monster during battle.
     /// Shows green for remaining HP and red for lost HP, with monster name above.
     /// </summary>
-    public class MonsterHPBarComponent : RenderableComponent
+    public class MonsterHPBarComponent : RenderableComponent, Services.Replay.Frames.IFrameCapturable
     {
         private EnemyComponent _enemyComponent;
         private IEnemy _enemy;
+        private TextService _textService;
+
+        /// <summary>Replay frame: the two bars and the name as constant-screen-size ops anchored on the monster.</summary>
+        public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
+        {
+            if (!HeroStateMachine.IsBattleInProgress || _enemy == null)
+                return;
+            var worldPos = Entity.Position;
+            float hpRatio = _enemy.MaxHP > 0 ? Mathf.Clamp((float)_enemy.CurrentHP / _enemy.MaxHP, 0f, 1f) : 0f;
+            const byte flags = Services.Replay.Frames.FrameOpFlags.ConstantScreenSize;
+            w.WriteRect(worldPos.X, worldPos.Y, -BAR_WIDTH * 0.5f, BAR_OFFSET_Y, BAR_WIDTH, BAR_HEIGHT, RED_LOST_HP.PackedValue, flags);
+            if (hpRatio > 0f)
+                w.WriteRect(worldPos.X, worldPos.Y, -BAR_WIDTH * 0.5f, BAR_OFFSET_Y, BAR_WIDTH * hpRatio, BAR_HEIGHT, GREEN_HP.PackedValue, flags);
+            _textService ??= Core.Services.GetService<TextService>();
+            var name = _textService?.DisplayText(PitHero.TextType.Monster, _enemy.Name) ?? _enemy.Name;
+            w.WriteText(ctx.StringId(name), worldPos.X, worldPos.Y, 0f, NAME_OFFSET_Y, NAME_COLOR.PackedValue, 1f,
+                Services.Replay.Frames.FrameFontId.Hud,
+                flags | Services.Replay.Frames.FrameOpFlags.Centered | Services.Replay.Frames.FrameOpFlags.CenteredY,
+                0, Services.Replay.Frames.FrameOpCode.AllChars);
+        }
 
         // Bar dimensions (screen-space pixels)
         private const float BAR_WIDTH = 60f;

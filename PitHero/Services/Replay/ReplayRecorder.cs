@@ -36,6 +36,11 @@ namespace PitHero.Services.Replay
         /// <summary>True once <see cref="Initialize"/> has captured a start state.</summary>
         public bool IsInitialized => _stateBlob != null || _kind == ReplayKind.NewGame && _recordedAtUtcTicks != 0;
 
+        /// <summary>When the session started (UTC ticks); the identity the frame stream sidecar is keyed on.</summary>
+        public long RecordedAtUtcTicks => _recordedAtUtcTicks;
+        /// <summary>The session's master seed.</summary>
+        public int MasterSeed => _masterSeed;
+
         /// <summary>Recorded commands (read-only view for playback).</summary>
         public IReadOnlyList<ReplayCommandRecord> Commands => _commands;
         /// <summary>Recorded hero decision hashes.</summary>

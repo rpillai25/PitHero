@@ -74,6 +74,7 @@ namespace PitHero.ECS.Scenes
         public AddMonsterDialog AddMonsterDialog => _addMonsterDialog;
         private Services.Replay.PlayerCommandService _playerCommands; // Player input -> simulation doorway (replay system)
         private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
+        private Services.Replay.Frames.FrameRecorder _frameRecorder; // Per-tick presentation frame stream (issue #424), behind ReplayFrameCaptureEnabled
         private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
@@ -339,6 +340,16 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(SimulationClock));
             _playerCommands?.Detach();
             Core.Services.RemoveService(typeof(Services.Replay.PlayerCommandService));
+            if (_frameRecorder != null)
+            {
+                // A scene rebuild for a replay (playback is Starting) continues this session's stream in
+                // the next scene; any other teardown ends the session and closes its file
+                var playback = Services.Replay.ReplayPlaybackService.Current;
+                bool rebuild = playback != null && playback.State == Services.Replay.ReplayPlaybackState.Starting;
+                _frameRecorder.Detach(handoffToNextScene: rebuild);
+                Core.Services.RemoveService(typeof(Services.Replay.Frames.FrameRecorder));
+                _frameRecorder = null;
+            }
             _replayRecorder?.Detach();
             Core.Services.RemoveService(typeof(Services.Replay.ReplayRecorder));
             // A new scene always starts unpaused; pending pause commands die with this scene
@@ -395,6 +406,19 @@ namespace PitHero.ECS.Scenes
                 Services.Replay.Frames.ReplayFrameCensus.Start();
             if (replayBootstrap?.Data != null)
                 _replayRecorder.IsRecording = false; // playback: the recording IS the list; resume on exit
+
+            // ── Frame recorder: the presentation frame stream beside the command recording ──
+            // Same lifecycle as the command recorder: a replay rebuild inherits the previous scene's
+            // stream (handed off in Unload), a fresh session opens its own session file.
+            if (GameConfig.ReplayFrameCaptureEnabled)
+            {
+                _frameRecorder = new Services.Replay.Frames.FrameRecorder();
+                Core.Services.AddService(_frameRecorder);
+                _frameRecorder.Initialize(masterSeed, _replayRecorder.RecordedAtUtcTicks, replayBootstrap?.Data,
+                    Core.Services.GetService<Services.Replay.ReplayFileService>()?.Directory_);
+                if (replayBootstrap?.Data != null)
+                    _frameRecorder.IsRecording = false;
+            }
 
             LoadMap();
             SpawnPit();
@@ -1424,7 +1448,9 @@ namespace PitHero.ECS.Scenes
                 return;
 
             _tmxMap = Core.Content.LoadTiledMap(_mapPath);
-            Core.Services.AddService(new TiledMapService(_tmxMap));
+            var tiledMapService = new TiledMapService(_tmxMap);
+            Core.Services.AddService(tiledMapService);
+            _frameRecorder?.AttachMap(tiledMapService); // before the pit is generated, so tick-0 tile writes are recorded
             var tiledEntity = CreateEntity("tilemap").SetTag(GameConfig.TAG_TILEMAP);
 
             var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap, "Collision"));
@@ -3390,6 +3416,9 @@ namespace PitHero.ECS.Scenes
             if (GameConfig.ReplayFrameCensus)
                 Services.Replay.Frames.ReplayFrameCensus.Current?.SampleTick(this, tick);
 
+            // Frame stream: what is on screen at the end of this tick (Y-sort depths are final here)
+            _frameRecorder?.CaptureTick(this, tick);
+
             // Always last: this step is complete
             _simulationClock?.Advance();
         }
@@ -3455,6 +3484,7 @@ namespace PitHero.ECS.Scenes
 
             if (GameConfig.ReplayFrameCensus)
                 Services.Replay.Frames.ReplayFrameCensus.Current?.PresentationUpdate(this);
+            _frameRecorder?.PresentationUpdate(Time.UnscaledDeltaTime);
 
             // AutoSave (issue #409): wall-clock countdown, presentation-only. The gate also drives the
             // Session → Save button, so manual saves obey the same transitional-state rules.

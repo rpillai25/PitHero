@@ -2,14 +2,24 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Nez;
 using Nez.BitmapFonts;
+using PitHero.Services.Replay.Frames;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Renders text at an entity's position (used for mercenary name display)
     /// </summary>
-    public class TextRenderComponent : RenderableComponent
+    public class TextRenderComponent : RenderableComponent, IFrameCapturable
     {
+        /// <summary>Replay frame: the text, horizontally centered on the entity, in the HUD font.</summary>
+        public void CaptureFrame(ref FrameWriter w, FrameCaptureContext ctx)
+        {
+            if (string.IsNullOrEmpty(_text) || _font == null)
+                return;
+            var position = Entity.Transform.Position;
+            w.WriteText(ctx.StringId(_text), position.X, position.Y, _color.PackedValue, 1f, FrameFontId.Hud, FrameOpFlags.Centered);
+        }
+
         private string _text = "";
         private BitmapFont _font;
         private Color _color = Color.White;

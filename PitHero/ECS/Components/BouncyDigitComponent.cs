@@ -8,8 +8,23 @@ using PitHero.Services;
 namespace PitHero.ECS.Components
 {
     /// <summary>Bouncy combat digit renderer (world-space, constant screen size)</summary>
-    internal class BouncyDigitComponent : RenderableComponent, IUpdatable
+    internal class BouncyDigitComponent : RenderableComponent, IUpdatable, Services.Replay.Frames.IFrameCapturable
     {
+        /// <summary>Replay frame: one constant-screen-size Text op per digit, offset in screen pixels from the world anchor.</summary>
+        public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
+        {
+            var worldPos = Entity.Position;
+            for (int i = 0; i < 4; i++)
+            {
+                if (string.IsNullOrEmpty(_digits[i]))
+                    continue;
+                float dx = _digitSpacing * 3f - i * _digitSpacing;
+                float dy = -_digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)] * 2f;
+                w.WriteText(ctx.StringId(_digits[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f,
+                    Services.Replay.Frames.FrameFontId.Hud, Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, 0, Services.Replay.Frames.FrameOpCode.AllChars);
+            }
+        }
+
         int[] _digitTable ={
                 0,0,0,0,0,0,3,6,9,12,
                 14,15,15,16,16,16,15,15,14,12,

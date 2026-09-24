@@ -13,7 +13,7 @@ namespace PitHero.ECS.Components
     /// <c>CameraTopLeft</c>/<c>CameraSize</c> uniforms set here, so a small quad renders world-anchored
     /// clouds under any pan/zoom without needing a giant fixed-size quad.
     /// </summary>
-    public class CloudOverlayComponent : RenderableComponent
+    public class CloudOverlayComponent : RenderableComponent, Services.Replay.Frames.ILiveOnlyRenderable
     {
         // A couple pixels of slack against edge seams when the camera bounds are recomputed mid-frame.
         const float EdgeInflatePx = 2f;

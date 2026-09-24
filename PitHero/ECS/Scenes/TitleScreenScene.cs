@@ -15,6 +15,9 @@ namespace PitHero.ECS.Scenes
         {
             base.Initialize();
 
+            // A replay rebuild that never got its MainGameScene (quit mid-start) must not leak its frame stream
+            Services.Replay.Frames.FrameRecorder.DiscardPendingHandoff();
+
             SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.FixedHeight);
             ClearColor = Color.CornflowerBlue;
 
