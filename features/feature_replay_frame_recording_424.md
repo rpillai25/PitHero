@@ -94,11 +94,19 @@ their tick, not per frame.
 | `Rect` | x f32, y f32, w f32, h f32, color u32, flags u8 (filled/outline, screenSpace) | `MonsterHPBarComponent` (bars), `BuildingOutlineRenderComponent`, `SelectBoxRenderComponent` |
 | `NinePatch` | patchId u16, x, y, w, h, color u32 | `SpeechBubbleComponent` bubble body |
 
+**Measured (#425, §6.2): store every position as i16 pixels, not f32, and delta against the
+previous tick.** That single change cuts the compressed stream by 37%; the layouts above are the
+pre-measurement draft.
+
 **Sprite identity.** Nez `Sprite` has no name. `SpriteKeyRegistry` maps a `Sprite` reference to a
 `ushort` id on first sight and records the key `(textureName, sourceRect)` for it. `textureName` is
 `Texture2D.Name`, which `NezContentManager.LoadTexture` sets to the asset path (`NezContentManager.cs:92`).
 Sprites whose texture has no name (per-entity RenderTextures) are never captured; that is why
-composites capture their layers. String and nine-patch keys are interned the same way. Tables are
+composites capture their layers. **Measured (#425): atlas textures are unnamed too**:
+`SpriteAtlasLoader` never sets `Name`, so every sprite in the game has an empty `Texture2D.Name` until
+the loader is fixed (see §6.1). **#427 owns the fix**: a one-line fork change in
+`SpriteAtlasLoader.ParseSpriteAtlas` setting `texture.Name` to the atlas image path (details on the
+issue). String and nine-patch keys are interned the same way. Tables are
 persisted incrementally: each chunk carries the entries first seen in that chunk, so a reader
 rebuilds the full table by scanning chunk headers once at open.
 
@@ -288,8 +296,9 @@ the scrubber never says "Seeking" while watching.
 | Knob | Default | Note |
 |---|---|---|
 | `ReplayFrameCaptureEnabled` | true | Kill switch; off = today's behaviour |
-| `ReplayFrameChunkTicks` | 120 | Braid's 2 s GOP |
-| `ReplayTileKeyframeIntervalChunks` | 30 | Full mutable-layer snapshot every 60 s |
+| `ReplayFrameChunkTicks` | 120 | Braid's 2 s GOP. Confirmed by #425: bases are ~4% of the bytes |
+| `ReplayFrameCaptureEveryNTicks` | 1 | 1 = every tick (60 Hz, 33 MB/h measured), 2 = every 2nd tick (30 Hz, 21 MB/h). Decided in #428 on screen, see §6.2; the format is identical either way |
+| `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable-layer snapshot every chunk; ~1 KB deflated (#425), so cross-chunk event replay is not worth its complexity. Was 30 before measurement |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | RAM ring; spill beyond |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | Across `replays/`; oldest `.frames` first |
 | `ReplayFrameFormatVersion` | 1 | Bump breaks old sidecars (they are caches; rebuilt) |
@@ -303,6 +312,69 @@ entities without compression, so this is the same order of magnitude. **Phase 1 
 numbers before anything is built on them**; if the budget is missed, the levers are (in order)
 field-level deltas for `Sprite` position, capture every 2nd tick for 30 Hz viewing, shorter chunks.
 
+### 6.1 Measured (issue #425 census, 2026-09-22)
+
+Three live sessions at 1x (`GameConfig.ReplayFrameCensus`, log in `replays/frame_census.log`,
+one report per 3,600 ticks). Session 1 (Debug): 50 minutes, 180,000 ticks, hero out of pit 113,692
+(town, farm, kitchen), in pit 45,795, battle 20,165, paused 348. Session 2 (Debug): 25 minutes,
+91,005 ticks, out of pit 58,211, in pit 24,145, battle 8,273, paused 376; it reproduced every
+session 1 figure within a few percent and added the encoding variants in §6.2. Session 3
+(**Release**): 12 minutes, 44,157 ticks, out of pit 18,781, in pit 19,098, battle 5,903; it
+reproduced the sizes a third time (A 51.5 MB/h, C 32.9 MB/h) and supplied the cost figure. The census
+builds the design's op stream in the exact §3.1 layout with a 120-tick base plus entity-level
+deltas against that base, and deflates each 2 s chunk for real. Text/Rect payloads are
+position + color with zero fill, so their compression is slightly optimistic. They are a small
+share of the bytes.
+
+| Quantity | Estimate (above) | Measured |
+|---|---|---|
+| Renderables in `Scene.RenderableComponents` | ~300 | mean 571, max 695. Of these, **366 mean / 415 max are actually drawn** (enabled, not composite-owned, not live-only). By type (max): `SpriteRenderer` 380, `HeroAnimationComponent` layers 104 (owned by composites), `PausableSpriteAnimator` 72, `SpeechBubbleComponent` 44 (one per speaker, mostly hidden), `EnemyAnimationComponent` 32, `YSortSpriteRenderer` 19, `MultiSpriteAnimator` 13, `BouncyText`/`BouncyDigit` 10 each, `StaticSpriteCompositor` 2, `TiledMapRenderer` 4, `GraphicalHUD` 3, `ActionQueueVisualization` 3, `TreeBand` 2, `Cloud`/`TextRender`/`BuildingOutline`/`SelectBox`/`MonsterHPBar`/`PrototypeSprite` 1, plus 1 unclassified (almost certainly the `UICanvas`) |
+| Drawn renderables changed per tick vs previous tick (min / mean / max) | ~40 | out of pit 2 / 24.1 / 324, in pit 10 / 26.5 / 80, battle 9 / 26.2 / 67, paused 0 / 1.4 / 35 |
+| Drawn renderables changed vs the chunk base (what a Braid delta stores) | — | out of pit 2 / 36.8 / 214, in pit 10 / 40.1 / 97, battle 11 / 42.2 / 80 |
+| Delta frame bytes per tick (mean) | ~500 B | out of pit 1,583, in pit 1,845, battle 1,902 (max 14,242, on a floor regeneration). About half of this is `MultiSpriteAnimator` composites: 8 layers each, ~112 B, and every walking actor re-emits all 8 layers every tick |
+| Base frame | — | ~8 KB raw, about 4% of all bytes at 120-tick chunks |
+| Raw stream | ~110 MB/h | **392 MB/h** in the §3.1 layout (session 2; per-minute windows 340–520). Session 1 reported 361 MB/h using the issue's smaller op sizes (Composite 8 + 13/layer instead of the layout's 15 + 15/layer) |
+| Deflate ratio | 4–6x | **7.5–7.7x optimal** (per-window 6.1–8.6x), 6.5x fastest. Higher than estimated because deltas vs base re-emit identical records tick after tick, which deflate collapses |
+| Compressed stream, design as written | ~25 MB/h (+3 MB/h bases) | **52 MB/h optimal** (session 2, measured directly; per-window 45–65), ~60 MB/h fastest. **Misses the 30 MB/h target by ~1.7x.** Session 1's 47 MB/h applied the ratio to the smaller raw figure and is superseded |
+| Deflate cost per 2 s chunk (optimal) | — | mean 1.4 ms, max 5.0 ms, done on the main thread in the census. Belongs on the worker |
+| Tile mutations | "fog clears dominate" | 273/min. FogOfWar 75% (10,263), Base 12% (1,701), Collision 12% (1,694, never drawn, so no need to record), Detail 0. **55% are same-gid writes** (7,451) that change nothing |
+| Tile keyframe (Base + Detail + FogOfWar gids) | — | 34,560 B raw, **~1 KB deflated** |
+| Console lines | — | 6.1/min, 5.9 segments and 47 chars per line. Negligible |
+| `Texture2D.Name` non-empty | yes (§3.1 assumption) | **No. 0 of 5 textures are named, and all 539 distinct sprites sit on unnamed textures.** Owners: composite layers 340, `SpriteRenderer` 98, `EnemyAnimationComponent` 84, `PausableSpriteAnimator` 7, `YSortSpriteRenderer` 5, `StaticSpriteCompositor` layers 4, `PrototypeSpriteRenderer` 1. Cause: `SpriteAtlasLoader` builds the texture with `Texture2D.FromStream` and never sets `Name`; only `NezContentManager.LoadTexture` names textures. 539 `Sprite` references map to 539 distinct `(texture, rect)` keys, so no two sprites share a key |
+| Census walk cost per tick | ≤ 40 µs target for capture | **Release (session 3): mean 86 µs, min 29 µs** (per-window means 67–100), typical per-window max 0.6–3 ms, one 5.4 ms outlier. That is the census, not a capture: it walks all ~570 renderables with ~4 dictionary operations each and writes **five** streams plus a sprite-id lookup per op. Debug for comparison: 116 µs with one stream (session 1), 163 µs with five (session 2). A real single-stream capture without hashed lookups should land near the 29 µs floor; the 40 µs budget is reachable but not by accident |
+
+### 6.2 Encoding variants (session 2)
+
+Five streams written side by side from the same ticks, each in the §3.1 layout and deflated
+per 120-tick chunk (758 chunks). Session totals, with the per-minute window range in brackets:
+
+| Variant | Raw MB/h | Deflated MB/h | Ratio | Entities per delta frame |
+|---|---|---|---|---|
+| **A** design as written: deltas vs chunk base, f32 positions | 392 | **52.3** [45–65] | 7.5x | 35.6 |
+| **B** deltas vs previous tick, f32 positions | 198 | **48.3** [40–60] | 4.1x | 24.2 |
+| **C** = B with positions as i16 pixels | 156 | **33.0** [27–42] | 4.7x | 23.8 |
+| **D** = C plus a composite "moved" op (position/depth only) | 138 | **32.4** [26–42] | 4.2x | 23.8 |
+| **E** = C sampled every 2nd tick (30 Hz) | 99 | **20.7** [18–26] | 4.8x | 25.7 |
+
+What the variants say:
+
+- **Previous-tick deltas alone are worth only 8%** (A → B). They halve the raw bytes, but deflate
+  was already collapsing the repeated records, so the ratio drops from 7.5x to 4.1x and most of the
+  raw saving evaporates.
+- **Integer-pixel positions are the real lever: −37% vs the design** (A → C, and B → C is −32%).
+  The gain is not fewer changes: the change count at pixel precision equals the float count (23.9
+  vs 24.2 per tick out of the pit, 24.3 vs 25.0 in the pit), because the movers are a minority of
+  the changing entities and animators dominate. The gain is that 2-byte integer coordinates are
+  smaller and far more compressible than 4-byte floats whose low bits churn every tick. It is
+  lossless for the viewer: the game draws point-sampled pixel art and the compositors already
+  round entity positions.
+- **The composite "moved" op is worth ~1 MB/h** (C → D). Deflate already collapses the repeated
+  layer records of a walking composite. Not worth an op code.
+- **30 Hz sampling is worth another 37%** (C → E) and is the only variant under 30 MB/h.
+- Deflate cost per chunk is unchanged (mean 1.4 ms, max 5.8 ms, main thread in the census).
+
+**Recommendation for #426 (and the capture in #427).** Keep `ReplayFrameChunkTicks` at **120**: base frames are ~4% of the bytes and a chunk inflates in well under a millisecond, so shorter chunks buy nothing. Keep `ReplayFrameMemoryBudgetBytes` at **192 MB** with chunks held compressed in RAM, which is 5–6 hours at the recommended encoding before spilling. For the encoding, adopt variant **C**: entity-level deltas against the **previous tick** within the chunk, with every position (entity x/y, composite layer offsets, rect and text origins) stored as **i16 pixels** rather than f32. That is measured at **33 MB/h** (27–42 per minute) against 52 MB/h for the design as written, and the whole gain comes from the integer coordinates; previous-tick deltas alone are worth only 8% because deflate already collapses re-emitted records, and the composite "moved" op measured at ~1 MB/h, so **no field-level masks and no extra op codes are needed**. Decoding stays cheap: seeking to tick T inflates its chunk and replays up to 119 small deltas from the base, which is microseconds. **Capture every tick (60 Hz).** C is 10% above the 30 MB/h target, and the honest choice is to accept that and set `FrameSizeBudgetTests` at **≤ 40 MB/h** for the §6.2 traffic mix (a 4 GB disk budget still holds ~120 hours), rather than commit now to 30 Hz sampling (variant E, 20.7 MB/h). At 32–64 px/s an actor moves 0.5–1 px per tick, so a 30 Hz viewer would show 1–2 px steps at 1x: probably acceptable, but it is a visible change that #428 should judge on screen, so keep every-2nd-tick capture as a knob (`ReplayFrameCaptureEveryNTicks`, default 1) and decide it there. For tiles, store a keyframe **every chunk** (`ReplayTileKeyframeIntervalChunks = 1`): at ~1 KB it costs ~1.8 MB/h and removes cross-chunk event replay from the decoder; drop same-gid writes at the hook (55% of all writes) and ignore the Collision layer, which is never drawn. Run deflate on the worker thread that writes the sidecar, never on the main thread (1.4 ms mean, up to 6 ms per chunk). **`Texture2D.Name` is not a usable sprite key as-is.** The simplest fix is a one-line Nez fork change so that `SpriteAtlasLoader` sets `texture.Name` to the atlas image path, after which §3.1's `(textureName, sourceRect)` key works unchanged; if a fork change is unwanted, #427 builds a texture-to-atlas-path registry instead (only 5 textures are in use). Either way it keeps a one-time warning for unnamed textures. On **capture cost**, the Release census measured 86 µs per tick mean (29 µs floor) while doing far more than a capture would: five streams, ~4 dictionary operations per renderable over all ~570 of them, and a hashed sprite-id lookup per op. The 40 µs budget is therefore reachable, but only if #427 keeps per-renderable state without hash lookups (a slot index on the component or a parallel array), resolves sprite ids once per sprite rather than per op, skips live-only and composite-owned renderables before any other work, and profiles in Release against the budget before #428 builds on it.
+
 ## 7. Phases (one GitHub sub-issue each; each is independently shippable behind the kill switch)
 
 | # | Issue | Title | Depends on | Size |
@@ -310,7 +382,7 @@ field-level deltas for `Sprite` position, capture every 2nd tick for 30 Hz viewi
 | 1 | #425 | Census spike: measure renderables, change rate and naive bytes per tick; verify `Texture2D.Name` keys | — | S |
 | 2 | #426 | Frame model, chunk codec, store and sidecar file (headless, fully tested) | 1 | M |
 | 3 | #427 | Capture: adapters, `SpriteKeyRegistry`, `FrameRecorder`, hooks (tick, tiles, console), session sidecar writes | 2 | M |
-| 4 | #428 | Frame viewer for Replay Current Session: renderer, shadow tiles, HUD/console feed, cursor, Nez filter; Exit instant; Time Travel behind a frozen frame | 3 | L |
+| 4 | #428 | Frame viewer for Replay Current Session: renderer, shadow tiles, HUD/console feed, cursor, Nez filter; Exit instant; Time Travel behind a frozen frame. **Decides `ReplayFrameCaptureEveryNTicks` on screen** (60 Hz vs 30 Hz at 1x; position interpolation between frames is the cheap way to make 30 Hz look like 60) | 3 | L |
 | 5 | #429 | Saved replays: sidecar save/rename, identity, lazy loading, disk budget, Replay tab mark; FrameView for cached saved replays | 4 | M |
 | 6 | #430 | Transcode for uncached or stale saved replays: buffering status, growing range, finalise sidecar | 5 | M |
 | 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, action-queue capture, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rule for new renderables, remove dead code | 4–6 | M |

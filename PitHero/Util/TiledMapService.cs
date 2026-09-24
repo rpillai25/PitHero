@@ -38,6 +38,8 @@ namespace PitHero.Util
                 Debug.Log("WARNING: Layer null for RemoveTile!!!");
                 return;
             }
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.OnTileMutation(layerName, layer.Grid[x + y * layer.Width], 0);
             layer.RemoveTile(x, y);
         }
 
@@ -55,6 +57,8 @@ namespace PitHero.Util
                 Debug.Log("WARNING: Layer null for SetTile!!!");
                 return;
             }
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.OnTileMutation(layerName, layer.Grid[x + y * layer.Width], tileIndex);
             layer.SetTile(x, y, tileIndex);
         }
 
