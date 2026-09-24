@@ -4,12 +4,28 @@ using Nez;
 using Nez.BitmapFonts;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
+using PitHero.Services.Replay.Frames;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>Bouncy text renderer for battle messages like "Miss" (world-space, constant screen size, per-character bounce)</summary>
-    internal class BouncyTextComponent : RenderableComponent, IUpdatable
+    internal class BouncyTextComponent : RenderableComponent, IUpdatable, IFrameCapturable
     {
+        /// <summary>Replay frame: one constant-screen-size Text op per character, offset in screen pixels from the world anchor.</summary>
+        public void CaptureFrame(ref FrameWriter w, FrameCaptureContext ctx)
+        {
+            var worldPos = Entity.Position;
+            for (int i = 0; i < 4; i++)
+            {
+                if (string.IsNullOrEmpty(_chars[i]))
+                    continue;
+                float dx = _charSpacing * 3f - i * _charSpacing;
+                float dy = -_bounceTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _bounceTable.Length - 1)] * 2f;
+                w.WriteText(ctx.StringId(_chars[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f, FrameFontId.Hud,
+                    FrameOpFlags.ConstantScreenSize, 0, FrameOpCode.AllChars);
+            }
+        }
+
         int[] _bounceTable = {
             0,0,0,0,0,0,3,6,9,12,
             14,15,15,16,16,16,15,15,14,12,

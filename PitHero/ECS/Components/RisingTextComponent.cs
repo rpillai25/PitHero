@@ -9,8 +9,17 @@ using System.Collections;
 
 namespace PitHero.ECS.Components
 {
-    public class RisingTextComponent : RenderableComponent, IUpdatable
+    public class RisingTextComponent : RenderableComponent, IUpdatable, Services.Replay.Frames.IFrameCapturable
     {
+        /// <summary>Replay frame: the rising text at its current offset, as Render draws it.</summary>
+        public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
+        {
+            if (string.IsNullOrEmpty(_text))
+                return;
+            w.WriteText(ctx.StringId(_text), _textPosition.X * 2, _textPosition.Y * 2 + _yOffset, _currentColor.PackedValue, 1f,
+                Services.Replay.Frames.FrameFontId.Hud, Services.Replay.Frames.FrameOpFlags.None);
+        }
+
         float _elapsedTime;
         float _pauseTime;
         bool _pausedLastFrame = false;

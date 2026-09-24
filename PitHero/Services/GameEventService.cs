@@ -81,6 +81,12 @@ namespace PitHero.Services
         public event Action<ConsoleSegment[], EventPriority> OnEvent;
 
         /// <summary>
+        /// Fired for every emit, before <see cref="Suppressed"/> is consulted, so the replay frame
+        /// recorder sees console lines even while a replay simulates past its recorded end.
+        /// </summary>
+        public event Action<ConsoleSegment[]> OnEmitAny;
+
+        /// <summary>
         /// When true every emit is dropped. Set while a replay plays back: the events already
         /// happened once, so re-announcing them would duplicate the console history.
         /// </summary>
@@ -89,16 +95,19 @@ namespace PitHero.Services
         /// <summary>Broadcasts a plain white message.</summary>
         public void Emit(string message, EventPriority priority = EventPriority.Normal)
         {
+            var segments = new[] { new ConsoleSegment(message, Color.White) };
+            OnEmitAny?.Invoke(segments);
             if (Suppressed)
                 return;
             if (GameConfig.ReplayFrameCensus)
                 Replay.Frames.ReplayFrameCensus.Current?.OnConsoleLine(1, message?.Length ?? 0);
-            OnEvent?.Invoke(new[] { new ConsoleSegment(message, Color.White) }, priority);
+            OnEvent?.Invoke(segments, priority);
         }
 
         /// <summary>Broadcasts a colored segment array built via <see cref="ConsoleSegment.Build"/>.</summary>
         public void Emit(ConsoleSegment[] segments, EventPriority priority = EventPriority.Normal)
         {
+            OnEmitAny?.Invoke(segments);
             if (Suppressed)
                 return;
             if (GameConfig.ReplayFrameCensus)

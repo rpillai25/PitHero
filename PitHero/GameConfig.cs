@@ -768,6 +768,10 @@ namespace PitHero
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
         public const int ReplayFrameFormatVersion = 1;                         // Sidecar cache format; bumping orphans old .frames (rebuilt by transcoding), never a .bin
         public const string ReplayFrameFileExtension = ".frames";              // Sidecar next to the .bin it caches
+        public const string ReplayFrameSessionFilePrefix = "session_";         // replays/session_<recordedAtUtcTicks>.frames while a session runs; stale ones are deleted at the next new session
+        public const float ReplayFrameDebugLogIntervalSeconds = 60f;           // Wall seconds between frame-recorder stat lines (Debug.Log in Debug builds; replays/frame_recorder.log in every build while ReplayFrameStatsLog is on)
+        public const bool ReplayFrameStatsLog = true;                          // Append the per-minute capture stats to replays/frame_recorder.log (the only way to read the Release capture cost; Debug.Log is compiled out there)
+        public const string ReplayFrameStatsLogFileName = "frame_recorder.log";
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.

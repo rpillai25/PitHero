@@ -11,7 +11,7 @@ namespace PitHero.Services.Replay.Frames
     /// the same first tick as the last one replaces it (a partial last chunk finished again after a save).
     /// <see cref="Finish"/> writes the footer and closes; <see cref="Dispose"/> closes without one.
     /// </summary>
-    public sealed class FrameSidecarWriter : IDisposable
+    public sealed class FrameSidecarWriter : IFrameChunkSource, IDisposable
     {
         private readonly object _gate = new object();
         private readonly List<FrameSidecarFile.IndexEntry> _index = new List<FrameSidecarFile.IndexEntry>(4096);
@@ -76,6 +76,13 @@ namespace PitHero.Services.Replay.Frames
         /// and any partial tail are cut off, and new chunks continue after the last complete one.
         /// </summary>
         public static FrameSidecarFile.OpenResult Reopen(string path, out FrameSidecarWriter writer)
+            => Reopen(path, null, out writer);
+
+        /// <summary>
+        /// Reopens for appending and, when <paramref name="registry"/> is given, rebuilds its tables from
+        /// the chunks kept, so ids already in the file resolve and new entries continue the numbering.
+        /// </summary>
+        public static FrameSidecarFile.OpenResult Reopen(string path, SpriteKeyRegistry registry, out FrameSidecarWriter writer)
         {
             writer = null;
             var result = FrameSidecarReader.Open(path, out var reader);
@@ -90,6 +97,21 @@ namespace PitHero.Services.Replay.Frames
                 for (int i = 0; i < reader.ChunkCount; i++)
                     entries.Add(reader.GetEntry(i));
                 dataEnd = reader.DataEnd;
+                if (registry != null)
+                {
+                    try
+                    {
+                        reader.RebuildRegistry(registry);
+                    }
+                    catch (IOException)
+                    {
+                        return FrameSidecarFile.OpenResult.Corrupt;
+                    }
+                    catch (InvalidDataException)
+                    {
+                        return FrameSidecarFile.OpenResult.Corrupt;
+                    }
+                }
             }
             identity.TotalTicks = -1;
             var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
@@ -142,6 +164,46 @@ namespace PitHero.Services.Replay.Frames
                     Length = chunk.Bytes.Length,
                 });
             }
+        }
+
+        /// <summary>Drops every chunk from index <paramref name="keepCount"/> on (Time Travel); later appends continue from there.</summary>
+        public void TruncateChunks(int keepCount)
+        {
+            lock (_gate)
+            {
+                if (_stream == null || _finished)
+                    throw new InvalidOperationException("Sidecar writer is closed");
+                if (keepCount < 0) keepCount = 0;
+                if (keepCount >= _index.Count)
+                    return;
+                long end = _index[keepCount].Offset;
+                _index.RemoveRange(keepCount, _index.Count - keepCount);
+                _stream.SetLength(end);
+                _stream.Seek(end, SeekOrigin.Begin);
+                _stream.Flush();
+            }
+        }
+
+        /// <summary>Last tick of the chunks written so far (see <see cref="IFrameChunkSource"/>).</summary>
+        long IFrameChunkSource.EndTick => EndTick;
+
+        /// <summary>Reads back a chunk written to this file (any thread; used by the store to reload an evicted chunk).</summary>
+        public bool TryLoadChunk(int chunkIndex, out FrameChunk chunk)
+        {
+            chunk = null;
+            byte[] bytes;
+            lock (_gate)
+            {
+                if (_stream == null || chunkIndex < 0 || chunkIndex >= _index.Count)
+                    return false;
+                var e = _index[chunkIndex];
+                bytes = new byte[e.Length];
+                long resume = _stream.Position;
+                _stream.Seek(e.Offset + FrameSidecarFile.ChunkLengthPrefixSize, SeekOrigin.Begin);
+                _stream.ReadExactly(bytes, 0, bytes.Length);
+                _stream.Seek(resume, SeekOrigin.Begin);
+            }
+            return FrameChunk.TryParse(bytes, 0, bytes.Length, out chunk);
         }
 
         /// <summary>Writes the footer (chunk index + total ticks) and closes the file.</summary>

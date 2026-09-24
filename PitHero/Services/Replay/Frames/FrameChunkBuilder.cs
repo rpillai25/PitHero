@@ -36,10 +36,13 @@ namespace PitHero.Services.Replay.Frames
         private byte[] _prevOps = new byte[64 * 1024];
         private byte[] _curOps = new byte[64 * 1024];
         private int _curOpsLength;
-        private readonly int[] _prevSlot = new int[IdSpace];   // id -> index + 1 in _prev
-        private readonly int[] _curStamp = new int[IdSpace];   // id -> stamp of the tick it was last added in
-        private int _stamp;
-        private bool[] _prevSeen = new bool[512];
+        // id -> index into _cur / _prev, valid only while the matching stamp equals the tick that wrote it
+        // (stamped maps: rotation is a swap, no clearing or refilling passes over the entity lists)
+        private int[] _curSlot = new int[IdSpace];
+        private int[] _prevSlot = new int[IdSpace];
+        private int[] _curSlotStamp = new int[IdSpace];
+        private int[] _prevSlotStamp = new int[IdSpace];
+        private int _stamp = 2;
         private HudRecord _prevHud;
 
         // Encoded sections: base frame then deltas, back to back
@@ -101,11 +104,18 @@ namespace PitHero.Services.Replay.Frames
             _inTick = true;
             _curCount = 0;
             _curOpsLength = 0;
-            if (++_stamp == int.MaxValue)
+            AdvanceStamp(1);
+        }
+
+        private void AdvanceStamp(int by)
+        {
+            if (_stamp > int.MaxValue - 8)
             {
-                Array.Clear(_curStamp, 0, _curStamp.Length);
-                _stamp = 1;
+                Array.Clear(_curSlotStamp, 0, _curSlotStamp.Length);
+                Array.Clear(_prevSlotStamp, 0, _prevSlotStamp.Length);
+                _stamp = 2;
             }
+            _stamp += by;
         }
 
         public void AddEntity(ushort id, byte[] ops, int offset, int length)
@@ -118,10 +128,6 @@ namespace PitHero.Services.Replay.Frames
                 throw new InvalidOperationException("AddEntity outside BeginTick/EndTick");
             if (ops.Length > MaxEntityOpsLength)
                 throw new ArgumentException("Entity op string too long", nameof(ops));
-            if (_curStamp[id] == _stamp)
-                throw new ArgumentException("Entity id added twice in one tick", nameof(id));
-            _curStamp[id] = _stamp;
-
             int need = _curOpsLength + ops.Length;
             if (need > _curOps.Length)
             {
@@ -133,10 +139,42 @@ namespace PitHero.Services.Replay.Frames
                 _curOps = grown;
             }
             ops.CopyTo(new Span<byte>(_curOps, _curOpsLength, ops.Length));
+            Record(id, ops.Length);
+        }
+
+        /// <summary>
+        /// A writer positioned at the end of the current tick's op arena, so a capture emits straight
+        /// into the builder without a scratch copy. Pair with <see cref="EndEntity"/>.
+        /// </summary>
+        public FrameWriter BeginEntity()
+        {
+            if (!_inTick)
+                throw new InvalidOperationException("BeginEntity outside BeginTick/EndTick");
+            return new FrameWriter(_curOps, _curOpsLength);
+        }
+
+        /// <summary>Commits what was written since <see cref="BeginEntity"/> as the entity's ops (nothing written = not drawn).</summary>
+        public void EndEntity(ushort id, ref FrameWriter w)
+        {
+            _curOps = w.Buffer; // the writer may have grown the arena
+            int length = w.Length - _curOpsLength;
+            if (length <= 0)
+                return;
+            if (length > MaxEntityOpsLength)
+                throw new ArgumentException("Entity op string too long", nameof(w));
+            Record(id, length);
+        }
+
+        private void Record(ushort id, int length)
+        {
+            if (_curSlotStamp[id] == _stamp)
+                throw new ArgumentException("Entity id added twice in one tick", nameof(id));
+            _curSlotStamp[id] = _stamp;
+            _curSlot[id] = _curCount;
             if (_curCount == _cur.Length)
                 Array.Resize(ref _cur, _cur.Length * 2);
-            _cur[_curCount++] = new FrameEntity(id, _curOpsLength, ops.Length);
-            _curOpsLength += ops.Length;
+            _cur[_curCount++] = new FrameEntity(id, _curOpsLength, length);
+            _curOpsLength += length;
         }
 
         /// <summary>Closes the tick: writes the base frame or the delta against the previous tick.</summary>
@@ -163,23 +201,17 @@ namespace PitHero.Services.Replay.Frames
             {
                 int countAt = w.ReserveU32();
                 uint count = 0;
-                if (_prevSeen.Length < _prevCount)
-                    _prevSeen = new bool[Math.Max(_prevCount, _prevSeen.Length * 2)];
-                Array.Clear(_prevSeen, 0, _prevCount);
+                int prevStamp = _stamp - 1;
                 for (int i = 0; i < _curCount; i++)
                 {
                     var e = _cur[i];
-                    int ps = _prevSlot[e.Id];
-                    bool same = false;
-                    if (ps != 0)
+                    if (_prevSlotStamp[e.Id] == prevStamp)
                     {
-                        _prevSeen[ps - 1] = true;
-                        var p = _prev[ps - 1];
-                        same = p.Length == e.Length
-                               && new ReadOnlySpan<byte>(_prevOps, p.Offset, p.Length).SequenceEqual(new ReadOnlySpan<byte>(_curOps, e.Offset, e.Length));
+                        var p = _prev[_prevSlot[e.Id]];
+                        if (p.Length == e.Length
+                            && new ReadOnlySpan<byte>(_prevOps, p.Offset, p.Length).SequenceEqual(new ReadOnlySpan<byte>(_curOps, e.Offset, e.Length)))
+                            continue;
                     }
-                    if (same)
-                        continue;
                     w.WriteU16(e.Id);
                     w.WriteU16((ushort)e.Length);
                     w.WriteBytes(_curOps, e.Offset, e.Length);
@@ -187,9 +219,10 @@ namespace PitHero.Services.Replay.Frames
                 }
                 for (int j = 0; j < _prevCount; j++)
                 {
-                    if (_prevSeen[j])
+                    ushort id = _prev[j].Id;
+                    if (_curSlotStamp[id] == _stamp)
                         continue;
-                    w.WriteU16(_prev[j].Id);
+                    w.WriteU16(id);
                     w.WriteU16(TombstoneLength);
                     count++;
                 }
@@ -210,16 +243,14 @@ namespace PitHero.Services.Replay.Frames
             _sectionLengths[_tickCount] = w.Length - start;
             _sectionsLength = w.Length;
 
-            // Rotate: the current tick becomes the previous one
-            for (int j = 0; j < _prevCount; j++)
-                _prevSlot[_prev[j].Id] = 0;
+            // Rotate: the current tick becomes the previous one (stamped maps make this a swap)
             var te = _prev; _prev = _cur; _cur = te;
             var to = _prevOps; _prevOps = _curOps; _curOps = to;
+            var ts = _prevSlot; _prevSlot = _curSlot; _curSlot = ts;
+            var tst = _prevSlotStamp; _prevSlotStamp = _curSlotStamp; _curSlotStamp = tst;
             _prevCount = _curCount;
             _curCount = 0;
             _curOpsLength = 0;
-            for (int j = 0; j < _prevCount; j++)
-                _prevSlot[_prev[j].Id] = j + 1;
             _prevHud = hud;
             _tickCount++;
             _inTick = false;
@@ -397,8 +428,7 @@ namespace PitHero.Services.Replay.Frames
         /// <summary>Forgets everything, including the first tick (call <see cref="Begin"/> afterwards).</summary>
         public void Reset()
         {
-            for (int j = 0; j < _prevCount; j++)
-                _prevSlot[_prev[j].Id] = 0;
+            AdvanceStamp(2); // no stale prev/cur entry can match the next tick's stamps
             _prevCount = 0;
             _curCount = 0;
             _curOpsLength = 0;

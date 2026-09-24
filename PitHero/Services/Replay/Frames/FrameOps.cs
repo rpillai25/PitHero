@@ -12,9 +12,13 @@ namespace PitHero.Services.Replay.Frames
     ///   Sprite     spriteId u16, x i16, y i16, layerDepth f32, renderLayer i16, color u32, flags u8          (17)
     ///   Composite  x i16, y i16, layerDepth f32, renderLayer i16, layerCount u8,
     ///              then per layer: spriteId u16, dx i16, dy i16, color u32, flags u8                           (11 + 11/layer)
-    ///   Text       stringId u16, x i16, y i16, color u32, scale f32, fontId u8, flags u8                      (16)
-    ///   Rect       x i16, y i16, w i16, h i16, color u32, flags u8                                             (13)
-    ///   NinePatch  patchId u16, x i16, y i16, w i16, h i16, color u32                                          (14)
+    ///   Text       stringId u16, x i16, y i16, dx i16, dy i16, color u32, scale f32, fontId u8, flags u8,
+    ///              charStart u16, charCount u16 (0xFFFF = to the end)                                          (24)
+    ///   Rect       x i16, y i16, dx i16, dy i16, w i16, h i16, color u32, flags u8                             (17)
+    ///   NinePatch  patchId u16, x i16, y i16, dx i16, dy i16, w i16, h i16, color u32, flags u8                (19)
+    /// x/y are the anchor. With <see cref="FrameOpFlags.ConstantScreenSize"/> the anchor is a world point and
+    /// dx/dy/w/h are screen pixels applied after the world-to-screen transform (constant on-screen size at
+    /// any zoom: damage numbers, HP bars, speech bubbles); otherwise dx/dy/w/h share the anchor's space.
     /// </summary>
     public static class FrameOpCode
     {
@@ -28,9 +32,12 @@ namespace PitHero.Services.Replay.Frames
         public const int SpritePayload = 17;
         public const int CompositeHeaderPayload = 11;
         public const int CompositeLayerBytes = 11;
-        public const int TextPayload = 16;
-        public const int RectPayload = 13;
-        public const int NinePatchPayload = 14;
+        public const int TextPayload = 24;
+        public const int RectPayload = 17;
+        public const int NinePatchPayload = 19;
+
+        /// <summary>Text charCount meaning "every character from charStart".</summary>
+        public const ushort AllChars = 0xFFFF;
     }
 
     /// <summary>Bit flags carried by the flags byte of Sprite, Composite layer, Text and Rect ops.</summary>
@@ -42,6 +49,23 @@ namespace PitHero.Services.Replay.Frames
         public const byte ScreenSpace = 4;
         public const byte Centered = 8;
         public const byte Outline = 16;
+        /// <summary>Anchor is a world point; dx/dy/w/h and the text scale are screen pixels (constant size at any zoom).</summary>
+        public const byte ConstantScreenSize = 32;
+        /// <summary>Text is centered vertically on its anchor (Centered alone centers horizontally).</summary>
+        public const byte CenteredY = 64;
+    }
+
+    /// <summary>Fonts a Text op can name; the viewer maps them to its own loaded fonts.</summary>
+    public static class FrameFontId
+    {
+        /// <summary>The HUD font (GameConfig.FontPathHud, "Skullboy").</summary>
+        public const byte Hud = 0;
+        /// <summary>The half-window HUD font (GameConfig.FontPathHud2x).</summary>
+        public const byte Hud2x = 1;
+        /// <summary>The speech-bubble / main UI font (GameConfig.FontPathSpeechBubble, "Express").</summary>
+        public const byte SpeechBubble = 2;
+        /// <summary>The half-window speech-bubble font (GameConfig.FontPathSpeechBubble2x).</summary>
+        public const byte SpeechBubble2x = 3;
     }
 
     public struct SpriteOp
@@ -73,16 +97,17 @@ namespace PitHero.Services.Replay.Frames
     public struct TextOp
     {
         public ushort StringId;
-        public short X, Y;
+        public short X, Y, DX, DY;
         public uint Color;
         public float Scale;
         public byte FontId;
         public byte Flags;
+        public ushort CharStart, CharCount;
     }
 
     public struct RectOp
     {
-        public short X, Y, Width, Height;
+        public short X, Y, DX, DY, Width, Height;
         public uint Color;
         public byte Flags;
     }
@@ -90,8 +115,9 @@ namespace PitHero.Services.Replay.Frames
     public struct NinePatchOp
     {
         public ushort PatchId;
-        public short X, Y, Width, Height;
+        public short X, Y, DX, DY, Width, Height;
         public uint Color;
+        public byte Flags;
     }
 
     /// <summary>
@@ -288,41 +314,62 @@ namespace PitHero.Services.Replay.Frames
             WriteU8(flags);
         }
 
-        /// <summary>Text op.</summary>
+        /// <summary>Text op drawn whole at its anchor.</summary>
         public void WriteText(ushort stringId, float x, float y, uint color, float scale, byte fontId, byte flags)
+            => WriteText(stringId, x, y, 0f, 0f, color, scale, fontId, flags, 0, FrameOpCode.AllChars);
+
+        /// <summary>Text op with an offset from the anchor and a character range of the interned string.</summary>
+        public void WriteText(ushort stringId, float x, float y, float dx, float dy, uint color, float scale, byte fontId, byte flags, ushort charStart, ushort charCount)
         {
             WriteU8(FrameOpCode.Text);
             WriteU16(stringId);
             WriteI16(ToPixel(x));
             WriteI16(ToPixel(y));
+            WriteI16(ToPixel(dx));
+            WriteI16(ToPixel(dy));
             WriteU32(color);
             WriteF32(scale);
             WriteU8(fontId);
             WriteU8(flags);
+            WriteU16(charStart);
+            WriteU16(charCount);
         }
 
-        /// <summary>Rect op (filled or outlined per flags).</summary>
+        /// <summary>Rect op (filled or outlined per flags) at its anchor.</summary>
         public void WriteRect(float x, float y, float width, float height, uint color, byte flags)
+            => WriteRect(x, y, 0f, 0f, width, height, color, flags);
+
+        /// <summary>Rect op with an offset from the anchor.</summary>
+        public void WriteRect(float x, float y, float dx, float dy, float width, float height, uint color, byte flags)
         {
             WriteU8(FrameOpCode.Rect);
             WriteI16(ToPixel(x));
             WriteI16(ToPixel(y));
+            WriteI16(ToPixel(dx));
+            WriteI16(ToPixel(dy));
             WriteI16(ToPixel(width));
             WriteI16(ToPixel(height));
             WriteU32(color);
             WriteU8(flags);
         }
 
-        /// <summary>Nine-patch op.</summary>
+        /// <summary>Nine-patch op at its anchor.</summary>
         public void WriteNinePatch(ushort patchId, float x, float y, float width, float height, uint color)
+            => WriteNinePatch(patchId, x, y, 0f, 0f, width, height, color, FrameOpFlags.None);
+
+        /// <summary>Nine-patch op with an offset from the anchor.</summary>
+        public void WriteNinePatch(ushort patchId, float x, float y, float dx, float dy, float width, float height, uint color, byte flags)
         {
             WriteU8(FrameOpCode.NinePatch);
             WriteU16(patchId);
             WriteI16(ToPixel(x));
             WriteI16(ToPixel(y));
+            WriteI16(ToPixel(dx));
+            WriteI16(ToPixel(dy));
             WriteI16(ToPixel(width));
             WriteI16(ToPixel(height));
             WriteU32(color);
+            WriteU8(flags);
         }
     }
 
@@ -487,10 +534,14 @@ namespace PitHero.Services.Replay.Frames
             op.StringId = ReadU16();
             op.X = ReadI16();
             op.Y = ReadI16();
+            op.DX = ReadI16();
+            op.DY = ReadI16();
             op.Color = ReadU32();
             op.Scale = ReadF32();
             op.FontId = ReadU8();
             op.Flags = ReadU8();
+            op.CharStart = ReadU16();
+            op.CharCount = ReadU16();
         }
 
         /// <summary>Rect payload (after its op code).</summary>
@@ -498,6 +549,8 @@ namespace PitHero.Services.Replay.Frames
         {
             op.X = ReadI16();
             op.Y = ReadI16();
+            op.DX = ReadI16();
+            op.DY = ReadI16();
             op.Width = ReadI16();
             op.Height = ReadI16();
             op.Color = ReadU32();
@@ -510,9 +563,12 @@ namespace PitHero.Services.Replay.Frames
             op.PatchId = ReadU16();
             op.X = ReadI16();
             op.Y = ReadI16();
+            op.DX = ReadI16();
+            op.DY = ReadI16();
             op.Width = ReadI16();
             op.Height = ReadI16();
             op.Color = ReadU32();
+            op.Flags = ReadU8();
         }
 
         /// <summary>Skips one whole op (code + payload) at the cursor; throws on an unknown code.</summary>

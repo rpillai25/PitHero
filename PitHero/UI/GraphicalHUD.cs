@@ -12,7 +12,7 @@ namespace PitHero.UI
     /// <summary>
     /// Graphical HUD component that renders the hero's HP, MP, and Level using sprites and dynamic text
     /// </summary>
-    public class GraphicalHUD : RenderableComponent
+    public class GraphicalHUD : RenderableComponent, Services.Replay.Frames.ILiveOnlyRenderable
     {
         private Sprite _hudTemplateHeroSprite;
         private Sprite _hudTemplateMercenarySprite;

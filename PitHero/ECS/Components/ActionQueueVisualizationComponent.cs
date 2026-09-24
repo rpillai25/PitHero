@@ -32,7 +32,7 @@ namespace PitHero.ECS.Components
     /// and animates completed ones floating up. ShowAction() triggers a one-off animation
     /// for actions that never pass through the monitored queue (e.g. mercenary AI actions).
     /// </summary>
-    public class ActionQueueVisualizationComponent : RenderableComponent, IUpdatable
+    public class ActionQueueVisualizationComponent : RenderableComponent, IUpdatable, Services.Replay.Frames.ILiveOnlyRenderable
     {
         private const int SpriteSize = 32; // Size of each action sprite
         private const int SpriteSpacing = 2; // Spacing between sprites

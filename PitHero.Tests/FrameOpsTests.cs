@@ -39,9 +39,15 @@ namespace PitHero.Tests
             w.WriteText(77, 1.4f, 2.6f, 0x11223344, 1.5f, 2, FrameOpFlags.Centered);
             w.WriteRect(-3f, 4f, 32f, 6f, 0xAABBCCDD, FrameOpFlags.Outline);
             w.WriteNinePatch(9, 10f, 20f, 120f, 40f, 0x01020304);
+            w.WriteText(5, 100f, 200f, -12.6f, 7.4f, 0xFFFFFFFF, 1f, FrameFontId.SpeechBubble2x, FrameOpFlags.ConstantScreenSize, 3, 9);
+            w.WriteRect(50f, 60f, -30f, -25f, 60f, 8f, 0xFF00FF00, FrameOpFlags.ConstantScreenSize);
+            w.WriteNinePatch(1, 5f, 6f, -64f, -50f, 128f, 40f, 0xFFFFFFFF, FrameOpFlags.ConstantScreenSize);
             int total = 1 + FrameOpCode.CompositeHeaderPayload + 3 * FrameOpCode.CompositeLayerBytes
-                        + 1 + FrameOpCode.TextPayload + 1 + FrameOpCode.RectPayload + 1 + FrameOpCode.NinePatchPayload;
+                        + 2 * (1 + FrameOpCode.TextPayload + 1 + FrameOpCode.RectPayload + 1 + FrameOpCode.NinePatchPayload);
             Assert.AreEqual(total, w.Length);
+            Assert.AreEqual(24, FrameOpCode.TextPayload);
+            Assert.AreEqual(17, FrameOpCode.RectPayload);
+            Assert.AreEqual(19, FrameOpCode.NinePatchPayload);
 
             var r = new FrameReader(w.Buffer, 0, w.Length);
             Assert.AreEqual(FrameOpCode.Composite, r.ReadOpCode());
@@ -65,13 +71,18 @@ namespace PitHero.Tests
             Assert.AreEqual((ushort)77, t.StringId);
             Assert.AreEqual((short)1, t.X);
             Assert.AreEqual((short)3, t.Y);
+            Assert.AreEqual((short)0, t.DX);
+            Assert.AreEqual((short)0, t.DY);
             Assert.AreEqual(0x11223344u, t.Color);
             Assert.AreEqual(1.5f, t.Scale);
             Assert.AreEqual((byte)2, t.FontId);
             Assert.AreEqual(FrameOpFlags.Centered, t.Flags);
+            Assert.AreEqual((ushort)0, t.CharStart);
+            Assert.AreEqual(FrameOpCode.AllChars, t.CharCount);
             Assert.AreEqual(FrameOpCode.Rect, r.ReadOpCode());
             r.ReadRect(out var rect);
             Assert.AreEqual((short)-3, rect.X);
+            Assert.AreEqual((short)0, rect.DX);
             Assert.AreEqual((short)32, rect.Width);
             Assert.AreEqual((short)6, rect.Height);
             Assert.AreEqual(0xAABBCCDDu, rect.Color);
@@ -81,13 +92,36 @@ namespace PitHero.Tests
             Assert.AreEqual((ushort)9, np.PatchId);
             Assert.AreEqual((short)120, np.Width);
             Assert.AreEqual(0x01020304u, np.Color);
+            Assert.AreEqual(FrameOpFlags.None, np.Flags);
+
+            // The screen-anchored forms carry offsets and a character range
+            Assert.AreEqual(FrameOpCode.Text, r.ReadOpCode());
+            r.ReadText(out var t2);
+            Assert.AreEqual((short)100, t2.X);
+            Assert.AreEqual((short)-13, t2.DX);
+            Assert.AreEqual((short)7, t2.DY);
+            Assert.AreEqual(FrameFontId.SpeechBubble2x, t2.FontId);
+            Assert.AreEqual(FrameOpFlags.ConstantScreenSize, t2.Flags);
+            Assert.AreEqual((ushort)3, t2.CharStart);
+            Assert.AreEqual((ushort)9, t2.CharCount);
+            Assert.AreEqual(FrameOpCode.Rect, r.ReadOpCode());
+            r.ReadRect(out var rect2);
+            Assert.AreEqual((short)-30, rect2.DX);
+            Assert.AreEqual((short)-25, rect2.DY);
+            Assert.AreEqual((short)60, rect2.Width);
+            Assert.AreEqual(FrameOpCode.NinePatch, r.ReadOpCode());
+            r.ReadNinePatch(out var np2);
+            Assert.AreEqual((short)-64, np2.DX);
+            Assert.AreEqual((short)-50, np2.DY);
+            Assert.AreEqual((short)128, np2.Width);
+            Assert.AreEqual(FrameOpFlags.ConstantScreenSize, np2.Flags);
             Assert.IsTrue(r.AtEnd);
 
             // SkipOp walks the same bytes op by op
             var s = new FrameReader(w.Buffer, 0, w.Length);
             int ops = 0;
             while (!s.AtEnd) { s.SkipOp(); ops++; }
-            Assert.AreEqual(4, ops);
+            Assert.AreEqual(7, ops);
         }
 
         [TestMethod]

@@ -7,8 +7,15 @@ namespace PitHero.ECS.Components
     /// <summary>
     /// Renders a selection box around an entity (used for mercenary hover effect)
     /// </summary>
-    public class SelectBoxRenderComponent : RenderableComponent
+    public class SelectBoxRenderComponent : RenderableComponent, Services.Replay.Frames.IFrameCapturable
     {
+        /// <summary>Replay frame: the box as a world-space outline Rect op centered on the entity.</summary>
+        public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
+        {
+            var position = Entity.Transform.Position;
+            w.WriteRect(position.X - BoxSize / 2, position.Y - BoxSize / 2, BoxSize, BoxSize, _boxColor.PackedValue, Services.Replay.Frames.FrameOpFlags.Outline);
+        }
+
         private const int BoxSize = 32; // Size of the selection box
         private const int LineThickness = 2; // Thickness of the box lines
         private Color _boxColor = Color.Yellow;

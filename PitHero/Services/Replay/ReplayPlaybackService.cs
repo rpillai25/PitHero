@@ -576,6 +576,7 @@ namespace PitHero.Services.Replay
             // In the future the recorder has been appending past the recorded end, so the recording
             // already runs up to this tick and the truncation is a no-op
             ReplayRecorder.Current?.TruncateAfter(tick);
+            Frames.FrameRecorder.Current?.TruncateAfter(tick);
             TotalTicks = tick;
             InFuture = false;
             Debug.Log($"[ReplayPlayback] Continuing live play from replay tick {tick}");
@@ -610,6 +611,9 @@ namespace PitHero.Services.Replay
             var recorder = ReplayRecorder.Current;
             if (recorder != null)
                 recorder.IsRecording = true;
+            var frames = Frames.FrameRecorder.Current;
+            if (frames != null)
+                frames.IsRecording = true;
 
             // Every window is closed in replay mode: bring the simulation's pause flags in line, ON
             // THE RECORD, so a later replay of this continued session releases them at the same tick
@@ -684,6 +688,9 @@ namespace PitHero.Services.Replay
                 return false;
             if (!recorder.IsRecording)
                 recorder.IsRecording = true;
+            var frames = Frames.FrameRecorder.Current;
+            if (frames != null && !frames.IsRecording)
+                frames.IsRecording = true;
             return true;
         }
 
