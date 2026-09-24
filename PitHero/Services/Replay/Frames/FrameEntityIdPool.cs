@@ -82,9 +82,12 @@ namespace PitHero.Services.Replay.Frames
         public bool WasSeenThisTick(object owner) => _ids.TryGetValue(owner, out ushort id) && _seenStamp[id] == _stamp;
 
         /// <summary>Ends a tick: releases every id not acquired since <see cref="BeginTick"/>. Returns how many.</summary>
-        public int ReleaseUnseen()
+        public int ReleaseUnseen() => ReleaseUnseen(null);
+
+        /// <summary>Ends a tick, appending each released id to <paramref name="released"/> when given.</summary>
+        public int ReleaseUnseen(List<ushort> released)
         {
-            int released = 0;
+            int count = 0;
             for (int i = _live.Count - 1; i >= 0; i--)
             {
                 ushort id = _live[i];
@@ -93,11 +96,12 @@ namespace PitHero.Services.Replay.Frames
                 _ids.Remove(_owners[id]);
                 _owners[id] = null;
                 _free.Push(id);
+                released?.Add(id);
                 _live[i] = _live[_live.Count - 1];
                 _live.RemoveAt(_live.Count - 1);
-                released++;
+                count++;
             }
-            return released;
+            return count;
         }
 
         /// <summary>Forgets every id.</summary>

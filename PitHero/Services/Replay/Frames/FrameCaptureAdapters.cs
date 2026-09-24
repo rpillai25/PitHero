@@ -37,6 +37,14 @@ namespace PitHero.Services.Replay.Frames
             Sprite,
         }
 
+        /// <summary>Per-composite cache of each layer's last sprite and its id (composites re-emit every layer every tick).</summary>
+        public sealed class CompositeSpriteCache
+        {
+            public const int MaxLayers = 16;
+            public readonly Sprite[] Sprites = new Sprite[MaxLayers];
+            public readonly ushort[] Ids = new ushort[MaxLayers];
+        }
+
         private static readonly HashSet<Type> _warnedTypes = new HashSet<Type>();
 
         /// <summary>Emits the ops for a renderable that is enabled this tick (zero ops = not drawn).</summary>
@@ -44,7 +52,7 @@ namespace PitHero.Services.Replay.Frames
         {
             Sprite cachedSprite = null;
             ushort cachedSpriteId = 0;
-            Capture(rc, Classify(rc), ref w, ctx, ref cachedSprite, ref cachedSpriteId);
+            Capture(rc, Classify(rc), ref w, ctx, ref cachedSprite, ref cachedSpriteId, null);
         }
 
         /// <summary>Decides once how a renderable is captured (the recorder caches the answer per list position).</summary>
@@ -74,7 +82,7 @@ namespace PitHero.Services.Replay.Frames
         /// <paramref name="cachedSpriteId"/> remember the last sprite seen on this renderable so an
         /// unchanged sprite costs no lookup.
         /// </summary>
-        public static void Capture(RenderableComponent rc, Kind kind, ref FrameWriter w, FrameCaptureContext ctx, ref Sprite cachedSprite, ref ushort cachedSpriteId)
+        public static void Capture(RenderableComponent rc, Kind kind, ref FrameWriter w, FrameCaptureContext ctx, ref Sprite cachedSprite, ref ushort cachedSpriteId, CompositeSpriteCache layers)
         {
             // The pause dim is a live overlay: the viewer never dims a replay
             if (rc.RenderLayer == GameConfig.TransparentPauseOverlay)
@@ -91,10 +99,10 @@ namespace PitHero.Services.Replay.Frames
                         CaptureSprite(layerSprite, ref w, ctx, ref cachedSprite, ref cachedSpriteId);
                     return;
                 case Kind.MultiSprite:
-                    CaptureMultiSprite((MultiSpriteAnimator)rc, ref w, ctx);
+                    CaptureMultiSprite((MultiSpriteAnimator)rc, ref w, ctx, layers);
                     return;
                 case Kind.StaticCompositor:
-                    CaptureStaticCompositor((StaticSpriteCompositor)rc, ref w, ctx);
+                    CaptureStaticCompositor((StaticSpriteCompositor)rc, ref w, ctx, layers);
                     return;
                 case Kind.Prototype:
                     CapturePrototype((PrototypeSpriteRenderer)rc, ref w);
@@ -156,8 +164,25 @@ namespace PitHero.Services.Replay.Frames
             w.WriteRect(pos.X, pos.Y, p.Width * scale.X, p.Height * scale.Y, p.Color.PackedValue, flags);
         }
 
+        /// <summary>A layer's sprite id through the per-composite cache (or the context when there is none).</summary>
+        private static ushort LayerSpriteId(Sprite sprite, int layerIndex, FrameCaptureContext ctx, CompositeSpriteCache cache)
+        {
+            if (cache == null || layerIndex >= CompositeSpriteCache.MaxLayers)
+                return ctx.SpriteId(sprite);
+            if (ReferenceEquals(cache.Sprites[layerIndex], sprite))
+                return cache.Ids[layerIndex];
+            ushort id = ctx.SpriteId(sprite);
+            cache.Sprites[layerIndex] = sprite;
+            cache.Ids[layerIndex] = id;
+            return id;
+        }
+
         /// <summary>Composite op for a paperdoll: one layer per composite layer with a sprite.</summary>
         public static void CaptureMultiSprite(MultiSpriteAnimator m, ref FrameWriter w, FrameCaptureContext ctx)
+            => CaptureMultiSprite(m, ref w, ctx, null);
+
+        /// <summary>Composite op for a paperdoll, resolving layer sprite ids through a per-composite cache.</summary>
+        public static void CaptureMultiSprite(MultiSpriteAnimator m, ref FrameWriter w, FrameCaptureContext ctx, CompositeSpriteCache cache)
         {
             int count = 0;
             for (int i = 0; i < m.LayerCount; i++)
@@ -177,13 +202,17 @@ namespace PitHero.Services.Replay.Frames
                 if (layer == null || layer.Sprite == null)
                     continue;
                 var offset = layer.LocalOffset;
-                w.WriteCompositeLayer(ctx.SpriteId(layer.Sprite), offset.X, offset.Y, MultiplyColor(layer.LayerColor.PackedValue, tint),
+                w.WriteCompositeLayer(LayerSpriteId(layer.Sprite, i, ctx, cache), offset.X, offset.Y, MultiplyColor(layer.LayerColor.PackedValue, tint),
                     layer.FlipX ? FrameOpFlags.FlipX : FrameOpFlags.None);
             }
         }
 
         /// <summary>Composite op for a static compositor: one layer per child renderer with a sprite.</summary>
         public static void CaptureStaticCompositor(StaticSpriteCompositor c, ref FrameWriter w, FrameCaptureContext ctx)
+            => CaptureStaticCompositor(c, ref w, ctx, null);
+
+        /// <summary>Composite op for a static compositor, resolving layer sprite ids through a per-composite cache.</summary>
+        public static void CaptureStaticCompositor(StaticSpriteCompositor c, ref FrameWriter w, FrameCaptureContext ctx, CompositeSpriteCache cache)
         {
             int count = 0;
             for (int i = 0; i < c.LayerCount; i++)
@@ -203,7 +232,7 @@ namespace PitHero.Services.Replay.Frames
                 if (layer == null || layer.Sprite == null)
                     continue;
                 var offset = layer.LocalOffset;
-                w.WriteCompositeLayer(ctx.SpriteId(layer.Sprite), offset.X, offset.Y, MultiplyColor(layer.Color.PackedValue, tint),
+                w.WriteCompositeLayer(LayerSpriteId(layer.Sprite, i, ctx, cache), offset.X, offset.Y, MultiplyColor(layer.Color.PackedValue, tint),
                     FrameCaptureContext.SpriteFlags(layer.SpriteEffects, 0));
             }
         }

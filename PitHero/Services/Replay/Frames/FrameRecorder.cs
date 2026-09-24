@@ -59,18 +59,25 @@ namespace PitHero.Services.Replay.Frames
 
         private FrameSidecarIdentity _identity;
         private FrameSessionSidecar _sidecar;
+        /// <summary>
+        /// Per-renderable capture cache, indexed by the entity id the renderable carries in
+        /// <c>RenderableComponent.CaptureSlot</c> (a Nez fork scratch field nothing else reads). The
+        /// renderable list is re-sorted whenever a Y-sort depth changes, so a position-keyed cache
+        /// would miss almost every tick; the id travels with the component instead.
+        /// </summary>
         private struct Slot
         {
             public RenderableComponent Renderable;
-            public ushort Id;
             public FrameCaptureAdapters.Kind Kind;
             public Nez.Textures.Sprite Sprite;
             public ushort SpriteId;
+            public FrameCaptureAdapters.CompositeSpriteCache Layers;
         }
 
         private readonly FrameChunkBuilder _builder = new FrameChunkBuilder(GameConfig.ReplayFrameChunkTicks);
         private readonly FrameEntityIdPool _ids = new FrameEntityIdPool();
-        private Slot[] _slots = new Slot[1024];
+        private readonly Slot[] _slotsById = new Slot[ushort.MaxValue + 1];
+        private readonly System.Collections.Generic.List<ushort> _releasedIds = new System.Collections.Generic.List<ushort>(64);
         private ConsoleSegmentRecord[] _segments = new ConsoleSegmentRecord[32];
         private readonly DecodedFrame _scratchFrame = new DecodedFrame();
         private readonly DecodedChunk _scratchChunk = new DecodedChunk();
@@ -150,7 +157,7 @@ namespace PitHero.Services.Replay.Frames
                 Store.IsSpilled = IsChunkSpilled;
             Context = new FrameCaptureContext(Registry);
             _ids.Clear();
-            Array.Clear(_slots, 0, _slots.Length);
+            Array.Clear(_slotsById, 0, _slotsById.Length);
             IsInitialized = true;
 
             if (keepThroughTick < Store.EndTick)
@@ -268,34 +275,34 @@ namespace PitHero.Services.Replay.Frames
         public void CaptureRenderables(RenderableComponentList list)
         {
             int n = list.Count;
-            if (_slots.Length < n)
-                Array.Resize(ref _slots, Math.Max(n, _slots.Length * 2));
             for (int i = 0; i < n; i++)
             {
                 var rc = list[i] as RenderableComponent;
                 if (rc == null || rc.Entity == null)
                     continue;
-                // Per-position cache: the list order only changes on add/remove, so in the steady state
-                // the id, the capture kind and the last sprite id come from here without any hashing
-                ref var slot = ref _slots[i];
-                ushort id;
-                if (ReferenceEquals(slot.Renderable, rc) && _ids.Touch(slot.Id, rc))
-                {
-                    id = slot.Id;
-                }
-                else
+                // The renderable carries its id: in the steady state the id, the capture kind and the
+                // last sprite ids come from the slot without any hashing. A stale id (another scene's
+                // recorder, or a reused id) fails the reference check and is re-acquired.
+                ushort id = rc.CaptureSlot;
+                if (id == 0 || !ReferenceEquals(_slotsById[id].Renderable, rc) || !_ids.Touch(id, rc))
                 {
                     id = _ids.Acquire(rc);
-                    slot.Renderable = rc;
-                    slot.Id = id;
-                    slot.Kind = FrameCaptureAdapters.Classify(rc);
-                    slot.Sprite = null;
-                    slot.SpriteId = 0;
+                    if (id == 0)
+                        continue;
+                    rc.CaptureSlot = id;
+                    ref var fresh = ref _slotsById[id];
+                    fresh.Renderable = rc;
+                    fresh.Kind = FrameCaptureAdapters.Classify(rc);
+                    fresh.Sprite = null;
+                    fresh.SpriteId = 0;
+                    if (fresh.Kind == FrameCaptureAdapters.Kind.MultiSprite || fresh.Kind == FrameCaptureAdapters.Kind.StaticCompositor)
+                        fresh.Layers ??= new FrameCaptureAdapters.CompositeSpriteCache();
                 }
-                if (id == 0 || !rc.Enabled)
+                if (!rc.Enabled)
                     continue;
+                ref var slot = ref _slotsById[id];
                 var w = _builder.BeginEntity();
-                FrameCaptureAdapters.Capture(rc, slot.Kind, ref w, Context, ref slot.Sprite, ref slot.SpriteId);
+                FrameCaptureAdapters.Capture(rc, slot.Kind, ref w, Context, ref slot.Sprite, ref slot.SpriteId, slot.Layers);
                 _builder.EndEntity(id, ref w);
             }
         }
@@ -351,7 +358,15 @@ namespace PitHero.Services.Replay.Frames
         /// <summary>Closes the open tick with its HUD record; finishes the chunk when it is full.</summary>
         public void EndTickCapture(in HudRecord hud)
         {
-            _ids.ReleaseUnseen();
+            _releasedIds.Clear();
+            _ids.ReleaseUnseen(_releasedIds);
+            for (int i = 0; i < _releasedIds.Count; i++)
+            {
+                // Drop the reference so a removed component can be collected (its cache object is kept for reuse)
+                ref var slot = ref _slotsById[_releasedIds[i]];
+                slot.Renderable = null;
+                slot.Sprite = null;
+            }
             _builder.EndTick(hud);
             _builderDirty = true;
             if (_builder.IsFull)
