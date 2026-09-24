@@ -398,10 +398,23 @@ namespace PitHero.Tests
         {
             var builder = new FrameChunkBuilder(4);
             Assert.IsNull(builder.Finish((SpriteKeyRegistry)null), "nothing captured");
+            Assert.ThrowsException<InvalidOperationException>(() => builder.BeginEntity(), "outside a tick");
             builder.BeginTick(0);
             Assert.ThrowsException<InvalidOperationException>(() => builder.BeginTick(1));
             builder.AddEntity(5, new byte[] { 1, 2 });
             Assert.ThrowsException<ArgumentException>(() => builder.AddEntity(5, new byte[] { 1, 2 }), "duplicate id in one tick");
+            // Direct emission into the arena: an empty write records nothing, a real one records the entity
+            var direct = builder.BeginEntity();
+            builder.EndEntity(6, ref direct);
+            direct = builder.BeginEntity();
+            direct.WriteSprite(1, 2, 3, 0f, 0, 0, 0);
+            builder.EndEntity(6, ref direct);
+            Assert.ThrowsException<ArgumentException>(() =>
+            {
+                var again = builder.BeginEntity();
+                again.WriteU8(1);
+                builder.EndEntity(6, ref again);
+            }, "duplicate id through the direct path");
             Assert.ThrowsException<InvalidOperationException>(() => builder.Finish((SpriteKeyRegistry)null), "inside a tick");
             builder.EndTick(default);
             Assert.ThrowsException<ArgumentException>(() => builder.BeginTick(5), "ticks must be consecutive");
@@ -417,6 +430,13 @@ namespace PitHero.Tests
             var chunk = FrameChunkCodec.Compress(builder.Finish((SpriteKeyRegistry)null));
             Assert.AreEqual(4, chunk.TickCount);
             Assert.AreEqual(4, builder.NextTick);
+            var decoded = FrameChunkCodec.Decode(chunk);
+            var frame = new DecodedFrame();
+            decoded.DecodeFrame(0, frame);
+            Assert.AreEqual(2, frame.LiveCount, "entities 5 (copied) and 6 (direct) in the base frame");
+            Assert.IsTrue(frame.TryGetEntity(6, out var e6) && e6.Length == 1 + FrameOpCode.SpritePayload);
+            decoded.DecodeFrame(3, frame);
+            Assert.AreEqual(0, frame.LiveCount, "both tombstoned at tick 1");
             builder.Reset();
             Assert.AreEqual(-1, builder.NextTick);
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => new FrameChunkBuilder(0));

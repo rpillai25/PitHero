@@ -71,7 +71,6 @@ namespace PitHero.Services.Replay.Frames
         private readonly FrameChunkBuilder _builder = new FrameChunkBuilder(GameConfig.ReplayFrameChunkTicks);
         private readonly FrameEntityIdPool _ids = new FrameEntityIdPool();
         private Slot[] _slots = new Slot[1024];
-        private byte[] _ops = new byte[4096];
         private ConsoleSegmentRecord[] _segments = new ConsoleSegmentRecord[32];
         private readonly DecodedFrame _scratchFrame = new DecodedFrame();
         private readonly DecodedChunk _scratchChunk = new DecodedChunk();
@@ -261,7 +260,13 @@ namespace PitHero.Services.Replay.Frames
         {
             if (scene == null || !BeginTickCapture(tick))
                 return;
-            var list = scene.RenderableComponents;
+            CaptureRenderables(scene.RenderableComponents);
+            EndTickCapture(BuildHud(scene));
+        }
+
+        /// <summary>The walk over the scene's renderables for the open tick (the hot path; per-position cached).</summary>
+        public void CaptureRenderables(RenderableComponentList list)
+        {
             int n = list.Count;
             if (_slots.Length < n)
                 Array.Resize(ref _slots, Math.Max(n, _slots.Length * 2));
@@ -289,13 +294,10 @@ namespace PitHero.Services.Replay.Frames
                 }
                 if (id == 0 || !rc.Enabled)
                     continue;
-                var w = new FrameWriter(_ops);
+                var w = _builder.BeginEntity();
                 FrameCaptureAdapters.Capture(rc, slot.Kind, ref w, Context, ref slot.Sprite, ref slot.SpriteId);
-                _ops = w.Buffer;
-                if (w.Length > 0)
-                    _builder.AddEntity(id, _ops, 0, w.Length);
+                _builder.EndEntity(id, ref w);
             }
-            EndTickCapture(BuildHud(scene));
         }
 
         /// <summary>
@@ -341,11 +343,9 @@ namespace PitHero.Services.Replay.Frames
             ushort id = _ids.Acquire(rc);
             if (id == 0 || !rc.Enabled)
                 return;
-            var w = new FrameWriter(_ops);
+            var w = _builder.BeginEntity();
             FrameCaptureAdapters.Capture(rc, ref w, Context);
-            _ops = w.Buffer;
-            if (w.Length > 0)
-                _builder.AddEntity(id, _ops, 0, w.Length);
+            _builder.EndEntity(id, ref w);
         }
 
         /// <summary>Closes the open tick with its HUD record; finishes the chunk when it is full.</summary>
