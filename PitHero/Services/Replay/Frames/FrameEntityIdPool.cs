@@ -66,6 +66,18 @@ namespace PitHero.Services.Replay.Frames
             return id;
         }
 
+        /// <summary>
+        /// Marks an id seen this tick without a dictionary lookup, when the caller already knows the id
+        /// (a per-position cache). False when the id is not held by <paramref name="owner"/> any more.
+        /// </summary>
+        public bool Touch(ushort id, object owner)
+        {
+            if (id == 0 || !ReferenceEquals(_owners[id], owner))
+                return false;
+            _seenStamp[id] = _stamp;
+            return true;
+        }
+
         /// <summary>True when the renderable was acquired during the current tick.</summary>
         public bool WasSeenThisTick(object owner) => _ids.TryGetValue(owner, out ushort id) && _seenStamp[id] == _stamp;
 

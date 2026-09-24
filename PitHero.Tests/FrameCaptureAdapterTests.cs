@@ -112,6 +112,12 @@ namespace PitHero.Tests
             hud.SetRenderLayer(GameConfig.TransparentPauseOverlay);
             FrameCaptureAdapters.Capture(hud, ref w, ctx);
             Assert.AreEqual(0, w.Length);
+
+            // Classification is decided once per renderable
+            Assert.AreEqual(FrameCaptureAdapters.Kind.Capturable, FrameCaptureAdapters.Classify(text));
+            Assert.AreEqual(FrameCaptureAdapters.Kind.Capturable, FrameCaptureAdapters.Classify(hud));
+            Assert.AreEqual(FrameCaptureAdapters.Kind.Sprite, FrameCaptureAdapters.Classify(new YSortSpriteRenderer()));
+            Assert.AreEqual(FrameCaptureAdapters.Kind.CompositeLayer, FrameCaptureAdapters.Classify(new HeroHeadAnimationComponent(Color.White)));
         }
     }
 }

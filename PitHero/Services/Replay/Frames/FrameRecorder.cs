@@ -59,8 +59,18 @@ namespace PitHero.Services.Replay.Frames
 
         private FrameSidecarIdentity _identity;
         private FrameSessionSidecar _sidecar;
+        private struct Slot
+        {
+            public RenderableComponent Renderable;
+            public ushort Id;
+            public FrameCaptureAdapters.Kind Kind;
+            public Nez.Textures.Sprite Sprite;
+            public ushort SpriteId;
+        }
+
         private readonly FrameChunkBuilder _builder = new FrameChunkBuilder(GameConfig.ReplayFrameChunkTicks);
         private readonly FrameEntityIdPool _ids = new FrameEntityIdPool();
+        private Slot[] _slots = new Slot[1024];
         private byte[] _ops = new byte[4096];
         private ConsoleSegmentRecord[] _segments = new ConsoleSegmentRecord[32];
         private readonly DecodedFrame _scratchFrame = new DecodedFrame();
@@ -141,6 +151,7 @@ namespace PitHero.Services.Replay.Frames
                 Store.IsSpilled = IsChunkSpilled;
             Context = new FrameCaptureContext(Registry);
             _ids.Clear();
+            Array.Clear(_slots, 0, _slots.Length);
             IsInitialized = true;
 
             if (keepThroughTick < Store.EndTick)
@@ -252,8 +263,38 @@ namespace PitHero.Services.Replay.Frames
                 return;
             var list = scene.RenderableComponents;
             int n = list.Count;
+            if (_slots.Length < n)
+                Array.Resize(ref _slots, Math.Max(n, _slots.Length * 2));
             for (int i = 0; i < n; i++)
-                CaptureRenderable(list[i] as RenderableComponent);
+            {
+                var rc = list[i] as RenderableComponent;
+                if (rc == null || rc.Entity == null)
+                    continue;
+                // Per-position cache: the list order only changes on add/remove, so in the steady state
+                // the id, the capture kind and the last sprite id come from here without any hashing
+                ref var slot = ref _slots[i];
+                ushort id;
+                if (ReferenceEquals(slot.Renderable, rc) && _ids.Touch(slot.Id, rc))
+                {
+                    id = slot.Id;
+                }
+                else
+                {
+                    id = _ids.Acquire(rc);
+                    slot.Renderable = rc;
+                    slot.Id = id;
+                    slot.Kind = FrameCaptureAdapters.Classify(rc);
+                    slot.Sprite = null;
+                    slot.SpriteId = 0;
+                }
+                if (id == 0 || !rc.Enabled)
+                    continue;
+                var w = new FrameWriter(_ops);
+                FrameCaptureAdapters.Capture(rc, slot.Kind, ref w, Context, ref slot.Sprite, ref slot.SpriteId);
+                _ops = w.Buffer;
+                if (w.Length > 0)
+                    _builder.AddEntity(id, _ops, 0, w.Length);
+            }
             EndTickCapture(BuildHud(scene));
         }
 

@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Particles;
 using Nez.Sprites;
+using Nez.Textures;
 using Nez.Tiled;
 using PitHero.ECS.Components;
 
@@ -21,46 +22,89 @@ namespace PitHero.Services.Replay.Frames
     /// </summary>
     public static class FrameCaptureAdapters
     {
+        /// <summary>How a renderable is captured, decided once per renderable by <see cref="Classify"/>.</summary>
+        public enum Kind : byte
+        {
+            /// <summary>Never captured (live-only, tile map, particles, UI canvas, unknown type).</summary>
+            Skip = 0,
+            /// <summary>Implements IFrameCapturable.</summary>
+            Capturable,
+            /// <summary>A composite layer: skipped while OwnedByComposite, else a stock sprite.</summary>
+            CompositeLayer,
+            MultiSprite,
+            StaticCompositor,
+            Prototype,
+            Sprite,
+        }
+
         private static readonly HashSet<Type> _warnedTypes = new HashSet<Type>();
 
         /// <summary>Emits the ops for a renderable that is enabled this tick (zero ops = not drawn).</summary>
         public static void Capture(RenderableComponent rc, ref FrameWriter w, FrameCaptureContext ctx)
         {
+            Sprite cachedSprite = null;
+            ushort cachedSpriteId = 0;
+            Capture(rc, Classify(rc), ref w, ctx, ref cachedSprite, ref cachedSpriteId);
+        }
+
+        /// <summary>Decides once how a renderable is captured (the recorder caches the answer per list position).</summary>
+        public static Kind Classify(RenderableComponent rc)
+        {
             if (rc is ILiveOnlyRenderable)
-                return;
+                return Kind.Skip;
+            if (rc is ICompositeLayer)
+                return Kind.CompositeLayer;
+            if (rc is IFrameCapturable)
+                return Kind.Capturable;
+            if (rc is MultiSpriteAnimator)
+                return Kind.MultiSprite;
+            if (rc is StaticSpriteCompositor)
+                return Kind.StaticCompositor;
+            if (rc is PrototypeSpriteRenderer)
+                return Kind.Prototype;
+            if (rc is SpriteRenderer)
+                return Kind.Sprite;
+            if (!(rc is TiledMapRenderer || rc is ParticleEmitter || rc is UICanvas))
+                WarnOnce(rc);
+            return Kind.Skip;
+        }
+
+        /// <summary>
+        /// Emits the ops for a renderable of a known kind. <paramref name="cachedSprite"/> /
+        /// <paramref name="cachedSpriteId"/> remember the last sprite seen on this renderable so an
+        /// unchanged sprite costs no lookup.
+        /// </summary>
+        public static void Capture(RenderableComponent rc, Kind kind, ref FrameWriter w, FrameCaptureContext ctx, ref Sprite cachedSprite, ref ushort cachedSpriteId)
+        {
             // The pause dim is a live overlay: the viewer never dims a replay
             if (rc.RenderLayer == GameConfig.TransparentPauseOverlay)
                 return;
-            if (rc is ICompositeLayer layer && layer.OwnedByComposite)
-                return;
-            if (rc is IFrameCapturable capturable)
+            switch (kind)
             {
-                capturable.CaptureFrame(ref w, ctx);
-                return;
+                case Kind.Capturable:
+                    ((IFrameCapturable)rc).CaptureFrame(ref w, ctx);
+                    return;
+                case Kind.CompositeLayer:
+                    if (((ICompositeLayer)rc).OwnedByComposite)
+                        return;
+                    if (rc is SpriteRenderer layerSprite)
+                        CaptureSprite(layerSprite, ref w, ctx, ref cachedSprite, ref cachedSpriteId);
+                    return;
+                case Kind.MultiSprite:
+                    CaptureMultiSprite((MultiSpriteAnimator)rc, ref w, ctx);
+                    return;
+                case Kind.StaticCompositor:
+                    CaptureStaticCompositor((StaticSpriteCompositor)rc, ref w, ctx);
+                    return;
+                case Kind.Prototype:
+                    CapturePrototype((PrototypeSpriteRenderer)rc, ref w);
+                    return;
+                case Kind.Sprite:
+                    CaptureSprite((SpriteRenderer)rc, ref w, ctx, ref cachedSprite, ref cachedSpriteId);
+                    return;
+                default:
+                    return;
             }
-            if (rc is MultiSpriteAnimator multi)
-            {
-                CaptureMultiSprite(multi, ref w, ctx);
-                return;
-            }
-            if (rc is StaticSpriteCompositor compositor)
-            {
-                CaptureStaticCompositor(compositor, ref w, ctx);
-                return;
-            }
-            if (rc is PrototypeSpriteRenderer prototype)
-            {
-                CapturePrototype(prototype, ref w);
-                return;
-            }
-            if (rc is SpriteRenderer sprite)
-            {
-                CaptureSprite(sprite, ref w, ctx);
-                return;
-            }
-            if (rc is TiledMapRenderer || rc is ParticleEmitter || rc is UICanvas)
-                return;
-            WarnOnce(rc);
         }
 
         private static void WarnOnce(RenderableComponent rc)
@@ -73,10 +117,28 @@ namespace PitHero.Services.Replay.Frames
         /// <summary>Sprite op for a stock renderer from its live values.</summary>
         public static void CaptureSprite(SpriteRenderer sr, ref FrameWriter w, FrameCaptureContext ctx)
         {
+            Sprite cachedSprite = null;
+            ushort cachedSpriteId = 0;
+            CaptureSprite(sr, ref w, ctx, ref cachedSprite, ref cachedSpriteId);
+        }
+
+        /// <summary>Sprite op for a stock renderer, resolving the sprite id through a per-renderable cache.</summary>
+        public static void CaptureSprite(SpriteRenderer sr, ref FrameWriter w, FrameCaptureContext ctx, ref Sprite cachedSprite, ref ushort cachedSpriteId)
+        {
             var sprite = sr.Sprite;
             if (sprite == null)
                 return;
-            ushort id = ctx.SpriteId(sprite);
+            ushort id;
+            if (ReferenceEquals(sprite, cachedSprite))
+            {
+                id = cachedSpriteId;
+            }
+            else
+            {
+                id = ctx.SpriteId(sprite);
+                cachedSprite = sprite;
+                cachedSpriteId = id;
+            }
             if (id == SpriteKeyRegistry.None)
                 return;
             var pos = sr.Entity.Transform.Position + sr.LocalOffset;

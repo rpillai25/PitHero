@@ -23,6 +23,9 @@ namespace PitHero.Tests
             Assert.AreEqual(2, pool.LiveCount);
 
             pool.BeginTick();
+            Assert.IsTrue(pool.Touch(ia, a), "cached id marks the owner seen without a lookup");
+            Assert.IsFalse(pool.Touch(ia, c), "cached id refused for another owner");
+            Assert.IsFalse(pool.Touch(0, a));
             Assert.AreEqual(ia, pool.Acquire(a), "same object, same id");
             Assert.AreEqual((ushort)3, pool.Acquire(c));
             Assert.IsFalse(pool.WasSeenThisTick(b));
