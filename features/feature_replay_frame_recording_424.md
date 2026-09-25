@@ -237,6 +237,31 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
 **Exit** from FrameView: remove the filter, unsuspend the simulation, clear `RejectLiveEnqueues`,
 `ExitReplayMode`, restore the window size preference. No re-simulation. Instant.
 
+**As shipped in #428** (`ReplayPlaybackMode`, `ReplayFrameViewer`, `ReplayFrameCursor`,
+`RecordedFrameRenderer` + `RecordedFrameScreenRenderer`, `ShadowTileGrid` + `ShadowTileLayers`,
+`FrameSpriteResolver`, `RecordedConsoleLog`):
+
+- The filter keeps only `UICanvas` and `GraphicalHUD` on the stock renderers; the world pass draws the
+  live-only *world* renderables (tree bands, clouds) itself, merged into the recorded order, so tree
+  bands stay behind actors. The overlay ops (Text/Rect without a layer) are sorted as layer 0, after
+  every sprite, the position of the live overlays (bouncy digits, HP bars, outlines).
+- Sprite ops carry a new flag `Graded` (128) when the live renderable draws through the day-night
+  colour-grading material (pit walls, placed buildings); the viewer switches the batch material for them
+  and for the Base/Detail/Top layers, as the live pass does. Same format version.
+- The console feed does not inflate chunks: the recorder keeps every console line in memory
+  (`RecordedConsoleLog`, handed off and truncated with the stream). #429 rebuilds it from the sidecar's
+  console events at open.
+- Entering FrameView calls `FrameRecorder.FlushPending()` so the ticks still in the builder become
+  frames (the partial chunk is written and reloaded, as a Time Travel truncation does).
+- The future from the current session: the viewer's *passthrough* hands the picture to the live scene
+  while the simulation runs at the cursor; a backward scrub flushes the builder and shows frames.
+- Time Travel Here freezes a private copy of the frame (`DecodedFrame.CopyFrom`) so the stream
+  truncation of the rebuild cannot blank it; the frozen viewer is re-attached to the trampoline scene
+  (camera set from the captured view) and to the rebuilt scene; `Seek` is locked while it runs.
+- `ReplayFrameCaptureEveryNTicks` (30 Hz capture) was **not** built: the measured 36 MB/h at 60 Hz is
+  inside the disk budget and the viewer would need cursor-to-frame mapping for it. Left for #431 if the
+  owner wants the space back.
+
 ### 3.3 L3 — resume paths (the only remaining O(T) work)
 
 | Action | What happens |

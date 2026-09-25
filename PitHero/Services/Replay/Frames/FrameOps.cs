@@ -53,6 +53,11 @@ namespace PitHero.Services.Replay.Frames
         public const byte ConstantScreenSize = 32;
         /// <summary>Text is centered vertically on its anchor (Centered alone centers horizontally).</summary>
         public const byte CenteredY = 64;
+        /// <summary>
+        /// Sprite / composite drawn through the day-night colour-grading material (terrain-attached
+        /// sprites: pit walls, placed buildings); the viewer draws it with the live material.
+        /// </summary>
+        public const byte Graded = 128;
     }
 
     /// <summary>Fonts a Text op can name; the viewer maps them to its own loaded fonts.</summary>

@@ -187,6 +187,35 @@ one re-enumerates the folder, so the next most recent slides in.
 
 ## Playback (`ReplayPlaybackService`, global)
 
+The service has two **modes** (`ReplayPlaybackMode`, issue #428):
+
+- **FrameView** — *Replay Current Session* when the session's frame stream (`FrameRecorder`, issue
+  #424) is complete. The live `MainGameScene` is never torn down: its simulation is suspended
+  (`Core.SimulationSuspended`), `PlayerCommandService.RejectLiveEnqueues` is set, the UI enters replay
+  mode, and a `ReplayFrameViewer` installs the Nez fork's `Scene.RenderableFilter` (only the
+  `UICanvas` and the `GraphicalHUD`s keep drawing live) plus two renderers: `RecordedFrameRenderer`
+  (world pass: shadow tile layers rebuilt from the tile keyframes + events, the live Top layer, the
+  live-only tree bands and clouds, and the frame's sprite/composite ops, all merged in
+  `RenderableComparer` order, then the overlay ops) and `RecordedFrameScreenRenderer` (screen pass:
+  speech bubbles, screen-space sprites). The playhead is `ReplayFrameCursor` (wall time × speed × 60,
+  fractional carry, reverse-capable, pause spans skipped); `CurrentTick` is the cursor. Seeking either
+  way is a cursor move: the scrubber never says "Seeking" inside the recording. The HUD, pit-level,
+  gold and clock labels are fed from the recorded `HudRecord` (`MainGameScene.ApplyRecordedHud`), the
+  event console from the recorder's `RecordedConsoleLog` (`EventConsolePanel.ShowRecorded` on a jump,
+  appends while playing). **Exit** removes the viewer and un-suspends: instant, the world is exactly as
+  it was. Dragging past the session end (Sphere of Foresight) hands the playhead to the simulation:
+  the viewer goes into *passthrough* (live picture), the sim runs on recording commands and frames,
+  and a backward scrub inside the future is FrameView over those frames (the recorder's builder is
+  flushed so the newest ticks are in the store). Leaving the future without committing rebuilds to the
+  session end as before, behind the frozen frame of the session end. **Time Travel Here** freezes the
+  current frame (`ReplayFrameViewer.Freeze` keeps a private copy that survives the stream truncation),
+  switches to Simulated, rebuilds the world to the cursor with the frozen frame drawn over both the
+  trampoline scene and the rebuilding scene while the scrubber shows the seek progress, then commits
+  (`CommitHere`: both recorders truncated). A rebuild that diverged is reported once on the console.
+  Kill switches: `ReplayFrameCaptureEnabled` and `ReplayFrameViewEnabled`; either off, or a gap in the
+  stream, falls back to Simulated. Saved replays stay Simulated until issue #429.
+- **Simulated** — everything below: saved replays, and every resume path.
+
 `Start(data, isCurrentSession)` sets aside the live recording (`_returnSession`), restores the start
 blob, sets a `ReplaySessionBootstrap` and swaps to `ReplayBootScene`, a trampoline whose `Begin`
 constructs `MainGameScene.CreateForGameplay`. The old scene must fully unload first because services
@@ -480,14 +509,20 @@ with the correct working directory (content paths are relative to it).
 `ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySeekQuietLogging`,
 scrubber size constants, `ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`,
 `ReplaySpeechSeedSalt`, `ReplayFutureSimulationMaxTicks`, `ReplayFutureTrackColor`; artifact prices,
-grid size and `SystemSaveFileName` in the "Artifacts" block.
+grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and viewer (issue #424):
+`ReplayFrameCaptureEnabled`, `ReplayFrameViewEnabled`, `ReplayFrameChunkTicks`,
+`ReplayTileKeyframeIntervalChunks`, `ReplayFrameMemoryBudgetBytes`, `ReplayFrameFormatVersion`,
+`ReplayFrameViewCullMarginPixels`, the session-file and stats-log names.
 
 ## Tests
 
 `FixedStepSchedulerTests`, `SeedableRandomTests`, `VirtualSimSeedableRandomTests`,
 `PlayerCommandServiceTests`, `ReplayDataTests`, `ReplayRecorderTruncateTests`,
 `ReplayPauseSpansTests`, `ReplayTimeFormatterTests`, `ShuffleBagResetTests`, `ArtifactServiceTests`,
-`FastListStableSortTests` (update-order stability), `QuietLogHandlerTests` (log binding), plus the
+`FastListStableSortTests` (update-order stability), `QuietLogHandlerTests` (log binding), the frame
+stream suites (`FrameOps/ChunkCodec/Store/Sidecar/Recorder/CaptureAdapter/CaptureCoverage/SizeBudget`
+tests) and the viewer's `ReplayFrameViewerTests` (cursor), `ShadowTileLayersTests` (keyframe + events
+at arbitrary ticks) and `RecordedConsoleLogTests`, plus the
 `SaveData_V32_HeroId` / `SaveData_V31_File_DerivesStableLegacyHeroId` layouts. The existing same-seed
 determinism suites (`BattleEngineTests`, `VirtualBalanceTraversalTests`) guard the RNG call-order
 contract. There is no headless end-to-end replay test; the live check is: record a session that

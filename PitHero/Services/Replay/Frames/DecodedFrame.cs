@@ -75,6 +75,22 @@ namespace PitHero.Services.Replay.Frames
             return true;
         }
 
+        /// <summary>Makes this frame an independent copy of <paramref name="other"/> (a frozen frame the store may overwrite).</summary>
+        public void CopyFrom(DecodedFrame other)
+        {
+            Clear();
+            if (other == null)
+                return;
+            for (int i = 0; i < other._slotCount; i++)
+            {
+                if (!other.TryGetSlot(i, out var e))
+                    continue;
+                Upsert(e.Id, other._ops, e.Offset, e.Length);
+            }
+            Hud = other.Hud;
+            Tick = other.Tick;
+        }
+
         internal void Clear()
         {
             for (int i = 0; i < _slotCount; i++)

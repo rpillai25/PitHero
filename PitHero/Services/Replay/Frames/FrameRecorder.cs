@@ -36,6 +36,7 @@ namespace PitHero.Services.Replay.Frames
             public FrameStore Store;
             public SpriteKeyRegistry Registry;
             public FrameSessionSidecar Sidecar;
+            public RecordedConsoleLog ConsoleLog;
         }
 
         private static Handoff _pendingHandoff;
@@ -50,6 +51,8 @@ namespace PitHero.Services.Replay.Frames
         public FrameStore Store { get; private set; }
         public SpriteKeyRegistry Registry { get; private set; }
         public FrameCaptureContext Context { get; private set; }
+        /// <summary>Every console line of the session in tick order (the viewer's console feed).</summary>
+        public RecordedConsoleLog ConsoleLog { get; private set; }
         /// <summary>The session file, or null when capture is memory-only.</summary>
         public string SessionFilePath => _sidecar?.Path;
         /// <summary>Ticks captured by this recorder instance.</summary>
@@ -129,6 +132,7 @@ namespace PitHero.Services.Replay.Frames
                     Store = handoff.Store;
                     Registry = handoff.Registry;
                     _sidecar = handoff.Sidecar;
+                    ConsoleLog = handoff.ConsoleLog;
                     adopted = true;
                 }
                 else
@@ -143,6 +147,7 @@ namespace PitHero.Services.Replay.Frames
             {
                 Registry = new SpriteKeyRegistry();
                 Store = new FrameStore(ChunkTicks, GameConfig.ReplayFrameMemoryBudgetBytes);
+                ConsoleLog = new RecordedConsoleLog();
                 if (!string.IsNullOrEmpty(directory))
                 {
                     string path = Path.Combine(directory, GameConfig.ReplayFrameSessionFilePrefix + recordedAtUtcTicks + GameConfig.ReplayFrameFileExtension);
@@ -156,6 +161,7 @@ namespace PitHero.Services.Replay.Frames
             if (_sidecar != null)
                 Store.IsSpilled = IsChunkSpilled;
             Context = new FrameCaptureContext(Registry);
+            Context.GradedMaterial = Service<PitHero.Rendering.ColorGradingController>()?.Material;
             _ids.Clear();
             Array.Clear(_slotsById, 0, _slotsById.Length);
             IsInitialized = true;
@@ -164,6 +170,7 @@ namespace PitHero.Services.Replay.Frames
                 TruncateStream(keepThroughTick);
             else
                 ResumeBuilderFromStore(fileHasLastChunk: true);
+            ConsoleLog.TruncateAfter(Store.EndTick);
 
             _events = Service<GameEventService>();
             if (_events != null)
@@ -229,17 +236,29 @@ namespace PitHero.Services.Replay.Frames
             _sidecar?.Drain(Store);
             if (handoffToNextScene)
             {
-                _pendingHandoff = new Handoff { Identity = _identity, Store = Store, Registry = Registry, Sidecar = _sidecar };
+                _pendingHandoff = new Handoff { Identity = _identity, Store = Store, Registry = Registry, Sidecar = _sidecar, ConsoleLog = ConsoleLog };
             }
             else
             {
                 _sidecar?.Finish(Store, Store.EndTick + 1);
                 Store.Clear();
+                ConsoleLog.Clear();
             }
             _sidecar = null;
             Store = null;
             Registry = null;
             Context = null;
+            ConsoleLog = null;
+        }
+
+        /// <summary>
+        /// Attaches the scene's colour-grading material after the map is loaded (the recorder is
+        /// created before it): sprites drawing through it are flagged for the viewer.
+        /// </summary>
+        public void SetGradedMaterial(Nez.Material material)
+        {
+            if (Context != null)
+                Context.GradedMaterial = material;
         }
 
         /// <summary>Drops a stream left behind by a scene that never got a successor (tests, aborted rebuilds).</summary>
@@ -427,6 +446,20 @@ namespace PitHero.Services.Replay.Frames
         }
 
         /// <summary>
+        /// Moves every captured tick into the store now (the in-progress chunk is finished, written and
+        /// reloaded so recording continues it): the frame viewer calls this when the player scrubs back
+        /// from the live simulation, so the ticks still in the builder can be shown at once.
+        /// </summary>
+        public void FlushPending()
+        {
+            if (!IsInitialized || _builder.InTick || !_builderDirty || _builder.IsEmpty)
+                return;
+            FinishChunk();
+            _sidecar?.Drain(Store);
+            ResumeBuilderFromStore(fileHasLastChunk: true);
+        }
+
+        /// <summary>
         /// Drops every frame after <paramref name="tick"/> (Time Travel), exactly as the command
         /// recorder drops its records, and continues the chunk that contains the tick.
         /// </summary>
@@ -439,6 +472,7 @@ namespace PitHero.Services.Replay.Frames
             if (tick >= Store.EndTick)
                 return;
             TruncateStream(tick);
+            ConsoleLog.TruncateAfter(tick);
         }
 
         private void TruncateStream(long tick)
@@ -593,6 +627,7 @@ namespace PitHero.Services.Replay.Frames
                 return;
             if (!EventTickInChunk(tick))
                 return;
+            ConsoleLog.Add(tick, segments);
             int count = Math.Min(segments.Length, byte.MaxValue);
             if (_segments.Length < count)
                 _segments = new ConsoleSegmentRecord[Math.Max(count, _segments.Length * 2)];

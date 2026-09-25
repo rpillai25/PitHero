@@ -25,6 +25,11 @@ namespace PitHero.Services.Replay.Frames
 
         /// <summary>The table the ids point into.</summary>
         public SpriteKeyRegistry Registry => _registry;
+        /// <summary>
+        /// The scene's day-night colour-grading material (null headless). A renderable drawing through
+        /// it gets <see cref="FrameOpFlags.Graded"/> so the viewer applies the same material.
+        /// </summary>
+        public Nez.Material GradedMaterial;
         /// <summary>Distinct sprite references resolved so far.</summary>
         public int CachedSpriteCount => _spriteIds.Count;
 
@@ -82,6 +87,13 @@ namespace PitHero.Services.Replay.Frames
             if ((effects & SpriteEffects.FlipVertically) != 0) flags |= FrameOpFlags.FlipY;
             if (IsScreenSpaceLayer(renderLayer)) flags |= FrameOpFlags.ScreenSpace;
             return flags;
+        }
+
+        /// <summary><see cref="FrameOpFlags.Graded"/> when the renderable draws through the grading material.</summary>
+        public byte GradedFlag(RenderableComponent rc)
+        {
+            var graded = GradedMaterial;
+            return graded != null && ReferenceEquals(rc.Material, graded) ? FrameOpFlags.Graded : FrameOpFlags.None;
         }
     }
 }
