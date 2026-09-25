@@ -58,7 +58,10 @@ namespace PitHero.Rendering
                     Properties = live.Properties,
                     Width = live.Width,
                     Height = live.Height,
-                    Grid = (uint[])live.Grid.Clone(),
+                    // Empty on purpose: the first sync writes every cell, which is what creates the
+                    // copy's TmxLayerTile entries (a cloned grid would skip the cells that equal the
+                    // live map and leave them without a tile to draw)
+                    Grid = new uint[live.Grid.Length],
                     Tiles = new Dictionary<uint, TmxLayerTile>(64),
                 };
                 _layers[i] = copy;
