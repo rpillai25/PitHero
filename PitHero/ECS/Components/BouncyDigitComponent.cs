@@ -13,16 +13,32 @@ namespace PitHero.ECS.Components
         /// <summary>Replay frame: one constant-screen-size Text op per digit, offset in screen pixels from the world anchor.</summary>
         public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
         {
+            // The spacing is what Render measures from the current HUD font: measured here too (read-only,
+            // no cache write) because a capture can run before this component's first Render, and the
+            // recorded default (6 px) drew the digits on top of each other in the viewer
+            var scene = Entity.Scene as PitHero.ECS.Scenes.MainGameScene;
+            var hudFont = scene?.GetHudFontForCurrentMode();
+            if (hudFont == null)
+                return;
+            float spacing = ReferenceEquals(hudFont, _cachedFont) ? _digitSpacing : MeasureSpacing(hudFont);
+            byte fontId = scene.HudFrameFontId;
             var worldPos = Entity.Position;
             for (int i = 0; i < 4; i++)
             {
                 if (string.IsNullOrEmpty(_digits[i]))
                     continue;
-                float dx = _digitSpacing * 3f - i * _digitSpacing;
+                float dx = spacing * 3f - i * spacing;
                 float dy = -_digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)] * 2f;
                 w.WriteText(ctx.StringId(_digits[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f,
-                    Services.Replay.Frames.FrameFontId.Hud, Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, 0, Services.Replay.Frames.FrameOpCode.AllChars);
+                    fontId, Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, 0, Services.Replay.Frames.FrameOpCode.AllChars);
             }
+        }
+
+        /// <summary>Screen-space pixels between digits for a font (the width of "0").</summary>
+        private static float MeasureSpacing(BitmapFont font)
+        {
+            var measure = font.MeasureString("0");
+            return measure.X > 0 ? measure.X : 6f;
         }
 
         int[] _digitTable ={
@@ -128,8 +144,7 @@ namespace PitHero.ECS.Components
             // Recalculate spacing only if font instance changed
             if (!ReferenceEquals(hudFont, _cachedFont))
             {
-                var measure = hudFont.MeasureString("0");
-                _digitSpacing = measure.X > 0 ? measure.X : 6f; // screen-space pixels between digits at default scale
+                _digitSpacing = MeasureSpacing(hudFont); // screen-space pixels between digits at default scale
                 _cachedFont = hudFont;
             }
 

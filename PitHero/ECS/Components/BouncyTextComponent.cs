@@ -14,16 +14,31 @@ namespace PitHero.ECS.Components
         /// <summary>Replay frame: one constant-screen-size Text op per character, offset in screen pixels from the world anchor.</summary>
         public void CaptureFrame(ref FrameWriter w, FrameCaptureContext ctx)
         {
+            // Spacing measured from the current HUD font as Render does (read-only): a capture can run
+            // before the first Render, and the default spacing overlapped the letters in the viewer
+            var scene = Entity.Scene as PitHero.ECS.Scenes.MainGameScene;
+            var hudFont = scene?.GetHudFontForCurrentMode();
+            if (hudFont == null)
+                return;
+            float spacing = ReferenceEquals(hudFont, _cachedFont) ? _charSpacing : MeasureSpacing(hudFont);
+            byte fontId = scene.HudFrameFontId;
             var worldPos = Entity.Position;
             for (int i = 0; i < 4; i++)
             {
                 if (string.IsNullOrEmpty(_chars[i]))
                     continue;
-                float dx = _charSpacing * 3f - i * _charSpacing;
+                float dx = spacing * 3f - i * spacing;
                 float dy = -_bounceTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _bounceTable.Length - 1)] * 2f;
-                w.WriteText(ctx.StringId(_chars[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f, FrameFontId.Hud,
+                w.WriteText(ctx.StringId(_chars[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f, fontId,
                     FrameOpFlags.ConstantScreenSize, 0, FrameOpCode.AllChars);
             }
+        }
+
+        /// <summary>Screen-space pixels between characters for a font (the width of a representative glyph).</summary>
+        private static float MeasureSpacing(BitmapFont font)
+        {
+            var measure = font.MeasureString("M");
+            return measure.X > 0 ? measure.X : 6f;
         }
 
         int[] _bounceTable = {
@@ -111,8 +126,7 @@ namespace PitHero.ECS.Components
             // Recalculate spacing only if font instance changed
             if (!ReferenceEquals(hudFont, _cachedFont))
             {
-                var measure = hudFont.MeasureString("M"); // representative glyph width
-                _charSpacing = measure.X > 0 ? measure.X : 6f; // screen-space pixels between characters at default scale
+                _charSpacing = MeasureSpacing(hudFont); // screen-space pixels between characters at default scale
                 _cachedFont = hudFont;
             }
 

@@ -175,6 +175,11 @@ namespace PitHero.ECS.Scenes
 
         public BitmapFont HudFont; // legacy reference (normal)
 
+        /// <summary>The replay frame font id of <see cref="GetHudFontForCurrentMode"/> (the viewer draws the same font).</summary>
+        public byte HudFrameFontId => _currentHudMode == HudMode.Half
+            ? Services.Replay.Frames.FrameFontId.Hud2x
+            : Services.Replay.Frames.FrameFontId.Hud;
+
         public BitmapFont GetHudFontForCurrentMode()
         {
             return _currentHudMode switch
