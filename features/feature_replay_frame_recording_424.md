@@ -262,6 +262,25 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
   inside the disk budget and the viewer would need cursor-to-frame mapping for it. Left for #431 if the
   owner wants the space back.
 
+**Found in the live checks (2026-09-25/26), all fixed on the branch:**
+- Shadow tile copies must start from an empty grid: a cloned live grid skipped the cells equal to the
+  live map and never created their `TmxLayerTile`, so Base and Detail were invisible.
+- The world pass runs *after* the DefaultRenderer: the stock renderer also paints the screen-space HUD
+  panels with the world camera (live, the terrain covers that ghost a moment later).
+- Bouncy digits / miss text captured the spacing cached by their `Render` (still the 6 px default at
+  capture time) and the normal HUD font: now measured from the current HUD font at capture, read-only,
+  with the HUD-mode font id. Their bounce curve ran on rendered frames while their life ran on sim
+  time, so above 1x the per-tick stream recorded a slow-motion bounce: the curve is sim-time now.
+- Day/night grading and the cloud overlay read the live clock; the viewer feeds the recorded clock
+  from the HUD record (clouds drift on the cursor time; every cloud input is a closed form of time).
+- `FrameRecorder.TruncateAfter` at or past the stream end flushed the builder and returned without
+  reloading the partial chunk; the next tick started a chunk off its boundary and the store's exception
+  froze the future Time Travel commit. Now reloads (`FrameRecorderTruncateAtEndTests`).
+- Release builds compile `Debug.Log` out, so `replays/replay_playback.log` now records every playback
+  transition (`ReplayPlaybackTraceLog`).
+- Capture cost in the owner's 22-minute Release session: 50–72 µs/tick with 430–526 sprites on screen,
+  41 µs in quiet minutes, 27 µs at ~5x (the like-for-like #427 sessions read 40–42).
+
 ### 3.3 L3 — resume paths (the only remaining O(T) work)
 
 | Action | What happens |
