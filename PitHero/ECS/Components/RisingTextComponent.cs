@@ -16,8 +16,9 @@ namespace PitHero.ECS.Components
         {
             if (string.IsNullOrEmpty(_text))
                 return;
+            byte fontId = (Entity.Scene as PitHero.ECS.Scenes.MainGameScene)?.HudFrameFontId ?? Services.Replay.Frames.FrameFontId.Hud;
             w.WriteText(ctx.StringId(_text), _textPosition.X * 2, _textPosition.Y * 2 + _yOffset, _currentColor.PackedValue, 1f,
-                Services.Replay.Frames.FrameFontId.Hud, Services.Replay.Frames.FrameOpFlags.None);
+                fontId, Services.Replay.Frames.FrameOpFlags.None);
         }
 
         float _elapsedTime;

@@ -31,8 +31,9 @@ namespace PitHero.ECS.Components
                 w.WriteRect(worldPos.X, worldPos.Y, -BAR_WIDTH * 0.5f, BAR_OFFSET_Y, BAR_WIDTH * hpRatio, BAR_HEIGHT, GREEN_HP.PackedValue, flags);
             _textService ??= Core.Services.GetService<TextService>();
             var name = _textService?.DisplayText(PitHero.TextType.Monster, _enemy.Name) ?? _enemy.Name;
+            byte fontId = (Entity.Scene as MainGameScene)?.HudFrameFontId ?? Services.Replay.Frames.FrameFontId.Hud;
             w.WriteText(ctx.StringId(name), worldPos.X, worldPos.Y, 0f, NAME_OFFSET_Y, NAME_COLOR.PackedValue, 1f,
-                Services.Replay.Frames.FrameFontId.Hud,
+                fontId,
                 flags | Services.Replay.Frames.FrameOpFlags.Centered | Services.Replay.Frames.FrameOpFlags.CenteredY,
                 0, Services.Replay.Frames.FrameOpCode.AllChars);
         }

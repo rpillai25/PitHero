@@ -40,9 +40,19 @@ namespace PitHero.Rendering
         public void UpdateTimeOfDay()
         {
             var ts = Core.Services.GetService<InGameTimeService>();
-            if (ts == null || _effect == null) return;
+            if (ts == null) return;
+            UpdateTimeOfDay(ts.AccumulatedSeconds);
+        }
 
-            float h = ts.Hour + ts.Minute / 60f;
+        /// <summary>Grades for an in-game time given as accumulated seconds (the replay frame viewer's recorded clock).</summary>
+        public void UpdateTimeOfDay(float accumulatedSeconds)
+        {
+            if (_effect == null) return;
+
+            // Same hour/minute quantisation as InGameTimeService.Hour / Minute
+            int hour = (int)(accumulatedSeconds / 60f) % 24;
+            int minute = (int)(accumulatedSeconds % 60f);
+            float h = hour + minute / 60f;
 
             Texture2D lutA, lutB;
             float blend;

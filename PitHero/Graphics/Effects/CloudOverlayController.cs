@@ -57,15 +57,25 @@ namespace PitHero.Rendering
         public void Update()
         {
             var ts = Core.Services.GetService<InGameTimeService>();
-            if (ts == null || _effect == null)
+            if (ts == null)
                 return;
+            Update(ts.AccumulatedSeconds, ts.AccumulatedSeconds);
+        }
 
-            var t = ts.AccumulatedSeconds;
-
-            UpdateScrollOffsets(t);
-            UpdateWeather(t);
-            UpdateMorph(t);
-            UpdateTint(t);
+        /// <summary>
+        /// Advances the clouds for a replayed tick (frame viewer, issue #428): every input is a closed
+        /// form of time, so the viewer supplies one. <paramref name="driftSeconds"/> drives drift, weather
+        /// and morph (only continuity matters, so the viewer passes its own cursor time);
+        /// <paramref name="clockSeconds"/> is the recorded in-game clock that sets the day/night tint.
+        /// </summary>
+        public void Update(float driftSeconds, float clockSeconds)
+        {
+            if (_effect == null)
+                return;
+            UpdateScrollOffsets(driftSeconds);
+            UpdateWeather(driftSeconds);
+            UpdateMorph(driftSeconds);
+            UpdateTint(clockSeconds);
             UpdatePitDeadZone();
         }
 

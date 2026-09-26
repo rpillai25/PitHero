@@ -237,6 +237,50 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
 **Exit** from FrameView: remove the filter, unsuspend the simulation, clear `RejectLiveEnqueues`,
 `ExitReplayMode`, restore the window size preference. No re-simulation. Instant.
 
+**As shipped in #428** (`ReplayPlaybackMode`, `ReplayFrameViewer`, `ReplayFrameCursor`,
+`RecordedFrameRenderer` + `RecordedFrameScreenRenderer`, `ShadowTileGrid` + `ShadowTileLayers`,
+`FrameSpriteResolver`, `RecordedConsoleLog`):
+
+- The filter keeps only `UICanvas` and `GraphicalHUD` on the stock renderers; the world pass draws the
+  live-only *world* renderables (tree bands, clouds) itself, merged into the recorded order, so tree
+  bands stay behind actors. The overlay ops (Text/Rect without a layer) are sorted as layer 0, after
+  every sprite, the position of the live overlays (bouncy digits, HP bars, outlines).
+- Sprite ops carry a new flag `Graded` (128) when the live renderable draws through the day-night
+  colour-grading material (pit walls, placed buildings); the viewer switches the batch material for them
+  and for the Base/Detail/Top layers, as the live pass does. Same format version.
+- The console feed does not inflate chunks: the recorder keeps every console line in memory
+  (`RecordedConsoleLog`, handed off and truncated with the stream). #429 rebuilds it from the sidecar's
+  console events at open.
+- Entering FrameView calls `FrameRecorder.FlushPending()` so the ticks still in the builder become
+  frames (the partial chunk is written and reloaded, as a Time Travel truncation does).
+- The future from the current session: the viewer's *passthrough* hands the picture to the live scene
+  while the simulation runs at the cursor; a backward scrub flushes the builder and shows frames.
+- Time Travel Here freezes a private copy of the frame (`DecodedFrame.CopyFrom`) so the stream
+  truncation of the rebuild cannot blank it; the frozen viewer is re-attached to the trampoline scene
+  (camera set from the captured view) and to the rebuilt scene; `Seek` is locked while it runs.
+- `ReplayFrameCaptureEveryNTicks` (30 Hz capture) was **not** built: the measured 36 MB/h at 60 Hz is
+  inside the disk budget and the viewer would need cursor-to-frame mapping for it. Left for #431 if the
+  owner wants the space back.
+
+**Found in the live checks (2026-09-25/26), all fixed on the branch:**
+- Shadow tile copies must start from an empty grid: a cloned live grid skipped the cells equal to the
+  live map and never created their `TmxLayerTile`, so Base and Detail were invisible.
+- The world pass runs *after* the DefaultRenderer: the stock renderer also paints the screen-space HUD
+  panels with the world camera (live, the terrain covers that ghost a moment later).
+- Bouncy digits / miss text captured the spacing cached by their `Render` (still the 6 px default at
+  capture time) and the normal HUD font: now measured from the current HUD font at capture, read-only,
+  with the HUD-mode font id. Their bounce curve ran on rendered frames while their life ran on sim
+  time, so above 1x the per-tick stream recorded a slow-motion bounce: the curve is sim-time now.
+- Day/night grading and the cloud overlay read the live clock; the viewer feeds the recorded clock
+  from the HUD record (clouds drift on the cursor time; every cloud input is a closed form of time).
+- `FrameRecorder.TruncateAfter` at or past the stream end flushed the builder and returned without
+  reloading the partial chunk; the next tick started a chunk off its boundary and the store's exception
+  froze the future Time Travel commit. Now reloads (`FrameRecorderTruncateAtEndTests`).
+- Release builds compile `Debug.Log` out, so `replays/replay_playback.log` now records every playback
+  transition (`ReplayPlaybackTraceLog`).
+- Capture cost in the owner's 22-minute Release session: 50–72 µs/tick with 430–526 sprites on screen,
+  41 µs in quiet minutes, 27 µs at ~5x (the like-for-like #427 sessions read 40–42).
+
 ### 3.3 L3 — resume paths (the only remaining O(T) work)
 
 | Action | What happens |

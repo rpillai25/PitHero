@@ -175,6 +175,11 @@ namespace PitHero.ECS.Scenes
 
         public BitmapFont HudFont; // legacy reference (normal)
 
+        /// <summary>The replay frame font id of <see cref="GetHudFontForCurrentMode"/> (the viewer draws the same font).</summary>
+        public byte HudFrameFontId => _currentHudMode == HudMode.Half
+            ? Services.Replay.Frames.FrameFontId.Hud2x
+            : Services.Replay.Frames.FrameFontId.Hud;
+
         public BitmapFont GetHudFontForCurrentMode()
         {
             return _currentHudMode switch
@@ -1479,6 +1484,7 @@ namespace PitHero.ECS.Scenes
             baseLayerRenderer.SetMaterial(_colorGrading.Material);
             detailLayerRenderer.SetMaterial(_colorGrading.Material);
             topLayerRenderer.SetMaterial(_colorGrading.Material);
+            _frameRecorder?.SetGradedMaterial(_colorGrading.Material); // graded sprites are flagged for the replay frame viewer
 
             SpawnTreeBands();
 
@@ -2513,15 +2519,16 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void UpdatePitLevelLabel()
         {
-            if (_pitLevelLabel == null)
-                return;
-
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager == null)
                 return;
+            UpdatePitLevelLabel(pitWidthManager.CurrentPitLevel, pitWidthManager.CurrentPitTier);
+        }
 
-            var currentLevel = pitWidthManager.CurrentPitLevel;
-            var currentTier = pitWidthManager.CurrentPitTier;
+        private void UpdatePitLevelLabel(int currentLevel, int currentTier)
+        {
+            if (_pitLevelLabel == null)
+                return;
             if (currentLevel != _lastDisplayedPitLevel || currentTier != _lastDisplayedPitTier)
             {
                 if (currentTier >= 2)
@@ -2669,14 +2676,16 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void UpdateFundsLabel()
         {
-            if (_fundsLabel == null)
-                return;
-
             var gameState = Core.Services.GetService<GameStateService>();
             if (gameState == null)
                 return;
+            UpdateFundsLabel(gameState.Funds);
+        }
 
-            var currentFunds = gameState.Funds;
+        private void UpdateFundsLabel(int currentFunds)
+        {
+            if (_fundsLabel == null)
+                return;
             if (currentFunds != _lastDisplayedFunds)
             {
                 _fundsLabel.SetText($"{currentFunds}");
@@ -2690,10 +2699,14 @@ namespace PitHero.ECS.Scenes
 
         private void UpdateClockLabel()
         {
-            if (_clockLabel == null || _hudFontNormal == null) return;
             var timeService = Core.Services.GetService<InGameTimeService>();
             if (timeService == null) return;
-            string text = timeService.FormatTime();
+            UpdateClockLabel(timeService.FormatTime());
+        }
+
+        private void UpdateClockLabel(string text)
+        {
+            if (_clockLabel == null || _hudFontNormal == null) return;
             _clockLabel.SetText(text);
             SizeHudLabel(_clockLabel);
             float labelWidth = _hudFontNormal.MeasureString(text).X;
@@ -2769,6 +2782,33 @@ namespace PitHero.ECS.Scenes
             float barRight = _settingsUI?.UIBarRight ?? 0f;
             float midX = (barRight + clockX) / 2f;
             _plantingCropsLabel.SetPosition(midX - labelWidth / 2f, HudLabelY());
+        }
+
+        /// <summary>The event console panel (the replay frame viewer feeds it from the recording).</summary>
+        public EventConsolePanel EventConsole => _eventConsolePanel;
+
+        /// <summary>
+        /// Feeds the party HUDs, the pit level, funds and clock labels from a recorded HUD record
+        /// (replay frame viewer, issue #428) instead of the live services. The portraits keep reading
+        /// the live party entities; the threat tint is left as it is.
+        /// </summary>
+        public void ApplyRecordedHud(in Services.Replay.Frames.HudRecord hud)
+        {
+            ApplyRecordedMember(_graphicalHUD, in hud.Hero);
+            ApplyRecordedMember(_mercenary1HUD, in hud.Merc1);
+            ApplyRecordedMember(_mercenary2HUD, in hud.Merc2);
+            UpdatePitLevelLabel(hud.PitLevel, hud.PitTier);
+            UpdateFundsLabel(hud.Gold > int.MaxValue ? int.MaxValue : (int)hud.Gold);
+            UpdateClockLabel(InGameTimeService.FormatTime(hud.InGameSeconds));
+        }
+
+        private static void ApplyRecordedMember(GraphicalHUD hud, in Services.Replay.Frames.HudMember member)
+        {
+            if (hud == null)
+                return;
+            hud.SetEnabled(member.Present);
+            if (member.Present)
+                hud.UpdateValues(member.Hp, member.MaxHp, member.Mp, member.MaxMp, member.Level);
         }
 
         /// <summary>
@@ -3435,6 +3475,12 @@ namespace PitHero.ECS.Scenes
             bool replayActive = replayPlayback != null && replayPlayback.IsActive;
             if (replayActive)
                 replayPlayback.Update();
+            // The frame viewer (issue #428) draws recorded ticks and feeds the HUD, labels and console
+            // from the record; while it shows a frame the live HUD reads below are skipped
+            var frameViewer = replayActive ? replayPlayback.Viewer : null;
+            if (frameViewer != null)
+                frameViewer.FeedPresentation(this);
+            bool recordedHud = frameViewer != null && !frameViewer.Passthrough;
             if (_replayScrubber != null)
             {
                 if (_replayScrubber.IsVisible() != replayActive)
@@ -3511,15 +3557,28 @@ namespace PitHero.ECS.Scenes
             }
 
             // Keep pit level label up to date
-            UpdatePitLevelLabel();
-            UpdateFundsLabel();
-            _colorGrading?.UpdateTimeOfDay();
-            _cloudOverlay?.Update();
+            if (!recordedHud)
+            {
+                UpdatePitLevelLabel();
+                UpdateFundsLabel();
+            }
+            // Day/night follows the recorded clock while a recorded frame is on screen
+            if (recordedHud && frameViewer.CurrentFrame != null)
+                _colorGrading?.UpdateTimeOfDay(frameViewer.CurrentFrame.Hud.InGameSeconds);
+            else
+                _colorGrading?.UpdateTimeOfDay();
+            // Clouds drift on the viewer's cursor time and take their tint from the recorded clock while a
+            // recorded frame is on screen (the live clock is elsewhere and the live sim time stands still)
+            if (recordedHud && frameViewer.CurrentFrame != null)
+                _cloudOverlay?.Update(frameViewer.Cursor.FrameTick / 60f, frameViewer.CurrentFrame.Hud.InGameSeconds);
+            else
+                _cloudOverlay?.Update();
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
             // are open so they never obscure the tiles being edited; polling covers every enter/exit
             // path (button toggle, outside-click dismiss, cross-UI mutual exclusion).
             _cloudOverlayEntity?.SetEnabled(!(_settingsUI?.IsFarmOrConstructionModeActive ?? false));
-            UpdateClockLabel();
+            if (!recordedHud)
+                UpdateClockLabel();
             UpdateTillingLabel();
             UpdateRestoringGrassLabel();
             bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
@@ -3639,8 +3698,9 @@ namespace PitHero.ECS.Scenes
 
             UpdatePlantingCropsLabel();
 
-            // The intro keeps the graphical HUD hidden; UpdateHeroHUD would re-enable it every frame
-            if (!IsIntroActive)
+            // The intro keeps the graphical HUD hidden; UpdateHeroHUD would re-enable it every frame.
+            // A recorded frame on screen feeds the HUD from the record instead (ApplyRecordedHud)
+            if (!IsIntroActive && !recordedHud)
                 UpdateHeroHUD();
             UpdateHudFontMode();
             if (!IsIntroActive)

@@ -13,16 +13,32 @@ namespace PitHero.ECS.Components
         /// <summary>Replay frame: one constant-screen-size Text op per digit, offset in screen pixels from the world anchor.</summary>
         public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
         {
+            // The spacing is what Render measures from the current HUD font: measured here too (read-only,
+            // no cache write) because a capture can run before this component's first Render, and the
+            // recorded default (6 px) drew the digits on top of each other in the viewer
+            var scene = Entity.Scene as PitHero.ECS.Scenes.MainGameScene;
+            var hudFont = scene?.GetHudFontForCurrentMode();
+            if (hudFont == null)
+                return;
+            float spacing = ReferenceEquals(hudFont, _cachedFont) ? _digitSpacing : MeasureSpacing(hudFont);
+            byte fontId = scene.HudFrameFontId;
             var worldPos = Entity.Position;
             for (int i = 0; i < 4; i++)
             {
                 if (string.IsNullOrEmpty(_digits[i]))
                     continue;
-                float dx = _digitSpacing * 3f - i * _digitSpacing;
+                float dx = spacing * 3f - i * spacing;
                 float dy = -_digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)] * 2f;
                 w.WriteText(ctx.StringId(_digits[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f,
-                    Services.Replay.Frames.FrameFontId.Hud, Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, 0, Services.Replay.Frames.FrameOpCode.AllChars);
+                    fontId, Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, 0, Services.Replay.Frames.FrameOpCode.AllChars);
             }
+        }
+
+        /// <summary>Screen-space pixels between digits for a font (the width of "0").</summary>
+        private static float MeasureSpacing(BitmapFont font)
+        {
+            var measure = font.MeasureString("0");
+            return measure.X > 0 ? measure.X : 6f;
         }
 
         int[] _digitTable ={
@@ -40,13 +56,7 @@ namespace PitHero.ECS.Components
         private static readonly string[] DigitStrings = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
         uint _elapsedFrames;
-        uint _startFrame;
         float _elapsedTime;
-
-        uint _pauseStartDelta;
-        uint _pauseFrames;
-        float _pauseTime;
-        bool _pausedLastFrame = false;
 
         public static Color HeroDigitColor = Color.Red;
         public static Color EnemyDigitColor = Color.White;
@@ -66,7 +76,6 @@ namespace PitHero.ECS.Components
         /// <summary>Initialize digits for value (0-9999)</summary>
         public void Init(int value, Color digitColor, bool critical = false)
         {
-            _startFrame = Time.FrameCount;
             _elapsedFrames = 0;
             _elapsedTime = 0;
 
@@ -128,8 +137,7 @@ namespace PitHero.ECS.Components
             // Recalculate spacing only if font instance changed
             if (!ReferenceEquals(hudFont, _cachedFont))
             {
-                var measure = hudFont.MeasureString("0");
-                _digitSpacing = measure.X > 0 ? measure.X : 6f; // screen-space pixels between digits at default scale
+                _digitSpacing = MeasureSpacing(hudFont); // screen-space pixels between digits at default scale
                 _cachedFont = hudFont;
             }
 
@@ -156,30 +164,15 @@ namespace PitHero.ECS.Components
                 Enabled = false;
                 return;
             }
+            if (_pauseService?.IsPaused == true)
+                return; // the bounce clock is simulation time: paused steps do not advance it
             _elapsedTime += Time.DeltaTime;
 
-            if (_pauseService?.IsPaused == true)
-            {
-                if (!_pausedLastFrame)
-                {
-                    _pauseStartDelta = Time.FrameCount - _startFrame;
-                    _pausedLastFrame = true;
-                }
-                _pauseFrames = Time.FrameCount;
-                _pauseTime += Time.DeltaTime;
-                return;
-            }
-
-            if (_pausedLastFrame)
-            {
-                _pausedLastFrame = false;
-                _startFrame = _pauseFrames - _pauseStartDelta;
-                _elapsedTime -= _pauseTime;
-                _pauseFrames = 0;
-                _pauseTime = 0;
-            }
-
-            _elapsedFrames = (Time.FrameCount - _startFrame) * 2;
+            // The bounce curve runs on simulation time (two curve steps per 60 Hz tick), not on rendered
+            // frames: above 1x a rendered frame covers several ticks, so a frame-driven curve played
+            // only a fraction of the bounce inside its one-second life and the per-tick replay frame
+            // stream recorded that slow motion
+            _elapsedFrames = (uint)(_elapsedTime * 120f);
             if (_elapsedTime > 1.0f)
             {
                 _currentColor = _initColor;

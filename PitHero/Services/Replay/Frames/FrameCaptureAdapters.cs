@@ -151,7 +151,7 @@ namespace PitHero.Services.Replay.Frames
                 return;
             var pos = sr.Entity.Transform.Position + sr.LocalOffset;
             w.WriteSprite(id, pos.X, pos.Y, sr.LayerDepth, sr.RenderLayer, sr.Color.PackedValue,
-                FrameCaptureContext.SpriteFlags(sr.SpriteEffects, sr.RenderLayer));
+                (byte)(FrameCaptureContext.SpriteFlags(sr.SpriteEffects, sr.RenderLayer) | ctx.GradedFlag(sr)));
         }
 
         /// <summary>A prototype (pixel) renderer is a filled rectangle of its size and color.</summary>
@@ -195,6 +195,7 @@ namespace PitHero.Services.Replay.Frames
                 return;
             var pos = m.Entity.Transform.Position + m.LocalOffset;
             uint tint = m.Color.PackedValue;
+            byte graded = ctx.GradedFlag(m);
             w.WriteCompositeHeader(pos.X, pos.Y, m.LayerDepth, m.RenderLayer, (byte)count);
             for (int i = 0; i < m.LayerCount; i++)
             {
@@ -203,7 +204,7 @@ namespace PitHero.Services.Replay.Frames
                     continue;
                 var offset = layer.LocalOffset;
                 w.WriteCompositeLayer(LayerSpriteId(layer.Sprite, i, ctx, cache), offset.X, offset.Y, MultiplyColor(layer.LayerColor.PackedValue, tint),
-                    layer.FlipX ? FrameOpFlags.FlipX : FrameOpFlags.None);
+                    (byte)((layer.FlipX ? FrameOpFlags.FlipX : FrameOpFlags.None) | graded));
             }
         }
 
@@ -225,6 +226,7 @@ namespace PitHero.Services.Replay.Frames
                 return;
             var pos = c.Entity.Transform.Position + c.LocalOffset;
             uint tint = c.Color.PackedValue;
+            byte graded = ctx.GradedFlag(c);
             w.WriteCompositeHeader(pos.X, pos.Y, c.LayerDepth, c.RenderLayer, (byte)count);
             for (int i = 0; i < c.LayerCount; i++)
             {
@@ -233,7 +235,7 @@ namespace PitHero.Services.Replay.Frames
                     continue;
                 var offset = layer.LocalOffset;
                 w.WriteCompositeLayer(LayerSpriteId(layer.Sprite, i, ctx, cache), offset.X, offset.Y, MultiplyColor(layer.Color.PackedValue, tint),
-                    FrameCaptureContext.SpriteFlags(layer.SpriteEffects, 0));
+                    (byte)(FrameCaptureContext.SpriteFlags(layer.SpriteEffects, 0) | graded));
             }
         }
 

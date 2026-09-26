@@ -35,10 +35,13 @@ namespace PitHero.Services
             _accumulatedSeconds += Time.DeltaTime;
         }
 
-        public string FormatTime()
+        public string FormatTime() => FormatTime(_accumulatedSeconds);
+
+        /// <summary>The clock label for an accumulated in-game time (also used for recorded HUD records).</summary>
+        public static string FormatTime(float accumulatedSeconds)
         {
-            int hour = Hour;
-            int minute = Minute;
+            int hour = (int)(accumulatedSeconds / SecondsPerInGameHour) % 24;
+            int minute = (int)(accumulatedSeconds % SecondsPerInGameHour);
             string period = hour >= 12 ? "PM" : "AM";
             int displayHour = hour % 12;
             if (displayHour == 0) displayHour = 12;
