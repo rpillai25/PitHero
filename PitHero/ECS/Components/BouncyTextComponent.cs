@@ -54,13 +54,7 @@ namespace PitHero.ECS.Components
         string[] _chars = new string[4];
 
         uint _elapsedFrames;
-        uint _startFrame;
         float _elapsedTime;
-
-        uint _pauseStartDelta;
-        uint _pauseFrames;
-        float _pauseTime;
-        bool _pausedLastFrame = false;
 
         public static Color HeroMissColor = Color.Red;
         public static Color EnemyMissColor = Color.White;
@@ -80,7 +74,6 @@ namespace PitHero.ECS.Components
         public void Init(string text, Color textColor)
         {
             // reset timing
-            _startFrame = Time.FrameCount;
             _elapsedFrames = 0;
             _elapsedTime = 0f;
 
@@ -153,30 +146,13 @@ namespace PitHero.ECS.Components
                 Enabled = false;
                 return;
             }
+            if (_pauseService?.IsPaused == true)
+                return; // the bounce clock is simulation time: paused steps do not advance it
             _elapsedTime += Time.DeltaTime;
 
-            if (_pauseService?.IsPaused == true)
-            {
-                if (!_pausedLastFrame)
-                {
-                    _pauseStartDelta = Time.FrameCount - _startFrame;
-                    _pausedLastFrame = true;
-                }
-                _pauseFrames = Time.FrameCount;
-                _pauseTime += Time.DeltaTime;
-                return;
-            }
-
-            if (_pausedLastFrame)
-            {
-                _pausedLastFrame = false;
-                _startFrame = _pauseFrames - _pauseStartDelta;
-                _elapsedTime -= _pauseTime;
-                _pauseFrames = 0;
-                _pauseTime = 0;
-            }
-
-            _elapsedFrames = (Time.FrameCount - _startFrame) * 2;
+            // Simulation-time bounce curve (two curve steps per 60 Hz tick), not rendered frames; see
+            // BouncyDigitComponent.Update for why
+            _elapsedFrames = (uint)(_elapsedTime * 120f);
             if (_elapsedTime > 1.0f)
             {
                 _currentColor = _initColor;

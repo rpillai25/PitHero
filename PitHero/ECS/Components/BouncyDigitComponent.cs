@@ -56,13 +56,7 @@ namespace PitHero.ECS.Components
         private static readonly string[] DigitStrings = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
         uint _elapsedFrames;
-        uint _startFrame;
         float _elapsedTime;
-
-        uint _pauseStartDelta;
-        uint _pauseFrames;
-        float _pauseTime;
-        bool _pausedLastFrame = false;
 
         public static Color HeroDigitColor = Color.Red;
         public static Color EnemyDigitColor = Color.White;
@@ -82,7 +76,6 @@ namespace PitHero.ECS.Components
         /// <summary>Initialize digits for value (0-9999)</summary>
         public void Init(int value, Color digitColor, bool critical = false)
         {
-            _startFrame = Time.FrameCount;
             _elapsedFrames = 0;
             _elapsedTime = 0;
 
@@ -171,30 +164,15 @@ namespace PitHero.ECS.Components
                 Enabled = false;
                 return;
             }
+            if (_pauseService?.IsPaused == true)
+                return; // the bounce clock is simulation time: paused steps do not advance it
             _elapsedTime += Time.DeltaTime;
 
-            if (_pauseService?.IsPaused == true)
-            {
-                if (!_pausedLastFrame)
-                {
-                    _pauseStartDelta = Time.FrameCount - _startFrame;
-                    _pausedLastFrame = true;
-                }
-                _pauseFrames = Time.FrameCount;
-                _pauseTime += Time.DeltaTime;
-                return;
-            }
-
-            if (_pausedLastFrame)
-            {
-                _pausedLastFrame = false;
-                _startFrame = _pauseFrames - _pauseStartDelta;
-                _elapsedTime -= _pauseTime;
-                _pauseFrames = 0;
-                _pauseTime = 0;
-            }
-
-            _elapsedFrames = (Time.FrameCount - _startFrame) * 2;
+            // The bounce curve runs on simulation time (two curve steps per 60 Hz tick), not on rendered
+            // frames: above 1x a rendered frame covers several ticks, so a frame-driven curve played
+            // only a fraction of the bounce inside its one-second life and the per-tick replay frame
+            // stream recorded that slow motion
+            _elapsedFrames = (uint)(_elapsedTime * 120f);
             if (_elapsedTime > 1.0f)
             {
                 _currentColor = _initColor;
