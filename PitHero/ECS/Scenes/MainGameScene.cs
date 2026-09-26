@@ -3567,7 +3567,12 @@ namespace PitHero.ECS.Scenes
                 _colorGrading?.UpdateTimeOfDay(frameViewer.CurrentFrame.Hud.InGameSeconds);
             else
                 _colorGrading?.UpdateTimeOfDay();
-            _cloudOverlay?.Update();
+            // Clouds drift on the viewer's cursor time and take their tint from the recorded clock while a
+            // recorded frame is on screen (the live clock is elsewhere and the live sim time stands still)
+            if (recordedHud && frameViewer.CurrentFrame != null)
+                _cloudOverlay?.Update(frameViewer.Cursor.FrameTick / 60f, frameViewer.CurrentFrame.Hud.InGameSeconds);
+            else
+                _cloudOverlay?.Update();
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
             // are open so they never obscure the tiles being edited; polling covers every enter/exit
             // path (button toggle, outside-click dismiss, cross-UI mutual exclusion).
