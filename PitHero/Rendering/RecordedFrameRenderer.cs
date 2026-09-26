@@ -19,12 +19,15 @@ namespace PitHero.Rendering
     /// renderable (tree bands, clouds) and the frame's Sprite / Composite ops, then the overlay ops
     /// (text, rects) after every sprite of layer 0 and above, which is where the live overlays sit.
     /// Graded sprites and the terrain layers switch to the day-night material as the live pass does.
-    /// Runs before the scene's DefaultRenderer, which the viewer's filter reduces to the live HUD.
+    /// Runs right after the scene's DefaultRenderer, which the viewer's filter reduces to the live UI
+    /// canvas and HUD panels. Those are screen-space components that the DefaultRenderer also walks
+    /// with the world camera; live they land under the terrain (their layers sort first), so this pass
+    /// must come after it to cover them the same way.
     /// </summary>
     public sealed class RecordedFrameRenderer : Renderer
     {
-        /// <summary>Before the DefaultRenderer (0).</summary>
-        public const int Order = -1;
+        /// <summary>After the DefaultRenderer (0), whose world-camera ghost of the screen-space HUD panels this pass paints over.</summary>
+        public const int Order = 1;
 
         private enum ItemKind : byte { Sprite, Composite, Overlay, Tile, Live }
 
