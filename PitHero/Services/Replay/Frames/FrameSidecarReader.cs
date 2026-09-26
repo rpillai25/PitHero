@@ -14,6 +14,7 @@ namespace PitHero.Services.Replay.Frames
     {
         private readonly object _gate = new object();
         private readonly List<FrameSidecarFile.IndexEntry> _entries;
+        private readonly byte[] _consoleSection; // the footer's console lines, or null
         private FileStream _stream;
 
         public string Path { get; }
@@ -28,9 +29,11 @@ namespace PitHero.Services.Replay.Frames
         public int ChunkCount => _entries.Count;
         public long EndTick => _entries.Count == 0 ? -1 : _entries[_entries.Count - 1].LastTick;
         public long TotalTicks => Identity.TotalTicks;
+        /// <summary>True when the footer carries the session's console lines (files finished since issue #429).</summary>
+        public bool HasConsoleLog => _consoleSection != null;
 
         private FrameSidecarReader(string path, FileStream stream, in FrameSidecarIdentity identity, int chunkTicks, bool hasFooter,
-            List<FrameSidecarFile.IndexEntry> entries, long dataEnd)
+            List<FrameSidecarFile.IndexEntry> entries, long dataEnd, byte[] consoleSection)
         {
             Path = path;
             _stream = stream;
@@ -39,6 +42,7 @@ namespace PitHero.Services.Replay.Frames
             HasFooter = hasFooter;
             _entries = entries;
             DataEnd = dataEnd;
+            _consoleSection = consoleSection;
         }
 
         /// <summary>Opens a sidecar and checks it belongs to the recording with these header values.</summary>
@@ -87,15 +91,16 @@ namespace PitHero.Services.Replay.Frames
                     return FrameSidecarFile.OpenResult.FormatMismatch;
 
                 var entries = new List<FrameSidecarFile.IndexEntry>(1024);
-                bool hasFooter = TryReadFooter(stream, fileLength, chunkTicks, formatVersion, entries, out long totalTicks, out long dataEnd);
+                bool hasFooter = TryReadFooter(stream, fileLength, chunkTicks, formatVersion, entries, out long totalTicks, out long dataEnd, out byte[] consoleSection);
                 if (!hasFooter)
                 {
                     entries.Clear();
+                    consoleSection = null;
                     dataEnd = Scan(stream, fileLength, chunkTicks, formatVersion, entries);
                     totalTicks = entries.Count == 0 ? 0 : entries[entries.Count - 1].LastTick + 1;
                 }
                 var identity = new FrameSidecarIdentity(masterSeed, recordedAt, simulationVersion, formatVersion, totalTicks);
-                reader = new FrameSidecarReader(path, stream, identity, chunkTicks, hasFooter, entries, dataEnd);
+                reader = new FrameSidecarReader(path, stream, identity, chunkTicks, hasFooter, entries, dataEnd, consoleSection);
                 stream = null;
                 return FrameSidecarFile.OpenResult.Ok;
             }
@@ -114,10 +119,11 @@ namespace PitHero.Services.Replay.Frames
         }
 
         private static bool TryReadFooter(FileStream stream, long fileLength, int chunkTicks, int formatVersion,
-            List<FrameSidecarFile.IndexEntry> entries, out long totalTicks, out long dataEnd)
+            List<FrameSidecarFile.IndexEntry> entries, out long totalTicks, out long dataEnd, out byte[] consoleSection)
         {
             totalTicks = 0;
             dataEnd = FrameSidecarFile.HeaderSize;
+            consoleSection = null;
             if (fileLength < FrameSidecarFile.HeaderSize + FrameSidecarFile.FooterFixedSize + FrameSidecarFile.TrailerSize)
                 return false;
 
@@ -142,8 +148,20 @@ namespace PitHero.Services.Replay.Frames
                 return false;
             totalTicks = fr.ReadI64();
             int count = fr.ReadI32();
-            if (count < 0 || FrameSidecarFile.FooterFixedSize + (long)count * FrameSidecarFile.IndexEntrySize != footerLength)
+            long indexBytes = FrameSidecarFile.FooterFixedSize + (long)count * FrameSidecarFile.IndexEntrySize;
+            if (count < 0 || indexBytes > footerLength)
                 return false;
+            // Whatever follows the index is the optional console section (files finished before it existed end here)
+            int consoleBytes = (int)(footerLength - indexBytes);
+            if (consoleBytes >= 8)
+            {
+                var cr = new FrameReader(footer, (int)indexBytes, consoleBytes);
+                if (cr.ReadU32() == FrameSidecarFile.ConsoleMagic)
+                {
+                    consoleSection = new byte[consoleBytes];
+                    Buffer.BlockCopy(footer, (int)indexBytes, consoleSection, 0, consoleBytes);
+                }
+            }
 
             long previousEnd = FrameSidecarFile.HeaderSize;
             for (int i = 0; i < count; i++)
@@ -197,6 +215,39 @@ namespace PitHero.Services.Replay.Frames
 
         /// <summary>The index entry of a chunk.</summary>
         public FrameSidecarFile.IndexEntry GetEntry(int chunkIndex) => _entries[chunkIndex];
+
+        /// <summary>
+        /// Appends the footer's console lines to <paramref name="log"/> in tick order (nothing when the
+        /// file has none). Throws <see cref="InvalidDataException"/> on a malformed section.
+        /// </summary>
+        public void ReadConsoleLog(RecordedConsoleLog log)
+        {
+            if (log == null) throw new ArgumentNullException(nameof(log));
+            if (_consoleSection == null)
+                return;
+            var r = new FrameReader(_consoleSection);
+            if (r.ReadU32() != FrameSidecarFile.ConsoleMagic)
+                throw new InvalidDataException("Bad console section magic in sidecar footer");
+            int lineCount = r.ReadI32();
+            if (lineCount < 0)
+                throw new InvalidDataException("Bad console line count in sidecar footer");
+            for (int i = 0; i < lineCount; i++)
+            {
+                long tick = r.ReadI64();
+                int segCount = r.ReadU8();
+                var segments = new ConsoleSegment[segCount];
+                for (int s = 0; s < segCount; s++)
+                {
+                    string text = r.ReadString();
+                    var color = new Microsoft.Xna.Framework.Color { PackedValue = r.ReadU32() };
+                    string itemName = r.ReadString();
+                    segments[s] = new ConsoleSegment(text, color, itemName.Length == 0 ? null : itemName);
+                }
+                log.Add(tick, segments);
+            }
+            if (!r.AtEnd)
+                throw new InvalidDataException("Sidecar console section has trailing bytes");
+        }
 
         /// <summary>Reads one chunk from disk (any thread).</summary>
         public bool TryLoadChunk(int chunkIndex, out FrameChunk chunk)

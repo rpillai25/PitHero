@@ -250,6 +250,13 @@ namespace PitHero.UI
 
             var title = new Label(string.Format(GetText(UITextKey.ReplayRowTitleFormat), info.HeroName, info.JobName), _skin, "ph-default");
             rowTable.Add(title).Left().SetPadLeft(6f);
+            if (info.HasFrameCache)
+            {
+                // A frame cache sits beside the recording: it opens in the viewer at once (issue #429).
+                // Shares the title line so the row keeps its height
+                var cached = new Label(GetText(UITextKey.ReplayRowCachedMark), _skin, "ph-grayed");
+                rowTable.Add(cached).Right().Expand().SetPadRight(6f);
+            }
             rowTable.Row();
 
             var when = info.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
@@ -304,7 +311,7 @@ namespace PitHero.UI
                 // session as its return point, so the return trip lands unpaused
                 _settingsUI?.ForceCloseSettings();
                 ReleasePausesOnRecord();
-                StartPlayback(data, isCurrentSession: false);
+                StartPlayback(data, isCurrentSession: false, entry.FileName);
             });
         }
 
@@ -336,13 +343,13 @@ namespace PitHero.UI
             commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false));
         }
 
-        private void StartPlayback(ReplayData data, bool isCurrentSession)
+        private void StartPlayback(ReplayData data, bool isCurrentSession, string fileName = null)
         {
             var playback = ReplayPlaybackService.Current;
             if (playback == null)
                 return;
             _settingsUI?.ForceCloseSettings();
-            playback.Start(data, isCurrentSession);
+            playback.Start(data, isCurrentSession, 0, fileName);
         }
 
         private void OnSaveSession()
@@ -351,7 +358,9 @@ namespace PitHero.UI
             var fileService = Core.Services?.GetService<ReplayFileService>();
             if (recorder == null || fileService == null)
                 return;
-            string fileName = fileService.Save(recorder.Snapshot(SimulationClock.CurrentTick));
+            // The session goes on, so its frame stream is copied beside the recording, not moved
+            string fileName = fileService.SaveWithFrameCache(recorder.Snapshot(SimulationClock.CurrentTick),
+                Services.Replay.Frames.FrameRecorder.Current, endSession: false);
             string message = fileName != null
                 ? string.Format(GetText(UITextKey.ReplaySavedMessage), fileName)
                 : GetText(UITextKey.ReplaySaveFailedMessage);

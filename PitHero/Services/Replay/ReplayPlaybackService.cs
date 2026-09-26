@@ -29,11 +29,14 @@ namespace PitHero.Services.Replay
 
     /// <summary>
     /// Drives a recorded session. In <see cref="ReplayPlaybackMode.FrameView"/> (Replay Current Session
-    /// with a complete frame stream) the live scene stays as it is, its simulation is suspended and a
+    /// with a complete frame stream, or a saved replay with a valid <c>.frames</c> cache, issue #429)
+    /// the live scene stays as it is, its simulation is suspended and a
     /// <see cref="Frames.ReplayFrameViewer"/> draws the recorded tick at the playhead: scrubbing either
-    /// way is instant, playback runs no simulation and Exit is instant. Dragging past the session end
-    /// hands the playhead to the live simulation, which runs on recording (the simulated future).
-    /// In <see cref="ReplayPlaybackMode.Simulated"/> (saved replays until issue #429, and every resume
+    /// way is instant, playback runs no simulation and Exit is instant. For the current session,
+    /// dragging past the session end hands the playhead to the live simulation, which runs on
+    /// recording (the simulated future); for a saved replay the future needs its world, so the scene
+    /// is rebuilt to the session end behind the frozen last frame first (Simulated from then on).
+    /// In <see cref="ReplayPlaybackMode.Simulated"/> (saved replays without a cache, and every resume
     /// path) the game scene is restarted from the recording's start state and seed, the recorded
     /// commands are injected on their ticks and the fixed-step clock is stepped (Core.SimulationSpeed /
     /// SimulationSuspended / PendingExtraSteps) according to play, pause and seek requests. Backward
@@ -189,9 +192,11 @@ namespace PitHero.Services.Replay
 
         /// <summary>
         /// Starts playing <paramref name="data"/> from its beginning (or seeks to
-        /// <paramref name="startAtTick"/> first). Interrupts the current live session.
+        /// <paramref name="startAtTick"/> first). Interrupts the current live session. For a saved
+        /// replay <paramref name="fileName"/> names its file, so a valid frame cache beside it opens
+        /// the replay in the frame viewer instead of re-simulating.
         /// </summary>
-        public void Start(ReplayData data, bool isCurrentSession, long startAtTick = 0)
+        public void Start(ReplayData data, bool isCurrentSession, long startAtTick = 0, string fileName = null)
         {
             if (data == null || data.StateBlob == null && data.Kind == ReplayKind.Load)
             {
@@ -248,6 +253,8 @@ namespace PitHero.Services.Replay
             ExitViewer();
             if (isCurrentSession && TryStartFrameView(startAtTick))
                 return;
+            if (!isCurrentSession && TryStartSavedFrameView(fileName, startAtTick))
+                return;
             RestartScene(startAtTick);
         }
 
@@ -281,11 +288,64 @@ namespace PitHero.Services.Replay
 
             Mode = ReplayPlaybackMode.FrameView;
             _viewer = new Frames.ReplayFrameViewer(recorder, TotalTicks);
+            BeginFrameView(scene, startAtTick);
+            Debug.Log($"[ReplayPlayback] Frame view over {TotalTicks} recorded ticks ({recorder.Store.ChunkCount} chunks); no simulation while watching");
+            Trace($"Start FrameView chunks={recorder.Store.ChunkCount} startAt={startAtTick}");
+            return true;
+        }
+
+        /// <summary>
+        /// Enters FrameView for a saved replay whose <c>.frames</c> cache matches it (issue #429): the
+        /// file's tables and console lines are read once, chunks are inflated on demand under the memory
+        /// budget, and the live scene stays untouched underneath. False (re-simulate as before) with
+        /// the kill switches off, without a file name, or when the cache is missing, stale or damaged.
+        /// </summary>
+        private bool TryStartSavedFrameView(string fileName, long startAtTick)
+        {
+            if (!GameConfig.ReplayFrameCaptureEnabled || !GameConfig.ReplayFrameViewEnabled || string.IsNullOrEmpty(fileName))
+                return false;
+            var scene = Core.Scene as MainGameScene;
+            var files = Core.Services.GetService<ReplayFileService>();
+            if (scene == null || files == null)
+                return false;
+            var result = files.TryOpenFrameCache(fileName, Data.MasterSeed, Data.RecordedAtUtcTicks, Data.SimulationVersion, Data.TotalTicks, out var reader);
+            if (result != Frames.FrameSidecarFile.OpenResult.Ok)
+            {
+                Debug.Log($"[ReplayPlayback] No frame cache for {fileName} ({result}); re-simulating");
+                return false;
+            }
+            var registry = new Frames.SpriteKeyRegistry();
+            var consoleLog = new Frames.RecordedConsoleLog();
+            try
+            {
+                reader.RebuildRegistry(registry);
+                reader.ReadConsoleLog(consoleLog);
+            }
+            catch (Exception ex)
+            {
+                Debug.Warn($"[ReplayPlayback] Frame cache for {fileName} is unreadable ({ex.Message}); re-simulating");
+                reader.Dispose();
+                return false;
+            }
+            var store = new Frames.FrameStore(reader.ChunkTicks, GameConfig.ReplayFrameMemoryBudgetBytes);
+            store.Preload(reader);
+
+            Mode = ReplayPlaybackMode.FrameView;
+            _viewer = new Frames.ReplayFrameViewer(store, registry, consoleLog, null, TotalTicks) { OwnedSource = reader };
+            BeginFrameView(scene, startAtTick);
+            Debug.Log($"[ReplayPlayback] Frame view over the saved replay {fileName}: {TotalTicks} ticks, {reader.ChunkCount} chunks on disk, {consoleLog.Count} console lines; the live world waits underneath");
+            Trace($"Start SavedFrameView file={fileName} chunks={reader.ChunkCount} startAt={startAtTick}");
+            return true;
+        }
+
+        /// <summary>The common tail of both FrameView starts: viewer on the scene, UI closed, simulation held, playhead placed.</summary>
+        private void BeginFrameView(MainGameScene scene, long startAtTick)
+        {
             _viewer.AttachToScene(scene);
             EnterReplayPresentation();
 
-            // Everything recorded already happened in this world: nothing is injected or verified until
-            // the playhead leaves the recorded end (the future), where the recorders take over
+            // Everything recorded already happened: nothing is injected or verified until the playhead
+            // leaves the recorded end (the future), where the recorders take over (a rebuild resets these)
             _commandCursor = Data.Commands.Count;
             _decisionCursor = Data.Decisions.Count;
             _hashCursor = Data.StateHashes.Count;
@@ -296,9 +356,34 @@ namespace PitHero.Services.Replay
             Core.PendingExtraSteps = 0;
             _viewer.Cursor.Seek(startAtTick);
             State = startAtTick >= TotalTicks ? ReplayPlaybackState.AtEnd : ReplayPlaybackState.Playing;
-            Debug.Log($"[ReplayPlayback] Frame view over {TotalTicks} recorded ticks ({recorder.Store.ChunkCount} chunks); no simulation while watching");
-            Trace($"Start FrameView chunks={recorder.Store.ChunkCount} startAt={startAtTick}");
-            return true;
+        }
+
+        /// <summary>True while a saved replay's cache is on screen: the live world underneath is not this recording's.</summary>
+        private bool InSavedFrameView => Mode == ReplayPlaybackMode.FrameView && _viewer != null && !_viewer.IsLiveStream;
+
+        /// <summary>
+        /// A drag past a saved replay's session end: the future needs that recording's world, so the
+        /// scene is rebuilt from the recording and run to the target (Simulated from here on) while the
+        /// frozen last frame stays on screen; the viewer goes when the seek lands.
+        /// </summary>
+        private void EnterFutureFromSavedFrameView(long targetTick)
+        {
+            Trace($"EnterFutureFromSavedFrameView target={targetTick}");
+            _viewer.Freeze(TotalTicks);
+            _pendingView = CaptureView();
+            _afterSeek = LeaveFrozenViewer;
+            Debug.Log($"[ReplayPlayback] Saved replay future: rebuilding the recorded world to tick {targetTick} behind the last recorded frame");
+            RestartScene(targetTick);
+        }
+
+        /// <summary>After a rebuild that ran behind the frozen frame: the rebuilt world takes over the picture.</summary>
+        private void LeaveFrozenViewer()
+        {
+            ExitViewer();
+            State = CurrentTick >= PlayStopTick ? ReplayPlaybackState.AtEnd : _stateAfterSeek;
+            if (State == ReplayPlaybackState.AtEnd)
+                Core.SimulationSuspended = true;
+            PitHero.Util.SoundEffectManager.Muted = false;
         }
 
         /// <summary>Closes the live-input doorway and the UI for a replay (both modes).</summary>
@@ -318,7 +403,7 @@ namespace PitHero.Services.Replay
             Core.Services.GetService<SettingsUI>()?.EnterReplayMode();
         }
 
-        /// <summary>Removes the viewer from its scene and brings the console back to the live tick.</summary>
+        /// <summary>Removes the viewer from its scene (closing a saved replay's file) and brings the console back to the live tick.</summary>
         private void ExitViewer()
         {
             var viewer = _viewer;
@@ -326,9 +411,11 @@ namespace PitHero.Services.Replay
                 return;
             _viewer = null;
             Mode = ReplayPlaybackMode.Simulated;
-            viewer.DetachFromScene();
+            viewer.Dispose();
             // The console showed the recording at the playhead; live play continues at the clock's tick
-            (Core.Scene as MainGameScene)?.EventConsole?.ShowRecorded(viewer.ConsoleLog, SimulationClock.CurrentTick);
+            // from the live session's own lines (a saved replay's lines belong to another session)
+            var liveLog = Frames.FrameRecorder.Current?.ConsoleLog ?? (viewer.IsLiveStream ? viewer.ConsoleLog : null);
+            (Core.Scene as MainGameScene)?.EventConsole?.ShowRecorded(liveLog, SimulationClock.CurrentTick);
         }
 
         /// <summary>The per-frame drive of FrameView: the playhead moves over recorded frames; past the live world the simulation runs.</summary>
@@ -340,7 +427,7 @@ namespace PitHero.Services.Replay
             {
                 case ReplayPlaybackState.Playing:
                 {
-                    if (InFuture && cursor.Cursor >= simTick)
+                    if (_viewer.IsLiveStream && InFuture && cursor.Cursor >= simTick)
                     {
                         // The playhead reached the live world: the simulation itself runs on (recording),
                         // the picture is live, and the playhead follows the clock
@@ -365,7 +452,7 @@ namespace PitHero.Services.Replay
                         State = ReplayPlaybackState.AtEnd;
                         break;
                     }
-                    cursor.Max = InFuture ? simTick : TotalTicks;
+                    cursor.Max = InFuture && _viewer.IsLiveStream ? simTick : TotalTicks;
                     cursor.Advance(Time.UnscaledDeltaTime, Speed, _pauseSpans);
                     if (!InFuture && cursor.Cursor >= TotalTicks)
                         State = ReplayPlaybackState.AtEnd;
@@ -662,6 +749,20 @@ namespace PitHero.Services.Replay
                     return;
                 long simTick = SimulationClock.CurrentTick;
                 var cursor = _viewer.Cursor;
+                if (!_viewer.IsLiveStream)
+                {
+                    // A saved replay: the live world underneath is another timeline, so only recorded
+                    // ticks are viewable; the future rebuilds the recorded world first
+                    if (enteringFuture)
+                    {
+                        EnterFutureFromSavedFrameView(targetTick);
+                        return;
+                    }
+                    cursor.Max = TotalTicks;
+                    cursor.Seek(targetTick);
+                    State = cursor.Cursor >= TotalTicks ? ReplayPlaybackState.AtEnd : _stateAfterSeek;
+                    return;
+                }
                 if (targetTick > simTick)
                 {
                     // Beyond the live world: the simulation catches up (recording as it goes); the playhead follows it
@@ -753,8 +854,9 @@ namespace PitHero.Services.Replay
             {
                 // The live world only moved if the playhead was dragged into the future: then it is
                 // rebuilt back to the recorded end as today; otherwise nothing was touched and the
-                // exit is the removal of the viewer
-                if (InFuture || SimulationClock.CurrentTick > TotalTicks)
+                // exit is the removal of the viewer. A saved replay's cache never touches the live
+                // world (its future switches to Simulated before anything runs), so its exit is instant
+                if (_viewer.IsLiveStream && (InFuture || SimulationClock.CurrentTick > TotalTicks))
                 {
                     if (State == ReplayPlaybackState.Seeking || State == ReplayPlaybackState.Starting)
                     {
@@ -858,10 +960,11 @@ namespace PitHero.Services.Replay
             if (Mode == ReplayPlaybackMode.FrameView && _viewer != null)
             {
                 long tick = _viewer.Cursor.Cursor;
-                if (tick != SimulationClock.CurrentTick)
+                if (!_viewer.IsLiveStream || tick != SimulationClock.CurrentTick)
                 {
-                    // The live world is elsewhere: rebuild it at the playhead behind the frozen picture
-                    // (design §3.3), then commit exactly as a landed seek would
+                    // The live world is elsewhere (or another timeline's, for a saved replay): rebuild it
+                    // at the playhead behind the frozen picture (design §3.3), then commit exactly as a
+                    // landed seek would
                     _returnSession = null;
                     _viewer.Freeze(tick);
                     _afterSeek = CommitHere;

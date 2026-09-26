@@ -303,6 +303,38 @@ determinism bug, which is what the tripwire is for.
 | `.frames` missing, stale (identity/format mismatch) or damaged | **Transcode:** `Simulated` playback from tick 0 at maximum seek speed with the frame recorder producing chunks, while the viewer shows recorded frames and a "Buffering n%" status; the scrubber's usable range grows as the sim runs ahead (like a video buffering bar). When the sim reaches `TotalTicks` the sidecar is finalised and playback is pure FrameView. This path tears down the live scene, so Exit afterwards is `ReturnToLiveSession` as today. Recordings made before this feature ship take this path once |
 | Disk budget | `ReplayFrameCacheDiskBudgetBytes` (default 4 GB) across `replays/`; when exceeded, the oldest `.frames` are deleted first. `.bin` files are never touched by the budget. The Replay tab shows a small "cached" mark per row |
 
+**As shipped in #429** (`ReplayFileService.SaveWithFrameCache`, `FrameRecorder.ExportSidecar`,
+`FrameSidecarWriter.ExportTo` / `FinishAndMove`, `ReplayPlaybackService.TryStartSavedFrameView`):
+
+- **Two ways to write the cache.** A quit-time save (`SettingsUI.SaveSessionBeforeLeaving`) finishes the
+  session file and `File.Move`s it to `replay_<hero>_<stamp>.frames` (the session is ending; capture goes
+  on in memory only). Save Session Replay from the Replay tab **copies** instead (a raw byte copy of the
+  header and chunk records plus a fresh footer), because the session continues in its file. Both flush
+  the builder first, so the cache covers ticks `0..TotalTicks-1` exactly; a stream that stops short (a
+  capture gap) writes nothing.
+- **The console lines live in the footer, in plain text**, not in the chunks' console events: rebuilding
+  the viewer's console feed from the events would inflate every chunk at open (~1 ms each, seconds for a
+  long session), which is exactly the cost this design exists to avoid. Footer layout after the index:
+  `consoleMagic "PHFC", lineCount i32, {tick i64, segCount u8, {text str, color u32, itemName str}…}…`.
+  The section is optional, so footers written before it still read; a finished session file reopened for
+  the way back to the live session gives its lines back too (they were lost before). The chunks keep
+  their console events (the builder's partial-chunk reload uses them).
+- **Validity** (`ReplayFileService.TryOpenFrameCache`): identity header (seed, recording time, simulation
+  version, frame format) + a footer + `footer.TotalTicks == bin.TotalTicks` + frames up to
+  `TotalTicks-1`. Anything else is `IdentityMismatch` / `Incomplete` and the replay re-simulates (until
+  #430 transcodes it). `Enumerate` opens every cache once (header + footer, no chunk) to set
+  `ReplayFileInfo.HasFrameCache`; `Delete` removes both files; the budget deletes `replay_*.frames` by
+  last write time, never `session_*.frames` (the live file) and never a `.bin`.
+- **Saved FrameView** = the #428 viewer over a `FrameStore` preloaded from a `FrameSidecarReader` (chunks
+  inflated on demand, LRU under the memory budget; the viewer owns and closes the reader). The live world
+  under it is *another timeline*, so the live-stream shortcuts are gated on `ReplayFrameViewer.IsLiveStream`:
+  no passthrough, Exit never checks the live clock against `TotalTicks`, and Time Travel Here always
+  rebuilds. Dragging past the end freezes the last frame and rebuilds the recorded world to the target
+  (`EnterFutureFromSavedFrameView`, Simulated from then on; the viewer goes when the seek lands); the
+  rebuild's own frame recorder captures the ticks it simulates. Exit without any rebuild is the removal of
+  the viewer; after a rebuild it is `ReturnToLiveSession` as before. On exit the console is refilled from
+  the **live** recorder's log, not the saved replay's.
+
 ## 4. Files
 
 New, all under `PitHero/Services/Replay/Frames/` unless noted:
@@ -312,7 +344,7 @@ New, all under `PitHero/Services/Replay/Frames/` unless noted:
 | `FrameOps.cs` | Op codes, `FrameWriter` / `FrameReader` (ref structs over `byte[]`, no allocation on the hot path) |
 | `FrameChunk.cs`, `FrameChunkCodec.cs` | Chunk model, encode (base + deltas vs base, events, tile keyframe, table delta) + deflate; decode to `DecodedFrame` |
 | `FrameStore.cs` | In-memory chunk ring, memory budget, spill/evict policy, `TryGetFrame(tick, out DecodedFrame)` |
-| `FrameSidecarFile.cs` | Append-only writer (worker thread), footer/index, identity header, scan-rebuild of a truncated file, reader with lazy chunk loads |
+| `FrameSidecarFile.cs` | Append-only writer (worker thread), footer/index (+ console lines, #429), identity header, scan-rebuild of a truncated file, reader with lazy chunk loads; `ExportTo` (copy) / `FinishAndMove` for saved replays |
 | `SpriteKeyRegistry.cs` | `Sprite` → id, `(textureName, rect)` keys; string and nine-patch interning; incremental table deltas |
 | `IFrameCapturable.cs` | `IFrameCapturable`, `ILiveOnlyRenderable` |
 | `FrameCaptureAdapters.cs` | Stock renderable capture by type; `ICompositeLayer` composites; one-time skip warning |
