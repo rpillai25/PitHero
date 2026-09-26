@@ -548,6 +548,7 @@ ReplayRowTitleFormat,{0} the {1}
 ReplayRowDetailFormat,{0}  -  {1}  -  Pit {2}
 ReplayRowOlderSimulation,Older game version: may differ from the original
 ReplayRowCachedMark,Cached
+ReplayRowAutoMark,Auto
 ReplayOlderSimulationStatus,Obsolete
 ConfirmContinueOlderFormat,WARNING: this replay was recorded on an older game version. {0} You would continue from the world shown here, not from the game as it was originally played.
 ConfirmContinueOlderInSync,So far it has matched the original session.

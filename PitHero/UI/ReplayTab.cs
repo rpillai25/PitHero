@@ -79,6 +79,7 @@ namespace PitHero.UI
         }
 
         private const string CompactButtonStyle = "ph-compact";
+        private const string MarkSeparator = "  ";
 
         /// <summary>Creates the tab content builder.</summary>
         public ReplayTab(Skin skin, Stage stage, SettingsUI settingsUI)
@@ -250,13 +251,15 @@ namespace PitHero.UI
 
             var title = new Label(string.Format(GetText(UITextKey.ReplayRowTitleFormat), info.HeroName, info.JobName), _skin, "ph-default");
             rowTable.Add(title).Left().SetPadLeft(6f);
+            // Marks share the title line so the row keeps its height: the hero's quit-time recording
+            // (overwritten every session) and a frame cache that opens in the viewer at once (issue #429)
+            string marks = null;
+            if (info.IsAutoSave)
+                marks = GetText(UITextKey.ReplayRowAutoMark);
             if (info.HasFrameCache)
-            {
-                // A frame cache sits beside the recording: it opens in the viewer at once (issue #429).
-                // Shares the title line so the row keeps its height
-                var cached = new Label(GetText(UITextKey.ReplayRowCachedMark), _skin, "ph-grayed");
-                rowTable.Add(cached).Right().Expand().SetPadRight(6f);
-            }
+                marks = marks == null ? GetText(UITextKey.ReplayRowCachedMark) : marks + MarkSeparator + GetText(UITextKey.ReplayRowCachedMark);
+            if (marks != null)
+                rowTable.Add(new Label(marks, _skin, "ph-grayed")).Right().Expand().SetPadRight(6f);
             rowTable.Row();
 
             var when = info.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");

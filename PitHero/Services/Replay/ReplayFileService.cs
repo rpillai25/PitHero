@@ -26,6 +26,8 @@ namespace PitHero.Services.Replay
         public int MasterSeed;
         /// <summary>True when a matching, complete <c>.frames</c> cache sits next to the file: it opens in the frame viewer at once (issue #429).</summary>
         public bool HasFrameCache;
+        /// <summary>True for the quit-time recording of a hero (one per hero id, overwritten every session).</summary>
+        public bool IsAutoSave => ReplayFileService.IsAutoFileName(FileName);
 
         /// <summary>False when the recording predates a simulation change: it may diverge and cannot time-travel.</summary>
         public bool IsCurrentSimulation => SimulationVersion == GameConfig.SimulationVersion;
@@ -92,6 +94,38 @@ namespace PitHero.Services.Replay
             return sb.Length == 0 ? "Hero" : sb.ToString();
         }
 
+        /// <summary>The quit-time recording's file name for a hero: replay_auto_&lt;HeroId as 8 hex digits&gt;.bin (the autosave's naming).</summary>
+        public static string AutoFileName(int heroId)
+        {
+            return GameConfig.ReplayAutoFilePrefix + ((uint)heroId).ToString("X8") + GameConfig.ReplayFileExtension;
+        }
+
+        /// <summary>True when the file name is a hero's quit-time recording (see <see cref="AutoFileName"/>).</summary>
+        public static bool IsAutoFileName(string fileName)
+        {
+            return !string.IsNullOrEmpty(fileName) && fileName.StartsWith(GameConfig.ReplayAutoFilePrefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Writes the recording as the hero's quit-time replay, replacing the previous session's (one
+        /// per hero id, so the automatic saves never pile up; a stale frame cache beside it goes first).
+        /// A recording without a hero id falls back to a new dated file. Returns the file name.
+        /// </summary>
+        public string SaveAuto(ReplayData data)
+        {
+            if (data == null)
+                return null;
+            if (data.HeroId == 0)
+                return Save(data);
+            string fileName = AutoFileName(data.HeroId);
+            var staleCache = FrameCachePath(fileName);
+            if (File.Exists(staleCache))
+                File.Delete(staleCache); // the previous session's frames would only mismatch the new recording
+            _store.Save(fileName, data);
+            Debug.Log($"[ReplayFileService] Saved quit-time replay {fileName} ({data.Commands.Count} commands, {data.TotalTicks} ticks)");
+            return fileName;
+        }
+
         /// <summary>Writes the recording to a new file and returns its file name.</summary>
         public string Save(ReplayData data)
         {
@@ -111,13 +145,14 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>
-        /// Saves the recording and, when <paramref name="frames"/> holds the session's frame stream, its
-        /// <c>.frames</c> cache next to it (the sidecar is moved there when the session is ending, copied
-        /// otherwise), then trims the caches to the disk budget. Returns the replay file name, or null.
+        /// Saves the recording (as the hero's single quit-time replay with <paramref name="autoSave"/>,
+        /// else as a new dated file) and, when <paramref name="frames"/> holds the session's frame
+        /// stream, its <c>.frames</c> cache next to it (the sidecar is moved there when the session is
+        /// ending, copied otherwise), then trims the caches to the disk budget. Returns the replay file name, or null.
         /// </summary>
-        public string SaveWithFrameCache(ReplayData data, Frames.FrameRecorder frames, bool endSession)
+        public string SaveWithFrameCache(ReplayData data, Frames.FrameRecorder frames, bool endSession, bool autoSave = false)
         {
-            string fileName = Save(data);
+            string fileName = autoSave ? SaveAuto(data) : Save(data);
             if (fileName == null)
                 return null;
             if (frames != null && frames.IsInitialized)

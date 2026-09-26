@@ -105,7 +105,8 @@ or touch the button directly.
 8. **Quit to Title and Exit Game autosave synchronously first** (`AutoSaveService.SaveNow()` from
    `SettingsUI.SaveSessionBeforeLeaving`, issue #411): wait for any in-flight write, gather, write,
    wait, reset the countdown — gated on `SaveAllowed` like every other save. The current replay
-   recording is saved right after it under the normal replay naming.
+   recording is saved right after it as `replay_auto_<HeroId as 8 hex digits>.bin` (one per hero,
+   overwritten every session, with its `.frames` cache; see `ReplaySystem.md`).
 
 ## Decisions that are not obvious from the code
 

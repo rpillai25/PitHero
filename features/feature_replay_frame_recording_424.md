@@ -307,8 +307,11 @@ determinism bug, which is what the tripwire is for.
 `FrameSidecarWriter.ExportTo` / `FinishAndMove`, `ReplayPlaybackService.TryStartSavedFrameView`):
 
 - **Two ways to write the cache.** A quit-time save (`SettingsUI.SaveSessionBeforeLeaving`) finishes the
-  session file and `File.Move`s it to `replay_<hero>_<stamp>.frames` (the session is ending; capture goes
-  on in memory only). Save Session Replay from the Replay tab **copies** instead (a raw byte copy of the
+  session file and `File.Move`s it beside the recording (the session is ending; capture goes on in
+  memory only). That recording is `replay_auto_<HeroId as 8 hex digits>.bin`, **one per hero,
+  overwritten every session** together with its cache (`ReplayFileService.SaveAuto`): a dated file per
+  quit would eat the disk at tens of MB per hour. Save Session Replay from the Replay tab writes a new
+  dated `replay_<hero>_<stamp>` pair and **copies** the sidecar instead (a raw byte copy of the
   header and chunk records plus a fresh footer), because the session continues in its file. Both flush
   the builder first, so the cache covers ticks `0..TotalTicks-1` exactly; a stream that stops short (a
   capture gap) writes nothing.

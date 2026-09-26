@@ -156,6 +156,7 @@ namespace PitHero
         public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";
         public const string ReplayRowOlderSimulation = "ReplayRowOlderSimulation";
         public const string ReplayRowCachedMark = "ReplayRowCachedMark";
+        public const string ReplayRowAutoMark = "ReplayRowAutoMark";
         public const string ReplayOlderSimulationStatus = "ReplayOlderSimulationStatus";
         public const string ConfirmContinueOlderFormat = "ConfirmContinueOlderFormat";
         public const string ConfirmContinueOlderInSync = "ConfirmContinueOlderInSync";

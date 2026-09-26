@@ -123,6 +123,59 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>
+        /// The quit-time recording has one static name per hero id, so a session overwrites the last
+        /// one (and the stale cache beside it) instead of adding a file; manual saves keep their dated names.
+        /// </summary>
+        [TestMethod]
+        public void SaveAuto_OverwritesPerHero_AndDropsTheStaleCache()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var svc = new ReplayFileService(dir);
+                long when = new DateTime(2026, 9, 26, 0, 0, 0, DateTimeKind.Utc).Ticks;
+                var first = BuildReplay("Ann", 400, when, 2);
+                first.HeroId = 0x2A;
+                string auto1 = svc.SaveAuto(first);
+                Assert.AreEqual("replay_auto_0000002A.bin", auto1);
+                Assert.IsTrue(ReplayFileService.IsAutoFileName(auto1));
+                string cache1 = WriteCache(svc, auto1, first, 2);
+                Assert.IsTrue(svc.Enumerate()[0].HasFrameCache);
+
+                // Next session of the same hero: same file, the old cache is gone (it would not match)
+                var second = BuildReplay("Ann", 401, when + 100, 3);
+                second.HeroId = 0x2A;
+                Assert.AreEqual(auto1, svc.SaveAuto(second));
+                Assert.IsFalse(File.Exists(cache1), "stale cache removed with the overwrite");
+                var list = svc.Enumerate();
+                Assert.AreEqual(1, list.Count);
+                Assert.AreEqual(401, list[0].MasterSeed, "the file holds the newer session");
+                Assert.IsTrue(list[0].IsAutoSave);
+                Assert.IsFalse(list[0].HasFrameCache);
+                Assert.AreEqual(3 * ChunkTicks, svc.Load(auto1).TotalTicks);
+
+                // Another hero gets its own auto file; a manual save of the same hero is a new dated file
+                var other = BuildReplay("Bob", 402, when + 200, 1);
+                other.HeroId = 0x2B;
+                Assert.AreEqual("replay_auto_0000002B.bin", svc.SaveAuto(other));
+                string manual = svc.Save(second);
+                Assert.IsFalse(ReplayFileService.IsAutoFileName(manual));
+                Assert.IsTrue(manual.StartsWith("replay_Ann_"), manual);
+                Assert.AreEqual(3, svc.Enumerate().Count);
+
+                // No hero id: nothing to key on, a dated file as before
+                var unknown = BuildReplay("Old", 403, when + 300, 1);
+                unknown.HeroId = 0;
+                Assert.IsFalse(ReplayFileService.IsAutoFileName(svc.SaveAuto(unknown)));
+                Assert.AreEqual(4, svc.Enumerate().Count);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
         [TestMethod]
         public void Delete_RemovesTheRecordingAndItsCache()
         {

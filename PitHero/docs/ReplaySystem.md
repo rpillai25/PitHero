@@ -178,12 +178,16 @@ change nobody stamped.
 folder's `replays/` directory and enumerates them header-only. A few hours of play is a few hundred
 KB. Bumping `ReplayData.CurrentVersion` is allowed to break old recordings (they are not user saves).
 
-Recordings are written by the Replay tab's "Save Session Replay" button and **automatically on Quit to
-Title / Exit Game** (`SettingsUI.SaveSessionBeforeLeaving`, issue #411: synchronous autosave first,
-then the pause release and the replay snapshot; nothing is written while a replay is playing back).
-Because of the auto-save the Replay tab lists only the `GameConfig.ReplayListMaxShown` (10) newest
-recordings **after** the current-hero filter, with a "Showing the N most recent of M" note; deleting
-one re-enumerates the folder, so the next most recent slides in.
+Recordings are written by the Replay tab's "Save Session Replay" button (a new dated file each time)
+and **automatically on Quit to Title / Exit Game** (`SettingsUI.SaveSessionBeforeLeaving`, issue #411:
+synchronous autosave first, then the pause release and the replay snapshot; nothing is written while a
+replay is playing back). The quit-time recording has **one static name per hero**,
+`replay_auto_<HeroId as 8 hex digits>.bin` (`ReplayFileService.SaveAuto`, the autosave's naming), so
+each session overwrites the previous one together with its `.frames` cache (issue #429: the caches are
+tens of MB per hour, and a dated file per quit would eat the disk); the Replay tab marks it "Auto".
+Manual saves are the player's to keep. The Replay tab lists only the `GameConfig.ReplayListMaxShown`
+(10) newest recordings **after** the current-hero filter, with a "Showing the N most recent of M" note;
+deleting one re-enumerates the folder, so the next most recent slides in.
 
 ## Playback (`ReplayPlaybackService`, global)
 
