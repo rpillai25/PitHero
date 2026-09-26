@@ -772,6 +772,8 @@ namespace PitHero
         public const float ReplayFrameDebugLogIntervalSeconds = 60f;           // Wall seconds between frame-recorder stat lines (Debug.Log in Debug builds; replays/frame_recorder.log in every build while ReplayFrameStatsLog is on)
         public const bool ReplayFrameStatsLog = true;                          // Append the per-minute capture stats to replays/frame_recorder.log (the only way to read the Release capture cost; Debug.Log is compiled out there)
         public const string ReplayFrameStatsLogFileName = "frame_recorder.log";
+        public const bool ReplayPlaybackTraceLog = true;                       // Append playback state transitions (start, seeks, time travel, exit) to replays/replay_playback.log in every build; the only trail a Release freeze leaves
+        public const string ReplayPlaybackTraceLogFileName = "replay_playback.log";
         public const bool ReplayFrameViewEnabled = true;                       // Replay Current Session draws recorded frames instead of re-simulating (issue #428); off = today's Simulated playback. Needs ReplayFrameCaptureEnabled
         public const int ReplayFrameViewCullMarginPixels = 128;                // World pixels beyond the camera bounds a recorded sprite may sit and still be drawn (large sprites anchored off-screen)
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same

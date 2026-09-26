@@ -470,7 +470,14 @@ namespace PitHero.Services.Replay.Frames
             FlushBuilder();
             _sidecar?.Drain(Store);
             if (tick >= Store.EndTick)
+            {
+                // Nothing to drop, but the flush left the builder without its chunk: reload the partial
+                // last chunk so the next tick continues it on a chunk boundary (a Time Travel commit at
+                // the live tick in the simulated future used to start a chunk mid-way here, and the store
+                // rejected it)
+                ResumeBuilderFromStore(fileHasLastChunk: true);
                 return;
+            }
             TruncateStream(tick);
             ConsoleLog.TruncateAfter(tick);
         }

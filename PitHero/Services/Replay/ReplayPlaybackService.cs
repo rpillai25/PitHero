@@ -157,6 +157,34 @@ namespace PitHero.Services.Replay
             Current = this;
         }
 
+        private static string _tracePath;
+
+        /// <summary>
+        /// One line per playback state transition in replays/replay_playback.log, in every build
+        /// (Debug.Log is compiled out in Release, and a Release freeze otherwise leaves no trail).
+        /// </summary>
+        private void Trace(string what)
+        {
+            if (!GameConfig.ReplayPlaybackTraceLog)
+                return;
+            try
+            {
+                if (_tracePath == null)
+                {
+                    string dir = Core.Services.GetService<ReplayFileService>()?.Directory_;
+                    if (string.IsNullOrEmpty(dir))
+                        return;
+                    _tracePath = System.IO.Path.Combine(dir, GameConfig.ReplayPlaybackTraceLogFileName);
+                }
+                System.IO.File.AppendAllText(_tracePath,
+                    $"{DateTime.Now:HH:mm:ss.fff} {what} | mode={Mode} state={State} sim={SimulationClock.CurrentTick} cursor={(_viewer != null ? _viewer.Cursor.Cursor : -1)} total={TotalTicks} future={InFuture} viewer={(_viewer != null ? (_viewer.IsFrozen ? "frozen" : _viewer.Passthrough ? "passthrough" : "on") : "none")}{Environment.NewLine}");
+            }
+            catch (Exception)
+            {
+                // A trace is a courtesy; never let it interrupt play
+            }
+        }
+
         // ── Lifecycle ────────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -269,6 +297,7 @@ namespace PitHero.Services.Replay
             _viewer.Cursor.Seek(startAtTick);
             State = startAtTick >= TotalTicks ? ReplayPlaybackState.AtEnd : ReplayPlaybackState.Playing;
             Debug.Log($"[ReplayPlayback] Frame view over {TotalTicks} recorded ticks ({recorder.Store.ChunkCount} chunks); no simulation while watching");
+            Trace($"Start FrameView chunks={recorder.Store.ChunkCount} startAt={startAtTick}");
             return true;
         }
 
@@ -391,6 +420,7 @@ namespace PitHero.Services.Replay
         /// <summary>Tears the current scene down and rebuilds it from the recording's start state, then seeks to <paramref name="startAtTick"/>.</summary>
         private void RestartScene(long startAtTick)
         {
+            Trace($"RestartScene startAt={startAtTick}");
             Mode = ReplayPlaybackMode.Simulated; // a frozen viewer, if any, keeps drawing over the rebuild
             Debug.QuietMode = false; // scene rebuild logs are worth keeping; the seek that follows re-arms quiet mode
             Core.CosmeticUpdatesSuspended = false;
@@ -476,6 +506,7 @@ namespace PitHero.Services.Replay
                 return;
 
             _viewer?.AttachToScene(scene); // a resume rebuild: the frozen frame stays on screen through the seek
+            Trace($"OnSceneStarted startAt={_startAtTick} afterSeek={(_afterSeek != null)}");
 
             ReplayTripwire.PlaybackDecisionCheck = CheckDecision;
             ReplayTripwire.PlaybackStateHashCheck = CheckStateHash;
@@ -672,6 +703,7 @@ namespace PitHero.Services.Replay
 
         private void BeginSeek(long targetTick)
         {
+            Trace($"BeginSeek target={targetTick}");
             SeekTarget = targetTick;
             _seekStartedAtTick = CurrentTick;
             State = ReplayPlaybackState.Seeking;
@@ -696,6 +728,7 @@ namespace PitHero.Services.Replay
                 Debug.Log($"[ReplayPlayback] Seek ran {steps} steps in {seconds:0.00}s ({steps / seconds:0} steps/s, {seconds * 1000.0 / steps:0.000} ms/step)");
             var after = _afterSeek;
             _afterSeek = null;
+            Trace($"FinishSeek steps={steps} continuation={(after != null)}");
             if (after != null)
             {
                 after();
@@ -714,6 +747,7 @@ namespace PitHero.Services.Replay
         {
             if (!IsActive)
                 return;
+            Trace("Exit");
 
             if (Mode == ReplayPlaybackMode.FrameView && _viewer != null)
             {
@@ -820,6 +854,7 @@ namespace PitHero.Services.Replay
         {
             if (!IsActive || State == ReplayPlaybackState.Starting || State == ReplayPlaybackState.Seeking)
                 return;
+            Trace("ContinueFromHere");
             if (Mode == ReplayPlaybackMode.FrameView && _viewer != null)
             {
                 long tick = _viewer.Cursor.Cursor;
@@ -846,6 +881,7 @@ namespace PitHero.Services.Replay
         {
             _returnSession = null;
             long tick = SimulationClock.CurrentTick;
+            Trace($"CommitHere tick={tick}");
             // In the future the recorder has been appending past the recorded end, so the recording
             // already runs up to this tick and the truncation is a no-op
             ReplayRecorder.Current?.TruncateAfter(tick);
@@ -862,6 +898,7 @@ namespace PitHero.Services.Replay
 
         private void FinishExit()
         {
+            Trace("FinishExit");
             ExitViewer();
             _timeTravelInFlight = false;
             State = ReplayPlaybackState.Idle;

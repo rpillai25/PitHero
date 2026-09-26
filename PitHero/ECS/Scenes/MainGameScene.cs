@@ -3562,7 +3562,11 @@ namespace PitHero.ECS.Scenes
                 UpdatePitLevelLabel();
                 UpdateFundsLabel();
             }
-            _colorGrading?.UpdateTimeOfDay();
+            // Day/night follows the recorded clock while a recorded frame is on screen
+            if (recordedHud && frameViewer.CurrentFrame != null)
+                _colorGrading?.UpdateTimeOfDay(frameViewer.CurrentFrame.Hud.InGameSeconds);
+            else
+                _colorGrading?.UpdateTimeOfDay();
             _cloudOverlay?.Update();
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
             // are open so they never obscure the tiles being edited; polling covers every enter/exit
