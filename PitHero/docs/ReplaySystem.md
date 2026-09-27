@@ -345,10 +345,10 @@ rewind, a pause or a higher rung is silent.
 **Timeline:** `ReplayFrameCursor` advances by wall time × speed × 60 with fractional carry, in either
 direction, clamped to `[0, TotalTicks]`, skipping recorded pause spans forward. Speeds come from
 `ReplayFrameViewSpeedSteps` (the simulation ladder plus view-only 16X / 32X; no artifact gate).
-**Rewind** is the cursor with `Direction = -1`: the `<<` button (pressing it again pauses) or the left
-arrow held while the scrubber owns the keyboard focus (it claims the UI stage's focus whenever nothing
-else has it; releasing the key restores the state before the hold; the camera then pans left on A
-only). Rewind stops paused at tick 0. There is no simulated future: the timeline ends at the session
+**Rewind** is the cursor with `Direction = -1`: the `<<` button (pressing it again pauses) or
+SHIFT + left arrow held (polled by the scrubber; releasing either key restores the state before the
+hold; the camera ignores the arrow keys while SHIFT is down, so plain arrows still pan). Rewind stops
+paused at tick 0. There is no simulated future: the timeline ends at the session
 end (issue #438).
 
 ## Playback (`ReplayPlaybackService`, global)

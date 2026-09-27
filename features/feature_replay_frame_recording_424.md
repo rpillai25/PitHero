@@ -266,10 +266,10 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
 re-simulated and self-cached):
 
 - **Rewind:** `ReplayPlaybackService.ToggleRewind` (the `<<` button, FrameView only; pressing it while
-  rewinding pauses) and `BeginHoldRewind` / `EndHoldRewind` (the left arrow while the scrubber holds the
-  UI stage's keyboard focus, which it claims whenever nothing else has it; releasing the key restores
-  the state before the hold). Reverse play is the cursor with `Direction = -1` at the current speed;
-  it stops paused at tick 0. The camera pans left on A only while the scrubber owns the arrow.
+  rewinding pauses) and `BeginHoldRewind` / `EndHoldRewind` (SHIFT + left arrow, polled by the
+  scrubber every frame; releasing either key restores the state before the hold). Reverse play is the
+  cursor with `Direction = -1` at the current speed; it stops paused at tick 0. The plain left arrow
+  keeps panning the camera; the camera ignores arrows while SHIFT is down, so nothing fights.
 - **View-only speeds:** `GameConfig.ReplayFrameViewSpeedSteps` / `Labels` = the simulation ladder plus
   16X and 32X; `Speed`, `SpeedLabel` and `CycleSpeed` follow the mode's ladder and a switch to
   `Simulated` (Time Travel) clamps the index to the simulation ladder. No artifact gate.

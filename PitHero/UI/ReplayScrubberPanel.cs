@@ -12,10 +12,10 @@ namespace PitHero.UI
     /// scrub slider with the current/total time and a status label (seeking progress, end of replay,
     /// divergence). Lives on the UI stage for the scene's lifetime and is shown only while a replay is
     /// active. The slider commits on release so dragging previews the target time without seeking every
-    /// frame. While shown it holds the stage's keyboard focus whenever nothing else does, so the left
-    /// arrow rewinds for as long as it is held (issue #431); the camera then pans left on A only.
+    /// frame. SHIFT + left arrow rewinds for as long as it is held (issue #431): the camera ignores the
+    /// arrow keys while SHIFT is down, so the two never fight over the key.
     /// </summary>
-    public class ReplayScrubberPanel : Window, IKeyboardListener
+    public class ReplayScrubberPanel : Window
     {
         private readonly Skin _skin;
         private TextService _textService;
@@ -30,10 +30,8 @@ namespace PitHero.UI
         private Cell _rewindCell;              // collapsed to zero width outside the frame view
         private float _rewindWidth;
         private bool _rewindOffered = true;
+        private bool _holdKeyDown;             // SHIFT + left arrow is held: the hold ends when either key comes up
         private TextButton _speedButton;
-
-        /// <summary>True while a shown scrubber holds the keyboard focus: the left arrow is its rewind key, not a camera pan.</summary>
-        public static bool OwnsLeftArrow { get; private set; }
         private ReplayTimelineSlider _slider;
         private Label _timeLabel;
         private Label _statusLabel;
@@ -196,10 +194,16 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
 
-            // The left arrow is the rewind key while nothing else (a text field) wants the keyboard
-            var stage = GetStage();
-            if (stage != null && stage.GetKeyboardFocus() == null)
-                stage.SetKeyboardFocus(this);
+            // Hold-to-rewind: SHIFT + left arrow, polled here so the order the two keys go down in does not matter
+            bool holdKeyDown = (Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift)) && Input.IsKeyDown(Keys.Left);
+            if (holdKeyDown != _holdKeyDown)
+            {
+                _holdKeyDown = holdKeyDown;
+                if (holdKeyDown)
+                    playback.BeginHoldRewind();
+                else
+                    playback.EndHoldRewind();
+            }
 
             long total = playback.TotalTicks; // the slider ends at the session end
             if (total != _lastShownTotal)
@@ -257,42 +261,10 @@ namespace PitHero.UI
             Invalidate();
         }
 
-        /// <summary>The panel left the screen (replay over): let go of the keyboard and of any held rewind.</summary>
+        /// <summary>The panel left the screen (replay over): let go of any held rewind.</summary>
         public void OnHidden()
         {
-            ReplayPlaybackService.Current?.EndHoldRewind();
-            var stage = GetStage();
-            if (stage != null && ReferenceEquals(stage.GetKeyboardFocus(), this))
-                stage.SetKeyboardFocus(null);
-            OwnsLeftArrow = false;
-        }
-
-        // ── IKeyboardListener: hold-to-rewind on the left arrow ──────────────────────
-
-        void IKeyboardListener.KeyDown(Keys key)
-        {
-            if (key == Keys.Left)
-                ReplayPlaybackService.Current?.BeginHoldRewind();
-        }
-
-        void IKeyboardListener.KeyPressed(Keys key, char character)
-        {
-        }
-
-        void IKeyboardListener.KeyReleased(Keys key)
-        {
-            if (key == Keys.Left)
-                ReplayPlaybackService.Current?.EndHoldRewind();
-        }
-
-        void IKeyboardListener.GainedFocus()
-        {
-            OwnsLeftArrow = true;
-        }
-
-        void IKeyboardListener.LostFocus()
-        {
-            OwnsLeftArrow = false;
+            _holdKeyDown = false;
             ReplayPlaybackService.Current?.EndHoldRewind();
         }
 

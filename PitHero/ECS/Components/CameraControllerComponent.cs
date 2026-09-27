@@ -471,9 +471,7 @@ namespace PitHero.ECS.Components
             }
 
             var direction = Vector2.Zero;
-            // While the replay scrubber holds keyboard focus the left arrow rewinds the replay (issue #431); A still pans
-            bool leftArrowPans = !UI.ReplayScrubberPanel.OwnsLeftArrow;
-            if ((leftArrowPans && Input.IsKeyDown(Keys.Left)) || Input.IsKeyDown(Keys.A))
+            if (Input.IsKeyDown(Keys.Left) || Input.IsKeyDown(Keys.A))
                 direction.X -= 1f;
             if (Input.IsKeyDown(Keys.Right) || Input.IsKeyDown(Keys.D))
                 direction.X += 1f;
