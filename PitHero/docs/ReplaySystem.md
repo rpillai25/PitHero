@@ -207,17 +207,16 @@ The service has two **modes** (`ReplayPlaybackMode`, issue #428):
   gold and clock labels are fed from the recorded `HudRecord` (`MainGameScene.ApplyRecordedHud`), the
   event console from the recorder's `RecordedConsoleLog` (`EventConsolePanel.ShowRecorded` on a jump,
   appends while playing). **Exit** removes the viewer and un-suspends: instant, the world is exactly as
-  it was. Dragging past the session end (Sphere of Foresight) hands the playhead to the simulation:
-  the viewer goes into *passthrough* (live picture), the sim runs on recording commands and frames,
-  and a backward scrub inside the future is FrameView over those frames (the recorder's builder is
-  flushed so the newest ticks are in the store). Leaving the future without committing rebuilds to the
-  session end as before, behind the frozen frame of the session end. **Time Travel Here** freezes the
+  it was (the live world never runs while watching; the timeline ends at the session end and a seek
+  clamps to it). **Time Travel Here** freezes the
   current frame (`ReplayFrameViewer.Freeze` keeps a private copy that survives the stream truncation),
   switches to Simulated, rebuilds the world to the cursor with the frozen frame drawn over both the
   trampoline scene and the rebuilding scene while the scrubber shows the seek progress, then commits
-  (`CommitHere`: both recorders truncated). A rebuild that diverged is reported once on the console.
+  (`CommitHere`: both recorders truncated). A cursor already at the live tick of the current session
+  commits without a rebuild. A rebuild that diverged is reported once on the console.
   Kill switches: `ReplayFrameCaptureEnabled` and `ReplayFrameViewEnabled`; either off, or a gap in the
-  stream, falls back to Simulated. Saved replays stay Simulated until issue #429.
+  stream, falls back to Simulated. Saved replays with a valid `.frames` cache open in FrameView too
+  (issue #429); the live world underneath is another timeline, so Time Travel Here always rebuilds.
 - **Simulated** — everything below: saved replays, and every resume path.
 
 `Start(data, isCurrentSession)` sets aside the live recording (`_returnSession`), restores the start
@@ -244,33 +243,20 @@ are keyed by type (constructing a second `MainGameScene` while the first is regi
   `replay_divergence.log` next to the replay files, naming which part hash (`rng`, `hero`, `party`,
   `world`) drifted first. Playback continues: a diverged replay is still a valid game.
 
-## Future simulation
+## Time Travel Here (the past only)
 
-When `ReplayPlaybackService.FutureSimulationUnlocked` is true (the player owns the **Sphere of
-Foresight** artifact, see "Artifacts" below), the scrubber's range extends `ReplayFutureSimulationMaxTicks` (30 min) past the recorded session end and
-that stretch of the track is tinted `ReplayFutureTrackColor` (`ReplayTimelineSlider`). Beyond the end
-there are no recorded commands: the world simply keeps simulating with every automated setting the
-player had, which is all a replay ever is.
+The replay timeline ends at the recorded session end: the scrubber clamps there, Play stops there
+(`End of replay`) and there is no simulated future. (A "Sphere of Foresight" future region existed
+until 2026-09-26 and was removed by issue #438: every path through it re-simulated, and skipping ahead
+cheapens play. The artifact's ordinal is retired, see "Artifacts" below.)
 
-- **Natural playback stops at the session end.** Only a deliberate drag or click past it sets
-  `InFuture`; from then on Play runs to `FutureEndTick` and stops there.
-- **Scrubbing into the future is free and reversible.** Forward drags simulate more. Backward drags
-  inside the future rebuild the scene and fast-forward like any backward seek. Because the future is
-  a pure function of the recording, that re-simulation lands on exactly the state the player already
-  saw, so it behaves like jumping between simulated points (at the cost of the seek time, not a
-  different outcome). No warning is shown for dragging.
-- **Ticks past the recorded end are recorded, not verified.** `CheckDecision` / `CheckStateHash` and
-  `InjectDue` flip the recorder back on for any tick above `TotalTicks`, so the recording stays gap-free
-  whether the player entered the future on purpose or fast playback overshot the end by a few ticks.
-  A scene restart re-preloads the recorder from the recording and drops those ticks again.
-- **Exit always returns to the normal session time.** From the future, `ReturnFromFuture` rebuilds
-  the current session back to its recorded end (or returns to the set-aside live session for a saved
-  replay). Nothing watched in the future is kept.
-- **Time Travel Here is the only way to keep the future**, and it confirms with a message that depends
-  on where the playhead is: `ConfirmContinueHereMessage` in the past ("time travel to the selected point in the past? Anything that happened since
-  then will be lost") or `ConfirmContinueFutureMessage` in the future. Continuing from the future
-  makes the recording end at that tick (the recorder already holds those ticks) and live play resumes
-  there.
+- **Ticks past the recorded end are recorded, not verified.** In Simulated mode a fast playback can
+  step a few ticks past `TotalTicks` inside one rendered frame. `CheckDecision` / `CheckStateHash` and
+  `InjectDue` flip the recorder back on for any tick above `TotalTicks` (`BeginRecordingPastEnd`), so
+  the recording stays gap-free and a Time Travel commit there truncates nothing. A scene restart
+  re-preloads the recorder from the recording and drops those ticks again.
+- **Time Travel Here always goes to the past** and confirms with `ConfirmContinueHereMessage` ("time
+  travel to the selected point in the past? Anything that happened since then will be lost").
 - **Time travel needs the Chronos Timepiece artifact** (`ReplayPlaybackService.TimeTravelUnlocked`);
   without it the button is hidden in every replay.
 - **Time travel is hero-gated.** Every playthrough has one hero, identified by `GameStateService.HeroId`
@@ -297,9 +283,8 @@ artifacts rewind with the save, so charging for them is safe.
 
 | Artifact | Scope | Price constant | Effect | Prerequisites |
 |---|---|---|---|---|
-| Sphere of Foresight | Global | `ArtifactSphereOfForesightPrice` | Future simulation (blue region) | none |
 | Kairos Metronome | Global | `ArtifactKairosMetronomePrice` | The 4X and 8X live fast-forward rungs (`FastFUI.HighSpeedRungsUnlocked`) | none |
-| Chronos Timepiece | Global | `ArtifactChronosTimepiecePrice` | Time Travel Here | Sphere of Foresight **and** Kairos Metronome |
+| Chronos Timepiece | Global | `ArtifactChronosTimepiecePrice` | Time Travel Here | Kairos Metronome |
 | Fast Grow Fertilizer | Local | `ArtifactFastGrowFertilizerPrice` | Crops grow 2x (`FastGrowFertilizerCropGrowthMultiplier`) | none |
 | Lightning Grow Fertilizer | Local | `ArtifactLightningGrowFertilizerPrice` | Crops grow 3x (wins over Fast; never stacks). Supersedes Fast in the owned grid (`ArtifactCatalog.GetSupersededBy`): Fast stays owned underneath, just not shown | Fast Grow Fertilizer |
 | Hermes Boots | Local | `ArtifactHermesBootsPrice` | Farm and kitchen workers move 2x (`HermesBootsWorkerMoveSpeedMultiplier`; the runner sprint stacks on top) | none |
@@ -329,6 +314,11 @@ artifacts rewind with the save, so charging for them is safe.
   name/description/effect keys, price constant, prerequisites), bump `ArtifactCatalog.Count`. For a
   Local artifact with a simulation effect, add the read to `LocalArtifactEffects` and consume it inside
   the fixed step. Both stores keep unknown ordinals, so older builds never drop a purchase.
+- **Retiring an artifact:** never renumber. Keep the enum member (ordinal 0, the Sphere of Foresight,
+  is retired since issue #438), add it to `ArtifactCatalog.IsRetired`, let the catalog switches fall to
+  their empty defaults, and leave `Count` and `IsValid` alone: a system save that owns the ordinal still
+  loads and keeps it, `OwnedCount` / `GetOwnedInOrder` / `IsAvailableInShop` / `Grant` ignore it, and
+  the `GrantArtifact` handler drops a recorded purchase of it as a no-op.
 
 ## Invariants (and why)
 
@@ -512,7 +502,7 @@ with the correct working directory (content paths are relative to it).
 `SimulationDefaultSpeedIndex`, `SpeedSteps`, `SpeedStepLabels`, `ReplaySeekWallBudgetSeconds`, `ReplayHashIntervalTicks`,
 `ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySeekQuietLogging`,
 scrubber size constants, `ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`,
-`ReplaySpeechSeedSalt`, `ReplayFutureSimulationMaxTicks`, `ReplayFutureTrackColor`; artifact prices,
+`ReplaySpeechSeedSalt`; artifact prices,
 grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and viewer (issue #424):
 `ReplayFrameCaptureEnabled`, `ReplayFrameViewEnabled`, `ReplayFrameChunkTicks`,
 `ReplayTileKeyframeIntervalChunks`, `ReplayFrameMemoryBudgetBytes`, `ReplayFrameFormatVersion`,

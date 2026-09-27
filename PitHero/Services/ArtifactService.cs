@@ -71,7 +71,10 @@ namespace PitHero.Services
             _local = null;
         }
 
-        /// <summary>True when the player (Global) or the current hero (Local) owns the artifact.</summary>
+        /// <summary>
+        /// True when the player (Global) or the current hero (Local) owns the artifact. A retired
+        /// ordinal that sits in the system save still reads as owned here (harmless: nothing asks).
+        /// </summary>
         public bool Owns(ArtifactType type)
         {
             if (ArtifactCatalog.IsLocal(type))
@@ -80,14 +83,17 @@ namespace PitHero.Services
             return i >= 0 && i < _owned.Length && _owned[i];
         }
 
-        /// <summary>Number of artifacts owned, Global and Local together.</summary>
+        /// <summary>Number of artifacts owned, Global and Local together (retired ones never count).</summary>
         public int OwnedCount
         {
             get
             {
                 int n = 0;
                 for (int i = 0; i < _owned.Length; i++)
-                    if (Owns((ArtifactType)i)) n++;
+                {
+                    var type = (ArtifactType)i;
+                    if (!ArtifactCatalog.IsRetired(type) && Owns(type)) n++;
+                }
                 return n;
             }
         }
@@ -105,7 +111,7 @@ namespace PitHero.Services
         /// <summary>
         /// Appends the artifacts to show as owned to <paramref name="result"/>: the player's Global
         /// artifacts in grant order, then this hero's Local artifacts in grant order, minus any piece
-        /// whose upgrade is also owned (<see cref="IsSuperseded"/>).
+        /// whose upgrade is also owned (<see cref="IsSuperseded"/>) and minus retired ones.
         /// </summary>
         public void GetOwnedInOrder(List<ArtifactType> result)
         {
@@ -113,7 +119,7 @@ namespace PitHero.Services
             for (int i = 0; i < _data.OwnedArtifacts.Count; i++)
             {
                 int ordinal = _data.OwnedArtifacts[i];
-                if (ArtifactCatalog.IsValid(ordinal))
+                if (ArtifactCatalog.IsValid(ordinal) && !ArtifactCatalog.IsRetired((ArtifactType)ordinal))
                     result.Add((ArtifactType)ordinal);
             }
             _local?.GetLocalArtifactsInOrder(result);
@@ -126,11 +132,12 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// True when the shop should offer the artifact: not owned yet and every prerequisite owned.
+        /// True when the shop should offer the artifact: not retired, not owned yet and every
+        /// prerequisite owned.
         /// </summary>
         public bool IsAvailableInShop(ArtifactType type)
         {
-            if (Owns(type))
+            if (ArtifactCatalog.IsRetired(type) || Owns(type))
                 return false;
             var prerequisites = ArtifactCatalog.GetPrerequisites(type);
             for (int i = 0; i < prerequisites.Length; i++)
@@ -144,10 +151,13 @@ namespace PitHero.Services
         /// <summary>
         /// Grants the artifact. Global: records it and writes the system save. Local: records it on the
         /// session state (saved with the game, never the system file). Idempotent: granting an owned
-        /// artifact changes nothing, which is what lets a replayed purchase apply safely.
+        /// artifact changes nothing, which is what lets a replayed purchase apply safely. A retired
+        /// artifact is refused (an old recording that bought one replays as a no-op).
         /// </summary>
         public bool Grant(ArtifactType type)
         {
+            if (ArtifactCatalog.IsRetired(type))
+                return false;
             if (ArtifactCatalog.IsLocal(type))
                 return _local != null && _local.GrantLocalArtifact(type);
 

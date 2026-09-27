@@ -15,14 +15,13 @@ namespace PitHero.Services.Replay.Frames
     /// <see cref="DetachFromScene"/> removes them, which is all an exit costs. The live scene is never
     /// torn down and no component's Enabled flag is touched.
     ///
-    /// Modes: normally the store is read at the cursor every frame. <see cref="Passthrough"/> hands the
-    /// picture back to the live scene while the simulation itself runs at the cursor (the simulated
-    /// future). <see cref="Freeze"/> pins a private copy of the current frame so it survives a scene
-    /// rebuild and a stream truncation (Time Travel Here re-simulates behind it).
+    /// Normally the store is read at the cursor every frame. <see cref="Freeze"/> pins a private copy of
+    /// the current frame so it survives a scene rebuild and a stream truncation (Time Travel Here
+    /// re-simulates behind it). The live scene never draws itself while a viewer is attached.
     ///
-    /// The frames come either from the live session's recorder (<see cref="IsLiveStream"/>: passthrough
-    /// and builder flushes apply) or from a saved replay's <c>.frames</c> file through a file-backed
-    /// store (issue #429), whose reader the viewer owns and closes in <see cref="Dispose"/>.
+    /// The frames come either from the live session's recorder (<see cref="IsLiveStream"/>) or from a
+    /// saved replay's <c>.frames</c> file through a file-backed store (issue #429), whose reader the
+    /// viewer owns and closes in <see cref="Dispose"/>.
     /// </summary>
     public sealed class ReplayFrameViewer : IDisposable
     {
@@ -34,7 +33,6 @@ namespace PitHero.Services.Replay.Frames
         private Scene _scene;
         private RecordedFrameRenderer _world;
         private RecordedFrameScreenRenderer _screen;
-        private bool _passthrough;
         private int _shownConsoleCount = -1;
         private EventConsolePanel _console;
 
@@ -56,32 +54,6 @@ namespace PitHero.Services.Replay.Frames
         public bool IsLiveStream => _recorder != null;
         /// <summary>Something the viewer holds open for its store (a saved replay's sidecar reader), closed by <see cref="Dispose"/>.</summary>
         public IDisposable OwnedSource { get; set; }
-
-        /// <summary>
-        /// When true the live scene draws itself (filter off, renderers idle) and the HUD reads live
-        /// values: the simulation is running at the cursor. The console keeps following the log.
-        /// </summary>
-        public bool Passthrough
-        {
-            get => _passthrough;
-            set
-            {
-                if (_passthrough == value)
-                    return;
-                _passthrough = value;
-                if (_scene != null)
-                    _scene.RenderableFilter = value ? null : _filter;
-                if (!value)
-                {
-                    // Ticks still in the recorder's builder become visible frames now
-                    _recorder?.FlushPending();
-                    Tiles.Invalidate();
-                }
-            }
-        }
-
-        /// <summary>True when the renderers should draw the recorded frame this frame.</summary>
-        public bool DrawsRecordedFrame => !_passthrough || IsFrozen;
 
         /// <summary>A viewer over the live session's stream.</summary>
         public ReplayFrameViewer(FrameRecorder recorder, long totalTicks)
@@ -126,8 +98,7 @@ namespace PitHero.Services.Replay.Frames
                 return;
             DetachFromScene();
             _scene = scene;
-            if (!_passthrough || IsFrozen)
-                scene.RenderableFilter = _filter;
+            scene.RenderableFilter = _filter;
             _world = new RecordedFrameRenderer(this);
             _screen = new RecordedFrameScreenRenderer(this, _world);
             scene.AddRenderer(_world);
@@ -168,7 +139,6 @@ namespace PitHero.Services.Replay.Frames
         {
             Cursor.Max = Math.Max(Cursor.Max, tick);
             Cursor.Seek(tick);
-            _passthrough = false;
             Refresh();
             _frozen.CopyFrom(CurrentFrame);
             CurrentFrame = _frozen.Tick >= 0 ? _frozen : null;
@@ -201,14 +171,14 @@ namespace PitHero.Services.Replay.Frames
 
         /// <summary>
         /// Once per rendered frame from the scene's presentation pass: refreshes the frame and feeds the
-        /// HUD, labels and console from the record (HUD and labels stay live in passthrough).
+        /// HUD, labels and console from the record.
         /// </summary>
         public void FeedPresentation(MainGameScene scene)
         {
             Refresh();
             if (scene == null)
                 return;
-            if (!_passthrough && CurrentFrame != null)
+            if (CurrentFrame != null)
                 scene.ApplyRecordedHud(in CurrentFrame.Hud);
             SyncConsole(scene.EventConsole, Cursor.FrameTick);
         }

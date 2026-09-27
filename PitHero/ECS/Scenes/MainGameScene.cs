@@ -3480,7 +3480,7 @@ namespace PitHero.ECS.Scenes
             var frameViewer = replayActive ? replayPlayback.Viewer : null;
             if (frameViewer != null)
                 frameViewer.FeedPresentation(this);
-            bool recordedHud = frameViewer != null && !frameViewer.Passthrough;
+            bool recordedHud = frameViewer != null;
             if (_replayScrubber != null)
             {
                 if (_replayScrubber.IsVisible() != replayActive)

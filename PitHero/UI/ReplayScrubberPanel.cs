@@ -30,8 +30,6 @@ namespace PitHero.UI
 
         private long _lastShownTick = -1;
         private long _lastShownTotal = -1;
-        private long _lastShownMax = -1;
-        private bool _lastShownInFuture;
         private ReplayPlaybackState _lastShownState = ReplayPlaybackState.Idle;
         private int _lastShownSpeedIndex = -1;
         private long _lastShownDivergence = -2;
@@ -121,9 +119,8 @@ namespace PitHero.UI
                 return;
             if (playback.State == ReplayPlaybackState.Seeking || playback.State == ReplayPlaybackState.Starting)
                 return;
-            // Continuing from the past discards what happened since; continuing from the simulated
-            // future commits to a world the player only watched
-            string message = GetText(playback.InFuture ? UITextKey.ConfirmContinueFutureMessage : UITextKey.ConfirmContinueHereMessage);
+            // Continuing from the past discards what happened since
+            string message = GetText(UITextKey.ConfirmContinueHereMessage);
             string warning = null;
             if (playback.IsOlderSimulation)
             {
@@ -166,7 +163,7 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
             long target = (long)value;
-            if (target > playback.TotalTicks && !ReplayPlaybackService.FutureSimulationUnlocked)
+            if (target > playback.TotalTicks)
                 target = playback.TotalTicks;
             if (target != playback.CurrentTick)
                 playback.Seek(target);
@@ -180,14 +177,11 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
 
-            long total = playback.TotalTicks;
-            long max = playback.MaxSeekTick; // session end, or the future cap when unlocked
-            if (total != _lastShownTotal || max != _lastShownMax)
+            long total = playback.TotalTicks; // the slider ends at the session end
+            if (total != _lastShownTotal)
             {
                 _lastShownTotal = total;
-                _lastShownMax = max;
-                _slider.SetMinMax(0f, max > 0 ? max : 1f);
-                _slider.FutureStartValue = max > total ? total : float.MaxValue; // blue track past the session end
+                _slider.SetMinMax(0f, total > 0 ? total : 1f);
             }
 
             // While seeking the knob shows the destination, not the ticks racing toward it
@@ -195,7 +189,7 @@ namespace PitHero.UI
             long tick = state0 == ReplayPlaybackState.Seeking || state0 == ReplayPlaybackState.Starting
                 ? playback.SeekTarget
                 : playback.CurrentTick;
-            if (tick > max) tick = max;
+            if (tick > total) tick = total;
             if (!_slider.IsPointerHeld && !_previewing && tick != _lastShownTick)
             {
                 _lastShownTick = tick;
@@ -247,14 +241,10 @@ namespace PitHero.UI
             }
 
             long divergence = playback.DivergenceTick;
-            bool inFuture = playback.InFuture;
-            if (divergence == _lastShownDivergence && inFuture == _lastShownInFuture && state != ReplayPlaybackState.AtEnd)
+            if (divergence == _lastShownDivergence && state != ReplayPlaybackState.AtEnd)
                 return;
             _lastShownDivergence = divergence;
-            _lastShownInFuture = inFuture;
-            if (inFuture)
-                _statusLabel.SetText(GetText(UITextKey.ReplayFutureStatus));
-            else if (divergence >= 0)
+            if (divergence >= 0)
                 _statusLabel.SetText(string.Format(GetText(UITextKey.ReplayDivergenceAt),
                     ReplayTimeFormatter.FormatTicks(divergence),
                     GetText(playback.DivergenceIsDecision ? UITextKey.ReplayDivergenceDecision : UITextKey.ReplayDivergenceState)));
@@ -285,11 +275,9 @@ namespace PitHero.UI
         {
             _lastShownTick = -1;
             _lastShownTotal = -1;
-            _lastShownMax = -1;
             _lastShownState = ReplayPlaybackState.Idle;
             _lastShownSpeedIndex = -1;
             _lastShownDivergence = -2;
-            _lastShownInFuture = false;
             _lastSeekPercent = -1;
             _previewing = false;
         }

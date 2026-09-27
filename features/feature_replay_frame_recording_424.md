@@ -55,7 +55,7 @@ So the honest split is:
 | Consumer | Needs | Design |
 |---|---|---|
 | **Watching** (play, pause, scrub, rewind, speed) — 99% of replay use | what was on screen at tick T | **Record it, Braid-style.** Zero simulation while watching. O(1) random access |
-| **Resuming** (Time Travel Here, entering the future, coming back from a saved replay's rebuild) — rare, deliberate, confirmed | the full simulation at tick T | **Re-simulate** from the recording (today's path), now hidden behind a frozen recorded frame and a progress bar |
+| **Resuming** (Time Travel Here to the past, coming back from a saved replay's rebuild) — rare, deliberate, confirmed | the full simulation at tick T | **Re-simulate** from the recording (today's path), now hidden behind a frozen recorded frame and a progress bar |
 
 This is not "two systems" in the sense Blow warned about. The frame stream is a **derived cache** of
 the deterministic simulation with exactly one producer (a capture hook at the end of each tick). It
@@ -71,7 +71,7 @@ tripwire is only exercised on the resume paths, where it already lives.
  L0  Recording (unchanged)        seed + PlayerCommands + tripwire hashes      replay_<hero>_<stamp>.bin
  L1  Frame stream (new)           per-tick presentation state, base+delta      replay_<hero>_<stamp>.frames
  L2  Frame viewer (new)           draws any recorded tick; no simulation        RecordedFrameRenderer
- L3  Resume (existing, reframed)  re-simulate to T for Time Travel / future     ReplayPlaybackService "Simulated" mode
+ L3  Resume (existing, reframed)  re-simulate to T for Time Travel (the past)  ReplayPlaybackService "Simulated" mode
 ```
 
 ### 3.1 L1 — the frame stream
@@ -195,9 +195,8 @@ whose frame format version is older, is ignored and rebuilt (§3.4).
 **Lifecycle mirrors `ReplayRecorder` exactly.** `FrameRecorder.Current` is scene-scoped, created in
 `MainGameScene.Begin` next to `ReplayRecorder`, detached in `Unload`. During a scene rebuild for a
 resume (§3.3) it is *preloaded* with the existing stream and `IsRecording = false` for ticks that are
-already recorded, resuming appends past `TotalTicks`; `TruncateAfter(tick)` drops frames for Time
-Travel exactly as the command recorder does. Frames captured in the simulated future are dropped on
-leaving it, again like the recorder.
+already recorded, resuming appends past `TotalTicks` (the few ticks a fast playback overshoots the end
+by); `TruncateAfter(tick)` drops frames for Time Travel exactly as the command recorder does.
 
 ### 3.2 L2 — the frame viewer
 
@@ -253,8 +252,9 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
   console events at open.
 - Entering FrameView calls `FrameRecorder.FlushPending()` so the ticks still in the builder become
   frames (the partial chunk is written and reloaded, as a Time Travel truncation does).
-- The future from the current session: the viewer's *passthrough* hands the picture to the live scene
-  while the simulation runs at the cursor; a backward scrub flushes the builder and shows frames.
+- ~~The future from the current session: the viewer's *passthrough* hands the picture to the live scene
+  while the simulation runs at the cursor.~~ Removed with the future (#438): the viewer always draws
+  the recorded frame; the live scene never draws itself while a viewer is attached.
 - Time Travel Here freezes a private copy of the frame (`DecodedFrame.CopyFrom`) so the stream
   truncation of the rebuild cannot blank it; the frozen viewer is re-attached to the trampoline scene
   (camera set from the captured view) and to the rebuilt scene; `Seek` is locked while it runs.
@@ -286,9 +286,10 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
 | Action | What happens |
 |---|---|
 | **Time Travel Here** at cursor T | Confirmation as today. Then `ReplayPlaybackService` switches to `Simulated`: `RestartScene(startAtTick: T)` through `ReplayBootScene` exactly as today, **while the viewer keeps drawing recorded frame T** over the rebuilding scene and the scrubber shows `SeekProgress`. When the seek lands, `ContinueFromHere` runs (truncate recorder + frame recorder at T), the viewer is removed, live play resumes. Cost: T / ~24k s (about 9 s per hour of session), paid once, after a deliberate confirmed action, behind a frozen picture instead of a blank world |
-| **Entering the future** (Sphere of Foresight) from the current session | The live scene is already at `TotalTicks`. The viewer is removed, the simulation resumes with `InFuture` recording past the end, frames are captured as it goes; scrubbing backwards *inside the future* is then FrameView over those frames. Leaving the future without committing rebuilds to `TotalTicks` (today's path) |
-| **Entering the future from a saved replay** | Needs the sim at `TotalTicks`: `Simulated` rebuild to the end (today's path), then as above |
-| **Exit from a saved replay** | Instant when the live scene was never torn down (FrameView). Only if a resume path tore it down does `ReturnToLiveSession` re-simulate the set-aside live recording, as today |
+| **Exit from a saved replay** | Instant when the live scene was never torn down (FrameView). Only if a Time Travel rebuild tore it down does `ReturnToLiveSession` re-simulate the set-aside live recording, as today |
+
+The two "Entering the future" rows (current session / saved replay) were deleted with the future
+(#438, 2026-09-26).
 
 A rebuild that **diverges** from the tripwire hashes (the world at T differs from the frames shown)
 is reported exactly as today (`DivergenceTick`, `replay_divergence.log`); the player is told once,
@@ -330,13 +331,10 @@ determinism bug, which is what the tripwire is for.
   last write time, never `session_*.frames` (the live file) and never a `.bin`.
 - **Saved FrameView** = the #428 viewer over a `FrameStore` preloaded from a `FrameSidecarReader` (chunks
   inflated on demand, LRU under the memory budget; the viewer owns and closes the reader). The live world
-  under it is *another timeline*, so the live-stream shortcuts are gated on `ReplayFrameViewer.IsLiveStream`:
-  no passthrough, Exit never checks the live clock against `TotalTicks`, and Time Travel Here always
-  rebuilds. Dragging past the end freezes the last frame and rebuilds the recorded world to the target
-  (`EnterFutureFromSavedFrameView`, Simulated from then on; the viewer goes when the seek lands); the
-  rebuild's own frame recorder captures the ticks it simulates. Exit without any rebuild is the removal of
-  the viewer; after a rebuild it is `ReturnToLiveSession` as before. On exit the console is refilled from
-  the **live** recorder's log, not the saved replay's.
+  under it is *another timeline*, so Time Travel Here (gated on `ReplayFrameViewer.IsLiveStream`) always
+  rebuilds. A drag clamps to the session end (the future and `EnterFutureFromSavedFrameView` went with
+  #438). Exit without any rebuild is the removal of the viewer; after a Time Travel rebuild the world is
+  the recording's. On exit the console is refilled from the **live** recorder's log, not the saved replay's.
 
 ## 4. Files
 
@@ -513,6 +511,11 @@ checkpoint and matches every subsequent tripwire hash for 10 minutes of simulati
 
 ## 9. Non-goals
 
+- **The simulated future** (2026-09-26, issue #438): the scrubber region past the session end, time
+  travel to the future and the Sphere of Foresight artifact were removed, because every path through
+  the future re-simulates (entering it from a saved replay rebuilt from tick 0, leaving it rebuilt the
+  whole session, and the future ticks themselves were computed every time) and skipping ahead cheapens
+  play. The timeline ends at the recorded session end; Time Travel Here only goes to the past.
 - Inspecting inventory or windows at a past tick (the UI is locked during replay today; nothing lost).
 - Exact particles (cosmetic; re-emitted approximately in Phase 7).
 - Changing the recording format, `PlayerCommand` pipeline, tripwire, or any determinism rule.
