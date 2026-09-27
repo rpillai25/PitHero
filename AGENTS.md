@@ -203,7 +203,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/MonsterLibrary.md`
 
 **Architecture / subsystems:**
-- `PitHero/docs/ReplaySystem.md` — **Deterministic replay (read before adding input, randomness, timers or player actions)**: fixed-step simulation vs presentation pass, `GameRandom` streams, `SimulationClock`, `PlayerCommand` pipeline + handler rules, recording format, playback/seek model, divergence tripwire, the invariants with their reasons, recipes for new commands / RNG / timers / cosmetic components / diagnosing "Diverged at", future simulation, hero-gated time travel, and the artifact system (system save, proof-of-wealth grants)
+- `PitHero/docs/ReplaySystem.md` — **Deterministic replay (read before adding input, randomness, timers or player actions)**: fixed-step simulation vs presentation pass, `GameRandom` streams, `SimulationClock`, `PlayerCommand` pipeline + handler rules, recording format, playback/seek model, divergence tripwire, the invariants with their reasons, recipes for new commands / RNG / timers / cosmetic components / diagnosing "Diverged at", hero-gated time travel (the past only), and the artifact system (system save, proof-of-wealth grants)
 - `PitHero/docs/RenderingSystem.md` — render layer stack, Y-sort, MultiSpriteAnimator / StaticSpriteCompositor / YSortSpriteRenderer
 - `PitHero/docs/ParticleEffects.md` — ParticleEffectManager, .pex authoring quirks, sizing rules, effect patterns (attached/projectile/AoE), battle + out-of-battle wiring map
 - `PitHero/docs/RolePlayingFramework.md`

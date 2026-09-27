@@ -172,8 +172,6 @@ namespace PitHero
         public const string ReplayDivergenceDecision = "ReplayDivergenceDecision";
         public const string ReplayNoDivergence = "ReplayNoDivergence";
         public const string ReplayEndReached = "ReplayEndReached";
-        public const string ReplayFutureStatus = "ReplayFutureStatus";
-        public const string ConfirmContinueFutureMessage = "ConfirmContinueFutureMessage";
         public const string DialogConfirmReplay = "DialogConfirmReplay";
         public const string ConfirmReplayInterruptMessage = "ConfirmReplayInterruptMessage";
         public const string DialogConfirmDeleteReplay = "DialogConfirmDeleteReplay";
@@ -388,8 +386,6 @@ namespace PitHero
         public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
         public const string TabSeeds = "TabSeeds";
         public const string TabArtifacts = "TabArtifacts";
-        public const string ArtifactSphereOfForesightName = "ArtifactSphereOfForesightName";
-        public const string ArtifactSphereOfForesightDesc = "ArtifactSphereOfForesightDesc";
         public const string ArtifactChronosTimepieceName = "ArtifactChronosTimepieceName";
         public const string ArtifactChronosTimepieceDesc = "ArtifactChronosTimepieceDesc";
         public const string ArtifactKairosMetronomeName = "ArtifactKairosMetronomeName";

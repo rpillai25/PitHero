@@ -76,8 +76,6 @@ namespace PitHero.Rendering
 
         public override void Render(Scene scene)
         {
-            if (!_viewer.DrawsRecordedFrame)
-                return; // passthrough: the live renderers draw the scene
             var cam = Camera ?? scene.Camera;
             var frame = _viewer.CurrentFrame;
             var tiles = _viewer.Tiles;
@@ -428,8 +426,6 @@ namespace PitHero.Rendering
 
         public override void Render(Scene scene)
         {
-            if (!_viewer.DrawsRecordedFrame)
-                return;
             var frame = _viewer.CurrentFrame;
             var screenCam = scene.GetRenderer<ScreenSpaceRenderer>()?.Camera;
             var worldCam = scene.Camera;

@@ -790,15 +790,9 @@ namespace PitHero
         public const int ReplayListMaxShown = 10;                // Replay tab lists at most this many recordings (newest first, after the hero filter)
         public const int ReplaySpeechSeedSalt = 0x5BEEC4;        // XOR'd with the master seed for the cosmetic speech-bubble RNG
 
-        // Future simulation: the replay timeline extends past the session end and the player can drag
-        // into it once the Sphere of Foresight artifact is owned (Time Travel Here needs the Chronos Timepiece)
-        public const long ReplayFutureSimulationMaxTicks = 30L * 60L * 60L; // 30 minutes of simulated time beyond the recorded session end
-        public static readonly Color ReplayFutureTrackColor = new Color(70, 120, 230, 190); // Tint over the scrubber track beyond the session end
-
         // Artifacts: one-time system-level purchases persisted in the system save (see ArtifactService)
         public const string SystemSaveFileName = "system.bin";       // Under the persistent data folder, beside the save slots
-        public const int ArtifactSphereOfForesightPrice = 100000;     // Gold; unlocks future simulation in replays
-        public const int ArtifactChronosTimepiecePrice = 4000000;     // Gold; unlocks Time Travel Here (requires the sphere first)
+        public const int ArtifactChronosTimepiecePrice = 4000000;     // Gold; unlocks Time Travel Here (requires the metronome first)
         public const int ArtifactKairosMetronomePrice = 2000000;        // Gold; unlocks the 4X and 8X fast-forward rungs
         // Local artifacts (issue #411): hero-specific, kept in the session save, price deducted on purchase
         public const int ArtifactFastGrowFertilizerPrice = 250000;       // Gold; crops grow 2x

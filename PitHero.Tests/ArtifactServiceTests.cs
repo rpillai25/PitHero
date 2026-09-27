@@ -26,17 +26,17 @@ namespace PitHero.Tests
             try
             {
                 var first = new ArtifactService(dir, "system.bin");
-                Assert.IsFalse(first.Owns(ArtifactType.SphereOfForesight));
+                Assert.IsFalse(first.Owns(ArtifactType.KairosMetronome));
                 Assert.AreEqual(0, first.Version);
 
-                Assert.IsTrue(first.Grant(ArtifactType.SphereOfForesight));
-                Assert.IsFalse(first.Grant(ArtifactType.SphereOfForesight), "Granting an owned artifact is a no-op");
+                Assert.IsTrue(first.Grant(ArtifactType.KairosMetronome));
+                Assert.IsFalse(first.Grant(ArtifactType.KairosMetronome), "Granting an owned artifact is a no-op");
                 Assert.AreEqual(1, first.Version);
                 Assert.IsTrue(File.Exists(Path.Combine(dir, "system.bin")), "Grant writes the system save immediately");
                 first.Detach();
 
                 var second = new ArtifactService(dir, "system.bin");
-                Assert.IsTrue(second.Owns(ArtifactType.SphereOfForesight), "Ownership survives a restart");
+                Assert.IsTrue(second.Owns(ArtifactType.KairosMetronome), "Ownership survives a restart");
                 Assert.IsFalse(second.Owns(ArtifactType.ChronosTimepiece));
                 Assert.AreEqual(1, second.OwnedCount);
                 second.Detach();
@@ -163,8 +163,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void Catalog_ScopesAndPrices()
         {
-            Assert.AreEqual(6, ArtifactCatalog.Count);
-            Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.SphereOfForesight));
+            Assert.AreEqual(6, ArtifactCatalog.Count, "The retired Sphere keeps its ordinal; the enum is never renumbered");
             Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.ChronosTimepiece));
             Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.KairosMetronome));
             Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.FastGrowFertilizer));
@@ -208,16 +207,12 @@ namespace PitHero.Tests
             try
             {
                 var service = new ArtifactService(dir, "system.bin");
-                // The sphere and the metronome are both offered up front; the timepiece is the capstone
-                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.SphereOfForesight));
+                // The metronome is offered up front; the timepiece is the capstone
                 Assert.IsTrue(service.IsAvailableInShop(ArtifactType.KairosMetronome));
-                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.ChronosTimepiece), "The timepiece needs both others first");
-
-                service.Grant(ArtifactType.SphereOfForesight);
-                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.SphereOfForesight), "Owned artifacts leave the shop");
-                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.ChronosTimepiece), "One prerequisite is not enough");
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.ChronosTimepiece), "The timepiece needs the metronome first");
 
                 service.Grant(ArtifactType.KairosMetronome);
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.KairosMetronome), "Owned artifacts leave the shop");
                 Assert.IsTrue(service.IsAvailableInShop(ArtifactType.ChronosTimepiece));
 
                 service.Grant(ArtifactType.ChronosTimepiece);
@@ -226,9 +221,55 @@ namespace PitHero.Tests
                 var owned = new List<ArtifactType>();
                 service.GetOwnedInOrder(owned);
                 CollectionAssert.AreEqual(
-                    new[] { ArtifactType.SphereOfForesight, ArtifactType.KairosMetronome, ArtifactType.ChronosTimepiece },
+                    new[] { ArtifactType.KairosMetronome, ArtifactType.ChronosTimepiece },
                     owned);
                 service.Detach();
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [TestMethod]
+        public void RetiredSphere_LoadsFromOldSystemSave_ButIsNeverCountedOfferedOrGranted()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                // A system save written before the Sphere of Foresight was retired (issue #438)
+                var store = new FileDataStore(dir);
+                var old = new SystemSaveData();
+                old.OwnedArtifacts.Add((int)ArtifactType.SphereOfForesight);
+                old.OwnedArtifacts.Add((int)ArtifactType.KairosMetronome);
+                store.Save("system.bin", old);
+
+                var service = new ArtifactService(dir, "system.bin");
+                Assert.IsTrue(ArtifactCatalog.IsRetired(ArtifactType.SphereOfForesight));
+                Assert.IsTrue(ArtifactCatalog.IsValid((int)ArtifactType.SphereOfForesight), "The loader keeps the ordinal");
+                Assert.AreEqual(1, service.OwnedCount, "The retired ordinal is ignored by the count");
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.SphereOfForesight), "Never offered");
+                Assert.IsFalse(service.Grant(ArtifactType.SphereOfForesight), "Never granted");
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.ChronosTimepiece), "The metronome alone unlocks the timepiece");
+
+                var owned = new List<ArtifactType>();
+                service.GetOwnedInOrder(owned);
+                CollectionAssert.AreEqual(new[] { ArtifactType.KairosMetronome }, owned, "The owned grid never shows it");
+
+                Assert.AreEqual(string.Empty, ArtifactCatalog.GetSpriteName(ArtifactType.SphereOfForesight));
+                Assert.AreEqual(string.Empty, ArtifactCatalog.GetNameKey(ArtifactType.SphereOfForesight));
+                Assert.AreEqual(string.Empty, ArtifactCatalog.GetDescriptionKey(ArtifactType.SphereOfForesight));
+                Assert.AreEqual(0, ArtifactCatalog.GetPrice(ArtifactType.SphereOfForesight));
+                CollectionAssert.AreEqual(new[] { ArtifactType.KairosMetronome }, ArtifactCatalog.GetPrerequisites(ArtifactType.ChronosTimepiece));
+
+                // Granting something else rewrites the file without dropping the retired ordinal
+                service.Grant(ArtifactType.ChronosTimepiece);
+                service.Detach();
+                var reloaded = new SystemSaveData();
+                store.Load("system.bin", reloaded);
+                CollectionAssert.AreEqual(
+                    new[] { (int)ArtifactType.SphereOfForesight, (int)ArtifactType.KairosMetronome, (int)ArtifactType.ChronosTimepiece },
+                    reloaded.OwnedArtifacts, "Append only, never renumber, never drop");
             }
             finally
             {

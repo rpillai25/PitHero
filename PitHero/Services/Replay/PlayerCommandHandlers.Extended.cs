@@ -442,17 +442,20 @@ namespace PitHero.Services.Replay
         /// gold, nothing is deducted (so reloading an older save cannot rewind a payment) and the
         /// simulation is untouched. Local (issue #411): a real purchase — the price is deducted and the
         /// ownership lands on the session state the simulation reads. Both grants are idempotent, so a
-        /// replayed grant is harmless; the local deduction replays because this is a command.
+        /// replayed grant is harmless; the local deduction replays because this is a command. A retired
+        /// ordinal (an old recording that bought the Sphere of Foresight) is ignored.
         /// </summary>
         private static void ApplyGrantArtifact(int ordinal)
         {
             var services = Services;
             if (services == null || !PitHero.Artifacts.ArtifactCatalog.IsValid(ordinal))
                 return;
+            var type = (PitHero.Artifacts.ArtifactType)ordinal;
+            if (PitHero.Artifacts.ArtifactCatalog.IsRetired(type))
+                return;
             var gameState = services.GetService<GameStateService>();
             if (gameState == null)
                 return;
-            var type = (PitHero.Artifacts.ArtifactType)ordinal;
             int price = PitHero.Artifacts.ArtifactCatalog.GetPrice(type);
             if (gameState.Funds < price)
                 return;
