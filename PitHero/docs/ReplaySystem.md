@@ -404,8 +404,10 @@ services are keyed by type (constructing a second `MainGameScene` while the firs
   is cleared on exit.
 - **Exit** self-caches the replay if it was watched to its end, then re-simulates the set-aside live
   recording to its end and returns to the exact pre-replay live state. **Time Travel Here**
-  (`ContinueFromHere`, confirmed) truncates the recording at the current tick
-  (`ReplayRecorder.TruncateAfter`, `FrameRecorder.TruncateAfter`) and branches live play from there.
+  (`ContinueFromHere`, confirmed) truncates the recording to the ticks before the current one
+  (`ReplayRecorder.TruncateAfter(tick - 1)`, `FrameRecorder.TruncateAfter(tick - 1)`: the clock sits
+  at `tick`, which is simulated live next, so the old timeline's command, sample and frame at that tick
+  must go too) and branches live play from there.
 - `CheckDecision` / `CheckStateHash` set `DivergenceTick` on the first mismatch; the scrubber shows
   "Diverged at m:ss (state|decision)" and a diagnostic block is appended to
   `replay_divergence.log` next to the replay files, naming which part hash (`rng`, `hero`, `party`,

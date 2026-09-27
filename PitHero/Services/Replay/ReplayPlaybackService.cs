@@ -964,10 +964,15 @@ namespace PitHero.Services.Replay
             _returnSession = null;
             long tick = SimulationClock.CurrentTick;
             Trace($"CommitHere tick={tick}");
+            // Ticks 0..tick-1 are the new timeline's past; tick itself is simulated live next. Everything
+            // the old timeline recorded at or after it goes: a command drained at exactly this tick, a
+            // tripwire sample, the frame. (Keeping tick itself left the old frame in the stream, so the
+            // frame recorder refused the live capture of that tick with a "does not follow" warning.)
             // A fast playback may have overshot the recorded end by a few ticks; the recorder appended
-            // those, so the recording already runs up to this tick and the truncation is a no-op there
-            ReplayRecorder.Current?.TruncateAfter(tick);
-            Frames.FrameRecorder.Current?.TruncateAfter(tick);
+            // those, so the recording already ends at tick-1 there and the truncation is a no-op
+            long lastKept = tick - 1;
+            ReplayRecorder.Current?.TruncateAfter(lastKept);
+            Frames.FrameRecorder.Current?.TruncateAfter(lastKept);
             TotalTicks = tick;
             long divergence = DivergenceTick;
             bool decision = DivergenceIsDecision;
