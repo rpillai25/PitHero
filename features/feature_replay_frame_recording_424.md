@@ -474,7 +474,8 @@ What the variants say:
 | 4 | #428 | Frame viewer for Replay Current Session: renderer, shadow tiles, HUD/console feed, cursor, Nez filter; Exit instant; Time Travel behind a frozen frame. **Decides `ReplayFrameCaptureEveryNTicks` on screen** (60 Hz vs 30 Hz at 1x; position interpolation between frames is the cheap way to make 30 Hz look like 60) | 3 | L |
 | 5 | #429 | Saved replays: sidecar save/rename, identity, lazy loading, disk budget, Replay tab mark; FrameView for cached saved replays | 4 | M |
 | 6 | #430 | ~~Transcode for uncached or stale saved replays: buffering status, growing range, finalise sidecar~~ **Closed, not planned (2026-09-26)**; the self-caching step moved to #431 | 5 | — |
-| 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, recorded sound events, self-caching of uncached replays, action-queue capture, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rule for new renderables, remove dead code | 4–5 | M |
+| 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, recorded sound events, self-caching of uncached replays, action-queue capture, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rule for new renderables, remove dead code | 4–5, #438 | M |
+| 9 | #438 | **Remove the simulated future** (decided 2026-09-26): scrubber region, entering/leaving the future, time travel to the future, viewer passthrough, the Sphere of Foresight artifact (retired ordinal, never renumbered). Every path through the future re-simulates and it cheapens play. The §3.3 rows for the future and the §3.2 passthrough bullet describe code that this issue deletes | 5 | S |
 | 8 | #432 | *(Optional, go/no-go)* Simulation checkpoints to bound Time Travel rebuilds | 4 | XL — see §8 |
 
 Phase 4 is the first phase the player feels. Phases 1–3 are invisible (capture runs, nothing reads it)
