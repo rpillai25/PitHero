@@ -1,9 +1,11 @@
 using System;
 using System.IO;
+using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Tiled;
 using PitHero.ECS.Components;
 using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace PitHero.Services.Replay.Frames
@@ -98,6 +100,9 @@ namespace PitHero.Services.Replay.Frames
         private MercenaryManager _mercs;
         private Entity _hero;
         private HeroComponent _heroComponent;
+        private HeroHeadAnimationComponent _heroHead;
+        private HeroEyesAnimationComponent _heroEyes;
+        private HeroHairAnimationComponent _heroHair;
 
         private long _captureTicksSum, _captureTicksMax, _captureCount, _captureStart;
         private float _logTimer;
@@ -176,6 +181,9 @@ namespace PitHero.Services.Replay.Frames
             _events = Service<GameEventService>();
             if (_events != null)
                 _events.OnEmitAny += OnConsoleEmitted;
+            // Static event: unsubscribed in Detach, symmetric with the console hook (a scene reload must not
+            // leave a dead recorder listening)
+            SoundEffectManager.OnSoundPlayed += OnSoundPlayed;
 
             Debug.Log($"[FrameRecorder] Session {recordedAtUtcTicks}: {(adopted ? "adopted" : _sidecar != null && _sidecar.WasReopened ? "reopened" : "new")} stream, {Store.ChunkCount} chunks, end tick {Store.EndTick}, file {(_sidecar != null ? Path.GetFileName(_sidecar.Path) : "none")}");
         }
@@ -229,6 +237,7 @@ namespace PitHero.Services.Replay.Frames
                 _events.OnEmitAny -= OnConsoleEmitted;
                 _events = null;
             }
+            SoundEffectManager.OnSoundPlayed -= OnSoundPlayed;
             if (!IsInitialized)
                 return;
             IsInitialized = false;
@@ -359,6 +368,7 @@ namespace PitHero.Services.Replay.Frames
             EnsureTileKeyframe();
             _ids.BeginTick();
             _builder.BeginTick(tick);
+            Context.Tick = tick;
             return true;
         }
 
@@ -699,6 +709,26 @@ namespace PitHero.Services.Replay.Frames
             _builderDirty = true;
         }
 
+        /// <summary>
+        /// SoundEffectManager hook (issue #431): records a simulation sound with the variant it resolved
+        /// to, at the tick it played. UI click sounds are not simulation and are skipped; the manager
+        /// raises nothing while muted (seeks) or for the viewer's own recorded plays.
+        /// </summary>
+        public void OnSoundPlayed(SoundEffectType type, int variant, Vector2 position, bool positional)
+        {
+            if (!IsInitialized || SoundEffectManager.IsUiClick(type))
+                return;
+            long tick = SimulationClock.CurrentTick;
+            if (!IsRecording && tick <= Store.EndTick)
+                return;
+            if (!EventTickInChunk(tick))
+                return;
+            byte flags = positional ? SoundEvent.Positional : (byte)0;
+            _builder.AddSoundEvent(tick, (byte)type, variant < 0 ? (byte)0 : variant > byte.MaxValue ? byte.MaxValue : (byte)variant,
+                FrameWriter.ToPixel(position.X), FrameWriter.ToPixel(position.Y), flags);
+            _builderDirty = true;
+        }
+
         /// <summary>GameEventService hook: records a console line with its segments interned.</summary>
         public void OnConsoleEmitted(ConsoleSegment[] segments)
         {
@@ -731,10 +761,17 @@ namespace PitHero.Services.Replay.Frames
             {
                 _hero = scene.FindEntity(HeroEntityName);
                 _heroComponent = _hero?.GetComponent<HeroComponent>();
+                _heroHead = _hero?.GetComponent<HeroHeadAnimationComponent>();
+                _heroEyes = _hero?.GetComponent<HeroEyesAnimationComponent>();
+                _heroHair = _hero?.GetComponent<HeroHairAnimationComponent>();
             }
             var linked = _heroComponent?.LinkedHero;
             if (linked != null && _hero != null && !_hero.HasComponent<HeroDeathComponent>())
                 hud.Hero = new HudMember { Present = true, Hp = linked.CurrentHP, MaxHp = linked.MaxHP, Mp = linked.CurrentMP, MaxMp = linked.MaxMP, Level = linked.Level };
+            // The static portrait the live HUD draws: walk-down frame 0 of each layer, with its tint
+            hud.PortraitHead = PortraitSpriteId(_heroHead, out hud.PortraitHeadColor);
+            hud.PortraitEyes = PortraitSpriteId(_heroEyes, out hud.PortraitEyesColor);
+            hud.PortraitHair = PortraitSpriteId(_heroHair, out hud.PortraitHairColor);
 
             _mercs ??= Service<MercenaryManager>();
             if (_mercs != null)
@@ -758,6 +795,19 @@ namespace PitHero.Services.Replay.Frames
             _pause ??= Service<PauseService>();
             hud.Paused = _pause != null && _pause.IsPaused;
             return hud;
+        }
+
+        /// <summary>The first walk-down frame of a paperdoll layer (what GraphicalHUD.RenderHeroSprites draws) as a stream id, or 0.</summary>
+        private ushort PortraitSpriteId(HeroAnimationComponent layer, out uint color)
+        {
+            color = 0;
+            if (layer == null || layer.Animations == null)
+                return 0;
+            string name = layer.WalkDownAnimationName;
+            if (name == null || !layer.Animations.TryGetValue(name, out var animation) || animation.Sprites == null || animation.Sprites.Length == 0)
+                return 0;
+            color = layer.ComponentColor.PackedValue;
+            return Context.SpriteId(animation.Sprites[0]);
         }
 
         private static HudMember MercMember(Entity entity)

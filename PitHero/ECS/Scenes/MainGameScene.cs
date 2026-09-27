@@ -2812,6 +2812,28 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
+        /// Feeds the hero HUD's portrait from the recorded frame (replay frame viewer, issue #431): the
+        /// HUD record carries the walk-down first frame of the head, eyes and hair layers with their
+        /// tints, the same static portrait the live HUD draws. Without a hero the portrait is blank.
+        /// </summary>
+        public void ApplyRecordedPortrait(Services.Replay.Frames.DecodedFrame frame, Rendering.FrameSpriteResolver sprites)
+        {
+            if (_graphicalHUD == null || frame == null || sprites == null)
+                return;
+            ref readonly var hud = ref frame.Hud;
+            _graphicalHUD.SetRecordedPortrait(
+                sprites.Get(hud.PortraitHead), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHeadColor),
+                sprites.Get(hud.PortraitEyes), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesColor),
+                sprites.Get(hud.PortraitHair), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHairColor));
+        }
+
+        /// <summary>The hero HUD's portrait reads the live paperdoll again (the viewer is gone).</summary>
+        public void ClearRecordedPortrait()
+        {
+            _graphicalHUD?.ClearRecordedPortrait();
+        }
+
+        /// <summary>
         /// Update graphical HUD with current hero stats
         /// </summary>
         private void UpdateHeroHUD()
@@ -3491,6 +3513,10 @@ namespace PitHero.ECS.Scenes
                         _replayScrubber.ResetDisplayCache();
                         PositionReplayScrubber();
                         _replayScrubber.ToFront();
+                    }
+                    else
+                    {
+                        _replayScrubber.OnHidden();
                     }
                 }
                 if (replayActive)

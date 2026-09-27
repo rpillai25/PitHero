@@ -2,27 +2,41 @@
 
 PitHero records every play session and can replay it exactly: **Settings → Replay** lists saved
 recordings, saves the current session, or replays it from the start, and a bottom scrubber lets the
-player play, pause, change speed and seek both ways while the camera stays free. This is not a video.
-A replay **re-simulates the session** from the same seed with the same player commands, so the game
-must be deterministic. That determinism is a project-wide contract: **every feature must be
-replay-friendly** (see the "Replay Determinism" rules in `AGENTS.md`). This document explains the
-model, the invariants and the recipes for staying inside them.
+player play, pause, rewind, change speed and seek both ways while the camera stays free. Two things
+are recorded, for two different jobs:
 
-Code lives in `PitHero/Services/Replay/` plus `Services/GameRandom.cs`, `Services/SimulationClock.cs`,
-the UI in `UI/ReplayTab.cs` and `UI/ReplayScrubberPanel.cs`, and the fixed-step loop in the Nez fork
+1. **The recording** (`ReplayRecorder`, `replay_*.bin`): the seed, the player commands and the
+   tripwire hashes. It is the source of truth and the only thing the simulation ever needs. A replay
+   **re-simulates the session** from it whenever the world itself must exist again (Time Travel Here,
+   or a saved replay without a frame cache), so the game must be deterministic. That determinism is a
+   project-wide contract: **every feature must be replay-friendly** (see the "Replay Determinism" rules
+   in `AGENTS.md`).
+2. **The frame stream** (`FrameRecorder`, `*.frames`): what was on screen at every tick — sprites,
+   text, HUD numbers, tile changes, console lines, sounds, particle emitters. It is a derived cache of
+   the simulation with one producer (the end of every tick). *Watching* a replay draws these frames:
+   no simulation runs, seeking either way is instant, and nothing can diverge. If the cache is
+   missing or stale the replay falls back to re-simulation and rebuilds it as it plays.
+
+This document explains the model, the invariants and the recipes for staying inside them.
+
+Code lives in `PitHero/Services/Replay/` (the frame stream under `Frames/`, its renderers under
+`PitHero/Rendering/`), plus `Services/GameRandom.cs`, `Services/SimulationClock.cs`, the UI in
+`UI/ReplayTab.cs` and `UI/ReplayScrubberPanel.cs`, and the fixed-step loop in the Nez fork
 (`Nez/Nez.Portable/Core.cs`, `Utils/FixedStepScheduler.cs`, `Utils/Time.cs`, `ECS/Scene.cs`; plus
 `ECS/InternalUtils/ComponentList.cs` + `Utils/Collections/FastList.StableSort` for history-independent
-update order, `Debug/QuietLogHandler.cs` for logs that cost nothing during seeks, and
-`ParticleRandom` / `ParticleEmitter` for particles off the sim stream).
+update order, `Debug/QuietLogHandler.cs` for logs that cost nothing during seeks,
+`ParticleRandom` / `ParticleEmitter` for particles off the sim stream, `Scene.RenderableFilter` for the
+frame viewer, and `RenderableComponent.CaptureSlot` + `SpriteAtlasLoader` texture names for capture).
 
 ## The model in one line
 
 **fixed 60 Hz simulation tick + seeded RNG streams + recorded player commands = re-simulation.**
 
-Nothing else is recorded. The hero's GOAP plans, battles, loot, kitchen FSMs, merc spawns and every
-other decision are pure functions of world state, the RNG streams and the tick count, so they fall
-out identically on playback. Hero decisions and periodic state fingerprints are recorded only as a
-**divergence tripwire** that tells you when (and in which part of the state) a replay drifted.
+Nothing else is needed to rebuild the world. The hero's GOAP plans, battles, loot, kitchen FSMs, merc
+spawns and every other decision are pure functions of world state, the RNG streams and the tick count,
+so they fall out identically on playback. Hero decisions and periodic state fingerprints are recorded
+only as a **divergence tripwire** that tells you when (and in which part of the state) a replay drifted.
+The frame stream sits beside this as a picture of the past; it never feeds the simulation.
 
 ## The simulation tick
 
@@ -189,59 +203,204 @@ Manual saves are the player's to keep. The Replay tab lists only the `GameConfig
 (10) newest recordings **after** the current-hero filter, with a "Showing the N most recent of M" note;
 deleting one re-enumerates the folder, so the next most recent slides in.
 
+## The frame stream (`Services/Replay/Frames`, issue #424)
+
+Design history and measurements: `features/feature_replay_frame_recording_424.md`. The layers:
+
+| Layer | What | Where |
+|---|---|---|
+| L0 recording | seed + commands + tripwire hashes (above) | `ReplayRecorder`, `replay_*.bin` |
+| L1 frame stream | one presentation frame per tick, chunked and deflated | `FrameRecorder`, `FrameChunkBuilder/Codec`, `FrameStore`, `*.frames` |
+| L2 viewer | draws any recorded tick over the untouched live scene | `ReplayFrameViewer`, `RecordedFrameRenderer`, `RecordedFrameScreenRenderer`, `RecordedParticlePool` |
+| L3 resume | re-simulates to a tick when the world must exist again | `ReplayPlaybackService` in `Simulated` mode |
+
+### Capture (L1)
+
+`FrameRecorder.Current` is scene-scoped like `ReplayRecorder` (created in `MainGameScene.Begin`,
+detached in `Unload`). `CaptureTick` runs at the tail of `MainGameScene.Update`, right before the clock
+advances (Y-sort depths are final there), and walks `Scene.RenderableComponents` once. Each drawn
+renderable becomes a byte string of **ops** under a stable `ushort` id (carried on the component in the
+fork field `RenderableComponent.CaptureSlot`, so a re-sorted list costs no lookup):
+
+| Op | From | Notes |
+|---|---|---|
+| `Sprite` | stock `SpriteRenderer` / every animator subclass | i16 pixel position, depth, layer, color, flags (flip, screen-space, `Graded` = drawn through the day-night material) |
+| `Composite` | `MultiSpriteAnimator`, `StaticSpriteCompositor` | one record per layer with a sprite (never the render texture) |
+| `Text`, `Rect`, `NinePatch` | `IFrameCapturable` components (floating text, HP bars, outlines, speech bubbles) | anchor + `dx/dy` + `ConstantScreenSize` for constant on-screen size at any zoom; no layer (drawn after every sprite) |
+| `Particle` | `ParticleEmitter`s spawned by `ParticleEffectManager` | effect key, density, root, age in ticks, Emitting flag; the particles themselves are re-simulated by the viewer |
+
+Everything else: `ILiveOnlyRenderable` (clouds, tree bands, `GraphicalHUD`) keeps drawing live;
+`TiledMapRenderer` and `UICanvas` are skipped silently; any other type is skipped with a one-time
+warning and **fails `FrameCaptureCoverageTests` by name**. That is the rule for feature authors: *a new
+`RenderableComponent` is stock, `IFrameCapturable` or `ILiveOnlyRenderable`*. Anything per-rendered-frame
+or read from a live service is wrong in a per-tick recording (the bouncy digits' spacing and bounce
+curve, the day/night clock and the clouds were all found this way).
+
+Beside the ops, every tick carries a **HUD record** (party hp/mp/level, gold, pit level/tier, in-game
+seconds floored to whole seconds so it does not churn, pause flag, and the hero's static portrait: the
+walk-down first frame of the head, eyes and hair layers as sprite ids with their tints, exactly what
+the live HUD draws). **Events** arrive through hooks and are stored with their tick: tile mutations
+(`TiledMapService.TileChanging`, same-gid writes and the undrawn Collision/Top layers dropped, plus a
+full keyframe of Base/Detail/FogOfWar at every chunk start), console lines
+(`GameEventService.OnEmitAny`, segments interned) and **sounds** (`SoundEffectManager.OnSoundPlayed`:
+type, the variant a group sound rolled, world position, positional flag; UI click sounds are never
+recorded, nothing is recorded while `Muted`). That is the second rule for feature authors: *a new
+simulation sound goes through `SoundEffectManager`* or the frame stream never hears it.
+
+Sprites are identified by `(Texture2D.Name, sourceRect)` in a `SpriteKeyRegistry` (strings and
+nine-patch names likewise); each chunk carries the table entries first seen in it, so a reader rebuilds
+the tables from the uncompressed chunk prefixes without inflating anything.
+
+**Chunks** (`ReplayFrameChunkTicks` = 120 ticks, Braid's 2 s GOP): a base frame, then entity-level
+deltas against the previous tick (an entity whose bytes changed is re-emitted whole; a tombstone
+marks one gone), the HUD record only when it changed, then the events section (tile, console, sound)
+and the tile keyframe, deflated as one unit on the sidecar worker. Chunks are contiguous (chunk *i*
+starts at tick *i* × 120); only the last may be partial. Measured cost: ~36 MB per hour on disk,
+40–70 µs per tick in Release (`replays/frame_recorder.log`).
+
+**Lifecycle rules** (mirroring the command recorder): the capture rule is `IsRecording || tick >
+Store.EndTick`, so a playback skips ticks that already have a frame and captures past the stream end;
+`TruncateAfter` (Time Travel) cuts the stream, the file and the tables and continues the cut chunk;
+`MainGameScene.Unload` hands the stream to the next scene when playback is `Starting` (a rebuild of the
+same session adopts it; another session's stream is closed with its footer). Entering FrameView calls
+`FlushPending` so the ticks still in the builder become frames.
+
+### Files: the `.frames` sidecar
+
+```
+header    "PHFR", formatVersion i32, masterSeed i32, recordedAtUtcTicks i64, simulationVersion i32, chunkTicks i32
+chunks    [len u32][chunk bytes]…      (a chunk = uncompressed prefix + table delta + deflated payload)
+footer    "PHFX", totalTicks i64, count i32, {offset i64, firstTick i64, tickCount u16}…
+          optional "PHFC", lineCount i32, {tick i64, segCount u8, {text, color u32, itemName}…}…   (console lines, plain text)
+trailer   footerOffset i64, "PHFE"
+```
+
+- **During a session** the recorder appends to `replays/session_<recordedAtUtcTicks>.frames` from a
+  worker thread (`FrameSessionSidecar`; the main thread never waits) and the file doubles as the reload
+  source when the RAM ring (`ReplayFrameMemoryBudgetBytes`, 192 MB) evicts a chunk. A footer-less file
+  (crash) is reindexed by scanning; stale `session_*` files are deleted when a genuinely new session
+  starts.
+- **Saving a replay** writes the cache beside the `.bin` with the same name (`ReplayFileService.
+  SaveWithFrameCache`). Save Session Replay mid-session **copies** the session file (raw byte copy of
+  header + chunk records, fresh footer; the session goes on in its file). The quit-time save
+  (`SettingsUI.SaveSessionBeforeLeaving`) **finishes and moves** it (`FinishAndMove`; capture then
+  continues in memory only). The console lines live in the footer in plain text rather than being
+  rebuilt from the chunks' console events, which would inflate every chunk at open.
+- **The quit-time recording is one static file per hero**, `replay_auto_<HeroId as 8 hex digits>.bin`
+  + `.frames`, overwritten every session (a dated file per quit at tens of MB an hour would eat the
+  disk); the Replay tab marks it "Auto". Manual saves are dated and unlimited.
+- **Validity** (`TryOpenFrameCache`): identity header (seed, recording time, simulation version,
+  `ReplayFrameFormatVersion`) + footer + `footer.TotalTicks == bin.TotalTicks` + frames up to the last
+  tick. Anything else re-simulates. `Enumerate` opens every cache (header + footer only) for the
+  "Cached" mark. Bumping `ReplayFrameFormatVersion` (any op layout, HUD record or events change)
+  orphans every cache once; they come back through self-caching. **A `.bin` is never deleted by any
+  cache policy.**
+- **Disk budget** (`ReplayFrameCacheDiskBudgetBytes`, 4 GB): after every cache write the oldest
+  `replay_*.frames` by last write time are deleted until the caches fit; `session_*.frames` and
+  recordings are never touched.
+- **Self-caching (issue #431).** A saved replay without a valid cache plays by re-simulation. The
+  rebuilt scene's `FrameRecorder` runs under the replay's identity (`session_<recordedAt>.frames`) and
+  captures every tick it simulates — seeks included, recorded ticks skipped, an earlier unfinished
+  pass reopened and continued. On Exit (before the return rebuild) `ReplayPlaybackService.
+  TrySelfCacheSimulatedReplay` flushes the builder and, if the stream reaches `TotalTicks - 1`,
+  finishes the file with the console log and moves it beside the recording, then enforces the budget:
+  the row gains "Cached" and the next play is instant FrameView. A replay left before its end stays
+  uncached. Stretches that were seeked have no floating text or sounds in the cache (cosmetics skip and
+  audio is muted during seeks); accepted.
+
+### Viewer (L2)
+
+`ReplayFrameViewer.AttachToScene` installs the Nez fork's `Scene.RenderableFilter` (only the `UICanvas`
+and the `GraphicalHUD`s keep drawing through the stock renderers) and two renderers:
+
+- `RecordedFrameRenderer` (world pass, right after the DefaultRenderer so it covers that renderer's
+  world-camera ghost of the HUD panels): the shadow tile layers (`ShadowTileLayers`, Base/Detail/FogOfWar
+  rebuilt from the chunk's keyframe + events), the live Top layer, the live-only world renderables
+  (tree bands, clouds) and the frame's Sprite / Composite / Particle ops, merged in `RenderableComparer`
+  order (layer desc, depth desc, material), then the overlay ops (Text/Rect) after every sprite.
+  `Graded` ops and the terrain switch to the day-night material; a particle effect switches to its
+  blend material.
+- `RecordedFrameScreenRenderer` (after post-processing, before the live UI): screen-space sprites (the
+  action queue icons) and speech bubbles (nine-patch body, tail, typewriter slice) anchored through the
+  world camera.
+
+`FrameSpriteResolver` maps ids back to atlas sprites (with their origins) or rebuilds a sprite from a
+texture by name; scene-content textures that died with a rebuild are re-resolved. The HUD, pit level,
+gold and clock labels are fed from the HUD record (`MainGameScene.ApplyRecordedHud`), the **portrait**
+from the record's static head/eyes/hair sprites (`ApplyRecordedPortrait` →
+`GraphicalHUD.SetRecordedPortrait`), day/night grading and the clouds from the recorded clock, the event
+console from the console log (`EventConsolePanel.ShowRecorded` on a jump, appends while playing).
+
+**Particles** (`RecordedParticlePool`): each recorded emitter is re-simulated with Nez's own `Particle`
+code at the fixed step from a `System.Random` seeded by (effect key, start tick); forward play is one
+step per tick, any other move rebuilds from the start, so a seek or a rewind shows the same picture.
+Approximate by design: a rebuilt effect spawns at the current root, and the Emitting flag only ends
+emission from the current tick on.
+
+**Sounds:** the viewer plays the sound events the playhead passes during forward play at 1X–2X
+(`ReplayFrameViewSoundMaxSpeedIndex`) through `SoundEffectManager.PlayRecorded` — the exact variant,
+with the live camera's falloff and pan for positional ones; `Muted` is honored and nothing is recorded
+again. A move longer than `ReplayFrameViewSoundCatchupMaxTicks` (a seek, a skipped pause span), a
+rewind, a pause or a higher rung is silent.
+
+**Timeline:** `ReplayFrameCursor` advances by wall time × speed × 60 with fractional carry, in either
+direction, clamped to `[0, TotalTicks]`, skipping recorded pause spans forward. Speeds come from
+`ReplayFrameViewSpeedSteps` (the simulation ladder plus view-only 16X / 32X; no artifact gate).
+**Rewind** is the cursor with `Direction = -1`: the `<<` button (pressing it again pauses) or
+SHIFT + left arrow held (polled by the scrubber; releasing either key restores the state before the
+hold; the camera ignores the arrow keys while SHIFT is down, so plain arrows still pan). Rewind stops
+paused at tick 0. There is no simulated future: the timeline ends at the session
+end (issue #438).
+
 ## Playback (`ReplayPlaybackService`, global)
 
-The service has two **modes** (`ReplayPlaybackMode`, issue #428):
+The service has two **modes** (`ReplayPlaybackMode`):
 
-- **FrameView** — *Replay Current Session* when the session's frame stream (`FrameRecorder`, issue
-  #424) is complete. The live `MainGameScene` is never torn down: its simulation is suspended
-  (`Core.SimulationSuspended`), `PlayerCommandService.RejectLiveEnqueues` is set, the UI enters replay
-  mode, and a `ReplayFrameViewer` installs the Nez fork's `Scene.RenderableFilter` (only the
-  `UICanvas` and the `GraphicalHUD`s keep drawing live) plus two renderers: `RecordedFrameRenderer`
-  (world pass: shadow tile layers rebuilt from the tile keyframes + events, the live Top layer, the
-  live-only tree bands and clouds, and the frame's sprite/composite ops, all merged in
-  `RenderableComparer` order, then the overlay ops) and `RecordedFrameScreenRenderer` (screen pass:
-  speech bubbles, screen-space sprites). The playhead is `ReplayFrameCursor` (wall time × speed × 60,
-  fractional carry, reverse-capable, pause spans skipped); `CurrentTick` is the cursor. Seeking either
-  way is a cursor move: the scrubber never says "Seeking" inside the recording. The HUD, pit-level,
-  gold and clock labels are fed from the recorded `HudRecord` (`MainGameScene.ApplyRecordedHud`), the
-  event console from the recorder's `RecordedConsoleLog` (`EventConsolePanel.ShowRecorded` on a jump,
-  appends while playing). **Exit** removes the viewer and un-suspends: instant, the world is exactly as
-  it was (the live world never runs while watching; the timeline ends at the session end and a seek
-  clamps to it). **Time Travel Here** freezes the
-  current frame (`ReplayFrameViewer.Freeze` keeps a private copy that survives the stream truncation),
-  switches to Simulated, rebuilds the world to the cursor with the frozen frame drawn over both the
-  trampoline scene and the rebuilding scene while the scrubber shows the seek progress, then commits
+- **FrameView** — *Replay Current Session* when the session's frame stream is complete, and any saved
+  replay with a valid `.frames` cache (issue #429). The live `MainGameScene` is never torn down: its
+  simulation is suspended (`Core.SimulationSuspended`), `PlayerCommandService.RejectLiveEnqueues` is
+  set, the UI enters replay mode, and the viewer above draws the recorded tick at the playhead;
+  `CurrentTick` is the cursor. Seeking either way is a cursor move: the scrubber never says "Seeking"
+  inside the recording. **Exit** removes the viewer and un-suspends: instant, the world is exactly as it
+  was (the live world never runs while watching). **Time Travel Here** freezes the current frame
+  (`ReplayFrameViewer.Freeze` keeps a private copy that survives the stream truncation), switches to
+  Simulated, rebuilds the world to the cursor with the frozen frame drawn over both the trampoline
+  scene and the rebuilding scene while the scrubber shows the seek progress, then commits
   (`CommitHere`: both recorders truncated). A cursor already at the live tick of the current session
-  commits without a rebuild. A rebuild that diverged is reported once on the console.
-  Kill switches: `ReplayFrameCaptureEnabled` and `ReplayFrameViewEnabled`; either off, or a gap in the
-  stream, falls back to Simulated. Saved replays with a valid `.frames` cache open in FrameView too
-  (issue #429); the live world underneath is another timeline, so Time Travel Here always rebuilds.
-- **Simulated** — everything below: saved replays, and every resume path.
+  commits without a rebuild; a saved replay's live world underneath is another timeline, so it always
+  rebuilds. A rebuild that diverged is reported once on the console. Kill switches:
+  `ReplayFrameCaptureEnabled` and `ReplayFrameViewEnabled`; either off, or a gap in the stream, falls
+  back to Simulated.
+- **Simulated** — everything below: saved replays without a cache (which self-cache on exit), and
+  every resume path.
 
-`Start(data, isCurrentSession)` sets aside the live recording (`_returnSession`), restores the start
-blob, sets a `ReplaySessionBootstrap` and swaps to `ReplayBootScene`, a trampoline whose `Begin`
-constructs `MainGameScene.CreateForGameplay`. The old scene must fully unload first because services
-are keyed by type (constructing a second `MainGameScene` while the first is registered throws).
+`Start(data, isCurrentSession, startAtTick, fileName)` sets aside the live recording (`_returnSession`),
+restores the start blob, sets a `ReplaySessionBootstrap` and swaps to `ReplayBootScene`, a trampoline
+whose `Begin` constructs `MainGameScene.CreateForGameplay`. The old scene must fully unload first because
+services are keyed by type (constructing a second `MainGameScene` while the first is registered throws).
 
 - **Playing / Paused / AtEnd** drive `SimulationSpeed` / `SimulationSuspended` from the presentation
-  side. Speed cycles `GameConfig.SpeedSteps`.
+  side. Speed cycles `GameConfig.SpeedSteps` (a FrameView index above that ladder is clamped when the
+  mode switches).
 - **Seek forward** = `Seeking` with `PendingExtraSteps`. **Seek backward** = restart the scene from
-  tick 0 and fast-forward. There are no keyframes: a `SaveData` snapshot is not faithful mid-pit, so
-  re-simulation is the only exact path. Measured throughput is roughly 250x real time (an hour of play
-  seeks in about 15 s); the Replay Info window carries the multi-day-session disclaimer instead of any
-  session-length limit.
+  tick 0 and fast-forward. There are no simulation keyframes: a `SaveData` snapshot is not faithful
+  mid-pit, so re-simulation is the only exact path. Measured throughput is roughly 250x real time (an
+  hour of play seeks in about 15 s); the Replay Info window carries the disclaimer for Time Travel and
+  uncached replays instead of any session-length limit.
 - During seeks: SFX muted, `Debug.QuietMode`, `CosmeticUpdatesSuspended`, camera view captured and
   restored (`CameraControllerComponent.CaptureView/RestoreView`), hero-follow never engages.
 - `GameEventService.Suppressed` and analytics are off during playback; the recruit-notification queue
   is cleared on exit.
-- **Exit** re-simulates the set-aside live recording to its end and returns to the exact pre-replay
-  live state. **Time Travel Here** (`ContinueFromHere`, confirmed) truncates the recording at the current tick
-  (`ReplayRecorder.TruncateAfter`) and branches live play from there.
+- **Exit** self-caches the replay if it was watched to its end, then re-simulates the set-aside live
+  recording to its end and returns to the exact pre-replay live state. **Time Travel Here**
+  (`ContinueFromHere`, confirmed) truncates the recording at the current tick
+  (`ReplayRecorder.TruncateAfter`, `FrameRecorder.TruncateAfter`) and branches live play from there.
 - `CheckDecision` / `CheckStateHash` set `DivergenceTick` on the first mismatch; the scrubber shows
   "Diverged at m:ss (state|decision)" and a diagnostic block is appended to
   `replay_divergence.log` next to the replay files, naming which part hash (`rng`, `hero`, `party`,
   `world`) drifted first. Playback continues: a diverged replay is still a valid game.
+- Every playback transition is traced to `replays/replay_playback.log` in every build
+  (`ReplayPlaybackTraceLog`), the only trail a Release freeze leaves.
 
 ## Time Travel Here (the past only)
 
@@ -504,9 +663,23 @@ with the correct working directory (content paths are relative to it).
 scrubber size constants, `ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`,
 `ReplaySpeechSeedSalt`; artifact prices,
 grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and viewer (issue #424):
-`ReplayFrameCaptureEnabled`, `ReplayFrameViewEnabled`, `ReplayFrameChunkTicks`,
-`ReplayTileKeyframeIntervalChunks`, `ReplayFrameMemoryBudgetBytes`, `ReplayFrameFormatVersion`,
-`ReplayFrameViewCullMarginPixels`, the session-file and stats-log names.
+
+| Knob | Default | Note |
+|---|---|---|
+| `ReplayFrameCaptureEnabled` | true | Kill switch for the frame stream; off = pure re-simulation playback |
+| `ReplayFrameViewEnabled` | true | Kill switch for the viewer; off = Simulated playback over a captured stream |
+| `ReplayFrameChunkTicks` | 120 | Ticks per chunk (base frame + previous-tick deltas, deflated as one unit) |
+| `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
+| `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
+| `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
+| `ReplayFrameFormatVersion` | 3 | Bump on any op / HUD record / events change; orphans every cache once |
+| `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
+| `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |
+| `ReplayFrameViewSoundCatchupMaxTicks` | 30 | A longer forward move (seek, skipped pause) plays no sounds |
+| `ReplayFrameViewParticleRebuildMaxTicks` | 1200 | Oldest emitter age the viewer re-simulates |
+| `ReplayFrameViewCullMarginPixels` | 128 | Off-screen margin for recorded sprites |
+| `ReplayFrameSessionFilePrefix`, `ReplayFrameFileExtension`, `ReplayAutoFilePrefix` | | File naming |
+| `ReplayFrameStatsLog`, `ReplayPlaybackTraceLog` | true | `frame_recorder.log` / `replay_playback.log` in every build |
 
 ## Tests
 
@@ -515,8 +688,10 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 `ReplayPauseSpansTests`, `ReplayTimeFormatterTests`, `ShuffleBagResetTests`, `ArtifactServiceTests`,
 `FastListStableSortTests` (update-order stability), `QuietLogHandlerTests` (log binding), the frame
 stream suites (`FrameOps/ChunkCodec/Store/Sidecar/Recorder/CaptureAdapter/CaptureCoverage/SizeBudget`
-tests) and the viewer's `ReplayFrameViewerTests` (cursor), `ShadowTileLayersTests` (keyframe + events
-at arbitrary ticks) and `RecordedConsoleLogTests`, plus the
+tests; `FrameRecorderTests` also pins self-caching and the sound hook, `FrameChunkCodecTests` the sound
+events' round-trip), the viewer's `ReplayFrameViewerTests` (cursor, reverse play), `ShadowTileLayersTests`
+(keyframe + events at arbitrary ticks), `RecordedConsoleLogTests` and `ReplayFramesPolishTests`
+(Particle op, speed ladders, the particle pool's seek/step equivalence), plus the
 `SaveData_V32_HeroId` / `SaveData_V31_File_DerivesStableLegacyHeroId` layouts. The existing same-seed
 determinism suites (`BattleEngineTests`, `VirtualBalanceTraversalTests`) guard the RNG call-order
 contract. There is no headless end-to-end replay test; the live check is: record a session that

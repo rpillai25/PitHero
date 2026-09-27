@@ -19,6 +19,8 @@ namespace PitHero.Services.Replay.Frames
     {
         /// <summary>opsLen value that marks an entity removed since the previous tick.</summary>
         public const ushort TombstoneLength = 0xFFFF;
+        /// <summary>Encoded bytes of one sound event: tick offset u16, type u8, variant u8, x i16, y i16, flags u8.</summary>
+        public const int SoundEventBytes = 9;
         /// <summary>Largest op byte string one entity may carry.</summary>
         public const int MaxEntityOpsLength = 0xFFFE;
         private const int MaxKeyframeLayers = 8;
@@ -53,6 +55,7 @@ namespace PitHero.Services.Replay.Frames
         private readonly List<TileEvent> _tileEvents = new List<TileEvent>(256);
         private readonly List<ConsoleEvent> _consoleEvents = new List<ConsoleEvent>(64);
         private readonly List<ConsoleSegmentRecord> _segments = new List<ConsoleSegmentRecord>(256);
+        private readonly List<SoundEvent> _soundEvents = new List<SoundEvent>(64);
         private readonly TileLayerSnapshot[] _keyframe = new TileLayerSnapshot[MaxKeyframeLayers];
         private int _keyframeCount;
 
@@ -79,6 +82,7 @@ namespace PitHero.Services.Replay.Frames
         public bool HasTileKeyframe => _keyframeCount > 0;
         public int TileEventCount => _tileEvents.Count;
         public int ConsoleEventCount => _consoleEvents.Count;
+        public int SoundEventCount => _soundEvents.Count;
 
         /// <summary>Declares the first tick of the next chunk (needed before events that precede its first frame).</summary>
         public void Begin(long firstTick)
@@ -275,6 +279,13 @@ namespace PitHero.Services.Replay.Frames
             _consoleEvents.Add(new ConsoleEvent(tick, start, (byte)segments.Length));
         }
 
+        /// <summary>Records a simulation sound (issue #431); the tick must fall inside this chunk.</summary>
+        public void AddSoundEvent(long tick, byte type, byte variant, short x, short y, byte flags)
+        {
+            CheckEventTick(tick);
+            _soundEvents.Add(new SoundEvent(tick, type, variant, x, y, flags));
+        }
+
         private void CheckEventTick(long tick)
         {
             if (_firstTick < 0)
@@ -354,6 +365,7 @@ namespace PitHero.Services.Replay.Frames
             int eventsLength = 4 + _tileEvents.Count * 11 + 4;
             for (int i = 0; i < _consoleEvents.Count; i++)
                 eventsLength += 3 + _consoleEvents[i].SegmentCount * 8;
+            eventsLength += 4 + _soundEvents.Count * SoundEventBytes;
             int keyframeLength = 0;
             if (_keyframeCount > 0)
             {
@@ -398,6 +410,17 @@ namespace PitHero.Services.Replay.Frames
                     w.WriteU16(seg.ItemStringId);
                 }
             }
+            w.WriteU32((uint)_soundEvents.Count);
+            for (int i = 0; i < _soundEvents.Count; i++)
+            {
+                var s = _soundEvents[i];
+                w.WriteU16((ushort)(s.Tick - _firstTick));
+                w.WriteU8(s.Type);
+                w.WriteU8(s.Variant);
+                w.WriteI16(s.X);
+                w.WriteI16(s.Y);
+                w.WriteU8(s.Flags);
+            }
             if (_keyframeCount > 0)
             {
                 w.WriteU8((byte)_keyframeCount);
@@ -440,6 +463,7 @@ namespace PitHero.Services.Replay.Frames
             _tileEvents.Clear();
             _consoleEvents.Clear();
             _segments.Clear();
+            _soundEvents.Clear();
             _keyframeCount = 0;
         }
 
@@ -485,6 +509,12 @@ namespace PitHero.Services.Replay.Frames
                 for (int s = 0; s < c.SegmentCount; s++)
                     _segments.Add(decoded.ConsoleSegments[c.SegmentStart + s]);
                 _consoleEvents.Add(new ConsoleEvent(c.Tick, start, c.SegmentCount));
+            }
+            for (int i = 0; i < decoded.SoundEvents.Count; i++)
+            {
+                var s = decoded.SoundEvents[i];
+                if (s.Tick <= lastTick)
+                    _soundEvents.Add(s);
             }
             for (int i = 0; i < decoded.TileKeyframeLayerCount; i++)
             {

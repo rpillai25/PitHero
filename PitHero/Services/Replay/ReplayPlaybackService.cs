@@ -87,11 +87,20 @@ namespace PitHero.Services.Replay
         /// <summary>The playhead: the viewer's cursor in FrameView, else the simulation tick the replayed scene is at.</summary>
         public long CurrentTick => Mode == ReplayPlaybackMode.FrameView && _viewer != null ? _viewer.Cursor.Cursor : SimulationClock.CurrentTick;
 
-        /// <summary>Playback speed multiplier.</summary>
-        public float Speed => GameConfig.SpeedSteps[SpeedIndex];
+        /// <summary>The speed ladder of the current mode: the view-only ladder in FrameView (nothing simulates, so 16X/32X cost nothing), the simulation ladder otherwise.</summary>
+        private float[] SpeedLadder => Mode == ReplayPlaybackMode.FrameView ? GameConfig.ReplayFrameViewSpeedSteps : GameConfig.SpeedSteps;
 
-        /// <summary>Player-facing rendering of <see cref="Speed"/> (1X / 2X / 4X / 8X).</summary>
-        public string SpeedLabel => GameConfig.SpeedStepLabels[SpeedIndex];
+        /// <summary>Playback speed multiplier.</summary>
+        public float Speed => SpeedLadder[SpeedIndex];
+
+        /// <summary>Player-facing rendering of <see cref="Speed"/> (1X / 2X / 4X / 8X, plus 16X / 32X in FrameView).</summary>
+        public string SpeedLabel => Mode == ReplayPlaybackMode.FrameView ? GameConfig.ReplayFrameViewSpeedStepLabels[SpeedIndex] : GameConfig.SpeedStepLabels[SpeedIndex];
+
+        /// <summary>True while the FrameView playhead runs backwards (the rewind button or the held left arrow).</summary>
+        public bool IsRewinding => Mode == ReplayPlaybackMode.FrameView && _viewer != null && _viewer.Cursor.Direction < 0;
+
+        /// <summary>True when rewind is offered: recorded frames can be read in any order; a re-simulation cannot run backwards.</summary>
+        public bool RewindAvailable => Mode == ReplayPlaybackMode.FrameView && _viewer != null && !_timeTravelInFlight;
 
         /// <summary>Whether time travel is unlocked at all: owning the Chronos Timepiece artifact.</summary>
         public static bool TimeTravelUnlocked => ArtifactService.Current != null && ArtifactService.Current.Owns(PitHero.Artifacts.ArtifactType.ChronosTimepiece);
@@ -131,6 +140,9 @@ namespace PitHero.Services.Replay
         private long _seekStartedAtTick;
         private Frames.ReplayFrameViewer _viewer;
         private bool _timeTravelInFlight; // a Time Travel rebuild runs behind the frozen frame: the playhead is locked
+        private string _savedFileName; // the saved replay being played (null for Replay Current Session): the self-cache target
+        private bool _holdRewind; // the left arrow is held: releasing it restores the state before the hold
+        private ReplayPlaybackState _stateBeforeHoldRewind = ReplayPlaybackState.Paused;
 
         /// <summary>Creates the service and makes it the global instance.</summary>
         public ReplayPlaybackService()
@@ -227,6 +239,8 @@ namespace PitHero.Services.Replay
                 UIWindowManager.ApplyPersistentWindowSize();
             }
             _isCurrentSession = isCurrentSession;
+            _savedFileName = isCurrentSession ? null : fileName;
+            _holdRewind = false;
             _liveHeroId = Core.Services.GetService<GameStateService>()?.HeroId ?? 0;
             // Captured once per replay (a rebuild re-enters replay presentation with analytics already off)
             _analyticsWasEnabled = Services.Analytics.AnalyticsService.Enabled;
@@ -371,7 +385,7 @@ namespace PitHero.Services.Replay
             Core.Services.GetService<SettingsUI>()?.EnterReplayMode();
         }
 
-        /// <summary>Removes the viewer from its scene (closing a saved replay's file) and brings the console back to the live tick.</summary>
+        /// <summary>Removes the viewer from its scene (closing a saved replay's file) and brings the console and the portrait back to the live state.</summary>
         private void ExitViewer()
         {
             var viewer = _viewer;
@@ -379,22 +393,38 @@ namespace PitHero.Services.Replay
                 return;
             _viewer = null;
             Mode = ReplayPlaybackMode.Simulated;
+            if (SpeedIndex >= GameConfig.SpeedSteps.Length)
+                SpeedIndex = GameConfig.SpeedSteps.Length - 1; // the view-only rungs do not exist in Simulated mode
             viewer.Dispose();
             // The console showed the recording at the playhead; live play continues at the clock's tick
             // from the live session's own lines (a saved replay's lines belong to another session)
+            var scene = Core.Scene as MainGameScene;
             var liveLog = Frames.FrameRecorder.Current?.ConsoleLog ?? (viewer.IsLiveStream ? viewer.ConsoleLog : null);
-            (Core.Scene as MainGameScene)?.EventConsole?.ShowRecorded(liveLog, SimulationClock.CurrentTick);
+            scene?.EventConsole?.ShowRecorded(liveLog, SimulationClock.CurrentTick);
+            scene?.ClearRecordedPortrait();
         }
 
-        /// <summary>The per-frame drive of FrameView: the playhead moves over recorded frames; the live world never runs while watching.</summary>
+        /// <summary>The per-frame drive of FrameView: the playhead moves over recorded frames, either way; the live world never runs while watching.</summary>
         private void UpdateFrameView()
         {
             var cursor = _viewer.Cursor;
+            // Recorded sounds only accompany forward play at the low rungs: a scrub, a rewind, a pause
+            // or a fast run would turn them into noise
+            _viewer.SoundsEnabled = State == ReplayPlaybackState.Playing && cursor.Direction > 0
+                && SpeedIndex <= GameConfig.ReplayFrameViewSoundMaxSpeedIndex;
             switch (State)
             {
                 case ReplayPlaybackState.Playing:
                 {
                     Core.SimulationSuspended = true;
+                    if (cursor.Direction < 0)
+                    {
+                        // Rewind: backwards at the same speed, stopping at the start
+                        cursor.Advance(Time.UnscaledDeltaTime, Speed, _pauseSpans);
+                        if (cursor.Cursor <= 0)
+                            StopRewind(ReplayPlaybackState.Paused);
+                        break;
+                    }
                     if (cursor.Cursor >= TotalTicks)
                     {
                         State = ReplayPlaybackState.AtEnd;
@@ -436,6 +466,9 @@ namespace PitHero.Services.Replay
         {
             Trace($"RestartScene startAt={startAtTick}");
             Mode = ReplayPlaybackMode.Simulated; // a frozen viewer, if any, keeps drawing over the rebuild
+            if (SpeedIndex >= GameConfig.SpeedSteps.Length)
+                SpeedIndex = GameConfig.SpeedSteps.Length - 1; // the view-only rungs cannot be simulated
+            _holdRewind = false;
             Debug.QuietMode = false; // scene rebuild logs are worth keeping; the seek that follows re-arms quiet mode
             Core.CosmeticUpdatesSuspended = false;
             PitHero.Util.SoundEffectManager.Muted = true; // silent through the rebuild and any seek; playback unmutes
@@ -633,19 +666,83 @@ namespace PitHero.Services.Replay
 
         // ── Player controls ──────────────────────────────────────────────────────────
 
-        /// <summary>Pauses or resumes playback (no effect while seeking).</summary>
+        /// <summary>Pauses or resumes playback (no effect while seeking or at the end). Resuming always plays forward.</summary>
         public void TogglePause()
         {
             if (State == ReplayPlaybackState.Playing)
+            {
                 State = ReplayPlaybackState.Paused;
-            else if (State == ReplayPlaybackState.Paused || State == ReplayPlaybackState.AtEnd && CurrentTick < TotalTicks)
+            }
+            else if (State == ReplayPlaybackState.Paused)
+            {
+                if (_viewer != null)
+                    _viewer.Cursor.Direction = 1;
+                _holdRewind = false;
                 State = ReplayPlaybackState.Playing;
+            }
         }
 
-        /// <summary>Cycles to the next playback speed.</summary>
+        /// <summary>Cycles to the next playback speed of the current mode's ladder.</summary>
         public void CycleSpeed()
         {
-            SpeedIndex = (SpeedIndex + 1) % GameConfig.SpeedSteps.Length;
+            SpeedIndex = (SpeedIndex + 1) % SpeedLadder.Length;
+        }
+
+        /// <summary>
+        /// The rewind button (FrameView only): plays the recorded frames backwards at the current speed
+        /// from wherever the playhead is, the end included; pressing it while rewinding pauses.
+        /// </summary>
+        public void ToggleRewind()
+        {
+            if (!RewindAvailable || State == ReplayPlaybackState.Starting || State == ReplayPlaybackState.Seeking)
+                return;
+            if (IsRewinding)
+            {
+                StopRewind(ReplayPlaybackState.Paused);
+                return;
+            }
+            _holdRewind = false;
+            StartRewind();
+        }
+
+        /// <summary>The left arrow went down while the scrubber had focus: rewind for as long as it is held.</summary>
+        public void BeginHoldRewind()
+        {
+            if (!RewindAvailable || _holdRewind || State == ReplayPlaybackState.Starting || State == ReplayPlaybackState.Seeking)
+                return;
+            _holdRewind = true;
+            _stateBeforeHoldRewind = IsRewinding ? ReplayPlaybackState.Paused : State;
+            StartRewind();
+        }
+
+        /// <summary>The left arrow came up: back to what the playhead was doing before the hold (paused, playing forward, or at the end).</summary>
+        public void EndHoldRewind()
+        {
+            if (!_holdRewind)
+                return;
+            _holdRewind = false;
+            if (!IsRewinding)
+                return;
+            var resume = _stateBeforeHoldRewind == ReplayPlaybackState.Playing ? ReplayPlaybackState.Playing : ReplayPlaybackState.Paused;
+            StopRewind(resume);
+        }
+
+        private void StartRewind()
+        {
+            if (_viewer.Cursor.Cursor <= 0)
+                return;
+            _viewer.Cursor.Direction = -1;
+            State = ReplayPlaybackState.Playing;
+            Trace("Rewind");
+        }
+
+        /// <summary>Leaves reverse play; the playhead stays where it is and takes <paramref name="then"/> (AtEnd when it sits at the end).</summary>
+        private void StopRewind(ReplayPlaybackState then)
+        {
+            if (_viewer != null)
+                _viewer.Cursor.Direction = 1;
+            _holdRewind = false;
+            State = CurrentTick >= TotalTicks ? ReplayPlaybackState.AtEnd : then;
         }
 
         /// <summary>
@@ -669,6 +766,8 @@ namespace PitHero.Services.Replay
                     return;
                 var cursor = _viewer.Cursor;
                 cursor.Seek(targetTick);
+                cursor.Direction = 1; // a scrub ends a rewind; play resumes forward from the new spot
+                _holdRewind = false;
                 State = cursor.Cursor >= TotalTicks ? ReplayPlaybackState.AtEnd : _stateAfterSeek;
                 return;
             }
@@ -779,6 +878,7 @@ namespace PitHero.Services.Replay
         /// <summary>Restarts the scene from the live session's recording and seeks to its last tick, then hands control back.</summary>
         private void ReturnToLiveSession()
         {
+            TrySelfCacheSimulatedReplay();
             var session = _returnSession;
             _returnSession = null;
             Data = session;
@@ -788,6 +888,38 @@ namespace PitHero.Services.Replay
             _pendingView = _returnView; // back to the view the player had before the replay
             Debug.Log($"[ReplayPlayback] Returning to the live session at tick {TotalTicks}");
             RestartScene(TotalTicks);
+        }
+
+        /// <summary>
+        /// Self-caching of an uncached saved replay (issue #431): the Simulated playback's scene recorded
+        /// every tick it simulated into a session file under the replay's identity. When the stream reaches
+        /// the recording's end, that file is finished (console log in the footer) and moved beside the
+        /// recording as its <c>.frames</c> cache, so the next play opens in FrameView; a replay left before
+        /// its end stays uncached (the session file keeps the partial stream for a later pass). Runs
+        /// before the return rebuild tears the scene down.
+        /// </summary>
+        private void TrySelfCacheSimulatedReplay()
+        {
+            if (Mode != ReplayPlaybackMode.Simulated || string.IsNullOrEmpty(_savedFileName) || Data == null)
+                return;
+            var frames = Frames.FrameRecorder.Current;
+            var files = Core.Services.GetService<ReplayFileService>();
+            if (frames == null || !frames.IsInitialized || files == null)
+                return;
+            frames.FlushPending();
+            if (frames.Store.EndTick < TotalTicks - 1)
+            {
+                // Left before the end: the session file keeps what was watched for a later pass
+                Trace($"SelfCache skipped file={_savedFileName} endTick={frames.Store.EndTick} total={TotalTicks}");
+                return;
+            }
+            string path = files.FrameCachePath(_savedFileName);
+            bool cached = frames.ExportSidecar(path, TotalTicks, endSession: true);
+            Trace($"SelfCache file={_savedFileName} cached={cached} endTick={frames.Store.EndTick}");
+            if (!cached)
+                return;
+            files.EnforceFrameCacheBudget(GameConfig.ReplayFrameCacheDiskBudgetBytes);
+            Debug.Log($"[ReplayPlayback] {_savedFileName} is cached: the next play opens in the frame viewer");
         }
 
         /// <summary>
@@ -846,6 +978,8 @@ namespace PitHero.Services.Replay
             Trace("FinishExit");
             ExitViewer();
             _timeTravelInFlight = false;
+            _holdRewind = false;
+            _savedFileName = null;
             State = ReplayPlaybackState.Idle;
             Data = null;
             _returnSession = null;

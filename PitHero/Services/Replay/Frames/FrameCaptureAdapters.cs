@@ -15,9 +15,10 @@ namespace PitHero.Services.Replay.Frames
     /// <see cref="SpriteRenderer"/> and every animator subclass become a Sprite op,
     /// <see cref="PrototypeSpriteRenderer"/> a filled Rect, <see cref="MultiSpriteAnimator"/> and
     /// <see cref="StaticSpriteCompositor"/> a Composite op from their layers (never their render
-    /// texture), <see cref="IFrameCapturable"/> components capture themselves and
-    /// <see cref="ILiveOnlyRenderable"/> ones are skipped. Tile maps (recorded as tile events), the UI
-    /// canvas (live) and particle emitters (v1) are skipped silently; anything else is skipped with a
+    /// texture), a <see cref="ParticleEmitter"/> the <c>ParticleEffectManager</c> spawned a Particle op
+    /// (effect, root, age: the viewer re-simulates it), <see cref="IFrameCapturable"/> components
+    /// capture themselves and <see cref="ILiveOnlyRenderable"/> ones are skipped. Tile maps (recorded
+    /// as tile events) and the UI canvas (live) are skipped silently; anything else is skipped with a
     /// one-time warning per type.
     /// </summary>
     public static class FrameCaptureAdapters
@@ -25,7 +26,7 @@ namespace PitHero.Services.Replay.Frames
         /// <summary>How a renderable is captured, decided once per renderable by <see cref="Classify"/>.</summary>
         public enum Kind : byte
         {
-            /// <summary>Never captured (live-only, tile map, particles, UI canvas, unknown type).</summary>
+            /// <summary>Never captured (live-only, tile map, UI canvas, unknown type).</summary>
             Skip = 0,
             /// <summary>Implements IFrameCapturable.</summary>
             Capturable,
@@ -35,6 +36,8 @@ namespace PitHero.Services.Replay.Frames
             StaticCompositor,
             Prototype,
             Sprite,
+            /// <summary>A particle emitter: a Particle op when the effect manager knows its spawn.</summary>
+            Particle,
         }
 
         /// <summary>Per-composite cache of each layer's last sprite and its id (composites re-emit every layer every tick).</summary>
@@ -72,7 +75,9 @@ namespace PitHero.Services.Replay.Frames
                 return Kind.Prototype;
             if (rc is SpriteRenderer)
                 return Kind.Sprite;
-            if (!(rc is TiledMapRenderer || rc is ParticleEmitter || rc is UICanvas))
+            if (rc is ParticleEmitter)
+                return Kind.Particle;
+            if (!(rc is TiledMapRenderer || rc is UICanvas))
                 WarnOnce(rc);
             return Kind.Skip;
         }
@@ -110,9 +115,29 @@ namespace PitHero.Services.Replay.Frames
                 case Kind.Sprite:
                     CaptureSprite((SpriteRenderer)rc, ref w, ctx, ref cachedSprite, ref cachedSpriteId);
                     return;
+                case Kind.Particle:
+                    CaptureParticle((ParticleEmitter)rc, ref w, ctx);
+                    return;
                 default:
                     return;
             }
+        }
+
+        /// <summary>
+        /// Particle op for an emitter the <see cref="PitHero.Util.ParticleEffectManager"/> spawned: the
+        /// effect, its density, the emitter's root and its age in ticks (issue #431). Emitters nobody
+        /// registered, and stopped ones (not drawn live either), emit nothing.
+        /// </summary>
+        public static void CaptureParticle(ParticleEmitter emitter, ref FrameWriter w, FrameCaptureContext ctx)
+        {
+            if (!emitter.IsPlaying && !emitter.IsPaused)
+                return;
+            var manager = PitHero.Util.ParticleEffectManager.Current;
+            if (manager == null || !manager.TryGetSpawn(emitter, out var spawn))
+                return;
+            var pos = emitter.Entity.Transform.Position + emitter.LocalOffset;
+            byte flags = emitter.IsEmitting ? FrameOpFlags.Emitting : FrameOpFlags.None;
+            w.WriteParticle((byte)spawn.Type, spawn.DensityScale, pos.X, pos.Y, ctx.Tick - spawn.StartTick, emitter.RenderLayer, emitter.LayerDepth, flags);
         }
 
         private static void WarnOnce(RenderableComponent rc)

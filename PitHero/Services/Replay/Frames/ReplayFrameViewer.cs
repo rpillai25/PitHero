@@ -42,6 +42,14 @@ namespace PitHero.Services.Replay.Frames
         public RecordedConsoleLog ConsoleLog { get; }
         public FrameSpriteResolver Sprites { get; }
         public ShadowTileLayers Tiles { get; } = new ShadowTileLayers();
+        /// <summary>The re-simulated particle effects of the frame on screen (issue #431).</summary>
+        public RecordedParticlePool Particles { get; } = new RecordedParticlePool();
+        /// <summary>
+        /// True while recorded sound events may play: set by the playback service for forward play at
+        /// the low speed rungs only (silent while paused, scrubbing, rewinding and at high speeds).
+        /// </summary>
+        public bool SoundsEnabled { get; set; }
+        private long _soundTick = -1; // last frame tick whose sound events were considered
         /// <summary>The scene's day-night material for graded sprites and terrain, or null.</summary>
         public Nez.Material GradedMaterial { get; private set; }
         /// <summary>The frame the renderers draw this frame (null when nothing is recorded at the cursor).</summary>
@@ -80,6 +88,7 @@ namespace PitHero.Services.Replay.Frames
         public void Dispose()
         {
             DetachFromScene();
+            Particles.Clear();
             var owned = OwnedSource;
             OwnedSource = null;
             owned?.Dispose();
@@ -134,22 +143,21 @@ namespace PitHero.Services.Replay.Frames
             }
         }
 
-        /// <summary>Pins a private copy of the frame at <paramref name="tick"/> (completed ticks) so it is drawn until <see cref="Unfreeze"/>, whatever happens to the store.</summary>
+        /// <summary>
+        /// Pins a private copy of the frame at <paramref name="tick"/> (completed ticks) so it is drawn
+        /// for the rest of the viewer's life, whatever happens to the store (a Time Travel rebuild
+        /// truncates it). A frozen viewer is only ever disposed, never thawed.
+        /// </summary>
         public void Freeze(long tick)
         {
-            Cursor.Max = Math.Max(Cursor.Max, tick);
             Cursor.Seek(tick);
             Refresh();
             _frozen.CopyFrom(CurrentFrame);
             CurrentFrame = _frozen.Tick >= 0 ? _frozen : null;
             IsFrozen = true;
+            SoundsEnabled = false;
             if (_scene != null)
                 _scene.RenderableFilter = _filter;
-        }
-
-        public void Unfreeze()
-        {
-            IsFrozen = false;
         }
 
         /// <summary>Decodes the frame at the cursor (clamped to what the store holds) and brings the tile copies to it.</summary>
@@ -171,16 +179,57 @@ namespace PitHero.Services.Replay.Frames
 
         /// <summary>
         /// Once per rendered frame from the scene's presentation pass: refreshes the frame and feeds the
-        /// HUD, labels and console from the record.
+        /// HUD, labels, portrait and console from the record, and plays the sound events the playhead
+        /// passed since the last frame when sounds are enabled.
         /// </summary>
         public void FeedPresentation(MainGameScene scene)
         {
             Refresh();
+            PlaySoundsPassed();
             if (scene == null)
                 return;
             if (CurrentFrame != null)
+            {
                 scene.ApplyRecordedHud(in CurrentFrame.Hud);
+                scene.ApplyRecordedPortrait(CurrentFrame, Sprites);
+            }
             SyncConsole(scene.EventConsole, Cursor.FrameTick);
+        }
+
+        /// <summary>
+        /// Plays the recorded sound events in (last frame tick, current frame tick] through the live
+        /// camera's falloff and pan (issue #431). Only a short forward move counts as play: a seek, a
+        /// skipped pause span, a rewind or a disabled state just moves the mark, silently.
+        /// </summary>
+        private void PlaySoundsPassed()
+        {
+            long tick = Cursor.FrameTick;
+            long from = _soundTick;
+            _soundTick = tick;
+            if (!SoundsEnabled || IsFrozen || from < 0 || tick <= from || tick - from > GameConfig.ReplayFrameViewSoundCatchupMaxTicks)
+                return;
+            if (Core.Instance == null || PitHero.Util.SoundEffectManager.Muted)
+                return;
+            var sfx = Core.GetGlobalManager<PitHero.Util.SoundEffectManager>();
+            if (sfx == null)
+                return;
+            int firstChunk = Store.ChunkIndexOf(from + 1);
+            int lastChunk = Store.ChunkIndexOf(tick);
+            for (int c = firstChunk; c <= lastChunk; c++)
+            {
+                if (!Store.TryGetDecodedChunk(c, out var chunk))
+                    continue;
+                var events = chunk.SoundEvents;
+                for (int i = 0; i < events.Count; i++)
+                {
+                    var e = events[i];
+                    if (e.Tick <= from)
+                        continue;
+                    if (e.Tick > tick)
+                        break;
+                    sfx.PlayRecorded((PitHero.Util.SoundEffectTypes.SoundEffectType)e.Type, e.Variant, new Microsoft.Xna.Framework.Vector2(e.X, e.Y), e.IsPositional);
+                }
+            }
         }
 
         private void SyncConsole(EventConsolePanel panel, long tick)

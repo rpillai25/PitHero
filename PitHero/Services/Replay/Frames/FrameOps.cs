@@ -16,9 +16,14 @@ namespace PitHero.Services.Replay.Frames
     ///              charStart u16, charCount u16 (0xFFFF = to the end)                                          (24)
     ///   Rect       x i16, y i16, dx i16, dy i16, w i16, h i16, color u32, flags u8                             (17)
     ///   NinePatch  patchId u16, x i16, y i16, dx i16, dy i16, w i16, h i16, color u32, flags u8                (19)
+    ///   Particle   effectKey u8, density u8 (tenths), x i16, y i16, elapsedTicks u16, renderLayer i16,
+    ///              layerDepth f32, flags u8 (Emitting)                                                          (15)
     /// x/y are the anchor. With <see cref="FrameOpFlags.ConstantScreenSize"/> the anchor is a world point and
     /// dx/dy/w/h are screen pixels applied after the world-to-screen transform (constant on-screen size at
     /// any zoom: damage numbers, HP bars, speech bubbles); otherwise dx/dy/w/h share the anchor's space.
+    /// A Particle op (issue #431, format v2) does not store particles: it names the effect, where its emitter
+    /// is and how many ticks it has run, and the viewer re-simulates the effect from a seed derived from the
+    /// effect key and the start tick, so the picture is approximate but the same at every seek.
     /// </summary>
     public static class FrameOpCode
     {
@@ -27,6 +32,7 @@ namespace PitHero.Services.Replay.Frames
         public const byte Text = 3;
         public const byte Rect = 4;
         public const byte NinePatch = 5;
+        public const byte Particle = 6;
 
         /// <summary>Payload bytes after the code byte for the fixed-size ops; Composite is variable.</summary>
         public const int SpritePayload = 17;
@@ -35,6 +41,7 @@ namespace PitHero.Services.Replay.Frames
         public const int TextPayload = 24;
         public const int RectPayload = 17;
         public const int NinePatchPayload = 19;
+        public const int ParticlePayload = 15;
 
         /// <summary>Text charCount meaning "every character from charStart".</summary>
         public const ushort AllChars = 0xFFFF;
@@ -45,6 +52,8 @@ namespace PitHero.Services.Replay.Frames
     {
         public const byte None = 0;
         public const byte FlipX = 1;
+        /// <summary>Particle ops only (the FlipX bit): the emitter was still emitting at this tick.</summary>
+        public const byte Emitting = 1;
         public const byte FlipY = 2;
         public const byte ScreenSpace = 4;
         public const byte Centered = 8;
@@ -123,6 +132,25 @@ namespace PitHero.Services.Replay.Frames
         public short X, Y, DX, DY, Width, Height;
         public uint Color;
         public byte Flags;
+    }
+
+    /// <summary>A live particle emitter at one tick: which effect, where its root is, how long it has run.</summary>
+    public struct ParticleOp
+    {
+        /// <summary>The effect (a <c>ParticleEffectType</c> ordinal).</summary>
+        public byte EffectKey;
+        /// <summary>Density scale in tenths (10 = as authored).</summary>
+        public byte Density;
+        public short X, Y;
+        /// <summary>Ticks since the emitter was spawned (its start tick is the frame tick minus this).</summary>
+        public ushort ElapsedTicks;
+        public short RenderLayer;
+        public float LayerDepth;
+        public byte Flags;
+
+        /// <summary>The density scale the effect was spawned with.</summary>
+        public float DensityScale => Density / 10f;
+        public bool IsEmitting => (Flags & FrameOpFlags.Emitting) != 0;
     }
 
     /// <summary>
@@ -376,6 +404,37 @@ namespace PitHero.Services.Replay.Frames
             WriteU32(color);
             WriteU8(flags);
         }
+
+        /// <summary>Particle op from live values: the emitter's root position and its age in ticks (clamped to u16).</summary>
+        public void WriteParticle(byte effectKey, float densityScale, float x, float y, long elapsedTicks, int renderLayer, float layerDepth, byte flags)
+        {
+            float d = MathF.Round(densityScale * 10f);
+            byte density = d <= 0f ? (byte)0 : d >= byte.MaxValue ? byte.MaxValue : (byte)d;
+            ushort elapsed = elapsedTicks <= 0 ? (ushort)0 : elapsedTicks >= ushort.MaxValue ? ushort.MaxValue : (ushort)elapsedTicks;
+            WriteU8(FrameOpCode.Particle);
+            WriteU8(effectKey);
+            WriteU8(density);
+            WriteI16(ToPixel(x));
+            WriteI16(ToPixel(y));
+            WriteU16(elapsed);
+            WriteI16((short)renderLayer);
+            WriteF32(layerDepth);
+            WriteU8(flags);
+        }
+
+        /// <summary>Particle op from a decoded record.</summary>
+        public void WriteParticle(in ParticleOp op)
+        {
+            WriteU8(FrameOpCode.Particle);
+            WriteU8(op.EffectKey);
+            WriteU8(op.Density);
+            WriteI16(op.X);
+            WriteI16(op.Y);
+            WriteU16(op.ElapsedTicks);
+            WriteI16(op.RenderLayer);
+            WriteF32(op.LayerDepth);
+            WriteU8(op.Flags);
+        }
     }
 
     /// <summary>
@@ -576,6 +635,19 @@ namespace PitHero.Services.Replay.Frames
             op.Flags = ReadU8();
         }
 
+        /// <summary>Particle payload (after its op code).</summary>
+        public void ReadParticle(out ParticleOp op)
+        {
+            op.EffectKey = ReadU8();
+            op.Density = ReadU8();
+            op.X = ReadI16();
+            op.Y = ReadI16();
+            op.ElapsedTicks = ReadU16();
+            op.RenderLayer = ReadI16();
+            op.LayerDepth = ReadF32();
+            op.Flags = ReadU8();
+        }
+
         /// <summary>Skips one whole op (code + payload) at the cursor; throws on an unknown code.</summary>
         public void SkipOp()
         {
@@ -591,6 +663,7 @@ namespace PitHero.Services.Replay.Frames
                 case FrameOpCode.Text: Skip(FrameOpCode.TextPayload); break;
                 case FrameOpCode.Rect: Skip(FrameOpCode.RectPayload); break;
                 case FrameOpCode.NinePatch: Skip(FrameOpCode.NinePatchPayload); break;
+                case FrameOpCode.Particle: Skip(FrameOpCode.ParticlePayload); break;
                 default: throw new InvalidDataException("Unknown frame op code " + code);
             }
         }

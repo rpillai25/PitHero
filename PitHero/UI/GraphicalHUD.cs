@@ -58,6 +58,33 @@ namespace PitHero.UI
         private int _maxMp;
         private int _level;
 
+        // A recorded portrait (replay frame viewer, issue #431) replaces the live paperdoll while set
+        private bool _recordedPortrait;
+        private Sprite _recordedHead, _recordedEyes, _recordedHair;
+        private Color _recordedHeadColor, _recordedEyesColor, _recordedHairColor;
+
+        /// <summary>
+        /// Shows the portrait from a recorded frame instead of the live hero's paperdoll: the head, eyes
+        /// and hair layer sprites at that tick with their recorded tints. Null sprites draw nothing.
+        /// </summary>
+        public void SetRecordedPortrait(Sprite head, Color headColor, Sprite eyes, Color eyesColor, Sprite hair, Color hairColor)
+        {
+            _recordedPortrait = true;
+            _recordedHead = head;
+            _recordedHeadColor = headColor;
+            _recordedEyes = eyes;
+            _recordedEyesColor = eyesColor;
+            _recordedHair = hair;
+            _recordedHairColor = hairColor;
+        }
+
+        /// <summary>Back to the live hero's paperdoll.</summary>
+        public void ClearRecordedPortrait()
+        {
+            _recordedPortrait = false;
+            _recordedHead = _recordedEyes = _recordedHair = null;
+        }
+
         /// <summary>
         /// Override Width to return the HUD template sprite width (fixes StackOverflowException)
         /// </summary>
@@ -222,6 +249,14 @@ namespace PitHero.UI
         /// </summary>
         private void RenderHeroSprites(Batcher batcher, Vector2 hudPosition, int xOffset, int yOffset)
         {
+            if (_recordedPortrait)
+            {
+                var at = hudPosition + new Vector2(xOffset, yOffset);
+                DrawPortraitLayer(batcher, _recordedHead, _recordedHeadColor, at);
+                DrawPortraitLayer(batcher, _recordedEyes, _recordedEyesColor, at);
+                DrawPortraitLayer(batcher, _recordedHair, _recordedHairColor, at);
+                return;
+            }
             if (_heroEntity == null)
                 return;
 
@@ -320,6 +355,15 @@ namespace PitHero.UI
                 SpriteEffects.None,
                 0f
             );
+        }
+
+        /// <summary>One recorded paperdoll layer, cropped to the top 32x31 pixels like the live portrait.</summary>
+        private static void DrawPortraitLayer(Batcher batcher, Sprite sprite, Color color, Vector2 at)
+        {
+            if (sprite == null || sprite.Texture2D == null || sprite.Texture2D.IsDisposed)
+                return;
+            var src = new Rectangle(sprite.SourceRect.X, sprite.SourceRect.Y, 32, 31);
+            batcher.Draw(sprite.Texture2D, at, src, color, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
         }
     }
 }

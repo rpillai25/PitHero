@@ -259,8 +259,47 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
   truncation of the rebuild cannot blank it; the frozen viewer is re-attached to the trampoline scene
   (camera set from the captured view) and to the rebuilt scene; `Seek` is locked while it runs.
 - `ReplayFrameCaptureEveryNTicks` (30 Hz capture) was **not** built: the measured 36 MB/h at 60 Hz is
-  inside the disk budget and the viewer would need cursor-to-frame mapping for it. Left for #431 if the
-  owner wants the space back.
+  inside the disk budget and the viewer would need cursor-to-frame mapping for it. Not taken up in #431
+  either; still available if the owner wants the space back.
+
+**As shipped in #431** (polish; frame format v3, which orphans every older `.frames` once — they are
+re-simulated and self-cached):
+
+- **Rewind:** `ReplayPlaybackService.ToggleRewind` (the `<<` button, FrameView only; pressing it while
+  rewinding pauses) and `BeginHoldRewind` / `EndHoldRewind` (SHIFT + left arrow, polled by the
+  scrubber every frame; releasing either key restores the state before the hold). Reverse play is the
+  cursor with `Direction = -1` at the current speed; it stops paused at tick 0. The plain left arrow
+  keeps panning the camera; the camera ignores arrows while SHIFT is down, so nothing fights.
+- **View-only speeds:** `GameConfig.ReplayFrameViewSpeedSteps` / `Labels` = the simulation ladder plus
+  16X and 32X; `Speed`, `SpeedLabel` and `CycleSpeed` follow the mode's ladder and a switch to
+  `Simulated` (Time Travel) clamps the index to the simulation ladder. No artifact gate.
+- **Particles:** `FrameOpCode.Particle` (effect key, density in tenths, root, age in ticks, render
+  layer/depth, Emitting flag). `ParticleEffectManager` keeps a spawn registry (type, density scale,
+  start tick) per emitter it creates; `FrameCaptureAdapters.CaptureParticle` writes the op for
+  registered, playing emitters. The viewer's `RecordedParticlePool` re-simulates each recorded emitter
+  with Nez's own `Particle` code at the fixed step from a `System.Random` seeded by (effect key, start
+  tick): forward play is one step per tick, any other move is a rebuild from the start, so a seek or a
+  rewind lands on the same picture. Approximations by design: a rebuilt effect spawns at the current
+  root (the emitter's earlier path is unknown), and the Emitting flag only ends emission from the
+  current tick on. Drawn in the world pass with the config's blend material.
+- **Sound events:** `SoundEffectManager.OnSoundPlayed` (type, rolled variant, position, positional)
+  is raised for every play except while `Muted` and never by the viewer's `PlayRecorded`; the recorder
+  appends `(tick offset u16, type u8, variant u8, x i16, y i16, flags u8)` to the chunk's events
+  section (after the console events) and skips the four UI click types. `IGameSoundEffect` reports and
+  replays variants (`PickVariant` / `PlayVariant`). The viewer plays the events the playhead passes
+  during forward play at rungs 0–`ReplayFrameViewSoundMaxSpeedIndex` (1X–2X), through `PlayRecorded`
+  → the live camera's falloff and pan; a move longer than `ReplayFrameViewSoundCatchupMaxTicks`, a
+  rewind, a pause or a higher rung is silent.
+- **Action queue icons:** `ActionQueueVisualizationComponent` is `IFrameCapturable` (screen-space
+  Sprite ops, one per background/icon, origin-anchored) and no longer live-only.
+- **Portrait:** the HUD record carries the static portrait the live HUD draws — the walk-down first
+  frame of the head, eyes and hair layers as sprite ids plus their tints (format v3; a first cut read
+  the current paperdoll frame out of the composite op, which made the portrait walk and turn with the
+  hero, rejected by the owner) — and `MainGameScene.ApplyRecordedPortrait` feeds
+  `GraphicalHUD.SetRecordedPortrait` from it.
+- Dead code removed: the viewer's `Unfreeze` and the cursor-max widening in `Freeze` (future-era),
+  the special case that kept the action queue live in the world pass, the `AtEnd`-with-room branch
+  of `TogglePause`.
 
 **Found in the live checks (2026-09-25/26), all fixed on the branch:**
 - Shadow tile copies must start from an empty grid: a cloned live grid skipped the cells equal to the
@@ -301,7 +340,7 @@ determinism bug, which is what the tripwire is for.
 | Case | Behaviour |
 |---|---|
 | `.bin` has a matching `.frames` | FrameView over a file-backed `FrameStore` (chunks inflated on demand, LRU under the memory budget). No scene swap. Exit instant |
-| `.frames` missing, stale (identity/format mismatch) or damaged | `Simulated` playback as before (re-simulation, live scene torn down, Exit = `ReturnToLiveSession`). **Self-caching (#431):** the rebuilt scene's frame recorder captures every simulated tick anyway, so a replay watched through to its end leaves its finished sidecar behind as the cache on exit. The transcode with a "Buffering n%" bar and a growing scrubber range (#430) was **dropped on 2026-09-26**: unreleased game, no backlog of uncached recordings, and the quit-time recording is one per-hero file cached with its save |
+| `.frames` missing, stale (identity/format mismatch) or damaged | `Simulated` playback as before (re-simulation, live scene torn down, Exit = `ReturnToLiveSession`). **Self-caching (shipped in #431):** the rebuilt scene's `FrameRecorder` runs under the replay's identity (`session_<recordedAt>.frames`) and captures every tick it simulates — recorded ticks are skipped, seeks capture what they pass, a backward seek hands the stream to the next scene, and an earlier unfinished pass is reopened and continued. On Exit (`ReturnToLiveSession`, before the rebuild) `ReplayPlaybackService.TrySelfCacheSimulatedReplay` flushes the builder and, when `Store.EndTick >= TotalTicks - 1`, finishes the session file with the console log and `File.Move`s it to `ReplayFileService.FrameCachePath(fileName)` (the same `FrameRecorder.ExportSidecar(endSession: true)` the quit-time save uses), then `EnforceFrameCacheBudget`. The row shows "Cached" and the next play is instant FrameView; a replay left before its end stays uncached and keeps its partial session file. Stretches that were seeked have no floating text or sounds in the cache (cosmetics skip and audio is muted during seeks); accepted. The transcode with a "Buffering n%" bar and a growing scrubber range (#430) was **dropped on 2026-09-26**: unreleased game, no backlog of uncached recordings, and the quit-time recording is one per-hero file cached with its save |
 | Disk budget | `ReplayFrameCacheDiskBudgetBytes` (default 4 GB) across `replays/`; when exceeded, the oldest `.frames` are deleted first. `.bin` files are never touched by the budget. The Replay tab shows a small "cached" mark per row |
 
 **As shipped in #429** (`ReplayFileService.SaveWithFrameCache`, `FrameRecorder.ExportSidecar`,
@@ -472,7 +511,7 @@ What the variants say:
 | 4 | #428 | Frame viewer for Replay Current Session: renderer, shadow tiles, HUD/console feed, cursor, Nez filter; Exit instant; Time Travel behind a frozen frame. **Decides `ReplayFrameCaptureEveryNTicks` on screen** (60 Hz vs 30 Hz at 1x; position interpolation between frames is the cheap way to make 30 Hz look like 60) | 3 | L |
 | 5 | #429 | Saved replays: sidecar save/rename, identity, lazy loading, disk budget, Replay tab mark; FrameView for cached saved replays | 4 | M |
 | 6 | #430 | ~~Transcode for uncached or stale saved replays: buffering status, growing range, finalise sidecar~~ **Closed, not planned (2026-09-26)**; the self-caching step moved to #431 | 5 | — |
-| 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, recorded sound events, self-caching of uncached replays, action-queue capture, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rule for new renderables, remove dead code | 4–5, #438 | M |
+| 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, recorded sound events, self-caching of uncached replays, action-queue capture, recorded portrait, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rules (new renderables, new sounds), remove dead code. **Shipped 2026-09-27** (frame format v2); see "As shipped in #431" in §3.2 and the self-caching row in §3.4 | 4–5, #438 | M |
 | 9 | #438 | **Remove the simulated future** (decided 2026-09-26): scrubber region, entering/leaving the future, time travel to the future, viewer passthrough, the Sphere of Foresight artifact (retired ordinal, never renumbered). Every path through the future re-simulates and it cheapens play. The §3.3 rows for the future and the §3.2 passthrough bullet describe code that this issue deletes | 5 | S |
 | 8 | #432 | *(Optional, go/no-go)* Simulation checkpoints to bound Time Travel rebuilds | 4 | XL — see §8 |
 

@@ -39,6 +39,8 @@ namespace PitHero.Services.Replay.Frames
         /// <summary>Console lines inside the chunk, in tick order; segments in <see cref="ConsoleSegments"/>.</summary>
         public readonly List<ConsoleEvent> ConsoleEvents = new List<ConsoleEvent>(64);
         public readonly List<ConsoleSegmentRecord> ConsoleSegments = new List<ConsoleSegmentRecord>(256);
+        /// <summary>Simulation sounds inside the chunk, in tick order (issue #431).</summary>
+        public readonly List<SoundEvent> SoundEvents = new List<SoundEvent>(64);
 
         public bool HasTileKeyframe => TileKeyframeLayerCount > 0;
         public int TileKeyframeLayerCount { get; private set; }
@@ -136,6 +138,7 @@ namespace PitHero.Services.Replay.Frames
             TileEvents.Clear();
             ConsoleEvents.Clear();
             ConsoleSegments.Clear();
+            SoundEvents.Clear();
             var r = new FrameReader(_raw, offset, length);
             int tileCount = (int)r.ReadU32();
             for (int i = 0; i < tileCount; i++)
@@ -161,6 +164,17 @@ namespace PitHero.Services.Replay.Frames
                     ConsoleSegments.Add(new ConsoleSegmentRecord(stringId, color, itemId));
                 }
                 ConsoleEvents.Add(new ConsoleEvent(tick, start, segCount));
+            }
+            int soundCount = (int)r.ReadU32();
+            for (int i = 0; i < soundCount; i++)
+            {
+                long tick = firstTick + r.ReadU16();
+                byte type = r.ReadU8();
+                byte variant = r.ReadU8();
+                short x = r.ReadI16();
+                short y = r.ReadI16();
+                byte flags = r.ReadU8();
+                SoundEvents.Add(new SoundEvent(tick, type, variant, x, y, flags));
             }
             if (!r.AtEnd)
                 throw new InvalidDataException("Frame chunk events section has trailing bytes");
