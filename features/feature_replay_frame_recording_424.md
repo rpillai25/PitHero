@@ -548,6 +548,25 @@ first converted to tick FSMs (a separate refactor with its own replay validation
 taken only at ticks with zero live sim coroutines, validated by a headless test that restores a
 checkpoint and matches every subsequent tripwire hash for 10 minutes of simulation.
 
+**Decision 2026-09-27 (owner): throttle first, checkpoints only if the throttle is not enough.** The
+owner's concern is CPU load on the player's machine rather than the wait: an unthrottled seek pegs one
+core for the whole rebuild (the 30 ms burst outlasted a 60 Hz frame and the vsync-paced loop never
+sleeps), which was audible as a fan. Shipped instead: `Core.ExtraStepDutyCycle` in the Nez fork with
+`FixedStepScheduler.ComputeRestSeconds`, driven by `ReplaySeekWallBudgetSeconds` (10 ms) and
+`ReplaySeekDutyCycle` (0.5): one burst per frame, then a sleep, so a rebuild holds one core at about
+half load for about twice the wall time. Every re-simulation path (Time Travel Here, Exit from an
+uncached saved replay, Simulated scrubs) goes through it. The owner runs a multi-hour session and
+watches the CPU; if that is acceptable #432 closes as not planned. If not, the survey of 2026-09-27
+(coroutine sites, state holders, rebuild paths) recorded on the issue sizes the go-lite variant at
+about four focused days across three PRs: (1) Nez active-coroutine count with a cosmetic tag,
+`ShuffleBag` / `SeedableRandom` state get/set, the speech RNG as a `SeedableRandom`, and a
+`--verify-replay` mode on the real exe as the harness criterion 3 asks for; (2) the snapshot
+participants, `SaveData` plus a mid-tick supplement; (3) the checkpoint service (third sidecar
+section, every 5 minutes at the first quiet tick, ~20–30 KB each) and the load path that restores the
+nearest checkpoint leaving at least a minute of verified simulation before T and falls back to the
+tick-0 rebuild when the first tripwire sample after the restore mismatches. Battles stay coroutines
+and simply contain no checkpoints.
+
 ## 9. Non-goals
 
 - **The simulated future** (2026-09-26, issue #438): the scrubber region past the session end, time

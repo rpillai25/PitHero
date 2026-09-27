@@ -637,7 +637,11 @@ namespace PitHero.Services.Replay
                     }
                     else
                     {
+                        // Throttled (issue #432): a burst per frame, then a rest, so a long rebuild warms one
+                        // core to the duty cycle instead of pegging it. Every re-simulation goes through here:
+                        // Time Travel Here, Exit from an uncached saved replay, scrubs in Simulated mode
                         Core.ExtraStepWallBudgetSeconds = GameConfig.ReplaySeekWallBudgetSeconds;
+                        Core.ExtraStepDutyCycle = GameConfig.ReplaySeekDutyCycle;
                         Core.PendingExtraSteps = remaining;
                     }
                     break;

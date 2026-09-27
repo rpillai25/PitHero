@@ -754,7 +754,14 @@ namespace PitHero
         public static readonly string[] ReplayFrameViewSpeedStepLabels = { "1X", "2X", "4X", "8X", "16X", "32X" };
 
         // Replay playback
-        public const float ReplaySeekWallBudgetSeconds = 0.030f; // Wall time per 60 Hz frame spent running seek steps: ~2/3 of the frame, leaving CPU headroom (raise for faster seeks)
+        // Seek throttle (issue #432, 2026-09-27). A seek re-simulates at ~24k steps/s on the main thread; unthrottled it
+        // pegs one core for the whole rebuild (Time Travel Here, Exit from an uncached saved replay, backward scrubs in
+        // Simulated mode), which is what the player hears as a fan. Each rendered frame runs one burst of seek steps for
+        // ReplaySeekWallBudgetSeconds, then the main thread sleeps so the burst is ReplaySeekDutyCycle of the frame:
+        // 0.5 = one core at ~50%, the seek takes ~2x its unthrottled wall time (1 h of session ≈ 20 s instead of ~10 s).
+        // Raise the duty cycle for faster seeks, lower it for a cooler machine; 1 disables the rest entirely.
+        public const float ReplaySeekWallBudgetSeconds = 0.010f; // Wall time per rendered frame spent running seek steps (one burst)
+        public const float ReplaySeekDutyCycle = 0.5f;           // Share of the main thread a seek may use, (0, 1]; the rest of each frame is a Thread.Sleep
         public const int ReplayHashIntervalTicks = 60;           // Simulation ticks between divergence-tripwire state hashes (1 per sim second)
         public const long ReplayPauseSkipMinTicks = 120;         // Recorded pause stretches at least this long (2 s) are skipped during playback
         public const bool ReplaySeekSkipsCosmetics = true;       // Seeks skip purely visual per-step work (particles, floating text, Y-sort); flip to A/B a divergence

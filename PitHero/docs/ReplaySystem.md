@@ -49,7 +49,7 @@ enables it with `GameConfig.SimulationFixedStepSeconds`, 1/60 s):
 | `SimulationSpeed` | Steps-per-wall-second multiplier, picked from the shared `GameConfig.SpeedSteps` ladder (`1 / 2.5 / 4 / 8`, shown to the player as `1X / 2X / 4X / 8X` via `GameConfig.SpeedStepLabels`) by both the live fast-forward button and the replay scrubber. **Never use `Time.TimeScale`** for speed: more steps of the same length keep the trajectory identical; a scaled delta does not |
 | `MaxStepsPerFrame` | Catch-up cap after a hitch or occlusion; the backlog is dropped (the sim slows, it never desyncs). Raised from `GameConfig.SimulationMaxStepsPerFrame` to `GameConfig.HighSpeedMaxStepsPerFrame` whenever the sim runs above 1x, so the top rung is not silently clamped |
 | `SimulationSuspended` | Zero steps this frame (replay paused / at end) |
-| `PendingExtraSteps` + `ExtraStepWallBudgetSeconds` | Seek: run as many extra steps per frame as fit the wall budget |
+| `PendingExtraSteps` + `ExtraStepWallBudgetSeconds` + `ExtraStepDutyCycle` | Seek: one burst of extra steps per frame, as many as fit the wall budget, then (duty cycle below 1) a `Thread.Sleep` proportional to the burst so a long seek holds that share of one core instead of pegging it |
 | `IsInSimulationStep` | True inside a step, false during the presentation pass |
 | `CosmeticUpdatesSuspended` | Set during seeks when `GameConfig.ReplaySeekSkipsCosmetics` is on |
 
@@ -384,9 +384,20 @@ services are keyed by type (constructing a second `MainGameScene` while the firs
   mode switches).
 - **Seek forward** = `Seeking` with `PendingExtraSteps`. **Seek backward** = restart the scene from
   tick 0 and fast-forward. There are no simulation keyframes: a `SaveData` snapshot is not faithful
-  mid-pit, so re-simulation is the only exact path. Measured throughput is roughly 250x real time (an
-  hour of play seeks in about 15 s); the Replay Info window carries the disclaimer for Time Travel and
-  uncached replays instead of any session-length limit.
+  mid-pit, so re-simulation is the only exact path. Unthrottled throughput is roughly 400x real time
+  (~24k steps/s, an hour of play in about 9 s); the Replay Info window carries the disclaimer for
+  Time Travel and uncached replays instead of any session-length limit.
+- **Seeks are throttled** (issue #432, 2026-09-27). Every re-simulation runs through the `Seeking`
+  state: Time Travel Here, Exit from an uncached saved replay (`ReturnToLiveSession`) and scrubs in
+  Simulated mode. Unthrottled, that loop pegged one core for the whole rebuild (the 30 ms seek burst
+  outlasted a 60 Hz frame, and the game runs vsync-paced with no sleep of its own), which a laptop
+  answers with its fan. Now each rendered frame runs one burst of `ReplaySeekWallBudgetSeconds`
+  (10 ms) and then the main thread sleeps so the burst is `ReplaySeekDutyCycle` (0.5) of the frame
+  (`Core.ExtraStepDutyCycle`, `FixedStepScheduler.ComputeRestSeconds`): one core at about half load,
+  a rebuild about twice as long (an hour of session ≈ 20 s), the frozen frame and progress bar
+  updating at ~45 fps. The last burst of a seek never rests. Raise the duty cycle for faster seeks;
+  1 disables the rest. The owner's CPU test on a multi-hour session decides whether simulation
+  checkpoints (#432, design §8) are still needed.
 - During seeks: SFX muted, `Debug.QuietMode`, `CosmeticUpdatesSuspended`, camera view captured and
   restored (`CameraControllerComponent.CaptureView/RestoreView`), hero-follow never engages.
 - `GameEventService.Suppressed` and analytics are off during playback; the recruit-notification queue
@@ -658,7 +669,7 @@ with the correct working directory (content paths are relative to it).
 ## Configuration (`GameConfig.cs`, "Simulation clock" and "Replay playback" blocks)
 
 `SimulationFixedStepSeconds`, `SimulationMaxStepsPerFrame`, `HighSpeedMaxStepsPerFrame`,
-`SimulationDefaultSpeedIndex`, `SpeedSteps`, `SpeedStepLabels`, `ReplaySeekWallBudgetSeconds`, `ReplayHashIntervalTicks`,
+`SimulationDefaultSpeedIndex`, `SpeedSteps`, `SpeedStepLabels`, `ReplaySeekWallBudgetSeconds`, `ReplaySeekDutyCycle`, `ReplayHashIntervalTicks`,
 `ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySeekQuietLogging`,
 scrubber size constants, `ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`,
 `ReplaySpeechSeedSalt`; artifact prices,
