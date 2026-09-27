@@ -29,18 +29,19 @@ namespace PitHero.Rendering
         /// <summary>After the DefaultRenderer (0), whose world-camera ghost of the screen-space HUD panels this pass paints over.</summary>
         public const int Order = 1;
 
-        private enum ItemKind : byte { Sprite, Composite, Overlay, Tile, Live }
+        private enum ItemKind : byte { Sprite, Composite, Overlay, Tile, Live, Particle }
 
         private struct Item
         {
             public int Layer;
             public float Depth;
-            public byte Material;   // 0 none, 1 graded
+            public byte Material;   // 0 none, 1 graded, 2 a particle effect's blend material
             public int Index;       // stable tiebreak (frame order)
             public ItemKind Kind;
             public int Offset;      // op offset in the frame's ops buffer, or the tile layer index
             public int End;         // end of the owning entity's ops
             public RenderableComponent Live;
+            public RecordedParticlePool.Effect Effect;
         }
 
         private sealed class ItemComparer : IComparer<Item>
@@ -91,8 +92,11 @@ namespace PitHero.Rendering
                 AddTile(GameConfig.RenderLayerTop, TileTop, graded != null);
             }
             AddLiveWorldRenderables(scene, cam, graded);
+            var particles = _viewer.Particles;
+            particles.BeginFrame();
             if (frame != null)
                 AddFrameOps(frame, cam);
+            particles.EndFrame(); // emitters absent from this frame are gone
 
             Array.Sort(_items, 0, _itemCount, Comparer);
 
@@ -120,6 +124,10 @@ namespace PitHero.Rendering
                         SetMaterial(null, cam);
                         DrawOverlay(frame, item.Offset, item.End, cam);
                         break;
+                    case ItemKind.Particle:
+                        SetMaterial(item.Effect.Material, cam);
+                        particles.Draw(Graphics.Instance.Batcher, item.Effect);
+                        break;
                 }
             }
 
@@ -135,6 +143,7 @@ namespace PitHero.Rendering
             ref var item = ref _items[_itemCount];
             item.Index = _itemCount;
             item.Live = null;
+            item.Effect = null;
             _itemCount++;
             return ref item;
         }
@@ -156,7 +165,7 @@ namespace PitHero.Rendering
             for (int i = 0; i < list.Count; i++)
             {
                 var renderable = list[i];
-                if (!(renderable is ILiveOnlyRenderable) || renderable is ActionQueueVisualizationComponent)
+                if (!(renderable is ILiveOnlyRenderable))
                     continue;
                 var rc = renderable as RenderableComponent;
                 if (rc == null || FrameCaptureContext.IsScreenSpaceLayer(rc.RenderLayer))
@@ -251,6 +260,24 @@ namespace PitHero.Rendering
                         case FrameOpCode.NinePatch:
                             r.ReadNinePatch(out _); // always the screen pass (speech bubbles)
                             break;
+                        case FrameOpCode.Particle:
+                        {
+                            r.ReadParticle(out var op);
+                            if (op.X < left || op.X > right || op.Y < top || op.Y > bottom)
+                                break;
+                            var effect = _viewer.Particles.Touch(entity.Id, in op, frame.Tick);
+                            if (effect == null || effect.Particles.Count == 0)
+                                break;
+                            ref var item = ref NewItem();
+                            item.Layer = op.RenderLayer;
+                            item.Depth = op.LayerDepth;
+                            item.Material = 2;
+                            item.Kind = ItemKind.Particle;
+                            item.Effect = effect;
+                            item.Offset = at;
+                            item.End = end;
+                            break;
+                        }
                         default:
                             return; // corrupt entity: stop reading it
                     }
@@ -271,23 +298,20 @@ namespace PitHero.Rendering
 
         // ───────────────────────────── drawing ─────────────────────────────
 
-        /// <summary>Switches the batch material the way <see cref="Renderer.RenderAfterStateCheck"/> does for live renderables.</summary>
+        /// <summary>
+        /// Switches the batch material the way <see cref="Renderer.RenderAfterStateCheck"/> does for live
+        /// renderables: null means the renderer's own material (the plain batch).
+        /// </summary>
         private void SetMaterial(Material material, Camera cam)
         {
-            if (material != null && material != _currentMaterial)
-            {
-                _currentMaterial = material;
-                if (_currentMaterial.Effect != null)
-                    _currentMaterial.OnPreRender(cam);
-                Graphics.Instance.Batcher.End();
-                Graphics.Instance.Batcher.Begin(_currentMaterial, cam.TransformMatrix);
-            }
-            else if (material == null && _currentMaterial != Material)
-            {
-                _currentMaterial = Material;
-                Graphics.Instance.Batcher.End();
-                Graphics.Instance.Batcher.Begin(_currentMaterial, cam.TransformMatrix);
-            }
+            var target = material ?? Material;
+            if (ReferenceEquals(target, _currentMaterial))
+                return;
+            _currentMaterial = target;
+            if (_currentMaterial != null && _currentMaterial.Effect != null)
+                _currentMaterial.OnPreRender(cam);
+            Graphics.Instance.Batcher.End();
+            Graphics.Instance.Batcher.Begin(_currentMaterial, cam.TransformMatrix);
         }
 
         private void DrawSprite(DecodedFrame frame, int at, int end)
@@ -496,6 +520,9 @@ namespace PitHero.Rendering
                             DrawSpeechBubble(batcher, worldCam, in op);
                             break;
                         }
+                        case FrameOpCode.Particle:
+                            r.ReadParticle(out _); // world pass only
+                            break;
                         default:
                             goto nextEntity;
                     }

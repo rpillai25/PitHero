@@ -40,22 +40,26 @@ namespace PitHero.Services.Replay.Frames
 
     /// <summary>
     /// The fixed-layout HUD record captured with every frame (design §3.1): the numbers GraphicalHUD, the
-    /// pit level label, the funds label and the clock show. Stored whole in the base frame and re-emitted
-    /// in a delta only when it changed.
+    /// pit level label, the funds label and the clock show, plus (format v2, issue #431) the recorder id
+    /// of the hero's paperdoll composite so the viewer can draw the recorded portrait. Stored whole in the
+    /// base frame and re-emitted in a delta only when it changed.
     /// </summary>
     public struct HudRecord : IEquatable<HudRecord>
     {
-        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1;
+        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 2;
 
         public HudMember Hero, Merc1, Merc2;
         public long Gold;
         public int PitLevel, PitTier;
         public float InGameSeconds;
         public bool Paused;
+        /// <summary>Frame entity id of the hero's paperdoll composite at this tick, or 0 when the hero has none on screen.</summary>
+        public ushort HeroEntityId;
 
         public bool Equals(HudRecord o)
             => Hero.Equals(o.Hero) && Merc1.Equals(o.Merc1) && Merc2.Equals(o.Merc2) && Gold == o.Gold
-               && PitLevel == o.PitLevel && PitTier == o.PitTier && InGameSeconds == o.InGameSeconds && Paused == o.Paused;
+               && PitLevel == o.PitLevel && PitTier == o.PitTier && InGameSeconds == o.InGameSeconds && Paused == o.Paused
+               && HeroEntityId == o.HeroEntityId;
         public override bool Equals(object obj) => obj is HudRecord r && Equals(r);
         public override int GetHashCode() => Hero.GetHashCode() ^ (int)Gold ^ (PitLevel << 4) ^ InGameSeconds.GetHashCode();
 
@@ -69,6 +73,7 @@ namespace PitHero.Services.Replay.Frames
             w.WriteI32(PitTier);
             w.WriteF32(InGameSeconds);
             w.WriteU8(Paused ? (byte)1 : (byte)0);
+            w.WriteU16(HeroEntityId);
         }
 
         public static HudRecord Read(ref FrameReader r)
@@ -82,8 +87,34 @@ namespace PitHero.Services.Replay.Frames
             h.PitTier = r.ReadI32();
             h.InGameSeconds = r.ReadF32();
             h.Paused = r.ReadU8() != 0;
+            h.HeroEntityId = r.ReadU16();
             return h;
         }
+    }
+
+    /// <summary>
+    /// One simulation sound at a tick (issue #431): the resolved effect (the variant a group sound
+    /// rolled), where it came from and whether it was positional. UI clicks are never recorded.
+    /// </summary>
+    public struct SoundEvent
+    {
+        /// <summary>Flag: the sound was played through PlaySoundAt (falloff and pan from the position).</summary>
+        public const byte Positional = 1;
+
+        public long Tick;
+        /// <summary>A <c>SoundEffectType</c> ordinal.</summary>
+        public byte Type;
+        /// <summary>The variant a group sound picked (0 for single sounds).</summary>
+        public byte Variant;
+        public short X, Y;
+        public byte Flags;
+
+        public SoundEvent(long tick, byte type, byte variant, short x, short y, byte flags)
+        {
+            Tick = tick; Type = type; Variant = variant; X = x; Y = y; Flags = flags;
+        }
+
+        public bool IsPositional => (Flags & Positional) != 0;
     }
 
     /// <summary>One runtime tile mutation (TiledMapService.SetTile/RemoveTile) at a tick; gid 0 = removal.</summary>

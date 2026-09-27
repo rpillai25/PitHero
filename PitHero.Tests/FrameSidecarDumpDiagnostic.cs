@@ -6,9 +6,10 @@ using PitHero.Services.Replay.Frames;
 namespace PitHero.Tests
 {
     /// <summary>
-    /// Diagnostic, not a test: dumps the HUD-font Text ops (damage numbers, miss text) of a session
-    /// sidecar so their recorded offsets can be compared with the live geometry. Runs only when
-    /// PITHERO_FRAMES_DUMP names a .frames file; writes next to it as &lt;file&gt;.textops.txt.
+    /// Diagnostic, not a test: dumps the HUD-font Text ops (damage numbers, miss text), the Particle ops
+    /// and the sound events of a session sidecar so their recorded values can be compared with the live
+    /// geometry. Runs only when PITHERO_FRAMES_DUMP names a .frames file; writes next to it as
+    /// &lt;file&gt;.textops.txt.
     /// </summary>
     [TestClass]
     public class FrameSidecarDumpDiagnostic
@@ -28,6 +29,16 @@ namespace PitHero.Tests
             var sb = new StringBuilder();
             sb.AppendLine($"chunks {reader.ChunkCount} endTick {reader.EndTick} strings {registry.StringCount}");
             int printed = 0;
+            for (int c = 0; c < reader.ChunkCount && c < 400; c++)
+            {
+                if (!store.TryGetDecodedChunk(c, out var chunk))
+                    continue;
+                for (int i = 0; i < chunk.SoundEvents.Count; i++)
+                {
+                    var s = chunk.SoundEvents[i];
+                    sb.AppendLine($"sound tick {s.Tick} type {s.Type} variant {s.Variant} x {s.X} y {s.Y} {(s.IsPositional ? "positional" : "plain")}");
+                }
+            }
             for (long tick = 0; tick <= reader.EndTick && printed < 400; tick += 7)
             {
                 if (!store.TryGetFrame(tick, out var frame))
@@ -49,6 +60,11 @@ namespace PitHero.Tests
                                 break;
                             case FrameOpCode.Rect: r.ReadRect(out _); break;
                             case FrameOpCode.NinePatch: r.ReadNinePatch(out _); break;
+                            case FrameOpCode.Particle:
+                                r.ReadParticle(out var p);
+                                sb.AppendLine($"tick {tick} id {e.Id} particle key {p.EffectKey} density {p.DensityScale} x {p.X} y {p.Y} elapsed {p.ElapsedTicks} emitting {p.IsEmitting}");
+                                printed++;
+                                break;
                             case FrameOpCode.Text:
                                 r.ReadText(out var t);
                                 if (t.FontId == FrameFontId.Hud || t.FontId == FrameFontId.Hud2x)

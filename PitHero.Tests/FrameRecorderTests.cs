@@ -345,6 +345,148 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>
+        /// Self-caching of an uncached saved replay (issue #431): a recorder preloaded with the recording
+        /// (a Simulated playback) captures past the stream end up to TotalTicks and exports a cache the
+        /// file service accepts; a stream that stops short exports nothing and keeps its session file.
+        /// </summary>
+        [TestMethod]
+        public void SelfCache_PreloadedReplayCapturedToTheEnd_ExportsAnAcceptedCache_ShortStreamExportsNothing()
+        {
+            int chunkTicks = GameConfig.ReplayFrameChunkTicks;
+            string dir = NewTempDir();
+            var clock = new SimulationClock();
+            FrameRecorder rec = null;
+            try
+            {
+                var entity = new Entity("box");
+                var outline = entity.AddComponent(new BuildingOutlineRenderComponent());
+                outline.SetSize(10f, 10f);
+                var files = new ReplayFileService(dir);
+                long total = chunkTicks + 30;
+                var data = new ReplayData
+                {
+                    Kind = ReplayKind.Load, MasterSeed = Seed, HeroName = "Ann", JobName = "Knight", HeroId = 1,
+                    RecordedAtUtcTicks = RecordedAt, TotalTicks = total, BuildId = "t", SimulationVersion = GameConfig.SimulationVersion,
+                    StateBlob = new byte[] { 1 },
+                };
+                string fileName = files.Save(data);
+                string cache = files.FrameCachePath(fileName);
+                Assert.IsFalse(File.Exists(cache));
+
+                // ── Left before the end: nothing is cached, the session file keeps the partial stream ──
+                rec = new FrameRecorder();
+                rec.Initialize(Seed, RecordedAt, data, dir);
+                rec.IsRecording = false; // playback: already recorded ticks are skipped, ticks past the end captured
+                string sessionPath = rec.SessionFilePath;
+                Assert.IsTrue(File.Exists(sessionPath));
+                for (long t = 0; t < 40; t++)
+                    Assert.IsTrue(Capture(rec, clock, t, entity, outline), "tick " + t);
+                rec.FlushPending();
+                Assert.AreEqual(39, rec.Store.EndTick);
+                Assert.IsFalse(rec.ExportSidecar(cache, total, endSession: true), "a short stream exports nothing");
+                Assert.IsFalse(File.Exists(cache));
+                Assert.IsTrue(File.Exists(sessionPath), "the partial stream stays for a later pass");
+                rec.Detach(handoffToNextScene: false);
+
+                // ── A later pass reopens the session file, skips what it has and captures to the end ──
+                rec = new FrameRecorder();
+                rec.Initialize(Seed, RecordedAt, data, dir);
+                rec.IsRecording = false;
+                Assert.AreEqual(39, rec.Store.EndTick, "the earlier pass's frames were reopened");
+                for (long t = 0; t < 40; t++)
+                    Assert.IsFalse(Capture(rec, clock, t, entity, outline), "recorded tick " + t + " is skipped");
+                for (long t = 40; t < total; t++)
+                    Assert.IsTrue(Capture(rec, clock, t, entity, outline), "tick " + t);
+                Assert.IsTrue(rec.ExportSidecar(cache, total, endSession: true), "the complete stream becomes the cache");
+                Assert.IsTrue(File.Exists(cache));
+                Assert.IsFalse(File.Exists(sessionPath), "the session file was moved beside the recording");
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, files.TryOpenFrameCache(fileName, Seed, RecordedAt, GameConfig.SimulationVersion, total, out var reader));
+                using (reader)
+                {
+                    Assert.AreEqual(total, reader.TotalTicks);
+                    Assert.AreEqual(total - 1, reader.EndTick);
+                    var registry = new SpriteKeyRegistry();
+                    reader.RebuildRegistry(registry);
+                    var store = new FrameStore(reader.ChunkTicks, long.MaxValue);
+                    store.Preload(reader);
+                    for (long t = 0; t < total; t += 11)
+                    {
+                        Assert.IsTrue(store.TryGetFrame(t, out var frame), "tick " + t);
+                        Assert.IsTrue(frame.TryGetEntity(1, out var e));
+                        var r = frame.ReadOps(e);
+                        Assert.AreEqual(FrameOpCode.Rect, r.ReadOpCode());
+                        r.ReadRect(out var rect);
+                        Assert.AreEqual((short)t, rect.X);
+                    }
+                }
+                Assert.IsTrue(files.Enumerate()[0].HasFrameCache, "the row gains its Cached mark");
+                rec.Detach(handoffToNextScene: false);
+                rec = null;
+            }
+            finally
+            {
+                rec?.Detach(handoffToNextScene: false);
+                FrameRecorder.DiscardPendingHandoff();
+                clock.Detach();
+                try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+            }
+        }
+
+        /// <summary>The sound hook (issue #431) lands in the open chunk with the resolved variant; UI clicks and already-recorded ticks are ignored.</summary>
+        [TestMethod]
+        public void SoundHook_RecordsSimulationSounds_SkipsUiClicks_AndRecordedTicks()
+        {
+            string dir = NewTempDir();
+            var clock = new SimulationClock();
+            FrameRecorder rec = null;
+            try
+            {
+                var entity = new Entity("box");
+                var outline = entity.AddComponent(new BuildingOutlineRenderComponent());
+                outline.SetSize(10f, 10f);
+                rec = new FrameRecorder();
+                rec.Initialize(Seed, RecordedAt, null, dir);
+                for (long t = 0; t < 10; t++)
+                {
+                    Assert.IsTrue(Capture(rec, clock, t, entity, outline));
+                    if (t == 3)
+                    {
+                        rec.OnSoundPlayed(PitHero.Util.SoundEffectTypes.SoundEffectType.Restorative, 2, new Vector2(100.4f, -7.6f), positional: true);
+                        rec.OnSoundPlayed(PitHero.Util.SoundEffectTypes.SoundEffectType.NormalButtonClick, 0, Vector2.Zero, positional: false);
+                    }
+                    if (t == 7)
+                        rec.OnSoundPlayed(PitHero.Util.SoundEffectTypes.SoundEffectType.PayGold, 0, Vector2.Zero, positional: false);
+                }
+                rec.FlushPending();
+                Assert.IsTrue(rec.Store.TryGetDecodedChunk(0, out var chunk));
+                Assert.AreEqual(2, chunk.SoundEvents.Count, "the UI click is not a simulation sound");
+                Assert.AreEqual(3, chunk.SoundEvents[0].Tick);
+                Assert.AreEqual((byte)PitHero.Util.SoundEffectTypes.SoundEffectType.Restorative, chunk.SoundEvents[0].Type);
+                Assert.AreEqual((byte)2, chunk.SoundEvents[0].Variant);
+                Assert.AreEqual((short)100, chunk.SoundEvents[0].X);
+                Assert.AreEqual((short)-8, chunk.SoundEvents[0].Y);
+                Assert.IsTrue(chunk.SoundEvents[0].IsPositional);
+                Assert.AreEqual(7, chunk.SoundEvents[1].Tick);
+                Assert.IsFalse(chunk.SoundEvents[1].IsPositional);
+
+                // Playback over recorded ticks records nothing more
+                rec.IsRecording = false;
+                clock.SetTick(5);
+                rec.OnSoundPlayed(PitHero.Util.SoundEffectTypes.SoundEffectType.Jump, 0, Vector2.Zero, positional: false);
+                rec.FlushPending();
+                Assert.IsTrue(rec.Store.TryGetDecodedChunk(0, out chunk));
+                Assert.AreEqual(2, chunk.SoundEvents.Count);
+            }
+            finally
+            {
+                rec?.Detach(handoffToNextScene: false);
+                FrameRecorder.DiscardPendingHandoff();
+                clock.Detach();
+                try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+            }
+        }
+
         [TestMethod]
         public void Handoff_ToAnotherSession_ClosesTheOldStream_AndTheNewSessionReopensItsOwnFileLater()
         {

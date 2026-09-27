@@ -316,6 +316,52 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void SoundEvents_RoundTrip_AndFollowTheCutOnLoadFrom()
+        {
+            var builder = new FrameChunkBuilder(ChunkTicks);
+            builder.Begin(360);
+            for (int t = 0; t < 12; t++)
+            {
+                builder.BeginTick(360 + t);
+                builder.EndTick(default);
+                if (t == 2)
+                    builder.AddSoundEvent(362, type: 3, variant: 0, x: -40, y: 1200, flags: SoundEvent.Positional);
+                if (t == 9)
+                    builder.AddSoundEvent(369, type: 11, variant: 2, x: 0, y: 0, flags: 0);
+            }
+            Assert.AreEqual(2, builder.SoundEventCount);
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => builder.AddSoundEvent(360 + ChunkTicks, 0, 0, 0, 0, 0));
+
+            var chunk = FrameChunkCodec.Compress(builder.Finish((SpriteKeyRegistry)null));
+            var decoded = FrameChunkCodec.Decode(chunk);
+            Assert.AreEqual(2, decoded.SoundEvents.Count);
+            var first = decoded.SoundEvents[0];
+            Assert.AreEqual(362, first.Tick);
+            Assert.AreEqual((byte)3, first.Type);
+            Assert.AreEqual((byte)0, first.Variant);
+            Assert.AreEqual((short)-40, first.X);
+            Assert.AreEqual((short)1200, first.Y);
+            Assert.IsTrue(first.IsPositional);
+            var second = decoded.SoundEvents[1];
+            Assert.AreEqual(369, second.Tick);
+            Assert.AreEqual((byte)11, second.Type);
+            Assert.AreEqual((byte)2, second.Variant);
+            Assert.IsFalse(second.IsPositional);
+            Assert.AreEqual(0, builder.SoundEventCount, "the builder is empty for the next chunk");
+
+            // A cut in the middle of the chunk keeps only the sounds at or before it (Time Travel, resume)
+            var cut = FrameChunkCodec.Decode(FrameChunkCodec.Truncate(chunk, 365));
+            Assert.AreEqual(6, cut.TickCount);
+            Assert.AreEqual(1, cut.SoundEvents.Count);
+            Assert.AreEqual(362, cut.SoundEvents[0].Tick);
+
+            // Resuming a chunk in the builder carries its sounds too
+            var resumed = new FrameChunkBuilder(ChunkTicks);
+            resumed.LoadFrom(decoded, new DecodedFrame(), 371);
+            Assert.AreEqual(2, resumed.SoundEventCount);
+        }
+
+        [TestMethod]
         public void Truncate_KeepsTicksEventsAndTableDeltaUpToTheCut()
         {
             var registry = new SpriteKeyRegistry();

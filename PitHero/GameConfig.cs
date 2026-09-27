@@ -748,6 +748,10 @@ namespace PitHero
         public const int SimulationDefaultSpeedIndex = 1;         // Rung a plain fast-forward click engages
         public static readonly float[] SpeedSteps = { 1f, 2.5f, 4f, 8f };
         public static readonly string[] SpeedStepLabels = { "1X", "2X", "4X", "8X" };
+        // View-only ladder of the replay frame viewer (issue #431): SpeedSteps plus two rungs nothing simulated
+        // could reach. No artifact gate: watching recorded frames faster costs the simulation nothing.
+        public static readonly float[] ReplayFrameViewSpeedSteps = { 1f, 2.5f, 4f, 8f, 16f, 32f };
+        public static readonly string[] ReplayFrameViewSpeedStepLabels = { "1X", "2X", "4X", "8X", "16X", "32X" };
 
         // Replay playback
         public const float ReplaySeekWallBudgetSeconds = 0.030f; // Wall time per 60 Hz frame spent running seek steps: ~2/3 of the frame, leaving CPU headroom (raise for faster seeks)
@@ -766,7 +770,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB deflated, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 1;                         // Sidecar cache format; bumping orphans old .frames (rebuilt by transcoding), never a .bin
+        public const int ReplayFrameFormatVersion = 2;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events, HUD record hero entity id
         public const string ReplayFrameFileExtension = ".frames";              // Sidecar next to the .bin it caches
         public const string ReplayFrameSessionFilePrefix = "session_";         // replays/session_<recordedAtUtcTicks>.frames while a session runs; stale ones are deleted at the next new session
         public const float ReplayFrameDebugLogIntervalSeconds = 60f;           // Wall seconds between frame-recorder stat lines (Debug.Log in Debug builds; replays/frame_recorder.log in every build while ReplayFrameStatsLog is on)
@@ -776,6 +780,9 @@ namespace PitHero
         public const string ReplayPlaybackTraceLogFileName = "replay_playback.log";
         public const bool ReplayFrameViewEnabled = true;                       // Replay Current Session draws recorded frames instead of re-simulating (issue #428); off = today's Simulated playback. Needs ReplayFrameCaptureEnabled
         public const int ReplayFrameViewCullMarginPixels = 128;                // World pixels beyond the camera bounds a recorded sprite may sit and still be drawn (large sprites anchored off-screen)
+        public const int ReplayFrameViewSoundMaxSpeedIndex = 1;                // Recorded sound events play during forward FrameView play up to this ReplayFrameViewSpeedSteps rung (1 = 2X); silent while scrubbing, rewinding and above it (issue #431)
+        public const int ReplayFrameViewSoundCatchupMaxTicks = 30;             // A forward cursor move longer than this (a seek or a skipped pause span) plays none of the sound events it passed
+        public const int ReplayFrameViewParticleRebuildMaxTicks = 1200;        // A recorded particle emitter older than this (20 s) is re-simulated no further; effects in the game last a few seconds
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.

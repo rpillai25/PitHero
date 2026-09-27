@@ -41,6 +41,58 @@ namespace PitHero.Util
 
         private Dictionary<ParticleEffectType, ParticleEmitterConfig> _configs;
 
+        /// <summary>The global instance, or null before Game1 creates it (headless tests).</summary>
+        public static ParticleEffectManager Current { get; private set; }
+
+        /// <summary>What an emitter was spawned as (the replay frame stream records this, not the particles; issue #431).</summary>
+        public struct SpawnRecord
+        {
+            public ParticleEffectType Type;
+            public float DensityScale;
+            /// <summary>Simulation tick of the spawn; an emitter's age is the current tick minus this.</summary>
+            public long StartTick;
+        }
+
+        private readonly Dictionary<ParticleEmitter, SpawnRecord> _spawns = new Dictionary<ParticleEmitter, SpawnRecord>(16, ReferenceEqualityComparer.Instance);
+        private readonly List<ParticleEmitter> _deadSpawns = new List<ParticleEmitter>(8);
+
+        public ParticleEffectManager()
+        {
+            Current = this;
+        }
+
+        /// <summary>The spawn record of a live emitter this manager created; false for emitters it does not know.</summary>
+        public bool TryGetSpawn(ParticleEmitter emitter, out SpawnRecord record)
+        {
+            if (emitter == null)
+            {
+                record = default;
+                return false;
+            }
+            return _spawns.TryGetValue(emitter, out record);
+        }
+
+        /// <summary>The shared, as-authored config of an effect (never mutate it; see <see cref="CloneConfig"/>), or null.</summary>
+        public ParticleEmitterConfig GetConfig(ParticleEffectType type)
+        {
+            return _configs != null && _configs.TryGetValue(type, out var config) ? config : null;
+        }
+
+        private void Register(ParticleEmitter emitter, ParticleEffectType type, float densityScale)
+        {
+            // Emitters that died with a scene never reached their expiry handler: drop them here, cheaply
+            for (var it = _spawns.GetEnumerator(); it.MoveNext();)
+            {
+                var e = it.Current.Key;
+                if (e.Entity == null || e.Entity.IsDestroyed)
+                    _deadSpawns.Add(e);
+            }
+            for (int i = 0; i < _deadSpawns.Count; i++)
+                _spawns.Remove(_deadSpawns[i]);
+            _deadSpawns.Clear();
+            _spawns[emitter] = new SpawnRecord { Type = type, DensityScale = densityScale, StartTick = PitHero.Services.SimulationClock.CurrentTick };
+        }
+
         public void Init(NezContentManager content)
         {
             if (!Initialized)
@@ -80,6 +132,7 @@ namespace PitHero.Util
             emitter.SimulateInWorldSpace = true;
             emitter.RenderLayer = renderLayer;
             emitter.OnAllParticlesExpired += RemoveEmitterComponent;
+            Register(emitter, type, densityScale);
             return emitter;
         }
 
@@ -116,6 +169,7 @@ namespace PitHero.Util
             emitter.SimulateInWorldSpace = true;
             emitter.RenderLayer = renderLayer;
             emitter.OnAllParticlesExpired += DestroyEmitterEntity;
+            Register(emitter, type, 1f);
             return emitter;
         }
 
@@ -123,7 +177,7 @@ namespace PitHero.Util
         /// Field-by-field copy so per-spawn tweaks never touch the shared registry config.
         /// The Sprite reference is shared intentionally — clones must never be disposed.
         /// </summary>
-        private static ParticleEmitterConfig CloneConfig(ParticleEmitterConfig source)
+        public static ParticleEmitterConfig CloneConfig(ParticleEmitterConfig source)
         {
             return new ParticleEmitterConfig
             {
@@ -171,12 +225,14 @@ namespace PitHero.Util
 
         private static void RemoveEmitterComponent(ParticleEmitter emitter)
         {
+            Current?._spawns.Remove(emitter);
             emitter.Clear();
             emitter.Entity?.RemoveComponent(emitter);
         }
 
         private static void DestroyEmitterEntity(ParticleEmitter emitter)
         {
+            Current?._spawns.Remove(emitter);
             emitter.Clear();
             emitter.Entity?.Destroy();
         }

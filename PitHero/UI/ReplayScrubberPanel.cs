@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Nez;
 using Nez.UI;
 using PitHero.Services;
@@ -7,12 +8,14 @@ using PitHero.Services.Replay;
 namespace PitHero.UI
 {
     /// <summary>
-    /// Bottom-of-screen replay transport: Exit, Play/Pause, speed cycle, a scrub slider with the
-    /// current/total time and a status label (seeking progress, end of replay, divergence). Lives on
-    /// the UI stage for the scene's lifetime and is shown only while a replay is active. The slider
-    /// commits on release so dragging previews the target time without seeking every frame.
+    /// Bottom-of-screen replay transport: Exit, Play/Pause, rewind (frame view only), speed cycle, a
+    /// scrub slider with the current/total time and a status label (seeking progress, end of replay,
+    /// divergence). Lives on the UI stage for the scene's lifetime and is shown only while a replay is
+    /// active. The slider commits on release so dragging previews the target time without seeking every
+    /// frame. While shown it holds the stage's keyboard focus whenever nothing else does, so the left
+    /// arrow rewinds for as long as it is held (issue #431); the camera then pans left on A only.
     /// </summary>
-    public class ReplayScrubberPanel : Window
+    public class ReplayScrubberPanel : Window, IKeyboardListener
     {
         private readonly Skin _skin;
         private TextService _textService;
@@ -23,7 +26,14 @@ namespace PitHero.UI
         private float _continueWidth;
         private ConfirmationDialog _continueDialog;
         private TextButton _playPauseButton;
+        private TextButton _rewindButton;
+        private Cell _rewindCell;              // collapsed to zero width outside the frame view
+        private float _rewindWidth;
+        private bool _rewindOffered = true;
         private TextButton _speedButton;
+
+        /// <summary>True while a shown scrubber holds the keyboard focus: the left arrow is its rewind key, not a camera pan.</summary>
+        public static bool OwnsLeftArrow { get; private set; }
         private ReplayTimelineSlider _slider;
         private Label _timeLabel;
         private Label _statusLabel;
@@ -69,6 +79,9 @@ namespace PitHero.UI
             _playPauseButton = new TextButton(GetText(UITextKey.ButtonReplayPause), skin, "ph-default");
             _playPauseButton.OnClicked += (_) => ReplayPlaybackService.Current?.TogglePause();
 
+            _rewindButton = new TextButton(GetText(UITextKey.ButtonReplayRewind), skin, "ph-default");
+            _rewindButton.OnClicked += (_) => ReplayPlaybackService.Current?.ToggleRewind();
+
             _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.SpeedStepLabels[0]), skin, "ph-default");
             _speedButton.OnClicked += (_) => ReplayPlaybackService.Current?.CycleSpeed();
 
@@ -88,7 +101,13 @@ namespace PitHero.UI
             float playPauseWidth = System.Math.Max(TextButtonWidth(_playPauseButton),
                 MeasureButtonText(GetText(UITextKey.ButtonReplayPlay)) + ButtonTextPad);
             Add(_playPauseButton).Width(playPauseWidth).Height(ButtonHeight).SetPadRight(6f);
-            Add(_speedButton).Width(TextButtonWidth(_speedButton) + 8f).Height(ButtonHeight).SetPadRight(10f);
+            _rewindWidth = TextButtonWidth(_rewindButton);
+            _rewindCell = Add(_rewindButton).Width(_rewindWidth).Height(ButtonHeight).SetPadRight(6f);
+            // The speed face grows to "32X" in the frame view: size for the widest label of either ladder
+            float speedWidth = TextButtonWidth(_speedButton);
+            for (int i = 0; i < GameConfig.ReplayFrameViewSpeedStepLabels.Length; i++)
+                speedWidth = System.Math.Max(speedWidth, MeasureButtonText(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.ReplayFrameViewSpeedStepLabels[i])) + ButtonTextPad);
+            Add(_speedButton).Width(speedWidth + 8f).Height(ButtonHeight).SetPadRight(10f);
             Add(_slider).Expand().Fill().Height(ButtonHeight).SetPadRight(10f);
             Add(_timeLabel).SetPadRight(10f);
             // Status strings are kept short (one or two words, "Diverged at m:ss") so the cell's
@@ -177,6 +196,11 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
 
+            // The left arrow is the rewind key while nothing else (a text field) wants the keyboard
+            var stage = GetStage();
+            if (stage != null && stage.GetKeyboardFocus() == null)
+                stage.SetKeyboardFocus(this);
+
             long total = playback.TotalTicks; // the slider ends at the session end
             if (total != _lastShownTotal)
             {
@@ -209,13 +233,67 @@ namespace PitHero.UI
             {
                 _lastShownState = state;
                 _playPauseButton.SetText(GetText(state == ReplayPlaybackState.Playing ? UITextKey.ButtonReplayPause : UITextKey.ButtonReplayPlay));
-                _playPauseButton.SetDisabled(state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting);
+                bool busy = state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting;
+                _playPauseButton.SetDisabled(busy);
+                _rewindButton.SetDisabled(busy);
                 SetTimeTravelOffered(playback.TimeTravelAllowed);
                 _lastSeekPercent = -1;
                 _lastShownDivergence = -2;
             }
+            SetRewindOffered(playback.RewindAvailable);
 
             UpdateStatusLabel(playback, state);
+        }
+
+        /// <summary>Shows the rewind button in the frame view, or collapses its cell (a re-simulation cannot run backwards).</summary>
+        private void SetRewindOffered(bool offered)
+        {
+            if (_rewindOffered == offered)
+                return;
+            _rewindOffered = offered;
+            _rewindButton.SetVisible(offered);
+            _rewindButton.SetTouchable(offered ? Touchable.Enabled : Touchable.Disabled);
+            _rewindCell.Width(offered ? _rewindWidth : 0f).SetPadRight(offered ? 6f : 0f);
+            Invalidate();
+        }
+
+        /// <summary>The panel left the screen (replay over): let go of the keyboard and of any held rewind.</summary>
+        public void OnHidden()
+        {
+            ReplayPlaybackService.Current?.EndHoldRewind();
+            var stage = GetStage();
+            if (stage != null && ReferenceEquals(stage.GetKeyboardFocus(), this))
+                stage.SetKeyboardFocus(null);
+            OwnsLeftArrow = false;
+        }
+
+        // ── IKeyboardListener: hold-to-rewind on the left arrow ──────────────────────
+
+        void IKeyboardListener.KeyDown(Keys key)
+        {
+            if (key == Keys.Left)
+                ReplayPlaybackService.Current?.BeginHoldRewind();
+        }
+
+        void IKeyboardListener.KeyPressed(Keys key, char character)
+        {
+        }
+
+        void IKeyboardListener.KeyReleased(Keys key)
+        {
+            if (key == Keys.Left)
+                ReplayPlaybackService.Current?.EndHoldRewind();
+        }
+
+        void IKeyboardListener.GainedFocus()
+        {
+            OwnsLeftArrow = true;
+        }
+
+        void IKeyboardListener.LostFocus()
+        {
+            OwnsLeftArrow = false;
+            ReplayPlaybackService.Current?.EndHoldRewind();
         }
 
         private void UpdateStatusLabel(ReplayPlaybackService playback, ReplayPlaybackState state)

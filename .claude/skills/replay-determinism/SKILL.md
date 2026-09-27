@@ -35,6 +35,18 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 7. **Speed is more fixed steps** (`Core.SimulationSpeed`), never `Time.TimeScale`.
 8. **Validate with a real replay**: play the feature, Settings → Replay → Replay Current Session,
    seek across it, confirm **In sync**.
+9. **A new `RenderableComponent` is stock, `IFrameCapturable` or `ILiveOnlyRenderable`.** Replays
+   are *watched* from a recorded per-tick frame stream (`Services/Replay/Frames/FrameRecorder`), so an
+   unclassified renderable is simply absent from every replay. Stock sprite renderers/animators,
+   `SpriteCompositorBase` composites and `ParticleEffectManager` emitters need nothing; custom
+   drawing implements `IFrameCapturable.CaptureFrame` (emit Sprite/Text/Rect/NinePatch ops through the
+   context's interning, no allocation per tick) or is `ILiveOnlyRenderable` (draws live while viewing,
+   only for what is not part of the recorded world). `FrameCaptureCoverageTests` fails by name until
+   the type is classified and added to its list.
+10. **A new simulation sound goes through `SoundEffectManager.PlaySound` / `PlaySoundAt`.** The frame
+    stream records what the manager plays (type, rolled variant, position) so a replay hears it; a raw
+    `SoundEffect.Play` is silent in replays. UI click sounds belong to the global button hooks
+    (`ButtonClickCategory`) and are never recorded.
 
 ## The two passes
 
@@ -72,6 +84,9 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 | New `MainGameScene` throws duplicate service key | Old scene still registered; scene swaps go through `ReplayBootScene`, services removed in `Unload` |
 | Diverges in a battle at a deflect/crit/hit roll, same roll value both sides | A combat passive was set by UI code (window refresh, hover, grid rebuild). Synergies are the precedent: they now live in `HeroSynergyResolver` (sim, per tick) and `InventoryGrid` only mirrors them. Any stat the sim reads must be derived in the sim |
 | Divergence report needs more than hashes | `GameConfig.ReplayDivergenceSnapshots`: the report prints the last in-sync state, the drifted state and `ReplayBattleTrace`; compare against the live analytics `.jsonl` by wall time (tick / 60 s after load) |
+| A new visual is missing from replays (no divergence) | The renderable is not stock, `IFrameCapturable` or `ILiveOnlyRenderable` (`FrameCaptureCoverageTests` names it), or it draws per rendered frame / from a live service instead of per tick — a per-tick recording only sees what the sim step left behind |
+| A new sound is silent in replays | It bypassed `SoundEffectManager` (raw `SoundEffect.Play`), or it is one of the UI click types, which are never recorded |
+| Replay frame caches (`.frames`) all vanished after a change | `GameConfig.ReplayFrameFormatVersion` was bumped (any change to op layouts, the HUD record or the events section): intended, caches are rebuilt by re-simulation and self-cached on exit; `.bin` recordings are never touched |
 
 ## File Reference
 
@@ -81,6 +96,7 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 - `PitHero/Services/GameRandom.cs`, `Services/Replay/SeedableRandom.cs` — streams
 - `PitHero/Services/SimulationClock.cs` — sim timestamps
 - `PitHero/Services/Replay/ReplayTripwire.cs`, `SimulationStateHasher.cs` — divergence detection
-- `PitHero/Services/Replay/ReplayPlaybackService.cs` — playback, seek, exit, divergence log
+- `PitHero/Services/Replay/ReplayPlaybackService.cs` — playback (FrameView / Simulated), seek, rewind, exit, self-caching, divergence log
+- `PitHero/Services/Replay/Frames/` — the frame stream: `FrameRecorder` (capture + tile/console/sound hooks), `FrameCaptureAdapters`, `IFrameCapturable`, `ReplayFrameViewer`; `PitHero/Rendering/RecordedFrameRenderer.cs`, `RecordedParticlePool.cs`
 - `PitHero/ECS/Scenes/MainGameScene.cs` — seed lifecycle in `Begin`, drain at the end of `Update`, `PresentationUpdate`
 - `PitHero/GameConfig.cs` — "Simulation clock" / "Replay playback" constants

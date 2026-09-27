@@ -30,6 +30,8 @@ namespace PitHero.Services.Replay.Frames
         /// it gets <see cref="FrameOpFlags.Graded"/> so the viewer applies the same material.
         /// </summary>
         public Nez.Material GradedMaterial;
+        /// <summary>The tick being captured (set by the recorder at the start of every tick; particle ages are measured from it).</summary>
+        public long Tick;
         /// <summary>Distinct sprite references resolved so far.</summary>
         public int CachedSpriteCount => _spriteIds.Count;
 

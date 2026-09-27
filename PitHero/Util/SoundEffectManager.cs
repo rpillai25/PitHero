@@ -137,26 +137,77 @@ namespace PitHero.Util
         /// </summary>
         public static bool Muted;
 
+        /// <summary>
+        /// Raised for every sound the game plays (after the variant roll, before any positional culling),
+        /// with the resolved variant, the world position (zero for plain sounds) and whether it was
+        /// positional. The replay frame recorder appends a sound event from it (issue #431); nothing is
+        /// raised while <see cref="Muted"/> (a replay seek), and never by <see cref="PlayRecorded"/>.
+        /// </summary>
+        public static event Action<SoundEffectType, int, Vector2, bool> OnSoundPlayed;
+
+        /// <summary>
+        /// True for the button and tab click sounds the global UI hooks play (Game1.HandleGlobalButtonClick /
+        /// HandleGlobalTabClick): UI, not simulation, so the frame stream never records them.
+        /// </summary>
+        public static bool IsUiClick(SoundEffectType type)
+        {
+            return type == SoundEffectType.TopBarButtonClick || type == SoundEffectType.TabButtonClick
+                || type == SoundEffectType.CancelButtonClick || type == SoundEffectType.NormalButtonClick;
+        }
+
+        private static void Raise(SoundEffectType type, int variant, in Vector2 position, bool positional)
+        {
+            if (variant < 0)
+                return;
+            OnSoundPlayed?.Invoke(type, variant, position, positional);
+        }
+
         public void PlaySound(SoundEffectType soundEffectType, uint frameInterval = 0)
         {
             if (Muted)
                 return;
-            soundEffectDict[soundEffectType].Play(SoundVolume, frameInterval);
+            int variant = soundEffectDict[soundEffectType].Play(SoundVolume, frameInterval);
+            Raise(soundEffectType, variant, Vector2.Zero, positional: false);
         }
 
         public void PlaySound(SoundEffectType soundEffectType, float volume, float pitch, float pan)
         {
             if (Muted)
                 return;
-            soundEffectDict[soundEffectType].Play(volume, pitch, pan);
+            int variant = soundEffectDict[soundEffectType].Play(volume, pitch, pan);
+            Raise(soundEffectType, variant, Vector2.Zero, positional: false);
         }
 
         /// <summary>Plays a world-positioned sound attenuated and panned by horizontal distance from the camera view;
-        /// skipped entirely beyond GameConfig.MaxAudibleDistanceTiles past the nearest edge. Position is sampled at play time.</summary>
+        /// skipped entirely beyond GameConfig.MaxAudibleDistanceTiles past the nearest edge. Position is sampled at play time.
+        /// The sound is recorded for replays before the distance check, so a replay camera elsewhere still hears it.</summary>
         public void PlaySoundAt(SoundEffectType soundEffectType, Vector2 sourceWorldPosition)
         {
             if (Muted)
                 return;
+            var effect = soundEffectDict[soundEffectType];
+            int variant = effect.PickVariant();
+            Raise(soundEffectType, variant, sourceWorldPosition, positional: true);
+            PlayPositional(effect, variant, sourceWorldPosition);
+        }
+
+        /// <summary>
+        /// Plays a sound the frame stream recorded (the replay frame viewer, issue #431): the exact variant,
+        /// through the live camera's falloff and pan when it was positional. Honors <see cref="Muted"/>
+        /// and never raises <see cref="OnSoundPlayed"/>, so a watched replay is not recorded again.
+        /// </summary>
+        public void PlayRecorded(SoundEffectType soundEffectType, int variant, Vector2 sourceWorldPosition, bool positional)
+        {
+            if (Muted || soundEffectDict == null || !soundEffectDict.TryGetValue(soundEffectType, out var effect))
+                return;
+            if (positional)
+                PlayPositional(effect, variant, sourceWorldPosition);
+            else
+                effect.PlayVariant(variant, SoundVolume, 0f, 0f);
+        }
+
+        private void PlayPositional(IGameSoundEffect effect, int variant, Vector2 sourceWorldPosition)
+        {
             float scale = 1f;
             float pan = 0f;
             var camera = Core.Scene?.Camera;
@@ -171,7 +222,7 @@ namespace PitHero.Util
             if (scale <= 0f)
                 return;
 
-            soundEffectDict[soundEffectType].Play(SoundVolume * scale, 0f, pan);
+            effect.PlayVariant(variant, SoundVolume * scale, 0f, pan);
         }
 
         public void StopSound(SoundEffectType soundEffectType)
