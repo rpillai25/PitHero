@@ -80,6 +80,7 @@ namespace PitHero.UI
 
         private const string CompactButtonStyle = "ph-compact";
         private const string MarkSeparator = "  ";
+        private const float DetailLineGap = 6f;       // between the name line and the date / pit level line (they touched without it)
 
         /// <summary>Creates the tab content builder.</summary>
         public ReplayTab(Skin skin, Stage stage, SettingsUI settingsUI)
@@ -265,7 +266,7 @@ namespace PitHero.UI
             var when = info.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             var detail = new Label(string.Format(GetText(UITextKey.ReplayRowDetailFormat),
                 when, ReplayTimeFormatter.FormatSeconds(info.DurationSeconds), info.PitLevelAtStart), _skin, "ph-default");
-            rowTable.Add(detail).Left().SetPadLeft(6f);
+            rowTable.Add(detail).Left().SetPadLeft(6f).SetPadTop(DetailLineGap);
             if (!info.IsCurrentSimulation)
             {
                 // Recorded before a simulation change: still playable, may diverge, no time travel
