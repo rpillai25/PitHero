@@ -259,7 +259,7 @@ namespace PitHero.UI
             if (info.HasFrameCache)
                 marks = marks == null ? GetText(UITextKey.ReplayRowCachedMark) : marks + MarkSeparator + GetText(UITextKey.ReplayRowCachedMark);
             if (marks != null)
-                rowTable.Add(new Label(marks, _skin, "ph-grayed")).Right().ExpandX().SetPadRight(6f); // ExpandX only: a vertical expand pushes the detail line into the row's bottom edge
+                rowTable.Add(new Label(marks, _skin, "ph-grayed")).Right().SetExpandX().SetPadRight(6f); // horizontal expand only: a vertical expand pushes the detail line into the row's bottom edge
             rowTable.Row();
 
             var when = info.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
