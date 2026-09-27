@@ -225,6 +225,126 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>
+        /// Save Session Replay mid-session (issue #429): the frames so far, including the ticks still
+        /// in the builder, become a finished cache beside the recording through the file service, the
+        /// console lines ride in its footer, and recording carries on in the session file. Quit-time
+        /// saves move the session file instead and capture continues in memory.
+        /// </summary>
+        [TestMethod]
+        public void ExportSidecar_MidSessionCopies_EndSessionMoves()
+        {
+            int chunkTicks = GameConfig.ReplayFrameChunkTicks;
+            string dir = NewTempDir();
+            var clock = new SimulationClock();
+            FrameRecorder rec = null;
+            try
+            {
+                var entity = new Entity("box");
+                var outline = entity.AddComponent(new BuildingOutlineRenderComponent());
+                outline.SetSize(10f, 10f);
+                var files = new ReplayFileService(dir);
+
+                rec = new FrameRecorder();
+                rec.Initialize(Seed, RecordedAt, null, dir);
+                string sessionPath = rec.SessionFilePath;
+                int ticks = chunkTicks + 7;
+                for (long t = 0; t < ticks; t++)
+                {
+                    if (t == 5)
+                    {
+                        clock.SetTick(5);
+                        rec.OnConsoleEmitted(new[] { new ConsoleSegment("line", Color.White) });
+                    }
+                    Assert.IsTrue(Capture(rec, clock, t, entity, outline));
+                }
+
+                // ── Mid-session save: a copy; the recorder keeps going ──
+                var data = new ReplayData
+                {
+                    Kind = ReplayKind.Load, MasterSeed = Seed, HeroName = "Ann", JobName = "Knight", HeroId = 1,
+                    RecordedAtUtcTicks = RecordedAt, TotalTicks = ticks, BuildId = "t", SimulationVersion = GameConfig.SimulationVersion,
+                    StateBlob = new byte[] { 1 },
+                };
+                string fileName = files.SaveWithFrameCache(data, rec, endSession: false);
+                Assert.IsNotNull(fileName);
+                string cache = files.FrameCachePath(fileName);
+                Assert.IsTrue(File.Exists(cache), "cache written beside the recording");
+                Assert.IsTrue(File.Exists(sessionPath), "session file kept");
+                Assert.AreEqual(ticks - 1, rec.Store.EndTick, "the builder's ticks were flushed into the stream");
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, files.TryOpenFrameCache(fileName, Seed, RecordedAt, GameConfig.SimulationVersion, ticks, out var reader));
+                using (reader)
+                {
+                    Assert.AreEqual(2, reader.ChunkCount);
+                    Assert.AreEqual(ticks, reader.TotalTicks);
+                    Assert.AreEqual(ticks - 1, reader.EndTick);
+                    var log = new RecordedConsoleLog();
+                    reader.ReadConsoleLog(log);
+                    Assert.AreEqual(1, log.Count);
+                    Assert.AreEqual(5, log[0].Tick);
+                    Assert.AreEqual("line", log[0].Segments[0].Text);
+                    var rebuilt = new SpriteKeyRegistry();
+                    reader.RebuildRegistry(rebuilt);
+                    var store = new FrameStore(reader.ChunkTicks, long.MaxValue);
+                    store.Preload(reader);
+                    for (long t = 0; t < ticks; t += 5)
+                    {
+                        Assert.IsTrue(store.TryGetFrame(t, out var frame), "tick " + t);
+                        Assert.IsTrue(frame.TryGetEntity(1, out var e));
+                        var r = frame.ReadOps(e);
+                        Assert.AreEqual(FrameOpCode.Rect, r.ReadOpCode());
+                        r.ReadRect(out var rect);
+                        Assert.AreEqual((short)t, rect.X);
+                    }
+                }
+                var listed = files.Enumerate();
+                Assert.AreEqual(1, listed.Count);
+                Assert.IsTrue(listed[0].HasFrameCache);
+
+                // Recording continues the partial chunk in the session file
+                for (long t = ticks; t < 2 * chunkTicks + 3; t++)
+                    Assert.IsTrue(Capture(rec, clock, t, entity, outline), "tick " + t);
+                rec.FlushPending();
+                Assert.AreEqual(2 * chunkTicks + 2, rec.Store.EndTick);
+                AssertOutlineAt(rec, ticks + 2);
+                AssertOutlineAt(rec, 2 * chunkTicks + 1);
+
+                // ── Quit-time save: the session file becomes the cache ──
+                long total = 2 * chunkTicks + 3;
+                data.TotalTicks = total;
+                data.RecordedAtUtcTicks = RecordedAt; // same session, a later save
+                string fileName2 = files.SaveWithFrameCache(data, rec, endSession: true);
+                Assert.IsNotNull(fileName2);
+                Assert.AreNotEqual(fileName, fileName2);
+                string cache2 = files.FrameCachePath(fileName2);
+                Assert.IsTrue(File.Exists(cache2));
+                Assert.IsFalse(File.Exists(sessionPath), "session file moved");
+                Assert.IsNull(rec.SessionFilePath);
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, files.TryOpenFrameCache(fileName2, Seed, RecordedAt, GameConfig.SimulationVersion, total, out var reader2));
+                using (reader2)
+                {
+                    Assert.AreEqual(3, reader2.ChunkCount);
+                    Assert.AreEqual(total - 1, reader2.EndTick);
+                }
+                // Capture still works in memory after the move
+                Assert.IsTrue(Capture(rec, clock, total, entity, outline));
+                rec.FlushPending();
+                AssertOutlineAt(rec, total);
+
+                rec.Detach(handoffToNextScene: false);
+                rec = null;
+                Assert.IsTrue(File.Exists(cache), "the first cache is untouched");
+                Assert.IsTrue(File.Exists(cache2));
+            }
+            finally
+            {
+                rec?.Detach(handoffToNextScene: false);
+                FrameRecorder.DiscardPendingHandoff();
+                clock.Detach();
+                try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+            }
+        }
+
         [TestMethod]
         public void Handoff_ToAnotherSession_ClosesTheOldStream_AndTheNewSessionReopensItsOwnFileLater()
         {

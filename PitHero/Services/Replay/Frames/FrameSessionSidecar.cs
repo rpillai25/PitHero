@@ -52,22 +52,24 @@ namespace PitHero.Services.Replay.Frames
 
         /// <summary>
         /// Continues the session file at <paramref name="path"/> if it exists and belongs to this
-        /// identity (rebuilding <paramref name="registry"/> from it), otherwise creates it. Returns null
-        /// when the file cannot be opened or created (capture then stays in memory).
+        /// identity (rebuilding <paramref name="registry"/> and, from a finished file's footer,
+        /// <paramref name="consoleLog"/>), otherwise creates it. Returns null when the file cannot be
+        /// opened or created (capture then stays in memory).
         /// </summary>
-        public static FrameSessionSidecar OpenOrCreate(string path, in FrameSidecarIdentity identity, int chunkTicks, SpriteKeyRegistry registry)
+        public static FrameSessionSidecar OpenOrCreate(string path, in FrameSidecarIdentity identity, int chunkTicks, SpriteKeyRegistry registry, RecordedConsoleLog consoleLog = null)
         {
             try
             {
                 if (File.Exists(path))
                 {
-                    var result = FrameSidecarWriter.Reopen(path, registry, out var reopened);
+                    var result = FrameSidecarWriter.Reopen(path, registry, consoleLog, out var reopened);
                     if (result == FrameSidecarFile.OpenResult.Ok
                         && reopened.Identity.MatchesRecording(identity.MasterSeed, identity.RecordedAtUtcTicks, identity.SimulationVersion)
                         && reopened.ChunkTicks == chunkTicks)
                         return new FrameSessionSidecar(reopened, reopened: true);
                     reopened?.Dispose();
                     registry?.Clear();
+                    consoleLog?.Clear();
                     Debug.Warn("[FrameSidecar] Session file " + System.IO.Path.GetFileName(path) + " unusable (" + result + "); starting over");
                 }
                 return new FrameSessionSidecar(FrameSidecarWriter.Create(path, identity, chunkTicks), reopened: false);
@@ -163,8 +165,8 @@ namespace PitHero.Services.Replay.Frames
             }
         }
 
-        /// <summary>Waits for the worker, writes the footer and closes the file.</summary>
-        public void Finish(FrameStore store, long totalTicks)
+        /// <summary>Waits for the worker, writes the footer (with the console lines, when given) and closes the file.</summary>
+        public void Finish(FrameStore store, long totalTicks, RecordedConsoleLog consoleLog = null)
         {
             Drain(store);
             if (_writer == null)
@@ -172,7 +174,7 @@ namespace PitHero.Services.Replay.Frames
             try
             {
                 if (!_failed)
-                    _writer.Finish(totalTicks);
+                    _writer.Finish(totalTicks, consoleLog);
                 else
                     _writer.Dispose();
             }
@@ -182,6 +184,59 @@ namespace PitHero.Services.Replay.Frames
                 _writer.Dispose();
             }
             _writer = null;
+        }
+
+        /// <summary>
+        /// Writes the finished sidecar of a saved replay at <paramref name="destinationPath"/> (issue #429):
+        /// with <paramref name="move"/> the session file is finished and renamed there, closing this
+        /// sidecar (the session is ending); otherwise a finished copy is written and the session file
+        /// stays open. Waits for the worker first. False (nothing left at the destination) when the file
+        /// had already failed or the write fails.
+        /// </summary>
+        public bool Export(FrameStore store, string destinationPath, long totalTicks, RecordedConsoleLog consoleLog, bool move)
+        {
+            Drain(store);
+            if (_writer == null || _failed)
+                return false;
+            try
+            {
+                if (move)
+                {
+                    _writer.FinishAndMove(destinationPath, totalTicks, consoleLog);
+                    _writer = null;
+                }
+                else
+                {
+                    _writer.ExportTo(destinationPath, totalTicks, consoleLog);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.Warn("[FrameSidecar] Could not export the session file to " + System.IO.Path.GetFileName(destinationPath) + ": " + ex.Message);
+                if (move && _writer != null && _writer.IsFinished)
+                {
+                    // Finished but not moved: the footer is written, the file just kept its session name
+                    _writer = null;
+                }
+                TryDelete(destinationPath);
+                return false;
+            }
+        }
+
+        private static void TryDelete(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
 
         /// <summary>Reloads a chunk from the file (the store's source for evicted chunks).</summary>

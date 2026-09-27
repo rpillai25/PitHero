@@ -300,8 +300,43 @@ determinism bug, which is what the tripwire is for.
 | Case | Behaviour |
 |---|---|
 | `.bin` has a matching `.frames` | FrameView over a file-backed `FrameStore` (chunks inflated on demand, LRU under the memory budget). No scene swap. Exit instant |
-| `.frames` missing, stale (identity/format mismatch) or damaged | **Transcode:** `Simulated` playback from tick 0 at maximum seek speed with the frame recorder producing chunks, while the viewer shows recorded frames and a "Buffering n%" status; the scrubber's usable range grows as the sim runs ahead (like a video buffering bar). When the sim reaches `TotalTicks` the sidecar is finalised and playback is pure FrameView. This path tears down the live scene, so Exit afterwards is `ReturnToLiveSession` as today. Recordings made before this feature ship take this path once |
+| `.frames` missing, stale (identity/format mismatch) or damaged | `Simulated` playback as before (re-simulation, live scene torn down, Exit = `ReturnToLiveSession`). **Self-caching (#431):** the rebuilt scene's frame recorder captures every simulated tick anyway, so a replay watched through to its end leaves its finished sidecar behind as the cache on exit. The transcode with a "Buffering n%" bar and a growing scrubber range (#430) was **dropped on 2026-09-26**: unreleased game, no backlog of uncached recordings, and the quit-time recording is one per-hero file cached with its save |
 | Disk budget | `ReplayFrameCacheDiskBudgetBytes` (default 4 GB) across `replays/`; when exceeded, the oldest `.frames` are deleted first. `.bin` files are never touched by the budget. The Replay tab shows a small "cached" mark per row |
+
+**As shipped in #429** (`ReplayFileService.SaveWithFrameCache`, `FrameRecorder.ExportSidecar`,
+`FrameSidecarWriter.ExportTo` / `FinishAndMove`, `ReplayPlaybackService.TryStartSavedFrameView`):
+
+- **Two ways to write the cache.** A quit-time save (`SettingsUI.SaveSessionBeforeLeaving`) finishes the
+  session file and `File.Move`s it beside the recording (the session is ending; capture goes on in
+  memory only). That recording is `replay_auto_<HeroId as 8 hex digits>.bin`, **one per hero,
+  overwritten every session** together with its cache (`ReplayFileService.SaveAuto`): a dated file per
+  quit would eat the disk at tens of MB per hour. Save Session Replay from the Replay tab writes a new
+  dated `replay_<hero>_<stamp>` pair and **copies** the sidecar instead (a raw byte copy of the
+  header and chunk records plus a fresh footer), because the session continues in its file. Both flush
+  the builder first, so the cache covers ticks `0..TotalTicks-1` exactly; a stream that stops short (a
+  capture gap) writes nothing.
+- **The console lines live in the footer, in plain text**, not in the chunks' console events: rebuilding
+  the viewer's console feed from the events would inflate every chunk at open (~1 ms each, seconds for a
+  long session), which is exactly the cost this design exists to avoid. Footer layout after the index:
+  `consoleMagic "PHFC", lineCount i32, {tick i64, segCount u8, {text str, color u32, itemName str}…}…`.
+  The section is optional, so footers written before it still read; a finished session file reopened for
+  the way back to the live session gives its lines back too (they were lost before). The chunks keep
+  their console events (the builder's partial-chunk reload uses them).
+- **Validity** (`ReplayFileService.TryOpenFrameCache`): identity header (seed, recording time, simulation
+  version, frame format) + a footer + `footer.TotalTicks == bin.TotalTicks` + frames up to
+  `TotalTicks-1`. Anything else is `IdentityMismatch` / `Incomplete` and the replay re-simulates (until
+  #430 transcodes it). `Enumerate` opens every cache once (header + footer, no chunk) to set
+  `ReplayFileInfo.HasFrameCache`; `Delete` removes both files; the budget deletes `replay_*.frames` by
+  last write time, never `session_*.frames` (the live file) and never a `.bin`.
+- **Saved FrameView** = the #428 viewer over a `FrameStore` preloaded from a `FrameSidecarReader` (chunks
+  inflated on demand, LRU under the memory budget; the viewer owns and closes the reader). The live world
+  under it is *another timeline*, so the live-stream shortcuts are gated on `ReplayFrameViewer.IsLiveStream`:
+  no passthrough, Exit never checks the live clock against `TotalTicks`, and Time Travel Here always
+  rebuilds. Dragging past the end freezes the last frame and rebuilds the recorded world to the target
+  (`EnterFutureFromSavedFrameView`, Simulated from then on; the viewer goes when the seek lands); the
+  rebuild's own frame recorder captures the ticks it simulates. Exit without any rebuild is the removal of
+  the viewer; after a rebuild it is `ReturnToLiveSession` as before. On exit the console is refilled from
+  the **live** recorder's log, not the saved replay's.
 
 ## 4. Files
 
@@ -312,7 +347,7 @@ New, all under `PitHero/Services/Replay/Frames/` unless noted:
 | `FrameOps.cs` | Op codes, `FrameWriter` / `FrameReader` (ref structs over `byte[]`, no allocation on the hot path) |
 | `FrameChunk.cs`, `FrameChunkCodec.cs` | Chunk model, encode (base + deltas vs base, events, tile keyframe, table delta) + deflate; decode to `DecodedFrame` |
 | `FrameStore.cs` | In-memory chunk ring, memory budget, spill/evict policy, `TryGetFrame(tick, out DecodedFrame)` |
-| `FrameSidecarFile.cs` | Append-only writer (worker thread), footer/index, identity header, scan-rebuild of a truncated file, reader with lazy chunk loads |
+| `FrameSidecarFile.cs` | Append-only writer (worker thread), footer/index (+ console lines, #429), identity header, scan-rebuild of a truncated file, reader with lazy chunk loads; `ExportTo` (copy) / `FinishAndMove` for saved replays |
 | `SpriteKeyRegistry.cs` | `Sprite` → id, `(textureName, rect)` keys; string and nine-patch interning; incremental table deltas |
 | `IFrameCapturable.cs` | `IFrameCapturable`, `ILiveOnlyRenderable` |
 | `FrameCaptureAdapters.cs` | Stock renderable capture by type; `ICompositeLayer` composites; one-time skip warning |
@@ -438,8 +473,9 @@ What the variants say:
 | 3 | #427 | Capture: adapters, `SpriteKeyRegistry`, `FrameRecorder`, hooks (tick, tiles, console), session sidecar writes | 2 | M |
 | 4 | #428 | Frame viewer for Replay Current Session: renderer, shadow tiles, HUD/console feed, cursor, Nez filter; Exit instant; Time Travel behind a frozen frame. **Decides `ReplayFrameCaptureEveryNTicks` on screen** (60 Hz vs 30 Hz at 1x; position interpolation between frames is the cheap way to make 30 Hz look like 60) | 3 | L |
 | 5 | #429 | Saved replays: sidecar save/rename, identity, lazy loading, disk budget, Replay tab mark; FrameView for cached saved replays | 4 | M |
-| 6 | #430 | Transcode for uncached or stale saved replays: buffering status, growing range, finalise sidecar | 5 | M |
-| 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, action-queue capture, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rule for new renderables, remove dead code | 4–6 | M |
+| 6 | #430 | ~~Transcode for uncached or stale saved replays: buffering status, growing range, finalise sidecar~~ **Closed, not planned (2026-09-26)**; the self-caching step moved to #431 | 5 | — |
+| 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, recorded sound events, self-caching of uncached replays, action-queue capture, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rule for new renderables, remove dead code | 4–5, #438 | M |
+| 9 | #438 | **Remove the simulated future** (decided 2026-09-26): scrubber region, entering/leaving the future, time travel to the future, viewer passthrough, the Sphere of Foresight artifact (retired ordinal, never renumbered). Every path through the future re-simulates and it cheapens play. The §3.3 rows for the future and the §3.2 passthrough bullet describe code that this issue deletes | 5 | S |
 | 8 | #432 | *(Optional, go/no-go)* Simulation checkpoints to bound Time Travel rebuilds | 4 | XL — see §8 |
 
 Phase 4 is the first phase the player feels. Phases 1–3 are invisible (capture runs, nothing reads it)

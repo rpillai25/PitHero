@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using PitHero.Services;
 using PitHero.Services.Replay.Frames;
 
 namespace PitHero.Tests
@@ -276,6 +277,186 @@ namespace PitHero.Tests
                     }
                 }
                 Assert.AreEqual(FrameSidecarFile.OpenResult.Missing, FrameSidecarWriter.Reopen(path + ".nope", out _));
+            }
+            finally
+            {
+                Cleanup(path);
+            }
+        }
+
+        private static RecordedConsoleLog SampleConsoleLog()
+        {
+            var log = new RecordedConsoleLog();
+            log.Add(3, new[] { new ConsoleSegment("hello", Microsoft.Xna.Framework.Color.White) });
+            log.Add(70, new[]
+            {
+                new ConsoleSegment("found ", Microsoft.Xna.Framework.Color.White),
+                new ConsoleSegment("Rusty Blade", Microsoft.Xna.Framework.Color.Cyan, "RustyBlade"),
+            });
+            return log;
+        }
+
+        private static void AssertSampleConsoleLog(RecordedConsoleLog log)
+        {
+            Assert.AreEqual(2, log.Count);
+            Assert.AreEqual(3, log[0].Tick);
+            Assert.AreEqual(1, log[0].Segments.Length);
+            Assert.AreEqual("hello", log[0].Segments[0].Text);
+            Assert.IsNull(log[0].Segments[0].ItemName);
+            Assert.AreEqual(70, log[1].Tick);
+            Assert.AreEqual(2, log[1].Segments.Length);
+            Assert.AreEqual("Rusty Blade", log[1].Segments[1].Text);
+            Assert.AreEqual(Microsoft.Xna.Framework.Color.Cyan.PackedValue, log[1].Segments[1].Color.PackedValue);
+            Assert.AreEqual("RustyBlade", log[1].Segments[1].ItemName);
+        }
+
+        /// <summary>
+        /// Save Session Replay in the middle of a session (issue #429): the session file is copied as a
+        /// finished sidecar (footer, console lines, only the chunks below the saved tick count) while the
+        /// original stays open and keeps taking chunks.
+        /// </summary>
+        [TestMethod]
+        public void ExportTo_WritesAFinishedCopy_WhileTheSourceKeepsAppending()
+        {
+            string path = NewTempFile();
+            try
+            {
+                string dest = Path.Combine(Path.GetDirectoryName(path), "replay_Hero_1.frames");
+                var records = new List<FrameTestWorld.TickRecord>();
+                var chunks = FrameTestWorld.EncodeChunks(FrameTestWorld.Small(27), ChunkTicks, 4, records);
+                using (var writer = FrameSidecarWriter.Create(path, Identity, ChunkTicks))
+                {
+                    writer.Append(chunks[0]);
+                    writer.Append(chunks[1]);
+                    writer.Append(chunks[2]);
+                    writer.ExportTo(dest, 3 * ChunkTicks, SampleConsoleLog());
+                    Assert.IsTrue(writer.IsOpen, "the session file stays open");
+                    writer.Append(chunks[3]);
+                    Assert.AreEqual(4, writer.ChunkCount);
+
+                    // A second export with a smaller tick count keeps only the chunks below it
+                    string dest2 = Path.Combine(Path.GetDirectoryName(path), "replay_Hero_2.frames");
+                    writer.ExportTo(dest2, 2 * ChunkTicks + 1, null);
+                    Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, OpenMatching(dest2, out var partial));
+                    using (partial)
+                    {
+                        Assert.AreEqual(3, partial.ChunkCount, "chunk 2 starts below the tick count, chunk 3 does not");
+                        Assert.AreEqual(2 * ChunkTicks + 1, partial.TotalTicks);
+                        Assert.IsFalse(partial.HasConsoleLog);
+                        partial.ReadConsoleLog(new RecordedConsoleLog()); // no section: nothing added, no throw
+                    }
+                }
+
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, OpenMatching(dest, out var reader));
+                using (reader)
+                {
+                    Assert.IsTrue(reader.HasFooter);
+                    Assert.AreEqual(3, reader.ChunkCount);
+                    Assert.AreEqual(3 * ChunkTicks, reader.TotalTicks);
+                    Assert.IsTrue(reader.HasConsoleLog);
+                    var log = new RecordedConsoleLog();
+                    reader.ReadConsoleLog(log);
+                    AssertSampleConsoleLog(log);
+                    var store = new FrameStore(ChunkTicks, long.MaxValue);
+                    store.Preload(reader);
+                    for (long tick = 0; tick < 3 * ChunkTicks; tick++)
+                    {
+                        Assert.IsTrue(store.TryGetFrame(tick, out var frame), "tick " + tick);
+                        FrameTestWorld.AssertFrameEquals(records[(int)tick], frame, "exported");
+                    }
+                }
+                // The copy is a cache of THIS recording only
+                Assert.AreEqual(FrameSidecarFile.OpenResult.IdentityMismatch,
+                    FrameSidecarReader.Open(dest, Identity.MasterSeed, Identity.RecordedAtUtcTicks + 1, Identity.SimulationVersion, out _));
+
+                // The source, closed without a footer, still scans to its four chunks
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, OpenMatching(path, out var source));
+                using (source)
+                {
+                    Assert.IsFalse(source.HasFooter);
+                    Assert.AreEqual(4, source.ChunkCount);
+                }
+            }
+            finally
+            {
+                Cleanup(path);
+            }
+        }
+
+        /// <summary>The quit-time save: the session file is finished with its console lines and renamed to the replay's cache.</summary>
+        [TestMethod]
+        public void FinishAndMove_RenamesTheFinishedFile()
+        {
+            string path = NewTempFile();
+            try
+            {
+                string dest = Path.Combine(Path.GetDirectoryName(path), "replay_Hero_3.frames");
+                File.WriteAllBytes(dest, new byte[] { 1, 2, 3 }); // an older file at the destination is replaced
+                var chunks = FrameTestWorld.EncodeChunks(FrameTestWorld.Small(28), ChunkTicks, 2, new List<FrameTestWorld.TickRecord>());
+                var writer = FrameSidecarWriter.Create(path, Identity, ChunkTicks);
+                writer.Append(chunks[0]);
+                writer.Append(chunks[1]);
+                writer.FinishAndMove(dest, 2 * ChunkTicks, SampleConsoleLog());
+                Assert.IsTrue(writer.IsFinished);
+                Assert.IsFalse(writer.IsOpen);
+                Assert.IsFalse(File.Exists(path), "moved away");
+
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, OpenMatching(dest, out var reader));
+                using (reader)
+                {
+                    Assert.IsTrue(reader.HasFooter);
+                    Assert.AreEqual(2, reader.ChunkCount);
+                    Assert.AreEqual(2 * ChunkTicks, reader.TotalTicks);
+                    var log = new RecordedConsoleLog();
+                    reader.ReadConsoleLog(log);
+                    AssertSampleConsoleLog(log);
+                }
+            }
+            finally
+            {
+                Cleanup(path);
+            }
+        }
+
+        /// <summary>
+        /// Reopening a finished file for appending (the way back to a live session) gives the console
+        /// lines of its footer back, and a footer written before the console section existed still reads.
+        /// </summary>
+        [TestMethod]
+        public void Reopen_RecoversTheConsoleLog_AndAFooterWithoutOneStillReads()
+        {
+            string path = NewTempFile();
+            try
+            {
+                var chunks = FrameTestWorld.EncodeChunks(FrameTestWorld.Small(29), ChunkTicks, 2, new List<FrameTestWorld.TickRecord>());
+                using (var writer = FrameSidecarWriter.Create(path, Identity, ChunkTicks))
+                {
+                    writer.Append(chunks[0]);
+                    writer.Append(chunks[1]);
+                    writer.Finish(2 * ChunkTicks, SampleConsoleLog());
+                }
+                var log = new RecordedConsoleLog();
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, FrameSidecarWriter.Reopen(path, new SpriteKeyRegistry(), log, out var reopened));
+                using (reopened)
+                {
+                    Assert.AreEqual(2, reopened.ChunkCount);
+                    AssertSampleConsoleLog(log);
+                }
+
+                // Pre-#429 layout: footer = magic, totalTicks, count, entries, then the trailer at once
+                using (var writer = FrameSidecarWriter.Create(path, Identity, ChunkTicks))
+                {
+                    writer.Append(chunks[0]);
+                    writer.Finish(ChunkTicks, null);
+                }
+                Assert.AreEqual(FrameSidecarFile.OpenResult.Ok, OpenMatching(path, out var reader));
+                using (reader)
+                {
+                    Assert.IsTrue(reader.HasFooter);
+                    Assert.IsFalse(reader.HasConsoleLog);
+                    Assert.AreEqual(1, reader.ChunkCount);
+                    Assert.AreEqual(ChunkTicks, reader.TotalTicks);
+                }
             }
             finally
             {

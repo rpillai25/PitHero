@@ -19,12 +19,16 @@ namespace PitHero.Services.Replay.Frames
     /// picture back to the live scene while the simulation itself runs at the cursor (the simulated
     /// future). <see cref="Freeze"/> pins a private copy of the current frame so it survives a scene
     /// rebuild and a stream truncation (Time Travel Here re-simulates behind it).
+    ///
+    /// The frames come either from the live session's recorder (<see cref="IsLiveStream"/>: passthrough
+    /// and builder flushes apply) or from a saved replay's <c>.frames</c> file through a file-backed
+    /// store (issue #429), whose reader the viewer owns and closes in <see cref="Dispose"/>.
     /// </summary>
-    public sealed class ReplayFrameViewer
+    public sealed class ReplayFrameViewer : IDisposable
     {
         private const int ConsoleAppendLimit = 50; // more new lines than the panel shows: rebuild instead of appending
 
-        private readonly FrameRecorder _recorder;
+        private readonly FrameRecorder _recorder; // null over a saved replay's file
         private readonly DecodedFrame _frozen = new DecodedFrame();
         private readonly Func<IRenderable, bool> _filter;
         private Scene _scene;
@@ -48,6 +52,10 @@ namespace PitHero.Services.Replay.Frames
         public bool IsFrozen { get; private set; }
         /// <summary>True while attached to a scene.</summary>
         public bool IsAttached => _scene != null;
+        /// <summary>True when the frames are the live session's stream (Replay Current Session); false over a saved replay's cache.</summary>
+        public bool IsLiveStream => _recorder != null;
+        /// <summary>Something the viewer holds open for its store (a saved replay's sidecar reader), closed by <see cref="Dispose"/>.</summary>
+        public IDisposable OwnedSource { get; set; }
 
         /// <summary>
         /// When true the live scene draws itself (filter off, renderers idle) and the HUD reads live
@@ -66,7 +74,7 @@ namespace PitHero.Services.Replay.Frames
                 if (!value)
                 {
                     // Ticks still in the recorder's builder become visible frames now
-                    _recorder.FlushPending();
+                    _recorder?.FlushPending();
                     Tiles.Invalidate();
                 }
             }
@@ -75,15 +83,34 @@ namespace PitHero.Services.Replay.Frames
         /// <summary>True when the renderers should draw the recorded frame this frame.</summary>
         public bool DrawsRecordedFrame => !_passthrough || IsFrozen;
 
+        /// <summary>A viewer over the live session's stream.</summary>
         public ReplayFrameViewer(FrameRecorder recorder, long totalTicks)
+            : this(recorder?.Store, recorder?.Registry, recorder?.ConsoleLog, recorder ?? throw new ArgumentNullException(nameof(recorder)), totalTicks)
         {
-            _recorder = recorder ?? throw new ArgumentNullException(nameof(recorder));
-            Store = recorder.Store;
-            Registry = recorder.Registry;
-            ConsoleLog = recorder.ConsoleLog;
+        }
+
+        /// <summary>
+        /// A viewer over any store: a saved replay's file-backed store with the tables and console lines
+        /// read from its sidecar (<paramref name="liveRecorder"/> null), or the live recorder's stream.
+        /// </summary>
+        public ReplayFrameViewer(FrameStore store, SpriteKeyRegistry registry, RecordedConsoleLog consoleLog, FrameRecorder liveRecorder, long totalTicks)
+        {
+            Store = store ?? throw new ArgumentNullException(nameof(store));
+            Registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            ConsoleLog = consoleLog ?? new RecordedConsoleLog();
+            _recorder = liveRecorder;
             Sprites = new FrameSpriteResolver(Registry);
             Cursor = new ReplayFrameCursor(totalTicks);
             _filter = KeepsDrawingLive;
+        }
+
+        /// <summary>Detaches from its scene and closes what it holds open (a saved replay's reader).</summary>
+        public void Dispose()
+        {
+            DetachFromScene();
+            var owned = OwnedSource;
+            OwnedSource = null;
+            owned?.Dispose();
         }
 
         /// <summary>The renderables that keep drawing live while a recorded frame is shown: the UI canvas and the HUD (fed from the record).</summary>

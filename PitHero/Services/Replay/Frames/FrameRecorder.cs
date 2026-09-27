@@ -138,7 +138,7 @@ namespace PitHero.Services.Replay.Frames
                 else
                 {
                     // Another session's stream (a saved replay set the live one aside, or the way back): close it cleanly
-                    handoff.Sidecar?.Finish(handoff.Store, handoff.Store.EndTick + 1);
+                    handoff.Sidecar?.Finish(handoff.Store, handoff.Store.EndTick + 1, handoff.ConsoleLog);
                     handoff.Store.Clear();
                 }
             }
@@ -151,7 +151,8 @@ namespace PitHero.Services.Replay.Frames
                 if (!string.IsNullOrEmpty(directory))
                 {
                     string path = Path.Combine(directory, GameConfig.ReplayFrameSessionFilePrefix + recordedAtUtcTicks + GameConfig.ReplayFrameFileExtension);
-                    _sidecar = FrameSessionSidecar.OpenOrCreate(path, _identity, ChunkTicks, Registry);
+                    // A finished session file (the way back from a saved replay) also gives its console lines back
+                    _sidecar = FrameSessionSidecar.OpenOrCreate(path, _identity, ChunkTicks, Registry, ConsoleLog);
                     if (preload == null && handoff == null)
                         DeleteStaleSessionFiles(directory, path);
                 }
@@ -240,7 +241,7 @@ namespace PitHero.Services.Replay.Frames
             }
             else
             {
-                _sidecar?.Finish(Store, Store.EndTick + 1);
+                _sidecar?.Finish(Store, Store.EndTick + 1, ConsoleLog);
                 Store.Clear();
                 ConsoleLog.Clear();
             }
@@ -268,7 +269,7 @@ namespace PitHero.Services.Replay.Frames
             _pendingHandoff = null;
             if (h == null)
                 return;
-            h.Sidecar?.Finish(h.Store, h.Store.EndTick + 1);
+            h.Sidecar?.Finish(h.Store, h.Store.EndTick + 1, h.ConsoleLog);
             h.Store.Clear();
         }
 
@@ -457,6 +458,80 @@ namespace PitHero.Services.Replay.Frames
             FinishChunk();
             _sidecar?.Drain(Store);
             ResumeBuilderFromStore(fileHasLastChunk: true);
+        }
+
+        /// <summary>
+        /// Writes the frames of ticks 0..<paramref name="totalTicks"/>-1 as a finished sidecar at
+        /// <paramref name="destinationPath"/>, the cache of the replay just saved (issue #429). With
+        /// <paramref name="endSession"/> (Quit to Title / Exit Game) the session file itself is finished
+        /// and moved there and capture goes on in memory only; otherwise a finished copy is written and
+        /// recording continues in the session file. The ticks still in the builder are flushed first, so
+        /// the file covers the recording exactly. False, with nothing left at the destination, when the
+        /// stream does not reach the recording's end (a capture gap) or the write fails.
+        /// </summary>
+        public bool ExportSidecar(string destinationPath, long totalTicks, bool endSession)
+        {
+            if (!IsInitialized || string.IsNullOrEmpty(destinationPath) || _builder.InTick)
+                return false;
+            FlushBuilder();
+            _sidecar?.Drain(Store);
+            bool ok = false;
+            if (Store.EndTick < totalTicks - 1)
+            {
+                Debug.Warn($"[FrameRecorder] No frame cache for the saved replay: frames end at tick {Store.EndTick}, the recording at {totalTicks - 1}");
+            }
+            else if (_sidecar != null && !_sidecar.IsFailed)
+            {
+                ok = _sidecar.Export(Store, destinationPath, totalTicks, ConsoleLog, move: endSession);
+                if (ok && endSession)
+                {
+                    // The session file is gone: nothing more is spilled, nothing can be evicted
+                    _sidecar = null;
+                    Store.IsSpilled = null;
+                }
+            }
+            else
+            {
+                ok = ExportFromStore(destinationPath, totalTicks);
+            }
+            // Recording continues the partial last chunk (the same reload FlushPending does)
+            ResumeBuilderFromStore(fileHasLastChunk: true);
+            Debug.Log($"[FrameRecorder] Frame cache {(ok ? (endSession ? "moved" : "copied") : "NOT written")} to {Path.GetFileName(destinationPath)}: {Store.ChunkCount} chunks, {totalTicks} ticks, {ConsoleLog.Count} console lines");
+            return ok;
+        }
+
+        /// <summary>Memory-only capture (no session file): writes every chunk of the store into a fresh finished sidecar.</summary>
+        private bool ExportFromStore(string destinationPath, long totalTicks)
+        {
+            FrameSidecarWriter writer = null;
+            try
+            {
+                writer = FrameSidecarWriter.Create(destinationPath, _identity, ChunkTicks);
+                for (int i = 0; i < Store.ChunkCount; i++)
+                {
+                    if (!Store.TryGetChunk(i, out var chunk))
+                        throw new IOException("Chunk " + i + " is not available");
+                    if (chunk.FirstTick >= totalTicks)
+                        break;
+                    writer.Append(chunk);
+                }
+                writer.Finish(totalTicks, ConsoleLog);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.Warn("[FrameRecorder] Could not write the frame cache " + Path.GetFileName(destinationPath) + ": " + ex.Message);
+                writer?.Dispose();
+                try
+                {
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
+                catch (IOException)
+                {
+                }
+                return false;
+            }
         }
 
         /// <summary>

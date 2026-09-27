@@ -1806,10 +1806,13 @@ namespace PitHero.UI
         /// <summary>
         /// Runs before Quit to Title / Exit Game leave the session (issue #411): a synchronous autosave
         /// (only when the save gate allows one) followed by a synchronous save of the current replay
-        /// recording under the normal replay naming. Nothing is written while a replay is playing back —
-        /// the recorder then holds the playback, not the live session. The autosave comes first so the
-        /// file on disk is the state the player saw; the pause release that follows only exists so the
-        /// recording does not end frozen.
+        /// recording as the hero's single quit-time replay (replay_auto_&lt;hero id&gt;, overwritten every
+        /// session so automatic saves and their large frame caches never pile up), with the session's
+        /// frame stream finished and moved beside it as the replay's cache (issue #429; the session is
+        /// ending, so nothing is copied).
+        /// Nothing is written while a replay is playing back — the recorder then holds the playback,
+        /// not the live session. The autosave comes first so the file on disk is the state the player
+        /// saw; the pause release that follows only exists so the recording does not end frozen.
         /// </summary>
         private void SaveSessionBeforeLeaving()
         {
@@ -1825,7 +1828,8 @@ namespace PitHero.UI
             if (recorder == null || files == null)
                 return;
             ReplayTab.ReleasePausesOnRecord();
-            string fileName = files.Save(recorder.Snapshot(SimulationClock.CurrentTick));
+            string fileName = files.SaveWithFrameCache(recorder.Snapshot(SimulationClock.CurrentTick),
+                Services.Replay.Frames.FrameRecorder.Current, endSession: true, autoSave: true);
             Debug.Log($"[SettingsUI] Session replay saved on exit: {fileName}");
         }
 

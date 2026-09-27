@@ -83,6 +83,14 @@ namespace PitHero.Services.Replay.Frames
         /// the chunks kept, so ids already in the file resolve and new entries continue the numbering.
         /// </summary>
         public static FrameSidecarFile.OpenResult Reopen(string path, SpriteKeyRegistry registry, out FrameSidecarWriter writer)
+            => Reopen(path, registry, null, out writer);
+
+        /// <summary>
+        /// Reopens for appending; rebuilds <paramref name="registry"/> from the chunks kept and, when the
+        /// file was finished with a footer, refills <paramref name="consoleLog"/> from its console section
+        /// (the footer itself is cut off; it is written again at the next finish).
+        /// </summary>
+        public static FrameSidecarFile.OpenResult Reopen(string path, SpriteKeyRegistry registry, RecordedConsoleLog consoleLog, out FrameSidecarWriter writer)
         {
             writer = null;
             var result = FrameSidecarReader.Open(path, out var reader);
@@ -97,20 +105,20 @@ namespace PitHero.Services.Replay.Frames
                 for (int i = 0; i < reader.ChunkCount; i++)
                     entries.Add(reader.GetEntry(i));
                 dataEnd = reader.DataEnd;
-                if (registry != null)
+                try
                 {
-                    try
-                    {
+                    if (registry != null)
                         reader.RebuildRegistry(registry);
-                    }
-                    catch (IOException)
-                    {
-                        return FrameSidecarFile.OpenResult.Corrupt;
-                    }
-                    catch (InvalidDataException)
-                    {
-                        return FrameSidecarFile.OpenResult.Corrupt;
-                    }
+                    if (consoleLog != null && reader.HasConsoleLog)
+                        reader.ReadConsoleLog(consoleLog);
+                }
+                catch (IOException)
+                {
+                    return FrameSidecarFile.OpenResult.Corrupt;
+                }
+                catch (InvalidDataException)
+                {
+                    return FrameSidecarFile.OpenResult.Corrupt;
                 }
             }
             identity.TotalTicks = -1;
@@ -207,7 +215,13 @@ namespace PitHero.Services.Replay.Frames
         }
 
         /// <summary>Writes the footer (chunk index + total ticks) and closes the file.</summary>
-        public void Finish(long totalTicks)
+        public void Finish(long totalTicks) => Finish(totalTicks, null);
+
+        /// <summary>
+        /// Writes the footer (chunk index, total ticks and, when given, the session's console lines) and
+        /// closes the file.
+        /// </summary>
+        public void Finish(long totalTicks, RecordedConsoleLog consoleLog)
         {
             lock (_gate)
             {
@@ -215,26 +229,111 @@ namespace PitHero.Services.Replay.Frames
                     throw new InvalidOperationException("Sidecar writer is closed");
                 long footerOffset = _stream.Length;
                 _stream.Seek(footerOffset, SeekOrigin.Begin);
-                var footer = new byte[FrameSidecarFile.FooterFixedSize + _index.Count * FrameSidecarFile.IndexEntrySize + FrameSidecarFile.TrailerSize];
-                var w = new FrameWriter(footer);
-                w.WriteU32(FrameSidecarFile.FooterMagic);
-                w.WriteI64(totalTicks);
-                w.WriteI32(_index.Count);
-                for (int i = 0; i < _index.Count; i++)
-                {
-                    var e = _index[i];
-                    w.WriteI64(e.Offset);
-                    w.WriteI64(e.FirstTick);
-                    w.WriteU16((ushort)e.TickCount);
-                }
-                w.WriteI64(footerOffset);
-                w.WriteU32(FrameSidecarFile.EndMagic);
-                _stream.Write(footer, 0, w.Length);
+                WriteFooter(_stream, footerOffset, _index, _index.Count, totalTicks, consoleLog);
                 _stream.Flush();
                 _finished = true;
                 _stream.Dispose();
                 _stream = null;
             }
+        }
+
+        /// <summary>
+        /// Finishes the file (see <see cref="Finish(long, RecordedConsoleLog)"/>) and moves it to
+        /// <paramref name="destinationPath"/>, replacing any file there: the quit-time save of a session
+        /// that is ending (issue #429). The writer is closed afterwards.
+        /// </summary>
+        public void FinishAndMove(string destinationPath, long totalTicks, RecordedConsoleLog consoleLog)
+        {
+            if (string.IsNullOrEmpty(destinationPath)) throw new ArgumentNullException(nameof(destinationPath));
+            Finish(totalTicks, consoleLog);
+            File.Move(Path, destinationPath, overwrite: true);
+        }
+
+        /// <summary>
+        /// Writes a finished copy of this file at <paramref name="destinationPath"/> holding the chunks
+        /// that cover ticks below <paramref name="totalTicks"/>, with a footer, while this file stays
+        /// open for appending (a Save Session Replay in the middle of a session, issue #429). The copy is
+        /// a raw byte copy of the header and chunk records, so a long session costs one sequential read.
+        /// </summary>
+        public void ExportTo(string destinationPath, long totalTicks, RecordedConsoleLog consoleLog)
+        {
+            if (string.IsNullOrEmpty(destinationPath)) throw new ArgumentNullException(nameof(destinationPath));
+            lock (_gate)
+            {
+                if (_stream == null || _finished)
+                    throw new InvalidOperationException("Sidecar writer is closed");
+                int keep = 0;
+                while (keep < _index.Count && _index[keep].FirstTick < totalTicks)
+                    keep++;
+                long dataEnd = keep < _index.Count ? _index[keep].Offset : _stream.Length;
+                _stream.Flush();
+                long resume = _stream.Position;
+                try
+                {
+                    using (var dest = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        _stream.Seek(0, SeekOrigin.Begin);
+                        CopyBytes(_stream, dest, dataEnd);
+                        WriteFooter(dest, dataEnd, _index, keep, totalTicks, consoleLog);
+                        dest.Flush();
+                    }
+                }
+                finally
+                {
+                    _stream.Seek(resume, SeekOrigin.Begin);
+                }
+            }
+        }
+
+        private static void CopyBytes(Stream from, Stream to, long count)
+        {
+            var buffer = new byte[256 * 1024];
+            while (count > 0)
+            {
+                int n = from.Read(buffer, 0, count < buffer.Length ? (int)count : buffer.Length);
+                if (n <= 0)
+                    throw new EndOfStreamException("Sidecar file shorter than its index");
+                to.Write(buffer, 0, n);
+                count -= n;
+            }
+        }
+
+        /// <summary>The footer and trailer for the first <paramref name="count"/> entries of an index, written at <paramref name="footerOffset"/>.</summary>
+        private static void WriteFooter(Stream stream, long footerOffset, List<FrameSidecarFile.IndexEntry> index, int count, long totalTicks, RecordedConsoleLog consoleLog)
+        {
+            var w = new FrameWriter(new byte[FrameSidecarFile.FooterFixedSize + count * FrameSidecarFile.IndexEntrySize + FrameSidecarFile.TrailerSize + 256]);
+            w.WriteU32(FrameSidecarFile.FooterMagic);
+            w.WriteI64(totalTicks);
+            w.WriteI32(count);
+            for (int i = 0; i < count; i++)
+            {
+                var e = index[i];
+                w.WriteI64(e.Offset);
+                w.WriteI64(e.FirstTick);
+                w.WriteU16((ushort)e.TickCount);
+            }
+            if (consoleLog != null)
+            {
+                w.WriteU32(FrameSidecarFile.ConsoleMagic);
+                w.WriteI32(consoleLog.Count);
+                for (int i = 0; i < consoleLog.Count; i++)
+                {
+                    var line = consoleLog[i];
+                    var segments = line.Segments;
+                    int segCount = segments == null ? 0 : Math.Min(segments.Length, byte.MaxValue);
+                    w.WriteI64(line.Tick);
+                    w.WriteU8((byte)segCount);
+                    for (int s = 0; s < segCount; s++)
+                    {
+                        w.WriteString(segments[s].Text);
+                        w.WriteU32(segments[s].Color.PackedValue);
+                        w.WriteString(segments[s].ItemName);
+                    }
+                }
+            }
+            w.WriteI64(footerOffset);
+            w.WriteU32(FrameSidecarFile.EndMagic);
+            stream.Write(w.Buffer, 0, w.Length);
         }
 
         /// <summary>Closes without a footer (the reader will rebuild the index by scanning).</summary>
