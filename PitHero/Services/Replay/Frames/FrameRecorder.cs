@@ -100,7 +100,9 @@ namespace PitHero.Services.Replay.Frames
         private MercenaryManager _mercs;
         private Entity _hero;
         private HeroComponent _heroComponent;
-        private MultiSpriteAnimator _heroPaperdoll;
+        private HeroHeadAnimationComponent _heroHead;
+        private HeroEyesAnimationComponent _heroEyes;
+        private HeroHairAnimationComponent _heroHair;
 
         private long _captureTicksSum, _captureTicksMax, _captureCount, _captureStart;
         private float _logTimer;
@@ -759,18 +761,17 @@ namespace PitHero.Services.Replay.Frames
             {
                 _hero = scene.FindEntity(HeroEntityName);
                 _heroComponent = _hero?.GetComponent<HeroComponent>();
-                _heroPaperdoll = _hero?.GetComponent<MultiSpriteAnimator>();
+                _heroHead = _hero?.GetComponent<HeroHeadAnimationComponent>();
+                _heroEyes = _hero?.GetComponent<HeroEyesAnimationComponent>();
+                _heroHair = _hero?.GetComponent<HeroHairAnimationComponent>();
             }
             var linked = _heroComponent?.LinkedHero;
             if (linked != null && _hero != null && !_hero.HasComponent<HeroDeathComponent>())
                 hud.Hero = new HudMember { Present = true, Hp = linked.CurrentHP, MaxHp = linked.MaxHP, Mp = linked.CurrentMP, MaxMp = linked.MaxMP, Level = linked.Level };
-            // The paperdoll's recorder id (assigned in this tick's walk) lets the viewer draw the recorded portrait
-            if (_heroPaperdoll != null)
-            {
-                ushort id = _heroPaperdoll.CaptureSlot;
-                if (id != 0 && ReferenceEquals(_slotsById[id].Renderable, _heroPaperdoll))
-                    hud.HeroEntityId = id;
-            }
+            // The static portrait the live HUD draws: walk-down frame 0 of each layer, with its tint
+            hud.PortraitHead = PortraitSpriteId(_heroHead, out hud.PortraitHeadColor);
+            hud.PortraitEyes = PortraitSpriteId(_heroEyes, out hud.PortraitEyesColor);
+            hud.PortraitHair = PortraitSpriteId(_heroHair, out hud.PortraitHairColor);
 
             _mercs ??= Service<MercenaryManager>();
             if (_mercs != null)
@@ -794,6 +795,19 @@ namespace PitHero.Services.Replay.Frames
             _pause ??= Service<PauseService>();
             hud.Paused = _pause != null && _pause.IsPaused;
             return hud;
+        }
+
+        /// <summary>The first walk-down frame of a paperdoll layer (what GraphicalHUD.RenderHeroSprites draws) as a stream id, or 0.</summary>
+        private ushort PortraitSpriteId(HeroAnimationComponent layer, out uint color)
+        {
+            color = 0;
+            if (layer == null || layer.Animations == null)
+                return 0;
+            string name = layer.WalkDownAnimationName;
+            if (name == null || !layer.Animations.TryGetValue(name, out var animation) || animation.Sprites == null || animation.Sprites.Length == 0)
+                return 0;
+            color = layer.ComponentColor.PackedValue;
+            return Context.SpriteId(animation.Sprites[0]);
         }
 
         private static HudMember MercMember(Entity entity)

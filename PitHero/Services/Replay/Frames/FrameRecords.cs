@@ -40,26 +40,30 @@ namespace PitHero.Services.Replay.Frames
 
     /// <summary>
     /// The fixed-layout HUD record captured with every frame (design §3.1): the numbers GraphicalHUD, the
-    /// pit level label, the funds label and the clock show, plus (format v2, issue #431) the recorder id
-    /// of the hero's paperdoll composite so the viewer can draw the recorded portrait. Stored whole in the
-    /// base frame and re-emitted in a delta only when it changed.
+    /// pit level label, the funds label and the clock show, plus (format v3, issue #431) the hero's
+    /// static portrait: the walk-down first frame of the head, eyes and hair layers with their tints,
+    /// exactly what the live HUD draws. Stored whole in the base frame and re-emitted in a delta only
+    /// when it changed.
     /// </summary>
     public struct HudRecord : IEquatable<HudRecord>
     {
-        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 2;
+        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 3 * 2 + 3 * 4;
 
         public HudMember Hero, Merc1, Merc2;
         public long Gold;
         public int PitLevel, PitTier;
         public float InGameSeconds;
         public bool Paused;
-        /// <summary>Frame entity id of the hero's paperdoll composite at this tick, or 0 when the hero has none on screen.</summary>
-        public ushort HeroEntityId;
+        /// <summary>Sprite ids of the portrait layers (walk-down frame 0), 0 when the hero has no such layer on screen.</summary>
+        public ushort PortraitHead, PortraitEyes, PortraitHair;
+        /// <summary>Packed tints of the portrait layers.</summary>
+        public uint PortraitHeadColor, PortraitEyesColor, PortraitHairColor;
 
         public bool Equals(HudRecord o)
             => Hero.Equals(o.Hero) && Merc1.Equals(o.Merc1) && Merc2.Equals(o.Merc2) && Gold == o.Gold
                && PitLevel == o.PitLevel && PitTier == o.PitTier && InGameSeconds == o.InGameSeconds && Paused == o.Paused
-               && HeroEntityId == o.HeroEntityId;
+               && PortraitHead == o.PortraitHead && PortraitEyes == o.PortraitEyes && PortraitHair == o.PortraitHair
+               && PortraitHeadColor == o.PortraitHeadColor && PortraitEyesColor == o.PortraitEyesColor && PortraitHairColor == o.PortraitHairColor;
         public override bool Equals(object obj) => obj is HudRecord r && Equals(r);
         public override int GetHashCode() => Hero.GetHashCode() ^ (int)Gold ^ (PitLevel << 4) ^ InGameSeconds.GetHashCode();
 
@@ -73,7 +77,12 @@ namespace PitHero.Services.Replay.Frames
             w.WriteI32(PitTier);
             w.WriteF32(InGameSeconds);
             w.WriteU8(Paused ? (byte)1 : (byte)0);
-            w.WriteU16(HeroEntityId);
+            w.WriteU16(PortraitHead);
+            w.WriteU16(PortraitEyes);
+            w.WriteU16(PortraitHair);
+            w.WriteU32(PortraitHeadColor);
+            w.WriteU32(PortraitEyesColor);
+            w.WriteU32(PortraitHairColor);
         }
 
         public static HudRecord Read(ref FrameReader r)
@@ -87,7 +96,12 @@ namespace PitHero.Services.Replay.Frames
             h.PitTier = r.ReadI32();
             h.InGameSeconds = r.ReadF32();
             h.Paused = r.ReadU8() != 0;
-            h.HeroEntityId = r.ReadU16();
+            h.PortraitHead = r.ReadU16();
+            h.PortraitEyes = r.ReadU16();
+            h.PortraitHair = r.ReadU16();
+            h.PortraitHeadColor = r.ReadU32();
+            h.PortraitEyesColor = r.ReadU32();
+            h.PortraitHairColor = r.ReadU32();
             return h;
         }
     }

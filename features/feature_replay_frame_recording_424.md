@@ -262,7 +262,7 @@ is simulated. Recorded pause spans are skipped by jumping the cursor (`ReplayPau
   inside the disk budget and the viewer would need cursor-to-frame mapping for it. Not taken up in #431
   either; still available if the owner wants the space back.
 
-**As shipped in #431** (polish; frame format v2, which orphans every v1 `.frames` once — they are
+**As shipped in #431** (polish; frame format v3, which orphans every older `.frames` once — they are
 re-simulated and self-cached):
 
 - **Rewind:** `ReplayPlaybackService.ToggleRewind` (the `<<` button, FrameView only; pressing it while
@@ -292,9 +292,11 @@ re-simulated and self-cached):
   rewind, a pause or a higher rung is silent.
 - **Action queue icons:** `ActionQueueVisualizationComponent` is `IFrameCapturable` (screen-space
   Sprite ops, one per background/icon, origin-anchored) and no longer live-only.
-- **Portrait:** the HUD record carries `HeroEntityId` (the paperdoll composite's recorder id), the
-  composite op keeps every layer in its slot (id 0 = no sprite), and `MainGameScene.ApplyRecordedPortrait`
-  feeds `GraphicalHUD.SetRecordedPortrait` with the recorded head/eyes/hair layer sprites and tints.
+- **Portrait:** the HUD record carries the static portrait the live HUD draws — the walk-down first
+  frame of the head, eyes and hair layers as sprite ids plus their tints (format v3; a first cut read
+  the current paperdoll frame out of the composite op, which made the portrait walk and turn with the
+  hero, rejected by the owner) — and `MainGameScene.ApplyRecordedPortrait` feeds
+  `GraphicalHUD.SetRecordedPortrait` from it.
 - Dead code removed: the viewer's `Unfreeze` and the cursor-max widening in `Freeze` (future-era),
   the special case that kept the action queue live in the world pass, the `AtEnd`-with-room branch
   of `TogglePause`.

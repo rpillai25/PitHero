@@ -225,7 +225,7 @@ fork field `RenderableComponent.CaptureSlot`, so a re-sorted list costs no looku
 | Op | From | Notes |
 |---|---|---|
 | `Sprite` | stock `SpriteRenderer` / every animator subclass | i16 pixel position, depth, layer, color, flags (flip, screen-space, `Graded` = drawn through the day-night material) |
-| `Composite` | `MultiSpriteAnimator`, `StaticSpriteCompositor` | one record per layer (never the render texture); a paperdoll keeps every layer in its slot (id 0 = no sprite) so the HUD portrait can address head/eyes/hair by index |
+| `Composite` | `MultiSpriteAnimator`, `StaticSpriteCompositor` | one record per layer with a sprite (never the render texture) |
 | `Text`, `Rect`, `NinePatch` | `IFrameCapturable` components (floating text, HP bars, outlines, speech bubbles) | anchor + `dx/dy` + `ConstantScreenSize` for constant on-screen size at any zoom; no layer (drawn after every sprite) |
 | `Particle` | `ParticleEmitter`s spawned by `ParticleEffectManager` | effect key, density, root, age in ticks, Emitting flag; the particles themselves are re-simulated by the viewer |
 
@@ -237,8 +237,9 @@ or read from a live service is wrong in a per-tick recording (the bouncy digits'
 curve, the day/night clock and the clouds were all found this way).
 
 Beside the ops, every tick carries a **HUD record** (party hp/mp/level, gold, pit level/tier, in-game
-seconds floored to whole seconds so it does not churn, pause flag, and the hero paperdoll's entity id
-for the portrait). **Events** arrive through hooks and are stored with their tick: tile mutations
+seconds floored to whole seconds so it does not churn, pause flag, and the hero's static portrait: the
+walk-down first frame of the head, eyes and hair layers as sprite ids with their tints, exactly what
+the live HUD draws). **Events** arrive through hooks and are stored with their tick: tile mutations
 (`TiledMapService.TileChanging`, same-gid writes and the undrawn Collision/Top layers dropped, plus a
 full keyframe of Base/Detail/FogOfWar at every chunk start), console lines
 (`GameEventService.OnEmitAny`, segments interned) and **sounds** (`SoundEffectManager.OnSoundPlayed`:
@@ -326,7 +327,7 @@ and the `GraphicalHUD`s keep drawing through the stock renderers) and two render
 `FrameSpriteResolver` maps ids back to atlas sprites (with their origins) or rebuilds a sprite from a
 texture by name; scene-content textures that died with a rebuild are re-resolved. The HUD, pit level,
 gold and clock labels are fed from the HUD record (`MainGameScene.ApplyRecordedHud`), the **portrait**
-from the hero composite's head/eyes/hair layers (`ApplyRecordedPortrait` →
+from the record's static head/eyes/hair sprites (`ApplyRecordedPortrait` →
 `GraphicalHUD.SetRecordedPortrait`), day/night grading and the clouds from the recorded clock, the event
 console from the console log (`EventConsolePanel.ShowRecorded` on a jump, appends while playing).
 
@@ -671,7 +672,7 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
-| `ReplayFrameFormatVersion` | 2 | Bump on any op / HUD record / events change; orphans every cache once |
+| `ReplayFrameFormatVersion` | 3 | Bump on any op / HUD record / events change; orphans every cache once |
 | `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
 | `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |
 | `ReplayFrameViewSoundCatchupMaxTicks` | 30 | A longer forward move (seek, skipped pause) plays no sounds |

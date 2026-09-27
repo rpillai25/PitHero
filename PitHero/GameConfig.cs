@@ -770,7 +770,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB deflated, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 2;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events, HUD record hero entity id
+        public const int ReplayFrameFormatVersion = 3;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints)
         public const string ReplayFrameFileExtension = ".frames";              // Sidecar next to the .bin it caches
         public const string ReplayFrameSessionFilePrefix = "session_";         // replays/session_<recordedAtUtcTicks>.frames while a session runs; stale ones are deleted at the next new session
         public const float ReplayFrameDebugLogIntervalSeconds = 60f;           // Wall seconds between frame-recorder stat lines (Debug.Log in Debug builds; replays/frame_recorder.log in every build while ReplayFrameStatsLog is on)

@@ -206,41 +206,27 @@ namespace PitHero.Services.Replay.Frames
         public static void CaptureMultiSprite(MultiSpriteAnimator m, ref FrameWriter w, FrameCaptureContext ctx)
             => CaptureMultiSprite(m, ref w, ctx, null);
 
-        /// <summary>
-        /// Composite op for a paperdoll, resolving layer sprite ids through a per-composite cache. Every
-        /// layer is written in its slot (a layer without a sprite carries sprite id 0 and draws nothing) so
-        /// a reader can address a layer by its index: the viewer's HUD portrait takes the hero's head,
-        /// eyes and hair from their fixed paperdoll positions.
-        /// </summary>
+        /// <summary>Composite op for a paperdoll, resolving layer sprite ids through a per-composite cache.</summary>
         public static void CaptureMultiSprite(MultiSpriteAnimator m, ref FrameWriter w, FrameCaptureContext ctx, CompositeSpriteCache cache)
         {
-            int layerCount = m.LayerCount;
-            if (layerCount == 0 || layerCount > byte.MaxValue)
-                return;
-            bool any = false;
-            for (int i = 0; i < layerCount; i++)
+            int count = 0;
+            for (int i = 0; i < m.LayerCount; i++)
             {
                 var layer = m.GetLayer(i);
                 if (layer != null && layer.Sprite != null)
-                {
-                    any = true;
-                    break;
-                }
+                    count++;
             }
-            if (!any)
+            if (count == 0 || count > byte.MaxValue)
                 return;
             var pos = m.Entity.Transform.Position + m.LocalOffset;
             uint tint = m.Color.PackedValue;
             byte graded = ctx.GradedFlag(m);
-            w.WriteCompositeHeader(pos.X, pos.Y, m.LayerDepth, m.RenderLayer, (byte)layerCount);
-            for (int i = 0; i < layerCount; i++)
+            w.WriteCompositeHeader(pos.X, pos.Y, m.LayerDepth, m.RenderLayer, (byte)count);
+            for (int i = 0; i < m.LayerCount; i++)
             {
                 var layer = m.GetLayer(i);
                 if (layer == null || layer.Sprite == null)
-                {
-                    w.WriteCompositeLayer(SpriteKeyRegistry.None, 0f, 0f, 0u, FrameOpFlags.None);
                     continue;
-                }
                 var offset = layer.LocalOffset;
                 w.WriteCompositeLayer(LayerSpriteId(layer.Sprite, i, ctx, cache), offset.X, offset.Y, MultiplyColor(layer.LayerColor.PackedValue, tint),
                     (byte)((layer.FlipX ? FrameOpFlags.FlipX : FrameOpFlags.None) | graded));

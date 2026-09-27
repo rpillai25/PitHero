@@ -1950,9 +1950,7 @@ namespace PitHero.ECS.Scenes
             heroHand1Animator.SetLocalOffset(offset);
             heroHand1Animator.ComponentColor = design.SkinColor;
 
-            // Composite all paperdoll layers into a single render target to prevent z-order artifacts.
-            // The layer order is part of the replay frame stream: HeroPaperdollHeadLayer/EyesLayer/HairLayer
-            // index into the recorded Composite op for the replay viewer's HUD portrait
+            // Composite all paperdoll layers into a single render target to prevent z-order artifacts
             var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator(
                 heroHand2Animator, heroBodyAnimator, heroPantsAnimator, heroShirtAnimator,
                 heroHeadAnimator, heroEyesAnimator, heroHairAnimator, heroHand1Animator));
@@ -2813,47 +2811,20 @@ namespace PitHero.ECS.Scenes
                 hud.UpdateValues(member.Hp, member.MaxHp, member.Mp, member.MaxMp, member.Level);
         }
 
-        // Positions of the head, eyes and hair layers in the hero's MultiSpriteAnimator (see the paperdoll
-        // assembly in the hero spawn: hand2, body, pants, shirt, head, eyes, hair, hand1)
-        private const int HeroPaperdollHeadLayer = 4;
-        private const int HeroPaperdollEyesLayer = 5;
-        private const int HeroPaperdollHairLayer = 6;
-
         /// <summary>
         /// Feeds the hero HUD's portrait from the recorded frame (replay frame viewer, issue #431): the
-        /// head, eyes and hair layers of the hero's paperdoll composite at that tick, found through the
-        /// HUD record's hero entity id. Without a hero composite in the frame the portrait is blank.
+        /// HUD record carries the walk-down first frame of the head, eyes and hair layers with their
+        /// tints, the same static portrait the live HUD draws. Without a hero the portrait is blank.
         /// </summary>
         public void ApplyRecordedPortrait(Services.Replay.Frames.DecodedFrame frame, Rendering.FrameSpriteResolver sprites)
         {
             if (_graphicalHUD == null || frame == null || sprites == null)
                 return;
-            Nez.Textures.Sprite head = null, eyes = null, hair = null;
-            Color headColor = Color.White, eyesColor = Color.White, hairColor = Color.White;
-            ushort heroId = frame.Hud.HeroEntityId;
-            if (heroId != 0 && frame.TryGetEntity(heroId, out var entity))
-            {
-                var r = frame.ReadOps(in entity);
-                while (!r.AtEnd)
-                {
-                    if (r.PeekOp() != Services.Replay.Frames.FrameOpCode.Composite)
-                    {
-                        r.SkipOp();
-                        continue;
-                    }
-                    r.ReadOpCode();
-                    r.ReadCompositeHeader(out var op);
-                    for (int l = 0; l < op.LayerCount; l++)
-                    {
-                        r.ReadCompositeLayer(out var layer);
-                        if (l == HeroPaperdollHeadLayer) { head = sprites.Get(layer.SpriteId); headColor = Rendering.RecordedFrameRenderer.Packed(layer.Color); }
-                        else if (l == HeroPaperdollEyesLayer) { eyes = sprites.Get(layer.SpriteId); eyesColor = Rendering.RecordedFrameRenderer.Packed(layer.Color); }
-                        else if (l == HeroPaperdollHairLayer) { hair = sprites.Get(layer.SpriteId); hairColor = Rendering.RecordedFrameRenderer.Packed(layer.Color); }
-                    }
-                    break;
-                }
-            }
-            _graphicalHUD.SetRecordedPortrait(head, headColor, eyes, eyesColor, hair, hairColor);
+            ref readonly var hud = ref frame.Hud;
+            _graphicalHUD.SetRecordedPortrait(
+                sprites.Get(hud.PortraitHead), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHeadColor),
+                sprites.Get(hud.PortraitEyes), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesColor),
+                sprites.Get(hud.PortraitHair), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHairColor));
         }
 
         /// <summary>The hero HUD's portrait reads the live paperdoll again (the viewer is gone).</summary>
