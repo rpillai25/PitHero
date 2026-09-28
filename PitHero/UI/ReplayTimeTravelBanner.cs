@@ -31,8 +31,11 @@ namespace PitHero.UI
             _label = new SineWaveLabel(text, style);
 
             SetBackground(skin.Get<WindowStyle>("ph-default").Background);
-            // The wave bobs a few pixels either way: pad so the glyphs never leave the backdrop
+            // The wave bobs a few pixels either way and draws glyph by glyph, which runs wider than the
+            // label's measured width: pad so the glyphs never leave the backdrop
             Pad(GameConfig.ReplayTimeTravelBannerPad);
+            PadLeft(GameConfig.ReplayTimeTravelBannerPadHorizontal);
+            PadRight(GameConfig.ReplayTimeTravelBannerPadHorizontal);
             Add(_label);
             Pack();
             SetTouchable(Touchable.Disabled);

@@ -800,7 +800,8 @@ namespace PitHero
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge
         public const float ReplayTimeTravelBannerFontScale = 2f; // "Time Travelling..." banner over the frozen frame during a rebuild (issue #432)
-        public const float ReplayTimeTravelBannerPad = 8f;       // Backdrop padding around the waving label, stage pixels
+        public const float ReplayTimeTravelBannerPad = 8f;       // Backdrop padding above and below the waving label, stage pixels
+        public const float ReplayTimeTravelBannerPadHorizontal = 24f; // Left/right padding: the wave draws glyph by glyph and runs wider than the label's measured width, so the text bled to the edges at 8
         public const string ReplayDirectoryName = "replays";     // Under the persistent data folder
         public const string ReplayFilePrefix = "replay_";
         public const string ReplayAutoFilePrefix = "replay_auto_";  // + 8 hex digits of the hero id: the quit-time recording, one per hero, overwritten every session (its .frames cache too)
