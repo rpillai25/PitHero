@@ -254,9 +254,16 @@ the tables from the uncompressed chunk prefixes without inflating anything.
 **Chunks** (`ReplayFrameChunkTicks` = 120 ticks, Braid's 2 s GOP): a base frame, then entity-level
 deltas against the previous tick (an entity whose bytes changed is re-emitted whole; a tombstone
 marks one gone), the HUD record only when it changed, then the events section (tile, console, sound)
-and the tile keyframe, deflated as one unit on the sidecar worker. Chunks are contiguous (chunk *i*
-starts at tick *i* × 120); only the last may be partial. Measured cost: ~36 MB per hour on disk,
-40–70 µs per tick in Release (`replays/frame_recorder.log`).
+and the tile keyframe, compressed as one unit on the sidecar worker. Chunks are contiguous (chunk *i*
+starts at tick *i* × 120); only the last may be partial. Measured cost: 40–70 µs per tick in Release
+(`replays/frame_recorder.log`); on disk ~36 MB per hour for the census scene and 51 MB per hour for an
+8-hour farm with ~950 renderables under deflate. **Format v4 (issue #432) compresses with Brotli**
+(`ReplayFrameBrotliQuality` 5, `ReplayFrameBrotliWindowBits` 22): deflate's 32 KB window saw only a
+fifth of a 156 KB chunk, so the walk cycles repeating across it went unmatched; Brotli's 4 MB window
+keeps 13.3% of the raw bytes against 18.5% (that 8-hour session: ~37 MB per hour instead of 51) in
+1.8 ms per chunk against deflate's 1–6. Quality 9 gained nothing more and 11 gained 1.3 points for
+100 ms a chunk. Two remaining levers, not taken: 240-tick chunks (another ~12%) and capturing every
+second tick with position interpolation in the viewer (~37%).
 
 **Lifecycle rules** (mirroring the command recorder): the capture rule is `IsRecording || tick >
 Store.EndTick`, so a playback skips ticks that already have a frame and captures past the stream end;
@@ -269,7 +276,7 @@ same session adopts it; another session's stream is closed with its footer). Ent
 
 ```
 header    "PHFR", formatVersion i32, masterSeed i32, recordedAtUtcTicks i64, simulationVersion i32, chunkTicks i32
-chunks    [len u32][chunk bytes]…      (a chunk = uncompressed prefix + table delta + deflated payload)
+chunks    [len u32][chunk bytes]…      (a chunk = uncompressed prefix + table delta + Brotli payload)
 footer    "PHFX", totalTicks i64, count i32, {offset i64, firstTick i64, tickCount u16}…
           optional "PHFC", lineCount i32, {tick i64, segCount u8, {text, color u32, itemName}…}…   (console lines, plain text)
 trailer   footerOffset i64, "PHFE"
@@ -699,7 +706,8 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
-| `ReplayFrameFormatVersion` | 3 | Bump on any op / HUD record / events change; orphans every cache once |
+| `ReplayFrameFormatVersion` | 4 | Bump on any op / HUD record / events / codec change; orphans every cache once (v4 = Brotli payloads) |
+| `ReplayFrameBrotliQuality` / `ReplayFrameBrotliWindowBits` | 5 / 22 | Chunk payload compression; measured sweet spot (see "Chunks") |
 | `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
 | `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |
 | `ReplayFrameViewSoundCatchupMaxTicks` | 30 | A longer forward move (seek, skipped pause) plays no sounds |

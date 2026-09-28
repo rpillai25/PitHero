@@ -116,20 +116,7 @@ namespace PitHero.Services.Replay.Frames
                     size *= 2;
                 _raw = new byte[size];
             }
-            int total = 0;
-            using (var ms = new MemoryStream(chunk.Bytes, chunk.PayloadOffset, chunk.PayloadLength, writable: false))
-            using (var ds = new DeflateStream(ms, CompressionMode.Decompress))
-            {
-                while (total < rawLen)
-                {
-                    int n = ds.Read(_raw, total, rawLen - total);
-                    if (n <= 0)
-                        break;
-                    total += n;
-                }
-            }
-            if (total != rawLen)
-                throw new InvalidDataException("Frame chunk payload inflated to an unexpected size");
+            FrameChunkCodec.Decompress(chunk, _raw);
             _rawLength = rawLen;
         }
 

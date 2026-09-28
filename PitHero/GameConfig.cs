@@ -775,11 +775,16 @@ namespace PitHero
         // Replay frame stream (issue #424): one presentation frame per tick, recorded beside the command
         // recording so watching a replay never re-simulates. Headless model in Services/Replay/Frames.
         public const bool ReplayFrameCaptureEnabled = true;                    // Kill switch; off = today's pure re-simulation playback
-        public const int ReplayFrameChunkTicks = 120;                          // Ticks per chunk (Braid's 2 s GOP): base frame + previous-tick deltas, deflated as one unit
-        public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB deflated, so every chunk)
+        public const int ReplayFrameChunkTicks = 120;                          // Ticks per chunk (Braid's 2 s GOP): base frame + previous-tick deltas, compressed as one unit
+        public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 3;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints)
+        public const int ReplayFrameFormatVersion = 4;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate
+        // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
+        // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
+        // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
+        public const int ReplayFrameBrotliQuality = 5;                          // 0–11
+        public const int ReplayFrameBrotliWindowBits = 22;                      // 10–24
         public const string ReplayFrameFileExtension = ".frames";              // Sidecar next to the .bin it caches
         public const string ReplayFrameSessionFilePrefix = "session_";         // replays/session_<recordedAtUtcTicks>.frames while a session runs; stale ones are deleted at the next new session
         public const float ReplayFrameDebugLogIntervalSeconds = 60f;           // Wall seconds between frame-recorder stat lines (Debug.Log in Debug builds; replays/frame_recorder.log in every build while ReplayFrameStatsLog is on)
