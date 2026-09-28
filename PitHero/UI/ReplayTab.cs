@@ -79,6 +79,8 @@ namespace PitHero.UI
         }
 
         private const string CompactButtonStyle = "ph-compact";
+        private const string MarkSeparator = "  ";
+        private const float DetailLineGap = 6f;       // between the name line and the date / pit level line (they touched without it)
 
         /// <summary>Creates the tab content builder.</summary>
         public ReplayTab(Skin skin, Stage stage, SettingsUI settingsUI)
@@ -250,12 +252,21 @@ namespace PitHero.UI
 
             var title = new Label(string.Format(GetText(UITextKey.ReplayRowTitleFormat), info.HeroName, info.JobName), _skin, "ph-default");
             rowTable.Add(title).Left().SetPadLeft(6f);
+            // Marks share the title line so the row keeps its height: the hero's quit-time recording
+            // (overwritten every session) and a frame cache that opens in the viewer at once (issue #429)
+            string marks = null;
+            if (info.IsAutoSave)
+                marks = GetText(UITextKey.ReplayRowAutoMark);
+            if (info.HasFrameCache)
+                marks = marks == null ? GetText(UITextKey.ReplayRowCachedMark) : marks + MarkSeparator + GetText(UITextKey.ReplayRowCachedMark);
+            if (marks != null)
+                rowTable.Add(new Label(marks, _skin, "ph-grayed")).Right().SetExpandX().SetPadRight(6f); // horizontal expand only: a vertical expand pushes the detail line into the row's bottom edge
             rowTable.Row();
 
             var when = info.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             var detail = new Label(string.Format(GetText(UITextKey.ReplayRowDetailFormat),
                 when, ReplayTimeFormatter.FormatSeconds(info.DurationSeconds), info.PitLevelAtStart), _skin, "ph-default");
-            rowTable.Add(detail).Left().SetPadLeft(6f);
+            rowTable.Add(detail).Left().SetPadLeft(6f).SetPadTop(DetailLineGap);
             if (!info.IsCurrentSimulation)
             {
                 // Recorded before a simulation change: still playable, may diverge, no time travel
@@ -304,7 +315,7 @@ namespace PitHero.UI
                 // session as its return point, so the return trip lands unpaused
                 _settingsUI?.ForceCloseSettings();
                 ReleasePausesOnRecord();
-                StartPlayback(data, isCurrentSession: false);
+                StartPlayback(data, isCurrentSession: false, entry.FileName);
             });
         }
 
@@ -336,13 +347,13 @@ namespace PitHero.UI
             commands.ApplyNow(PlayerCommand.Flag(PlayerCommandType.SetFarmModePause, false));
         }
 
-        private void StartPlayback(ReplayData data, bool isCurrentSession)
+        private void StartPlayback(ReplayData data, bool isCurrentSession, string fileName = null)
         {
             var playback = ReplayPlaybackService.Current;
             if (playback == null)
                 return;
             _settingsUI?.ForceCloseSettings();
-            playback.Start(data, isCurrentSession);
+            playback.Start(data, isCurrentSession, 0, fileName);
         }
 
         private void OnSaveSession()
@@ -351,7 +362,9 @@ namespace PitHero.UI
             var fileService = Core.Services?.GetService<ReplayFileService>();
             if (recorder == null || fileService == null)
                 return;
-            string fileName = fileService.Save(recorder.Snapshot(SimulationClock.CurrentTick));
+            // The session goes on, so its frame stream is copied beside the recording, not moved
+            string fileName = fileService.SaveWithFrameCache(recorder.Snapshot(SimulationClock.CurrentTick),
+                Services.Replay.Frames.FrameRecorder.Current, endSession: false);
             string message = fileName != null
                 ? string.Format(GetText(UITextKey.ReplaySavedMessage), fileName)
                 : GetText(UITextKey.ReplaySaveFailedMessage);

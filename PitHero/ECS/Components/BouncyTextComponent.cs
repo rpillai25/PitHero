@@ -4,12 +4,43 @@ using Nez;
 using Nez.BitmapFonts;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
+using PitHero.Services.Replay.Frames;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>Bouncy text renderer for battle messages like "Miss" (world-space, constant screen size, per-character bounce)</summary>
-    internal class BouncyTextComponent : RenderableComponent, IUpdatable
+    internal class BouncyTextComponent : RenderableComponent, IUpdatable, IFrameCapturable
     {
+        /// <summary>Replay frame: one constant-screen-size Text op per character, offset in screen pixels from the world anchor.</summary>
+        public void CaptureFrame(ref FrameWriter w, FrameCaptureContext ctx)
+        {
+            // Spacing measured from the current HUD font as Render does (read-only): a capture can run
+            // before the first Render, and the default spacing overlapped the letters in the viewer
+            var scene = Entity.Scene as PitHero.ECS.Scenes.MainGameScene;
+            var hudFont = scene?.GetHudFontForCurrentMode();
+            if (hudFont == null)
+                return;
+            float spacing = ReferenceEquals(hudFont, _cachedFont) ? _charSpacing : MeasureSpacing(hudFont);
+            byte fontId = scene.HudFrameFontId;
+            var worldPos = Entity.Position;
+            for (int i = 0; i < 4; i++)
+            {
+                if (string.IsNullOrEmpty(_chars[i]))
+                    continue;
+                float dx = spacing * 3f - i * spacing;
+                float dy = -_bounceTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _bounceTable.Length - 1)] * 2f;
+                w.WriteText(ctx.StringId(_chars[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f, fontId,
+                    FrameOpFlags.ConstantScreenSize, 0, FrameOpCode.AllChars);
+            }
+        }
+
+        /// <summary>Screen-space pixels between characters for a font (the width of a representative glyph).</summary>
+        private static float MeasureSpacing(BitmapFont font)
+        {
+            var measure = font.MeasureString("M");
+            return measure.X > 0 ? measure.X : 6f;
+        }
+
         int[] _bounceTable = {
             0,0,0,0,0,0,3,6,9,12,
             14,15,15,16,16,16,15,15,14,12,
@@ -23,13 +54,7 @@ namespace PitHero.ECS.Components
         string[] _chars = new string[4];
 
         uint _elapsedFrames;
-        uint _startFrame;
         float _elapsedTime;
-
-        uint _pauseStartDelta;
-        uint _pauseFrames;
-        float _pauseTime;
-        bool _pausedLastFrame = false;
 
         public static Color HeroMissColor = Color.Red;
         public static Color EnemyMissColor = Color.White;
@@ -49,7 +74,6 @@ namespace PitHero.ECS.Components
         public void Init(string text, Color textColor)
         {
             // reset timing
-            _startFrame = Time.FrameCount;
             _elapsedFrames = 0;
             _elapsedTime = 0f;
 
@@ -95,8 +119,7 @@ namespace PitHero.ECS.Components
             // Recalculate spacing only if font instance changed
             if (!ReferenceEquals(hudFont, _cachedFont))
             {
-                var measure = hudFont.MeasureString("M"); // representative glyph width
-                _charSpacing = measure.X > 0 ? measure.X : 6f; // screen-space pixels between characters at default scale
+                _charSpacing = MeasureSpacing(hudFont); // screen-space pixels between characters at default scale
                 _cachedFont = hudFont;
             }
 
@@ -123,30 +146,13 @@ namespace PitHero.ECS.Components
                 Enabled = false;
                 return;
             }
+            if (_pauseService?.IsPaused == true)
+                return; // the bounce clock is simulation time: paused steps do not advance it
             _elapsedTime += Time.DeltaTime;
 
-            if (_pauseService?.IsPaused == true)
-            {
-                if (!_pausedLastFrame)
-                {
-                    _pauseStartDelta = Time.FrameCount - _startFrame;
-                    _pausedLastFrame = true;
-                }
-                _pauseFrames = Time.FrameCount;
-                _pauseTime += Time.DeltaTime;
-                return;
-            }
-
-            if (_pausedLastFrame)
-            {
-                _pausedLastFrame = false;
-                _startFrame = _pauseFrames - _pauseStartDelta;
-                _elapsedTime -= _pauseTime;
-                _pauseFrames = 0;
-                _pauseTime = 0;
-            }
-
-            _elapsedFrames = (Time.FrameCount - _startFrame) * 2;
+            // Simulation-time bounce curve (two curve steps per 60 Hz tick), not rendered frames; see
+            // BouncyDigitComponent.Update for why
+            _elapsedFrames = (uint)(_elapsedTime * 120f);
             if (_elapsedTime > 1.0f)
             {
                 _currentColor = _initColor;

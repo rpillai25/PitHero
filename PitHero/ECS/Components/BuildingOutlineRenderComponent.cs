@@ -8,8 +8,15 @@ namespace PitHero.ECS.Components
     /// position as the top-left corner. Used as the hover affordance that signals a building is
     /// clickable. Mirrors <see cref="SelectBoxRenderComponent"/> but spans an arbitrary rectangle.
     /// </summary>
-    public class BuildingOutlineRenderComponent : RenderableComponent
+    public class BuildingOutlineRenderComponent : RenderableComponent, Services.Replay.Frames.IFrameCapturable
     {
+        /// <summary>Replay frame: the outline as a world-space Rect op (top-left at the entity).</summary>
+        public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
+        {
+            var position = Entity.Transform.Position;
+            w.WriteRect(position.X, position.Y, _boxWidth, _boxHeight, _boxColor.PackedValue, Services.Replay.Frames.FrameOpFlags.Outline);
+        }
+
         private const int LineThickness = 2;
         private float _boxWidth = 32f;
         private float _boxHeight = 32f;

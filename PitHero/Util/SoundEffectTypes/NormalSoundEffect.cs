@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Audio;
 using PitHero.Util.Extensions;
 using System;
 
@@ -17,13 +17,25 @@ namespace PitHero.Util.SoundEffectTypes
             this.soundEffect = soundEffect;
         }
 
-        public void Play(float volume, uint frameInterval = 0)
+        public int Play(float volume, uint frameInterval = 0)
         {
-            if (!disposed)
-                soundEffect.Play(volume);
+            if (disposed)
+                return -1;
+            soundEffect.Play(volume);
+            return 0;
         }
 
-        public void Play(float volume, float pitch, float pan)
+        public int Play(float volume, float pitch, float pan)
+        {
+            if (disposed)
+                return -1;
+            soundEffect.Play(volume, pitch, pan);
+            return 0;
+        }
+
+        public int PickVariant() => 0;
+
+        public void PlayVariant(int variant, float volume, float pitch, float pan)
         {
             if (!disposed)
                 soundEffect.Play(volume, pitch, pan);

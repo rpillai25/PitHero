@@ -26,6 +26,12 @@ namespace PitHero.ECS.Components
         private readonly int     _h;
         private readonly Vector2 _pivot;
 
+        /// <summary>Number of composited layers (read by the replay frame census).</summary>
+        public int LayerCount => _layers.Length;
+
+        /// <summary>Child renderer at <paramref name="index"/>, back to front.</summary>
+        public SpriteRenderer GetLayer(int index) => _layers[index];
+
         /// <param name="layers">Child renderers in back-to-front draw order.</param>
         /// <param name="rtWidth">Render target width in pixels.</param>
         /// <param name="rtHeight">Render target height in pixels.</param>

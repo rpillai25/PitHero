@@ -83,5 +83,57 @@ namespace PitHero.Tests
             Assert.AreEqual(0, steps);
             Assert.AreEqual(0f, acc);
         }
+
+        // ── Seek throttle (issue #432) ───────────────────────────────────────────────
+
+        /// <summary>At a 50% duty cycle the rest equals the burst: a 10 ms burst rests 10 ms.</summary>
+        [TestMethod]
+        public void ComputeRestSeconds_HalfDuty_RestsAsLongAsTheBurst()
+        {
+            Assert.AreEqual(0.010f, FixedStepScheduler.ComputeRestSeconds(0.010f, 0.5f), 0.0001f);
+        }
+
+        /// <summary>busy / (busy + rest) comes out at the requested duty cycle for any duty in (0, 1).</summary>
+        [TestMethod]
+        public void ComputeRestSeconds_HoldsTheDutyCycle()
+        {
+            float[] duties = { 0.1f, 0.25f, 0.5f, 0.75f, 0.9f };
+            for (int i = 0; i < duties.Length; i++)
+            {
+                float busy = 0.010f;
+                float rest = FixedStepScheduler.ComputeRestSeconds(busy, duties[i]);
+                Assert.IsTrue(rest > 0f, "duty " + duties[i] + " should rest");
+                Assert.AreEqual(duties[i], busy / (busy + rest), 0.0001f, "duty " + duties[i]);
+            }
+        }
+
+        /// <summary>A duty cycle of 1 (or above) never rests; 0 or below would mean an infinite rest and is treated as off.</summary>
+        [TestMethod]
+        public void ComputeRestSeconds_FullOrInvalidDuty_NeverRests()
+        {
+            Assert.AreEqual(0f, FixedStepScheduler.ComputeRestSeconds(0.010f, 1f));
+            Assert.AreEqual(0f, FixedStepScheduler.ComputeRestSeconds(0.010f, 1.5f));
+            Assert.AreEqual(0f, FixedStepScheduler.ComputeRestSeconds(0.010f, 0f));
+            Assert.AreEqual(0f, FixedStepScheduler.ComputeRestSeconds(0.010f, -0.5f));
+        }
+
+        /// <summary>A burst that took no time (or a clock glitch) rests nothing.</summary>
+        [TestMethod]
+        public void ComputeRestSeconds_NoBusyTime_RestsNothing()
+        {
+            Assert.AreEqual(0f, FixedStepScheduler.ComputeRestSeconds(0f, 0.5f));
+            Assert.AreEqual(0f, FixedStepScheduler.ComputeRestSeconds(-0.01f, 0.5f));
+        }
+
+        /// <summary>The shipped seek knobs form a real throttle: a burst under a 60 Hz frame and a duty cycle that actually rests.</summary>
+        [TestMethod]
+        public void ReplaySeekKnobs_FormAThrottle()
+        {
+            Assert.IsTrue(GameConfig.ReplaySeekWallBudgetSeconds > 0f);
+            Assert.IsTrue(GameConfig.ReplaySeekWallBudgetSeconds < 1f / 60f, "a seek burst longer than a frame can never rest between frames");
+            Assert.IsTrue(GameConfig.ReplaySeekDutyCycle > 0f && GameConfig.ReplaySeekDutyCycle <= 1f);
+            float rest = FixedStepScheduler.ComputeRestSeconds(GameConfig.ReplaySeekWallBudgetSeconds, GameConfig.ReplaySeekDutyCycle);
+            Assert.IsTrue(rest * 1000f >= 1f, "the rest must be at least one millisecond or Thread.Sleep rounds it away");
+        }
     }
 }

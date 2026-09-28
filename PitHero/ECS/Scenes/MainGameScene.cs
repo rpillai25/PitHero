@@ -74,7 +74,9 @@ namespace PitHero.ECS.Scenes
         public AddMonsterDialog AddMonsterDialog => _addMonsterDialog;
         private Services.Replay.PlayerCommandService _playerCommands; // Player input -> simulation doorway (replay system)
         private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
+        private Services.Replay.Frames.FrameRecorder _frameRecorder; // Per-tick presentation frame stream (issue #424), behind ReplayFrameCaptureEnabled
         private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
+        private ReplayTimeTravelBanner _replayTimeTravelBanner; // "Time Travelling..." over the frozen frame while a rebuild seeks (issue #432)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private AutoSaveIndicator _autoSaveIndicator; // SaveIcon shown in the lower-right corner while an autosave writes (issue #409)
@@ -173,6 +175,11 @@ namespace PitHero.ECS.Scenes
         private bool _hudPartyVisible = true;             // hysteresis state for IsPartyInCameraView
 
         public BitmapFont HudFont; // legacy reference (normal)
+
+        /// <summary>The replay frame font id of <see cref="GetHudFontForCurrentMode"/> (the viewer draws the same font).</summary>
+        public byte HudFrameFontId => _currentHudMode == HudMode.Half
+            ? Services.Replay.Frames.FrameFontId.Hud2x
+            : Services.Replay.Frames.FrameFontId.Hud;
 
         public BitmapFont GetHudFontForCurrentMode()
         {
@@ -290,6 +297,9 @@ namespace PitHero.ECS.Scenes
             // scene's bar keeps intercepting skill drops in the next game session (its stale
             // handler runs first and cancels the drag before the new bar can handle it).
             _shortcutBar?.DisconnectFromStaticEvents();
+            // Final partial census report while the map service is still registered (issue #425 spike)
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Detach();
             Core.Services.RemoveService(typeof(Rendering.ColorGradingController));
             _colorGrading?.Dispose();
             _colorGrading = null;
@@ -336,6 +346,16 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(SimulationClock));
             _playerCommands?.Detach();
             Core.Services.RemoveService(typeof(Services.Replay.PlayerCommandService));
+            if (_frameRecorder != null)
+            {
+                // A scene rebuild for a replay (playback is Starting) continues this session's stream in
+                // the next scene; any other teardown ends the session and closes its file
+                var playback = Services.Replay.ReplayPlaybackService.Current;
+                bool rebuild = playback != null && playback.State == Services.Replay.ReplayPlaybackState.Starting;
+                _frameRecorder.Detach(handoffToNextScene: rebuild);
+                Core.Services.RemoveService(typeof(Services.Replay.Frames.FrameRecorder));
+                _frameRecorder = null;
+            }
             _replayRecorder?.Detach();
             Core.Services.RemoveService(typeof(Services.Replay.ReplayRecorder));
             // A new scene always starts unpaused; pending pause commands die with this scene
@@ -388,8 +408,23 @@ namespace PitHero.ECS.Scenes
                 ? replayBootstrap.Data.StateBlob
                 : CaptureSessionStartBlob(isNewGame);
             _replayRecorder.Initialize(replayKind, masterSeed, startBlob, replayBootstrap?.Data);
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Start();
             if (replayBootstrap?.Data != null)
                 _replayRecorder.IsRecording = false; // playback: the recording IS the list; resume on exit
+
+            // ── Frame recorder: the presentation frame stream beside the command recording ──
+            // Same lifecycle as the command recorder: a replay rebuild inherits the previous scene's
+            // stream (handed off in Unload), a fresh session opens its own session file.
+            if (GameConfig.ReplayFrameCaptureEnabled)
+            {
+                _frameRecorder = new Services.Replay.Frames.FrameRecorder();
+                Core.Services.AddService(_frameRecorder);
+                _frameRecorder.Initialize(masterSeed, _replayRecorder.RecordedAtUtcTicks, replayBootstrap?.Data,
+                    Core.Services.GetService<Services.Replay.ReplayFileService>()?.Directory_);
+                if (replayBootstrap?.Data != null)
+                    _frameRecorder.IsRecording = false;
+            }
 
             LoadMap();
             SpawnPit();
@@ -1419,7 +1454,9 @@ namespace PitHero.ECS.Scenes
                 return;
 
             _tmxMap = Core.Content.LoadTiledMap(_mapPath);
-            Core.Services.AddService(new TiledMapService(_tmxMap));
+            var tiledMapService = new TiledMapService(_tmxMap);
+            Core.Services.AddService(tiledMapService);
+            _frameRecorder?.AttachMap(tiledMapService); // before the pit is generated, so tick-0 tile writes are recorded
             var tiledEntity = CreateEntity("tilemap").SetTag(GameConfig.TAG_TILEMAP);
 
             var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap, "Collision"));
@@ -1448,6 +1485,7 @@ namespace PitHero.ECS.Scenes
             baseLayerRenderer.SetMaterial(_colorGrading.Material);
             detailLayerRenderer.SetMaterial(_colorGrading.Material);
             topLayerRenderer.SetMaterial(_colorGrading.Material);
+            _frameRecorder?.SetGradedMaterial(_colorGrading.Material); // graded sprites are flagged for the replay frame viewer
 
             SpawnTreeBands();
 
@@ -2410,6 +2448,8 @@ namespace PitHero.ECS.Scenes
             _replayScrubber = new ReplayScrubberPanel(PitHeroSkin.CreateSkin());
             uiCanvas.Stage.AddElement(_replayScrubber);
             PositionReplayScrubber();
+            _replayTimeTravelBanner = new ReplayTimeTravelBanner(PitHeroSkin.CreateSkin());
+            uiCanvas.Stage.AddElement(_replayTimeTravelBanner);
 
             // Let SettingsUI manage the shortcut bar hide/show animation
             _settingsUI?.SetShortcutBar(_shortcutBar);
@@ -2482,15 +2522,16 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void UpdatePitLevelLabel()
         {
-            if (_pitLevelLabel == null)
-                return;
-
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager == null)
                 return;
+            UpdatePitLevelLabel(pitWidthManager.CurrentPitLevel, pitWidthManager.CurrentPitTier);
+        }
 
-            var currentLevel = pitWidthManager.CurrentPitLevel;
-            var currentTier = pitWidthManager.CurrentPitTier;
+        private void UpdatePitLevelLabel(int currentLevel, int currentTier)
+        {
+            if (_pitLevelLabel == null)
+                return;
             if (currentLevel != _lastDisplayedPitLevel || currentTier != _lastDisplayedPitTier)
             {
                 if (currentTier >= 2)
@@ -2638,14 +2679,16 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void UpdateFundsLabel()
         {
-            if (_fundsLabel == null)
-                return;
-
             var gameState = Core.Services.GetService<GameStateService>();
             if (gameState == null)
                 return;
+            UpdateFundsLabel(gameState.Funds);
+        }
 
-            var currentFunds = gameState.Funds;
+        private void UpdateFundsLabel(int currentFunds)
+        {
+            if (_fundsLabel == null)
+                return;
             if (currentFunds != _lastDisplayedFunds)
             {
                 _fundsLabel.SetText($"{currentFunds}");
@@ -2659,10 +2702,14 @@ namespace PitHero.ECS.Scenes
 
         private void UpdateClockLabel()
         {
-            if (_clockLabel == null || _hudFontNormal == null) return;
             var timeService = Core.Services.GetService<InGameTimeService>();
             if (timeService == null) return;
-            string text = timeService.FormatTime();
+            UpdateClockLabel(timeService.FormatTime());
+        }
+
+        private void UpdateClockLabel(string text)
+        {
+            if (_clockLabel == null || _hudFontNormal == null) return;
             _clockLabel.SetText(text);
             SizeHudLabel(_clockLabel);
             float labelWidth = _hudFontNormal.MeasureString(text).X;
@@ -2738,6 +2785,80 @@ namespace PitHero.ECS.Scenes
             float barRight = _settingsUI?.UIBarRight ?? 0f;
             float midX = (barRight + clockX) / 2f;
             _plantingCropsLabel.SetPosition(midX - labelWidth / 2f, HudLabelY());
+        }
+
+        /// <summary>The event console panel (the replay frame viewer feeds it from the recording).</summary>
+        public EventConsolePanel EventConsole => _eventConsolePanel;
+
+        /// <summary>
+        /// Feeds the party HUDs, the pit level, funds and clock labels from a recorded HUD record
+        /// (replay frame viewer, issue #428) instead of the live services. The portraits keep reading
+        /// the live party entities; the threat tint is left as it is.
+        /// </summary>
+        public void ApplyRecordedHud(in Services.Replay.Frames.HudRecord hud)
+        {
+            ApplyRecordedMember(_graphicalHUD, in hud.Hero);
+            ApplyRecordedMember(_mercenary1HUD, in hud.Merc1);
+            ApplyRecordedMember(_mercenary2HUD, in hud.Merc2);
+            UpdatePitLevelLabel(hud.PitLevel, hud.PitTier);
+            UpdateFundsLabel(hud.Gold > int.MaxValue ? int.MaxValue : (int)hud.Gold);
+            UpdateClockLabel(InGameTimeService.FormatTime(hud.InGameSeconds));
+        }
+
+        private static void ApplyRecordedMember(GraphicalHUD hud, in Services.Replay.Frames.HudMember member)
+        {
+            if (hud == null)
+                return;
+            hud.SetEnabled(member.Present);
+            if (member.Present)
+                hud.UpdateValues(member.Hp, member.MaxHp, member.Mp, member.MaxMp, member.Level);
+        }
+
+        /// <summary>
+        /// Feeds the hero HUD's portrait from the recorded frame (replay frame viewer, issue #431): the
+        /// HUD record carries the walk-down first frame of the head, eyes and hair layers with their
+        /// tints, the same static portrait the live HUD draws. Without a hero the portrait is blank.
+        /// </summary>
+        public void ApplyRecordedPortrait(Services.Replay.Frames.DecodedFrame frame, Rendering.FrameSpriteResolver sprites)
+        {
+            if (_graphicalHUD == null || frame == null || sprites == null)
+                return;
+            ref readonly var hud = ref frame.Hud;
+            _graphicalHUD.SetRecordedPortrait(
+                sprites.Get(hud.PortraitHead), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHeadColor),
+                sprites.Get(hud.PortraitEyes), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesColor),
+                sprites.Get(hud.PortraitHair), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHairColor));
+        }
+
+        /// <summary>The HUD portraits read the live paperdolls again (the viewer is gone).</summary>
+        public void ClearRecordedPortrait()
+        {
+            _graphicalHUD?.ClearRecordedPortrait();
+            _mercenary1HUD?.ClearRecordedPortrait();
+            _mercenary2HUD?.ClearRecordedPortrait();
+        }
+
+        /// <summary>
+        /// Copies what the two mercenary HUDs are drawing as portraits, for the frame viewer to pin
+        /// across a Time Travel rebuild (issue #432): the record carries no mercenary portraits and the
+        /// rebuilding scene has no mercenary entities to read them from until the seek lands, so
+        /// without the pin the panels sat blank for the whole rebuild.
+        /// </summary>
+        public void CaptureMercenaryPortraits(out GraphicalHUD.PortraitSnapshot merc1, out GraphicalHUD.PortraitSnapshot merc2)
+        {
+            merc1 = default;
+            merc2 = default;
+            if (_mercenary1HUD != null)
+                _mercenary1HUD.TryCapturePortrait(out merc1);
+            if (_mercenary2HUD != null)
+                _mercenary2HUD.TryCapturePortrait(out merc2);
+        }
+
+        /// <summary>Draws pinned portraits on the mercenary HUDs (see <see cref="CaptureMercenaryPortraits"/>).</summary>
+        public void ApplyMercenaryPortraits(in GraphicalHUD.PortraitSnapshot merc1, in GraphicalHUD.PortraitSnapshot merc2)
+        {
+            _mercenary1HUD?.SetRecordedPortrait(in merc1);
+            _mercenary2HUD?.SetRecordedPortrait(in merc2);
         }
 
         /// <summary>
@@ -2990,9 +3111,13 @@ namespace PitHero.ECS.Scenes
         /// visualizations are suppressed for the whole slide: they render upwards out of the HUD
         /// heads, so sliding with the panels would leave them hanging in mid-air.
         /// </summary>
-        private void UpdateHudAutoHide()
+        private void UpdateHudAutoHide(bool seeking)
         {
-            _hudPartyVisible = IsPartyInCameraView();
+            // A replay seek parks the panels for its whole duration: the live party is racing through the
+            // session behind the frozen frame and made them slide up and down for minutes, and nobody
+            // needs the party HUD while a rebuild runs (issue #432). Watching a replay keeps the normal
+            // auto-hide, which the owner likes: the panels only take up room while the party is on camera
+            _hudPartyVisible = !seeking && IsPartyInCameraView();
 
             float target = _hudPartyVisible ? 0f : 1f;
             _hudSlideT = Mathf.Approach(_hudSlideT, target, Time.UnscaledDeltaTime / HudAutoHideDuration);
@@ -3381,6 +3506,13 @@ namespace PitHero.ECS.Scenes
             if (tick % GameConfig.ReplayHashIntervalTicks == 0)
                 Services.Replay.ReplayTripwire.ReportStateHash(Services.Replay.SimulationStateHasher.Sample(tick));
 
+            // Issue #425 spike: read-only renderable census for the replay frame-stream budget
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.SampleTick(this, tick);
+
+            // Frame stream: what is on screen at the end of this tick (Y-sort depths are final here)
+            _frameRecorder?.CaptureTick(this, tick);
+
             // Always last: this step is complete
             _simulationClock?.Advance();
         }
@@ -3397,6 +3529,12 @@ namespace PitHero.ECS.Scenes
             bool replayActive = replayPlayback != null && replayPlayback.IsActive;
             if (replayActive)
                 replayPlayback.Update();
+            // The frame viewer (issue #428) draws recorded ticks and feeds the HUD, labels and console
+            // from the record; while it shows a frame the live HUD reads below are skipped
+            var frameViewer = replayActive ? replayPlayback.Viewer : null;
+            if (frameViewer != null)
+                frameViewer.FeedPresentation(this);
+            bool recordedHud = frameViewer != null;
             if (_replayScrubber != null)
             {
                 if (_replayScrubber.IsVisible() != replayActive)
@@ -3408,10 +3546,16 @@ namespace PitHero.ECS.Scenes
                         PositionReplayScrubber();
                         _replayScrubber.ToFront();
                     }
+                    else
+                    {
+                        _replayScrubber.OnHidden();
+                    }
                 }
                 if (replayActive)
                     _replayScrubber.Update();
             }
+            // A Time Travel rebuild sits behind a frozen frame for minutes on a long session: keep something moving
+            _replayTimeTravelBanner?.Update(replayActive && replayPlayback.IsTimeTravelling);
 
             // Camera before the UI stages, matching the entity-order the camera component used to update in
             _cameraController?.PresentationUpdate();
@@ -3444,6 +3588,10 @@ namespace PitHero.ECS.Scenes
             _settingsUI?.Update();
             _eventConsolePanel?.Update();
 
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.PresentationUpdate(this);
+            _frameRecorder?.PresentationUpdate(Time.UnscaledDeltaTime);
+
             // AutoSave (issue #409): wall-clock countdown, presentation-only. The gate also drives the
             // Session → Save button, so manual saves obey the same transitional-state rules.
             var saveLoadService = Core.Services.GetService<SaveLoadService>();
@@ -3469,15 +3617,28 @@ namespace PitHero.ECS.Scenes
             }
 
             // Keep pit level label up to date
-            UpdatePitLevelLabel();
-            UpdateFundsLabel();
-            _colorGrading?.UpdateTimeOfDay();
-            _cloudOverlay?.Update();
+            if (!recordedHud)
+            {
+                UpdatePitLevelLabel();
+                UpdateFundsLabel();
+            }
+            // Day/night follows the recorded clock while a recorded frame is on screen
+            if (recordedHud && frameViewer.CurrentFrame != null)
+                _colorGrading?.UpdateTimeOfDay(frameViewer.CurrentFrame.Hud.InGameSeconds);
+            else
+                _colorGrading?.UpdateTimeOfDay();
+            // Clouds drift on the viewer's cursor time and take their tint from the recorded clock while a
+            // recorded frame is on screen (the live clock is elsewhere and the live sim time stands still)
+            if (recordedHud && frameViewer.CurrentFrame != null)
+                _cloudOverlay?.Update(frameViewer.Cursor.FrameTick / 60f, frameViewer.CurrentFrame.Hud.InGameSeconds);
+            else
+                _cloudOverlay?.Update();
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
             // are open so they never obscure the tiles being edited; polling covers every enter/exit
             // path (button toggle, outside-click dismiss, cross-UI mutual exclusion).
             _cloudOverlayEntity?.SetEnabled(!(_settingsUI?.IsFarmOrConstructionModeActive ?? false));
-            UpdateClockLabel();
+            if (!recordedHud)
+                UpdateClockLabel();
             UpdateTillingLabel();
             UpdateRestoringGrassLabel();
             bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
@@ -3597,12 +3758,18 @@ namespace PitHero.ECS.Scenes
 
             UpdatePlantingCropsLabel();
 
-            // The intro keeps the graphical HUD hidden; UpdateHeroHUD would re-enable it every frame
-            if (!IsIntroActive)
+            // The intro keeps the graphical HUD hidden; UpdateHeroHUD would re-enable it every frame.
+            // A recorded frame on screen feeds the HUD from the record instead (ApplyRecordedHud)
+            if (!IsIntroActive && !recordedHud)
                 UpdateHeroHUD();
             UpdateHudFontMode();
             if (!IsIntroActive)
-                UpdateHudAutoHide();
+            {
+                bool replaySeeking = replayActive &&
+                    (replayPlayback.State == Services.Replay.ReplayPlaybackState.Seeking ||
+                     replayPlayback.State == Services.Replay.ReplayPlaybackState.Starting);
+                UpdateHudAutoHide(replaySeeking);
+            }
 
             // Update shortcut bar position (handles offset when inventory open)
             PositionShortcutBar();

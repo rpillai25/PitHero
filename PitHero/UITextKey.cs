@@ -143,6 +143,7 @@ namespace PitHero
         public const string ButtonReplayCurrentSession = "ButtonReplayCurrentSession";
         public const string ButtonReplayPlaySelected = "ButtonReplayPlaySelected";
         public const string ButtonReplayContinueHere = "ButtonReplayContinueHere";
+        public const string ButtonReplayRewind = "ButtonReplayRewind";
         public const string ReplayInfoTitle = "ReplayInfoTitle";
         public const string ReplayInfoIntro = "ReplayInfoIntro";
         public const string ReplayInfoWarning = "ReplayInfoWarning";
@@ -155,6 +156,8 @@ namespace PitHero
         public const string ReplayRowTitleFormat = "ReplayRowTitleFormat";
         public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";
         public const string ReplayRowOlderSimulation = "ReplayRowOlderSimulation";
+        public const string ReplayRowCachedMark = "ReplayRowCachedMark";
+        public const string ReplayRowAutoMark = "ReplayRowAutoMark";
         public const string ReplayOlderSimulationStatus = "ReplayOlderSimulationStatus";
         public const string ConfirmContinueOlderFormat = "ConfirmContinueOlderFormat";
         public const string ConfirmContinueOlderInSync = "ConfirmContinueOlderInSync";
@@ -165,13 +168,12 @@ namespace PitHero
         public const string ReplayTimeFormat = "ReplayTimeFormat";
         public const string ReplaySeekingFormat = "ReplaySeekingFormat";
         public const string ReplayStarting = "ReplayStarting";
+        public const string ReplayTimeTravelling = "ReplayTimeTravelling";
         public const string ReplayDivergenceAt = "ReplayDivergenceAt";
         public const string ReplayDivergenceState = "ReplayDivergenceState";
         public const string ReplayDivergenceDecision = "ReplayDivergenceDecision";
         public const string ReplayNoDivergence = "ReplayNoDivergence";
         public const string ReplayEndReached = "ReplayEndReached";
-        public const string ReplayFutureStatus = "ReplayFutureStatus";
-        public const string ConfirmContinueFutureMessage = "ConfirmContinueFutureMessage";
         public const string DialogConfirmReplay = "DialogConfirmReplay";
         public const string ConfirmReplayInterruptMessage = "ConfirmReplayInterruptMessage";
         public const string DialogConfirmDeleteReplay = "DialogConfirmDeleteReplay";
@@ -386,8 +388,6 @@ namespace PitHero
         public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
         public const string TabSeeds = "TabSeeds";
         public const string TabArtifacts = "TabArtifacts";
-        public const string ArtifactSphereOfForesightName = "ArtifactSphereOfForesightName";
-        public const string ArtifactSphereOfForesightDesc = "ArtifactSphereOfForesightDesc";
         public const string ArtifactChronosTimepieceName = "ArtifactChronosTimepieceName";
         public const string ArtifactChronosTimepieceDesc = "ArtifactChronosTimepieceDesc";
         public const string ArtifactKairosMetronomeName = "ArtifactKairosMetronomeName";

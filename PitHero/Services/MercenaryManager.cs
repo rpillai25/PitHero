@@ -1268,6 +1268,26 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// The <paramref name="ordinal"/>-th hired mercenary (0-based, in hire-list order) or null.
+        /// Non-allocating; for per-tick readers such as the replay frame recorder's HUD record.
+        /// </summary>
+        public Entity GetHiredMercenary(int ordinal)
+        {
+            int seen = 0;
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp == null || !comp.IsHired)
+                    continue;
+                if (seen == ordinal)
+                    return entity;
+                seen++;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Returns true if any hired mercenary has the TrapSense passive.
         /// Non-allocating: iterates the internal list with a for loop and early-exits.
         /// Use this instead of calling GetHiredMercenaries() in hot paths (e.g. fog-clear step).

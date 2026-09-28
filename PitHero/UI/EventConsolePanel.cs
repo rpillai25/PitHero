@@ -131,6 +131,34 @@ namespace PitHero.UI
 
         private void OnEventReceived(ConsoleSegment[] segments, EventPriority priority)
         {
+            AppendRecorded(segments);
+            OnNewEvent?.Invoke(priority);
+        }
+
+        /// <summary>
+        /// Replaces the view with the last <see cref="MaxEvents"/> recorded lines emitted at or before
+        /// <paramref name="upToTick"/> (replay frame viewer, issue #428: every seek rebuilds the console
+        /// from the recording; the live event stream stays suppressed meanwhile). Returns the number of
+        /// recorded lines now shown, for the caller's append cursor.
+        /// </summary>
+        public int ShowRecorded(Services.Replay.Frames.RecordedConsoleLog log, long upToTick)
+        {
+            _events.Clear();
+            int count = log != null ? log.CountAtOrBefore(upToTick) : 0;
+            int from = count > MaxEvents ? count - MaxEvents : 0;
+            for (int i = from; i < count; i++)
+                _events.Add(log[i].Segments);
+            RebuildLog();
+            _scrollToBottom = true;
+            _forceScrollToBottom = true;
+            return count;
+        }
+
+        /// <summary>Appends one line (live event, or a recorded line the replay cursor just passed).</summary>
+        public void AppendRecorded(ConsoleSegment[] segments)
+        {
+            if (segments == null)
+                return;
             if (_events.Count >= MaxEvents)
             {
                 _events.RemoveAt(0);
@@ -144,7 +172,6 @@ namespace PitHero.UI
             }
 
             _scrollToBottom = true;
-            OnNewEvent?.Invoke(priority);
         }
 
         /// <summary>

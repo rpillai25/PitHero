@@ -24,6 +24,13 @@ namespace PitHero.Util
             CurrentMap = tmxMap;
         }
 
+        /// <summary>
+        /// Raised right before a runtime tile write (layer, x, y, new gid; 0 = removal), while the old
+        /// gid is still in the grid. The single choke point for every tile mutation, which the replay
+        /// frame recorder subscribes to.
+        /// </summary>
+        public event Action<TmxLayer, int, int, int> TileChanging;
+
         public void RemoveTile(string layerName, int x, int y)
         {
             if (IsOutOfBounds(x, y))
@@ -38,6 +45,9 @@ namespace PitHero.Util
                 Debug.Log("WARNING: Layer null for RemoveTile!!!");
                 return;
             }
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.OnTileMutation(layerName, layer.Grid[x + y * layer.Width], 0);
+            TileChanging?.Invoke(layer, x, y, 0);
             layer.RemoveTile(x, y);
         }
 
@@ -55,6 +65,9 @@ namespace PitHero.Util
                 Debug.Log("WARNING: Layer null for SetTile!!!");
                 return;
             }
+            if (GameConfig.ReplayFrameCensus)
+                Services.Replay.Frames.ReplayFrameCensus.Current?.OnTileMutation(layerName, layer.Grid[x + y * layer.Width], tileIndex);
+            TileChanging?.Invoke(layer, x, y, tileIndex);
             layer.SetTile(x, y, tileIndex);
         }
 

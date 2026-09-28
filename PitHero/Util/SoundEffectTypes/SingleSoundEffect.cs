@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Audio;
 using Nez;
 using PitHero.Util.Extensions;
 using System;
@@ -19,15 +19,15 @@ namespace PitHero.Util.SoundEffectTypes
             soundEffectInstance = soundEffect.CreateInstance();
         }
 
-        public void Play(float volume, uint frameInterval = 0)
+        public int Play(float volume, uint frameInterval = 0)
         {
             if (disposed)
-                return;
+                return -1;
 
             if (frameInterval == 0 && soundEffectInstance.State == SoundState.Playing)
             {
                 //Normal behavior is to only play a sound effect if it's not already playing
-                return;
+                return -1;
             }
             if (Time.FrameCount - lastPlayedFrames > frameInterval)
             {
@@ -35,12 +35,22 @@ namespace PitHero.Util.SoundEffectTypes
                 soundEffectInstance.Stop();
                 lastPlayedFrames = Time.FrameCount;
                 soundEffectInstance.Play(volume);
+                return 0;
             }
+            return -1;
         }
 
-        public void Play(float volume, float pitch, float pan)
+        public int Play(float volume, float pitch, float pan)
         {
             //sound effect instance has no pitch and pan
+            return Play(volume);
+        }
+
+        public int PickVariant() => 0;
+
+        /// <summary>A recorded play of a single-instance sound obeys the same one-at-a-time rule.</summary>
+        public void PlayVariant(int variant, float volume, float pitch, float pan)
+        {
             Play(volume);
         }
 

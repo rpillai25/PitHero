@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Sprites;
 using Nez.Textures;
 using Nez.UI;
 using PitHero.AI;
@@ -31,18 +32,24 @@ namespace PitHero.ECS.Components
     /// Monitors the hero's or a mercenary's BattleActionQueue: shows up to 5 queued actions
     /// and animates completed ones floating up. ShowAction() triggers a one-off animation
     /// for actions that never pass through the monitored queue (e.g. mercenary AI actions).
+    /// Captured into the replay frame stream as screen-space sprite ops (issue #431), so a replay
+    /// shows the queue as it was.
     /// </summary>
-    public class ActionQueueVisualizationComponent : RenderableComponent, IUpdatable
+    public class ActionQueueVisualizationComponent : RenderableComponent, IUpdatable, Services.Replay.Frames.IFrameCapturable
     {
         private const int SpriteSize = 32; // Size of each action sprite
         private const int SpriteSpacing = 2; // Spacing between sprites
         private const float AnimationDuration = 1.0f; // Duration of slide + fade animation in seconds (increase to slow down, decrease to speed up)
         private const float SlideDistance = SpriteSize + SpriteSpacing; // Distance to slide up (34 pixels)
+        private const string ItemsAtlasPath = "Content/Atlases/Items.atlas";
+        private const string SkillsAtlasPath = "Content/Atlases/SkillsStencils.atlas";
+        private const string EmptyBackgroundSprite = "base.empty";
+        private const string PunchSprite = "base.punch";
 
         private HeroComponent _heroComponent;
         private MercenaryComponent _mercenaryComponent;
-        private object _itemsAtlas;
-        private object _skillsAtlas;
+        private SpriteAtlas _itemsAtlas;
+        private SpriteAtlas _skillsAtlas;
 
         private int _lastQueueCount = 0;
         private QueuedAction _lastFirstAction = null;
@@ -157,34 +164,82 @@ namespace PitHero.ECS.Components
             }
         }
 
+        /// <summary>Loads the two atlases on first use; false until both are available.</summary>
+        private bool EnsureAtlases()
+        {
+            if (_itemsAtlas != null && _skillsAtlas != null)
+                return true;
+            if (Core.Content == null)
+                return false;
+            _itemsAtlas ??= Core.Content.LoadSpriteAtlas(ItemsAtlasPath);
+            _skillsAtlas ??= Core.Content.LoadSpriteAtlas(SkillsAtlasPath);
+            return _itemsAtlas != null && _skillsAtlas != null;
+        }
+
+        /// <summary>The icon (and optional background) an action shows; false when its sprite is missing from the atlases.</summary>
+        private bool TryGetActionSprites(QueuedAction action, out Sprite sprite, out Sprite backgroundSprite)
+        {
+            sprite = null;
+            backgroundSprite = null;
+            try
+            {
+                if (action.ActionType == QueuedActionType.UseItem && action.Consumable != null)
+                {
+                    // For items, use the sprite key with empty background
+                    backgroundSprite = _skillsAtlas.GetSprite(EmptyBackgroundSprite);
+                    sprite = _itemsAtlas.GetSprite(action.Consumable.SpriteName);
+                }
+                else if (action.ActionType == QueuedActionType.UseSkill && action.Skill != null)
+                {
+                    // For skills, use the skill ID as sprite key (skills already have their own backgrounds)
+                    sprite = _skillsAtlas.GetSprite(action.Skill.Id);
+                }
+                else if (action.ActionType == QueuedActionType.Attack)
+                {
+                    // For attacks, use weapon sprite if equipped, otherwise use "base.punch" sprite
+                    if (action.WeaponItem != null)
+                    {
+                        // Use weapon item sprite from items atlas with empty background.
+                        // SpriteName, not Name — tiered weapons ("DepthsReaver+2") aren't atlas keys.
+                        backgroundSprite = _skillsAtlas.GetSprite(EmptyBackgroundSprite);
+                        sprite = _itemsAtlas.GetSprite(action.WeaponItem.SpriteName);
+                    }
+                    else
+                    {
+                        // Use base punch sprite for unarmed attacks (already has background)
+                        sprite = _skillsAtlas.GetSprite(PunchSprite);
+                    }
+                }
+            }
+            catch
+            {
+                // Silently ignore missing sprites
+                sprite = null;
+                backgroundSprite = null;
+                return false;
+            }
+            return sprite != null || backgroundSprite != null;
+        }
+
+        /// <summary>The fade of a completed action: opaque for a queued one (animationTime &lt; 0), fading out over the animation.</summary>
+        private static Color ActionColor(float animationTime)
+        {
+            byte alpha = 255;
+            if (animationTime >= 0f)
+            {
+                float fadeProgress = animationTime / AnimationDuration;
+                if (fadeProgress > 1f) fadeProgress = 1f;
+                alpha = (byte)(255 * (1f - fadeProgress));
+            }
+            return new Color(255, 255, 255, alpha);
+        }
+
         /// <summary>Render the action queue sprites.</summary>
         public override void Render(Batcher batcher, Camera camera)
         {
             // Only render during battle
-            if (!PitHero.AI.HeroStateMachine.IsBattleInProgress)
+            if (!PitHero.AI.HeroStateMachine.IsBattleInProgress || !EnsureAtlases())
                 return;
-
-            // Only load atlases if Core.Content is available and not already cached
-            if (Core.Content != null)
-            {
-                // Lazy load atlases on first use
-                if (_itemsAtlas == null)
-                {
-                    _itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                }
-                if (_skillsAtlas == null)
-                {
-                    _skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
-                }
-            }
-
-            // Can't render without atlases
-            if (_itemsAtlas == null || _skillsAtlas == null)
-                return;
-
-            // Cast to dynamic to call GetSprite (avoids type resolution issues)
-            dynamic itemsAtlas = _itemsAtlas;
-            dynamic skillsAtlas = _skillsAtlas;
 
             // Entity position is the HUD head, where the active action shows and rises from (screen space)
             var pos = Entity.Transform.Position;
@@ -195,7 +250,7 @@ namespace PitHero.ECS.Components
             for (int i = 0; i < _animatingActions.Count; i++)
             {
                 var animating = _animatingActions[i];
-                RenderAction(animating.Action, batcher, itemsAtlas, skillsAtlas, startX, startY, animating.YOffset, animating.ElapsedTime);
+                RenderAction(animating.Action, batcher, startX, startY, animating.YOffset, animating.ElapsedTime);
             }
 
             // Render active queue actions (hero or monitored mercenary)
@@ -214,69 +269,22 @@ namespace PitHero.ECS.Components
                     for (int i = 0; i < actions.Length; i++)
                     {
                         float yOffset = -i * (SpriteSize + SpriteSpacing);
-                        RenderAction(actions[i], batcher, itemsAtlas, skillsAtlas, queueX, queueY, yOffset, -1f);
+                        RenderAction(actions[i], batcher, queueX, queueY, yOffset, -1f);
                     }
                 }
             }
         }
 
         /// <summary>Render a single action sprite with optional animation.</summary>
-        private void RenderAction(QueuedAction action, Batcher batcher, dynamic itemsAtlas, dynamic skillsAtlas,
-            float startX, float startY, float yOffset, float animationTime)
+        private void RenderAction(QueuedAction action, Batcher batcher, float startX, float startY, float yOffset, float animationTime)
         {
-            Sprite sprite = null;
-            Sprite backgroundSprite = null;
-
-            try
-            {
-                if (action.ActionType == QueuedActionType.UseItem && action.Consumable != null)
-                {
-                    // For items, use the sprite key with empty background
-                    backgroundSprite = skillsAtlas.GetSprite("base.empty");
-                    sprite = itemsAtlas.GetSprite(action.Consumable.SpriteName);
-                }
-                else if (action.ActionType == QueuedActionType.UseSkill && action.Skill != null)
-                {
-                    // For skills, use the skill ID as sprite key (skills already have their own backgrounds)
-                    sprite = skillsAtlas.GetSprite(action.Skill.Id);
-                }
-                else if (action.ActionType == QueuedActionType.Attack)
-                {
-                    // For attacks, use weapon sprite if equipped, otherwise use "base.punch" sprite
-                    if (action.WeaponItem != null)
-                    {
-                        // Use weapon item sprite from items atlas with empty background.
-                        // SpriteName, not Name — tiered weapons ("DepthsReaver+2") aren't atlas keys.
-                        backgroundSprite = skillsAtlas.GetSprite("base.empty");
-                        sprite = itemsAtlas.GetSprite(action.WeaponItem.SpriteName);
-                    }
-                    else
-                    {
-                        // Use base punch sprite for unarmed attacks (already has background)
-                        sprite = skillsAtlas.GetSprite("base.punch");
-                    }
-                }
-            }
-            catch
-            {
-                // Silently ignore missing sprites
+            if (!TryGetActionSprites(action, out var sprite, out var backgroundSprite))
                 return;
-            }
 
             // Calculate position for this action
             float x = startX;
             float y = startY + yOffset;
-
-            // Calculate alpha for fade out animation
-            byte alpha = 255;
-            if (animationTime >= 0f)
-            {
-                float fadeProgress = animationTime / AnimationDuration;
-                if (fadeProgress > 1f) fadeProgress = 1f;
-                alpha = (byte)(255 * (1f - fadeProgress));
-            }
-
-            Color colorWithAlpha = new Color(255, 255, 255, alpha);
+            Color colorWithAlpha = ActionColor(animationTime);
 
             // Draw background sprite first if needed
             if (backgroundSprite != null)
@@ -291,6 +299,55 @@ namespace PitHero.ECS.Components
                 var drawable = new SpriteDrawable(sprite);
                 drawable.Draw(batcher, x, y, SpriteSize, SpriteSize, colorWithAlpha);
             }
+        }
+
+        // ── Replay frame capture (issue #431) ─────────────────────────────────────────
+
+        /// <summary>
+        /// The same icons as <see cref="Render"/>, as screen-space sprite ops: one per background and one
+        /// per icon, anchored so the viewer's origin-based draw lands the sprite's top-left where the
+        /// drawable puts it (the atlas icons are SpriteSize square, so no scale is needed).
+        /// </summary>
+        public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
+        {
+            if (!PitHero.AI.HeroStateMachine.IsBattleInProgress || !EnsureAtlases())
+                return;
+            var pos = Entity.Transform.Position;
+            for (int i = 0; i < _animatingActions.Count; i++)
+            {
+                var animating = _animatingActions[i];
+                CaptureAction(animating.Action, ref w, ctx, pos.X, pos.Y + animating.YOffset, animating.ElapsedTime);
+            }
+            var monitoredQueue = MonitoredQueue;
+            if (monitoredQueue == null)
+                return;
+            var actions = monitoredQueue.GetAll();
+            if (actions == null)
+                return;
+            float queueX = pos.X + QueuedActionXOffset;
+            float queueY = pos.Y + QueuedActionYOffset;
+            for (int i = 0; i < actions.Length; i++)
+                CaptureAction(actions[i], ref w, ctx, queueX, queueY - i * (SpriteSize + SpriteSpacing), -1f);
+        }
+
+        private void CaptureAction(QueuedAction action, ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx, float x, float y, float animationTime)
+        {
+            if (!TryGetActionSprites(action, out var sprite, out var backgroundSprite))
+                return;
+            uint color = ActionColor(animationTime).PackedValue;
+            if (backgroundSprite != null)
+                CaptureIcon(backgroundSprite, ref w, ctx, x, y, color);
+            if (sprite != null)
+                CaptureIcon(sprite, ref w, ctx, x, y, color);
+        }
+
+        private void CaptureIcon(Sprite sprite, ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx, float x, float y, uint color)
+        {
+            ushort id = ctx.SpriteId(sprite);
+            if (id == Services.Replay.Frames.SpriteKeyRegistry.None)
+                return;
+            // The viewer draws a sprite op at its origin; the drawable draws the top-left at (x, y)
+            w.WriteSprite(id, x + sprite.Origin.X, y + sprite.Origin.Y, LayerDepth, RenderLayer, color, Services.Replay.Frames.FrameOpFlags.ScreenSpace);
         }
 
         /// <summary>Visible during battle (screen-space rendering ignores camera bounds).</summary>

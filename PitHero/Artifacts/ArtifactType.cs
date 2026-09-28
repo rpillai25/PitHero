@@ -7,10 +7,10 @@ namespace PitHero.Artifacts
     /// </summary>
     public enum ArtifactType
     {
-        /// <summary>Unlocks the future-simulation region of the replay timeline.</summary>
+        /// <summary>Retired (2026-09-26): the simulated future was removed (issue #438). Ordinal reserved; never offered, never shown, never granted.</summary>
         SphereOfForesight = 0,
 
-        /// <summary>Unlocks Time Travel Here in replays. Requires the Sphere of Foresight first.</summary>
+        /// <summary>Unlocks Time Travel Here in replays. Requires the Kairos Metronome first.</summary>
         ChronosTimepiece = 1,
 
         /// <summary>Unlocks the 4X and 8X fast-forward rungs.</summary>
@@ -39,15 +39,24 @@ namespace PitHero.Artifacts
     /// <summary>Static facts about each artifact: sprite, text keys, price, scope and purchase prerequisite.</summary>
     public static class ArtifactCatalog
     {
-        /// <summary>Number of artifact kinds (the enum is dense from 0).</summary>
+        /// <summary>Number of artifact kinds (the enum is dense from 0; retired ordinals count).</summary>
         public const int Count = 6;
 
-        /// <summary>Sprite name in the Items atlas.</summary>
+        /// <summary>
+        /// True for an artifact that no longer exists in the game but whose ordinal is reserved because
+        /// it may sit in a player's system save: never offered, never shown, never granted. A loaded
+        /// save keeps the ordinal untouched (<see cref="IsValid"/> still accepts it).
+        /// </summary>
+        public static bool IsRetired(ArtifactType type)
+        {
+            return type == ArtifactType.SphereOfForesight;
+        }
+
+        /// <summary>Sprite name in the Items atlas (empty for a retired artifact).</summary>
         public static string GetSpriteName(ArtifactType type)
         {
             switch (type)
             {
-                case ArtifactType.SphereOfForesight: return "SphereOfForesight";
                 case ArtifactType.ChronosTimepiece: return "ChronosTimepiece";
                 case ArtifactType.KairosMetronome: return "KairosMetronome";
                 case ArtifactType.FastGrowFertilizer: return "FastGrowFertilizer";
@@ -57,12 +66,11 @@ namespace PitHero.Artifacts
             }
         }
 
-        /// <summary>UI.txt key of the display name.</summary>
+        /// <summary>UI.txt key of the display name (empty for a retired artifact).</summary>
         public static string GetNameKey(ArtifactType type)
         {
             switch (type)
             {
-                case ArtifactType.SphereOfForesight: return UITextKey.ArtifactSphereOfForesightName;
                 case ArtifactType.ChronosTimepiece: return UITextKey.ArtifactChronosTimepieceName;
                 case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeName;
                 case ArtifactType.FastGrowFertilizer: return UITextKey.ArtifactFastGrowFertilizerName;
@@ -72,12 +80,11 @@ namespace PitHero.Artifacts
             }
         }
 
-        /// <summary>UI.txt key of the description shown in the artifact card.</summary>
+        /// <summary>UI.txt key of the description shown in the artifact card (empty for a retired artifact).</summary>
         public static string GetDescriptionKey(ArtifactType type)
         {
             switch (type)
             {
-                case ArtifactType.SphereOfForesight: return UITextKey.ArtifactSphereOfForesightDesc;
                 case ArtifactType.ChronosTimepiece: return UITextKey.ArtifactChronosTimepieceDesc;
                 case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeDesc;
                 case ArtifactType.FastGrowFertilizer: return UITextKey.ArtifactFastGrowFertilizerDesc;
@@ -100,12 +107,11 @@ namespace PitHero.Artifacts
             }
         }
 
-        /// <summary>Gold price in the Second Chance shop (wealth to show for Global, the cost for Local).</summary>
+        /// <summary>Gold price in the Second Chance shop (wealth to show for Global, the cost for Local; 0 for a retired artifact).</summary>
         public static int GetPrice(ArtifactType type)
         {
             switch (type)
             {
-                case ArtifactType.SphereOfForesight: return GameConfig.ArtifactSphereOfForesightPrice;
                 case ArtifactType.ChronosTimepiece: return GameConfig.ArtifactChronosTimepiecePrice;
                 case ArtifactType.KairosMetronome: return GameConfig.ArtifactKairosMetronomePrice;
                 case ArtifactType.FastGrowFertilizer: return GameConfig.ArtifactFastGrowFertilizerPrice;
@@ -138,15 +144,15 @@ namespace PitHero.Artifacts
         private static readonly ArtifactType[] NoPrerequisites = new ArtifactType[0];
 
         private static readonly ArtifactType[] TimepiecePrerequisites =
-            { ArtifactType.SphereOfForesight, ArtifactType.KairosMetronome };
+            { ArtifactType.KairosMetronome };
 
         private static readonly ArtifactType[] LightningPrerequisites =
             { ArtifactType.FastGrowFertilizer };
 
         /// <summary>
         /// Every artifact that must be owned before this one is offered, or an empty array. The
-        /// timepiece is the capstone: seeing the future and hurrying it along both come before
-        /// changing it. The lightning fertilizer builds on the fast one.
+        /// timepiece is the capstone: hurrying time along comes before changing it. The lightning
+        /// fertilizer builds on the fast one.
         /// </summary>
         public static ArtifactType[] GetPrerequisites(ArtifactType type)
         {
@@ -172,7 +178,7 @@ namespace PitHero.Artifacts
             }
         }
 
-        /// <summary>True for a value the catalog knows.</summary>
+        /// <summary>True for a value the catalog knows (a retired ordinal included: the loader keeps it, the rest ignores it).</summary>
         public static bool IsValid(int ordinal)
         {
             return ordinal >= 0 && ordinal < Count;

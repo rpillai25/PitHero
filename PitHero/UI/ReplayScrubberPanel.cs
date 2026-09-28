@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Nez;
+using Nez.Textures;
 using Nez.UI;
 using PitHero.Services;
 using PitHero.Services.Replay;
@@ -7,10 +9,12 @@ using PitHero.Services.Replay;
 namespace PitHero.UI
 {
     /// <summary>
-    /// Bottom-of-screen replay transport: Exit, Play/Pause, speed cycle, a scrub slider with the
-    /// current/total time and a status label (seeking progress, end of replay, divergence). Lives on
-    /// the UI stage for the scene's lifetime and is shown only while a replay is active. The slider
-    /// commits on release so dragging previews the target time without seeking every frame.
+    /// Bottom-of-screen replay transport: Exit, Play/Pause, rewind (frame view only), speed cycle, a
+    /// scrub slider with the current/total time and a status label (seeking progress, end of replay,
+    /// divergence). Lives on the UI stage for the scene's lifetime and is shown only while a replay is
+    /// active. The slider commits on release so dragging previews the target time without seeking every
+    /// frame. SHIFT + left arrow rewinds for as long as it is held (issue #431): the camera ignores the
+    /// arrow keys while SHIFT is down, so the two never fight over the key.
     /// </summary>
     public class ReplayScrubberPanel : Window
     {
@@ -22,7 +26,15 @@ namespace PitHero.UI
         private Cell _continueCell;            // collapsed to zero width when time travel is not offered
         private float _continueWidth;
         private ConfirmationDialog _continueDialog;
-        private TextButton _playPauseButton;
+        private ImageButton _playPauseButton;  // face swaps between the play and pause icons
+        private ImageButtonStyle _playStyle;
+        private ImageButtonStyle _pauseStyle;
+        private bool _showingPauseIcon;
+        private ImageButton _rewindButton;
+        private Cell _rewindCell;              // collapsed to zero width outside the frame view
+        private float _rewindWidth;
+        private bool _rewindOffered = true;
+        private bool _holdKeyDown;             // SHIFT + left arrow is held: the hold ends when either key comes up
         private TextButton _speedButton;
         private ReplayTimelineSlider _slider;
         private Label _timeLabel;
@@ -30,8 +42,6 @@ namespace PitHero.UI
 
         private long _lastShownTick = -1;
         private long _lastShownTotal = -1;
-        private long _lastShownMax = -1;
-        private bool _lastShownInFuture;
         private ReplayPlaybackState _lastShownState = ReplayPlaybackState.Idle;
         private int _lastShownSpeedIndex = -1;
         private long _lastShownDivergence = -2;
@@ -53,6 +63,32 @@ namespace PitHero.UI
         }
 
         private const float ButtonHeight = 20f;
+        private const float IconButtonWidth = 30f;   // a 16 px icon on the nine-patch face with the same side room as a text button
+        private const string PlayIconSprite = "UIScrubberPlay";
+        private const string PauseIconSprite = "UIScrubberPause";
+        private const string RewindIconSprite = "UIScrubberRewind";
+        private static readonly Color IconDisabledTint = new Color(255, 255, 255, 110); // the icon fades while its button is dead
+
+        /// <summary>
+        /// The text buttons' nine-patch face with an icon on top instead of a label. Fresh nine-patch
+        /// instances: the skin's "ph-default" face carries 25 px of side padding to centre text, which
+        /// would push a 16 px icon out of a 30 px button.
+        /// </summary>
+        private static ImageButtonStyle MakeIconStyle(string spriteName)
+        {
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            var icon = uiAtlas.GetSprite(spriteName);
+            return new ImageButtonStyle
+            {
+                Up = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4)),
+                Down = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4)),
+                Over = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4)),
+                ImageUp = new SpriteDrawable(icon),
+                ImageDisabled = new SpriteDrawable(icon) { TintColor = IconDisabledTint },
+                PressedOffsetX = 1,
+                PressedOffsetY = 1
+            };
+        }
 
         /// <summary>Builds the panel. Positioned by MainGameScene.PositionReplayScrubber.</summary>
         public ReplayScrubberPanel(Skin skin) : base("", skin.Get<WindowStyle>("ph-default"))
@@ -68,8 +104,15 @@ namespace PitHero.UI
             _continueButton = new TextButton(GetText(UITextKey.ButtonReplayContinueHere), skin, "ph-default");
             _continueButton.OnClicked += (_) => ConfirmContinueHere();
 
-            _playPauseButton = new TextButton(GetText(UITextKey.ButtonReplayPause), skin, "ph-default");
+            // Play/Pause and Rewind are icons on the same nine-patch face as the text buttons
+            _playStyle = MakeIconStyle(PlayIconSprite);
+            _pauseStyle = MakeIconStyle(PauseIconSprite);
+            _playPauseButton = new ImageButton(_pauseStyle);
+            _showingPauseIcon = true;
             _playPauseButton.OnClicked += (_) => ReplayPlaybackService.Current?.TogglePause();
+
+            _rewindButton = new ImageButton(MakeIconStyle(RewindIconSprite));
+            _rewindButton.OnClicked += (_) => ReplayPlaybackService.Current?.ToggleRewind();
 
             _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.SpeedStepLabels[0]), skin, "ph-default");
             _speedButton.OnClicked += (_) => ReplayPlaybackService.Current?.CycleSpeed();
@@ -86,11 +129,15 @@ namespace PitHero.UI
             Add(_exitButton).Width(TextButtonWidth(_exitButton)).Height(ButtonHeight).SetPadLeft(EdgePad).SetPadRight(6f);
             _continueWidth = TextButtonWidth(_continueButton);
             _continueCell = Add(_continueButton).Width(_continueWidth).Height(ButtonHeight).SetPadRight(6f);
-            // Play/Pause swaps text: size for the wider of the two so the layout never shifts
-            float playPauseWidth = System.Math.Max(TextButtonWidth(_playPauseButton),
-                MeasureButtonText(GetText(UITextKey.ButtonReplayPlay)) + ButtonTextPad);
-            Add(_playPauseButton).Width(playPauseWidth).Height(ButtonHeight).SetPadRight(6f);
-            Add(_speedButton).Width(TextButtonWidth(_speedButton) + 8f).Height(ButtonHeight).SetPadRight(10f);
+            // Both icons are 16 px, so the play/pause swap never shifts the layout
+            Add(_playPauseButton).Width(IconButtonWidth).Height(ButtonHeight).SetPadRight(6f);
+            _rewindWidth = IconButtonWidth;
+            _rewindCell = Add(_rewindButton).Width(_rewindWidth).Height(ButtonHeight).SetPadRight(6f);
+            // The speed face grows to "32X" in the frame view: size for the widest label of either ladder
+            float speedWidth = TextButtonWidth(_speedButton);
+            for (int i = 0; i < GameConfig.ReplayFrameViewSpeedStepLabels.Length; i++)
+                speedWidth = System.Math.Max(speedWidth, MeasureButtonText(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.ReplayFrameViewSpeedStepLabels[i])) + ButtonTextPad);
+            Add(_speedButton).Width(speedWidth + 8f).Height(ButtonHeight).SetPadRight(10f);
             Add(_slider).Expand().Fill().Height(ButtonHeight).SetPadRight(10f);
             Add(_timeLabel).SetPadRight(10f);
             // Status strings are kept short (one or two words, "Diverged at m:ss") so the cell's
@@ -121,9 +168,8 @@ namespace PitHero.UI
                 return;
             if (playback.State == ReplayPlaybackState.Seeking || playback.State == ReplayPlaybackState.Starting)
                 return;
-            // Continuing from the past discards what happened since; continuing from the simulated
-            // future commits to a world the player only watched
-            string message = GetText(playback.InFuture ? UITextKey.ConfirmContinueFutureMessage : UITextKey.ConfirmContinueHereMessage);
+            // Continuing from the past discards what happened since
+            string message = GetText(UITextKey.ConfirmContinueHereMessage);
             string warning = null;
             if (playback.IsOlderSimulation)
             {
@@ -166,7 +212,7 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
             long target = (long)value;
-            if (target > playback.TotalTicks && !ReplayPlaybackService.FutureSimulationUnlocked)
+            if (target > playback.TotalTicks)
                 target = playback.TotalTicks;
             if (target != playback.CurrentTick)
                 playback.Seek(target);
@@ -180,14 +226,22 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
 
-            long total = playback.TotalTicks;
-            long max = playback.MaxSeekTick; // session end, or the future cap when unlocked
-            if (total != _lastShownTotal || max != _lastShownMax)
+            // Hold-to-rewind: SHIFT + left arrow, polled here so the order the two keys go down in does not matter
+            bool holdKeyDown = (Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift)) && Input.IsKeyDown(Keys.Left);
+            if (holdKeyDown != _holdKeyDown)
+            {
+                _holdKeyDown = holdKeyDown;
+                if (holdKeyDown)
+                    playback.BeginHoldRewind();
+                else
+                    playback.EndHoldRewind();
+            }
+
+            long total = playback.TotalTicks; // the slider ends at the session end
+            if (total != _lastShownTotal)
             {
                 _lastShownTotal = total;
-                _lastShownMax = max;
-                _slider.SetMinMax(0f, max > 0 ? max : 1f);
-                _slider.FutureStartValue = max > total ? total : float.MaxValue; // blue track past the session end
+                _slider.SetMinMax(0f, total > 0 ? total : 1f);
             }
 
             // While seeking the knob shows the destination, not the ticks racing toward it
@@ -195,7 +249,7 @@ namespace PitHero.UI
             long tick = state0 == ReplayPlaybackState.Seeking || state0 == ReplayPlaybackState.Starting
                 ? playback.SeekTarget
                 : playback.CurrentTick;
-            if (tick > max) tick = max;
+            if (tick > total) tick = total;
             if (!_slider.IsPointerHeld && !_previewing && tick != _lastShownTick)
             {
                 _lastShownTick = tick;
@@ -214,14 +268,52 @@ namespace PitHero.UI
             if (state != _lastShownState)
             {
                 _lastShownState = state;
-                _playPauseButton.SetText(GetText(state == ReplayPlaybackState.Playing ? UITextKey.ButtonReplayPause : UITextKey.ButtonReplayPlay));
-                _playPauseButton.SetDisabled(state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting);
+                bool showPause = state == ReplayPlaybackState.Playing;
+                if (showPause != _showingPauseIcon)
+                {
+                    _showingPauseIcon = showPause;
+                    _playPauseButton.SetStyle(showPause ? _pauseStyle : _playStyle);
+                }
+                // Every button is dead while a seek runs (issue #432): an Exit mid-rebuild would hijack a Time
+                // Travel's continuation, a second Time Travel or a speed change mean nothing until the seek lands
+                bool busy = state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting;
+                _exitButton.SetDisabled(busy);
+                _continueButton.SetDisabled(busy);
+                _playPauseButton.SetDisabled(busy);
+                _rewindButton.SetDisabled(busy);
+                _speedButton.SetDisabled(busy);
+                // The slider too during a Time Travel: the service ignores drags then anyway, and a knob that
+                // looks live but does nothing reads as a broken seek. A plain Simulated scrub keeps it, because
+                // dragging mid-seek retargets the seek. Disabled only grays the art; the touchable flag blocks input
+                bool sliderLocked = busy && playback.IsTimeTravelling;
+                _slider.Disabled = sliderLocked;
+                _slider.SetTouchable(sliderLocked ? Touchable.Disabled : Touchable.Enabled);
                 SetTimeTravelOffered(playback.TimeTravelAllowed);
                 _lastSeekPercent = -1;
                 _lastShownDivergence = -2;
             }
+            SetRewindOffered(playback.RewindAvailable);
 
             UpdateStatusLabel(playback, state);
+        }
+
+        /// <summary>Shows the rewind button in the frame view, or collapses its cell (a re-simulation cannot run backwards).</summary>
+        private void SetRewindOffered(bool offered)
+        {
+            if (_rewindOffered == offered)
+                return;
+            _rewindOffered = offered;
+            _rewindButton.SetVisible(offered);
+            _rewindButton.SetTouchable(offered ? Touchable.Enabled : Touchable.Disabled);
+            _rewindCell.Width(offered ? _rewindWidth : 0f).SetPadRight(offered ? 6f : 0f);
+            Invalidate();
+        }
+
+        /// <summary>The panel left the screen (replay over): let go of any held rewind.</summary>
+        public void OnHidden()
+        {
+            _holdKeyDown = false;
+            ReplayPlaybackService.Current?.EndHoldRewind();
         }
 
         private void UpdateStatusLabel(ReplayPlaybackService playback, ReplayPlaybackState state)
@@ -247,14 +339,10 @@ namespace PitHero.UI
             }
 
             long divergence = playback.DivergenceTick;
-            bool inFuture = playback.InFuture;
-            if (divergence == _lastShownDivergence && inFuture == _lastShownInFuture && state != ReplayPlaybackState.AtEnd)
+            if (divergence == _lastShownDivergence && state != ReplayPlaybackState.AtEnd)
                 return;
             _lastShownDivergence = divergence;
-            _lastShownInFuture = inFuture;
-            if (inFuture)
-                _statusLabel.SetText(GetText(UITextKey.ReplayFutureStatus));
-            else if (divergence >= 0)
+            if (divergence >= 0)
                 _statusLabel.SetText(string.Format(GetText(UITextKey.ReplayDivergenceAt),
                     ReplayTimeFormatter.FormatTicks(divergence),
                     GetText(playback.DivergenceIsDecision ? UITextKey.ReplayDivergenceDecision : UITextKey.ReplayDivergenceState)));
@@ -285,11 +373,9 @@ namespace PitHero.UI
         {
             _lastShownTick = -1;
             _lastShownTotal = -1;
-            _lastShownMax = -1;
             _lastShownState = ReplayPlaybackState.Idle;
             _lastShownSpeedIndex = -1;
             _lastShownDivergence = -2;
-            _lastShownInFuture = false;
             _lastSeekPercent = -1;
             _previewing = false;
         }

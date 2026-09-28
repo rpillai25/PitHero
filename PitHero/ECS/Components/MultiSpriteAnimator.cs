@@ -26,6 +26,12 @@ namespace PitHero.ECS.Components
 
         private readonly List<ICompositeLayer> _layers;
 
+        /// <summary>Number of composited layers (read by the replay frame census).</summary>
+        public int LayerCount => _layers.Count;
+
+        /// <summary>Layer at <paramref name="index"/>, back to front.</summary>
+        public ICompositeLayer GetLayer(int index) => _layers[index];
+
         /// <param name="layers">Layers in back-to-front draw order.</param>
         public MultiSpriteAnimator(params ICompositeLayer[] layers)
         {
