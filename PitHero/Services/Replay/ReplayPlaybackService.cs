@@ -102,6 +102,12 @@ namespace PitHero.Services.Replay
         /// <summary>True when rewind is offered: recorded frames can be read in any order; a re-simulation cannot run backwards.</summary>
         public bool RewindAvailable => Mode == ReplayPlaybackMode.FrameView && _viewer != null && !_timeTravelInFlight;
 
+        /// <summary>
+        /// True from the Time Travel confirmation until the rebuilt world is handed back to live play:
+        /// the scene restart and the seek behind the frozen frame. The UI shows its banner on this.
+        /// </summary>
+        public bool IsTimeTravelling => _timeTravelInFlight;
+
         /// <summary>Whether time travel is unlocked at all: owning the Chronos Timepiece artifact.</summary>
         public static bool TimeTravelUnlocked => ArtifactService.Current != null && ArtifactService.Current.Owns(PitHero.Artifacts.ArtifactType.ChronosTimepiece);
 

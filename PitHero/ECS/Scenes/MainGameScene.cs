@@ -76,6 +76,7 @@ namespace PitHero.ECS.Scenes
         private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
         private Services.Replay.Frames.FrameRecorder _frameRecorder; // Per-tick presentation frame stream (issue #424), behind ReplayFrameCaptureEnabled
         private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
+        private ReplayTimeTravelBanner _replayTimeTravelBanner; // "Time Travelling..." over the frozen frame while a rebuild seeks (issue #432)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private AutoSaveIndicator _autoSaveIndicator; // SaveIcon shown in the lower-right corner while an autosave writes (issue #409)
@@ -2447,6 +2448,8 @@ namespace PitHero.ECS.Scenes
             _replayScrubber = new ReplayScrubberPanel(PitHeroSkin.CreateSkin());
             uiCanvas.Stage.AddElement(_replayScrubber);
             PositionReplayScrubber();
+            _replayTimeTravelBanner = new ReplayTimeTravelBanner(PitHeroSkin.CreateSkin());
+            uiCanvas.Stage.AddElement(_replayTimeTravelBanner);
 
             // Let SettingsUI manage the shortcut bar hide/show animation
             _settingsUI?.SetShortcutBar(_shortcutBar);
@@ -3522,6 +3525,8 @@ namespace PitHero.ECS.Scenes
                 if (replayActive)
                     _replayScrubber.Update();
             }
+            // A Time Travel rebuild sits behind a frozen frame for minutes on a long session: keep something moving
+            _replayTimeTravelBanner?.Update(replayActive && replayPlayback.IsTimeTravelling);
 
             // Camera before the UI stages, matching the entity-order the camera component used to update in
             _cameraController?.PresentationUpdate();

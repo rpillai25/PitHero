@@ -365,7 +365,9 @@ The service has two **modes** (`ReplayPlaybackMode`):
   was (the live world never runs while watching). **Time Travel Here** freezes the current frame
   (`ReplayFrameViewer.Freeze` keeps a private copy that survives the stream truncation), switches to
   Simulated, rebuilds the world to the cursor with the frozen frame drawn over both the trampoline
-  scene and the rebuilding scene while the scrubber shows the seek progress, then commits
+  scene and the rebuilding scene while the scrubber shows the seek progress and a waving
+  "Time Travelling..." banner (`ReplayTimeTravelBanner`, on `ReplayPlaybackService.IsTimeTravelling`)
+  sits mid-screen so a minutes-long rebuild never reads as a hang, then commits
   (`CommitHere`: both recorders truncated). A cursor already at the live tick of the current session
   commits without a rebuild; a saved replay's live world underneath is another timeline, so it always
   rebuilds. A rebuild that diverged is reported once on the console. Kill switches:
