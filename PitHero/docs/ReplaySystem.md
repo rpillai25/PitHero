@@ -330,6 +330,12 @@ gold and clock labels are fed from the HUD record (`MainGameScene.ApplyRecordedH
 from the record's static head/eyes/hair sprites (`ApplyRecordedPortrait` →
 `GraphicalHUD.SetRecordedPortrait`), day/night grading and the clouds from the recorded clock, the event
 console from the console log (`EventConsolePanel.ShowRecorded` on a jump, appends while playing).
+The mercenary portraits are not recorded and keep reading the live mercenary entities; a Time Travel
+rebuild has none to read until the seek lands, so `Freeze` pins what the two panels were drawing
+(`MainGameScene.CaptureMercenaryPortraits` / `ApplyMercenaryPortraits`) for the rebuild. While a recorded
+frame feeds the HUD the party auto-hide keeps the panels up (`UpdateHudAutoHide(recordedHud)`): the live
+party is not what is on screen, and during a rebuild it races through the session and made the panels
+slide up and down for minutes.
 
 **Particles** (`RecordedParticlePool`): each recorded emitter is re-simulated with Nez's own `Particle`
 code at the fixed step from a `System.Random` seeded by (effect key, start tick); forward play is one
