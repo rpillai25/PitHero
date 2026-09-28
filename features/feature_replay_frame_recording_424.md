@@ -555,8 +555,9 @@ sleeps), which was audible as a fan. Shipped instead: `Core.ExtraStepDutyCycle` 
 `FixedStepScheduler.ComputeRestSeconds`, driven by `ReplaySeekWallBudgetSeconds` (10 ms) and
 `ReplaySeekDutyCycle` (0.5): one burst per frame, then a sleep, so a rebuild holds one core at about
 half load for about twice the wall time. Every re-simulation path (Time Travel Here, Exit from an
-uncached saved replay, Simulated scrubs) goes through it. The owner runs a multi-hour session and
-watches the CPU; if that is acceptable #432 closes as not planned. If not, the survey of 2026-09-27
+uncached saved replay, Simulated scrubs) goes through it. **Measured the same day** on an 8-hour
+session: Time Travel to the 8-hour mark took about 5 min in Release (~37 s per hour) and 8–10 min in
+Debug, CPU quiet in both. If that wait is acceptable #432 closes as not planned. If not, the survey of 2026-09-27
 (coroutine sites, state holders, rebuild paths) recorded on the issue sizes the go-lite variant at
 about four focused days across three PRs: (1) Nez active-coroutine count with a cosmetic tag,
 `ShuffleBag` / `SeedableRandom` state get/set, the speech RNG as a `SeedableRandom`, and a

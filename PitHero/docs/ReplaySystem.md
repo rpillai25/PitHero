@@ -394,10 +394,13 @@ services are keyed by type (constructing a second `MainGameScene` while the firs
   answers with its fan. Now each rendered frame runs one burst of `ReplaySeekWallBudgetSeconds`
   (10 ms) and then the main thread sleeps so the burst is `ReplaySeekDutyCycle` (0.5) of the frame
   (`Core.ExtraStepDutyCycle`, `FixedStepScheduler.ComputeRestSeconds`): one core at about half load,
-  a rebuild about twice as long (an hour of session ≈ 20 s), the frozen frame and progress bar
-  updating at ~45 fps. The last burst of a seek never rests. Raise the duty cycle for faster seeks;
-  1 disables the rest. The owner's CPU test on a multi-hour session decides whether simulation
-  checkpoints (#432, design §8) are still needed.
+  a rebuild about twice as long, the frozen frame and progress bar updating at ~45 fps. The last
+  burst of a seek never rests. Raise the duty cycle for faster seeks; 1 disables the rest. **Measured
+  2026-09-27** on an 8-hour session with these values: Time Travel to the 8-hour mark took about
+  5 min in Release (~37 s per hour of session, ~5.8k steps/s effective, so a Release step is now
+  ~70 µs rather than the 42 µs of the September 7 profile) and 8–10 min in Debug, with the CPU quiet
+  in both. Whether that wait is acceptable, or simulation checkpoints (#432, design §8) are wanted,
+  is the owner's call.
 - During seeks: SFX muted, `Debug.QuietMode`, `CosmeticUpdatesSuspended`, camera view captured and
   restored (`CameraControllerComponent.CaptureView/RestoreView`), hero-follow never engages.
 - `GameEventService.Suppressed` and analytics are off during playback; the recruit-notification queue
