@@ -1,6 +1,6 @@
 ---
 name: replay-determinism
-description: "**DOMAIN SKILL** — Keeping PitHero features replay-safe. The game records every session and replays it by re-simulation (fixed 60 Hz tick + seeded RNG + recorded PlayerCommands), so determinism is a hard project rule. USE FOR: any feature that adds a player action (button, drag, slider, dialog, hotkey) that changes game state; any new randomness (Nez.Random, System.Random, shuffle bags, particles, sound variants); timers, cooldowns, timestamps, accumulators; new static or global state read by the simulation; new scene services; cosmetic components during seeks; diagnosing a 'Diverged at' label or replay_divergence.log; touching PlayerCommandService/PlayerCommandHandlers/GameRandom/SimulationClock/ReplayPlaybackService; changes to MainGameScene.Update vs PresentationUpdate. DO NOT USE FOR: replay UI layout (nez-ui), GOAP action design (nez-ai), balance testing (pit-balance-test)."
+description: "**DOMAIN SKILL** — Keeping PitHero features replay-safe. The game records every session and replays it by re-simulation (fixed 60 Hz tick + seeded RNG + recorded PlayerCommands), so determinism is a hard project rule. USE FOR: any feature that adds a player action (button, drag, slider, dialog, hotkey) that changes game state; any new randomness (Nez.Random, System.Random, shuffle bags, particles, sound variants); timers, cooldowns, timestamps, accumulators; new static or global state read by the simulation; new scene services; cosmetic components during seeks; HUD panels, labels or overlays that display world state (they must read the recorded frame during a replay); diagnosing a 'Diverged at' label or replay_divergence.log; touching PlayerCommandService/PlayerCommandHandlers/GameRandom/SimulationClock/ReplayPlaybackService; changes to MainGameScene.Update vs PresentationUpdate. DO NOT USE FOR: replay UI layout (nez-ui), GOAP action design (nez-ai), balance testing (pit-balance-test)."
 applyTo: "**/Services/Replay/**,**/GameRandom.cs,**/SimulationClock.cs,**/PauseService.cs,**/MainGameScene.cs,**/UI/**,**/AI/**,**/Services/**,**/ECS/Components/**"
 ---
 
@@ -47,6 +47,13 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
     stream records what the manager plays (type, rolled variant, position) so a replay hears it; a raw
     `SoundEffect.Play` is silent in replays. UI click sounds belong to the global button hooks
     (`ButtonClickCategory`) and are never recorded.
+11. **While a recorded frame is on screen, presentation reads the record, never the live entities.**
+    In FrameView the live world sits suspended elsewhere on the timeline; during a Time Travel rebuild
+    it races through the session behind the frozen frame. HUD panels, labels and overlays showing
+    world state take their values from the HUD record (`MainGameScene.ApplyRecordedHud`, gated by
+    `recordedHud`) and must not react to live entities in either state (the party auto-hide parks
+    during a seek). What the record does not carry is pinned at `ReplayFrameViewer.Freeze` (mercenary
+    portraits) or added to the record with a `ReplayFrameFormatVersion` bump.
 
 ## The two passes
 
@@ -86,7 +93,8 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 | Divergence report needs more than hashes | `GameConfig.ReplayDivergenceSnapshots`: the report prints the last in-sync state, the drifted state and `ReplayBattleTrace`; compare against the live analytics `.jsonl` by wall time (tick / 60 s after load) |
 | A new visual is missing from replays (no divergence) | The renderable is not stock, `IFrameCapturable` or `ILiveOnlyRenderable` (`FrameCaptureCoverageTests` names it), or it draws per rendered frame / from a live service instead of per tick — a per-tick recording only sees what the sim step left behind |
 | A new sound is silent in replays | It bypassed `SoundEffectManager` (raw `SoundEffect.Play`), or it is one of the UI click types, which are never recorded |
-| Replay frame caches (`.frames`) all vanished after a change | `GameConfig.ReplayFrameFormatVersion` was bumped (any change to op layouts, the HUD record or the events section): intended, caches are rebuilt by re-simulation and self-cached on exit; `.bin` recordings are never touched |
+| Replay frame caches (`.frames`) all vanished after a change | `GameConfig.ReplayFrameFormatVersion` was bumped (any change to op layouts, the HUD record, the events section or the chunk codec): intended, caches are rebuilt by re-simulation and self-cached on exit; `.bin` recordings are never touched |
+| A HUD panel or overlay flickers, slides or goes blank only while a replay seeks (fine while watching, fine live) | It reads live entities, which race through the session during a rebuild (or are absent until the seek lands). Feed it from the HUD record under `recordedHud`, park it while `ReplayPlaybackService.State` is Seeking/Starting, or pin what it shows at `ReplayFrameViewer.Freeze`. Precedent 2026-09-27: HUD auto-hide and mercenary portraits |
 
 ## File Reference
 

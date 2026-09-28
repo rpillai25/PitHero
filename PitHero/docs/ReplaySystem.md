@@ -299,7 +299,7 @@ trailer   footerOffset i64, "PHFE"
 - **Validity** (`TryOpenFrameCache`): identity header (seed, recording time, simulation version,
   `ReplayFrameFormatVersion`) + footer + `footer.TotalTicks == bin.TotalTicks` + frames up to the last
   tick. Anything else re-simulates. `Enumerate` opens every cache (header + footer only) for the
-  "Cached" mark. Bumping `ReplayFrameFormatVersion` (any op layout, HUD record or events change)
+  "Cached" mark. Bumping `ReplayFrameFormatVersion` (any op layout, HUD record, events or chunk codec change)
   orphans every cache once; they come back through self-caching. **A `.bin` is never deleted by any
   cache policy.**
 - **Disk budget** (`ReplayFrameCacheDiskBudgetBytes`, 4 GB): after every cache write the oldest
@@ -576,6 +576,15 @@ artifacts rewind with the save, so charging for them is safe.
     hero at different ticks (live play vs a seek that finishes cosmetics instantly) reshuffled the
     hero's components and produced hero-only divergences with identical RNG. Never reintroduce an
     unstable sort into an update path, and never rely on `Array.Sort` for ties.
+15. **While a recorded frame is on screen, presentation reads the record, never the live entities.**
+    In FrameView the live world is suspended elsewhere on the timeline; during a Time Travel rebuild it
+    races through the session behind the frozen frame. HUD panels, labels and overlays that show world
+    state are fed from the HUD record (`ApplyRecordedHud` / `ApplyRecordedPortrait`, gated by
+    `recordedHud` in `PresentationUpdate`) and must not react to live entities in either state; what
+    the record does not carry is pinned at `ReplayFrameViewer.Freeze` (mercenary portraits) or added
+    to the record with a format bump. Precedent (2026-09-27): the party HUD auto-hide followed the live
+    party during a rebuild and slid up and down for minutes; the mercenary portraits read live entities
+    that did not exist yet.
 
 ## Recipes
 
