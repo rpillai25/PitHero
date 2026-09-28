@@ -332,10 +332,11 @@ from the record's static head/eyes/hair sprites (`ApplyRecordedPortrait` →
 console from the console log (`EventConsolePanel.ShowRecorded` on a jump, appends while playing).
 The mercenary portraits are not recorded and keep reading the live mercenary entities; a Time Travel
 rebuild has none to read until the seek lands, so `Freeze` pins what the two panels were drawing
-(`MainGameScene.CaptureMercenaryPortraits` / `ApplyMercenaryPortraits`) for the rebuild. While a recorded
-frame feeds the HUD the party auto-hide keeps the panels up (`UpdateHudAutoHide(recordedHud)`): the live
-party is not what is on screen, and during a rebuild it races through the session and made the panels
-slide up and down for minutes.
+(`MainGameScene.CaptureMercenaryPortraits` / `ApplyMercenaryPortraits`) for the rebuild. The party
+auto-hide keeps working while watching (the panels only take room while the party is on camera), but a
+seek parks them for its whole duration (`UpdateHudAutoHide(seeking)`, Seeking or Starting): the live
+party races through the session behind the frozen frame and made the panels slide up and down for
+minutes, and nobody needs the party HUD while a rebuild runs.
 
 **Particles** (`RecordedParticlePool`): each recorded emitter is re-simulated with Nez's own `Particle`
 code at the fixed step from a `System.Random` seeded by (effect key, start tick); forward play is one
