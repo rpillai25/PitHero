@@ -557,6 +557,7 @@ ReplaySpeedFormat,{0}
 ReplayTimeFormat,{0} / {1}
 ReplaySeekingFormat,Seeking... {0}%
 ReplayStarting,Starting replay...
+ReplayTimeTravelling,Time Travelling...
 ReplayDivergenceAt,Diverged at {0} ({1})
 ReplayDivergenceState,state
 ReplayDivergenceDecision,hero decision

@@ -513,7 +513,7 @@ What the variants say:
 | 6 | #430 | ~~Transcode for uncached or stale saved replays: buffering status, growing range, finalise sidecar~~ **Closed, not planned (2026-09-26)**; the self-caching step moved to #431 | 5 | — |
 | 7 | #431 | Polish and docs: rewind button + reverse play, view-only 16X/32X, particles as re-emitted effects, recorded sound events, self-caching of uncached replays, action-queue capture, recorded portrait, `ReplaySystem.md` rewrite, `replay-determinism` skill + `AGENTS.md` rules (new renderables, new sounds), remove dead code. **Shipped 2026-09-27** (frame format v2); see "As shipped in #431" in §3.2 and the self-caching row in §3.4 | 4–5, #438 | M |
 | 9 | #438 | **Remove the simulated future** (decided 2026-09-26): scrubber region, entering/leaving the future, time travel to the future, viewer passthrough, the Sphere of Foresight artifact (retired ordinal, never renumbered). Every path through the future re-simulates and it cheapens play. The §3.3 rows for the future and the §3.2 passthrough bullet describe code that this issue deletes | 5 | S |
-| 8 | #432 | *(Optional, go/no-go)* Simulation checkpoints to bound Time Travel rebuilds | 4 | XL — see §8 |
+| 8 | #432 | *(Optional, go/no-go)* Simulation checkpoints to bound Time Travel rebuilds. **Closed, not planned (2026-09-28, PR #441)**: the owner's concern was CPU load, answered by the seek throttle (`Core.ExtraStepDutyCycle`, ~50% of one core, 8 h in ~5 min Release); the same PR shipped the "Time Travelling..." banner, the seek-time HUD/scrubber lockouts, the commit off-by-one fix and Brotli chunk payloads (format v4, ~37 MB/h). §8 keeps the go-lite plan | 4 | — |
 
 Phase 4 is the first phase the player feels. Phases 1–3 are invisible (capture runs, nothing reads it)
 and are safe to merge one at a time.
@@ -547,6 +547,26 @@ picture. If it is built, the go/no-go criterion is: the battle engine and the si
 first converted to tick FSMs (a separate refactor with its own replay validation), and checkpoints are
 taken only at ticks with zero live sim coroutines, validated by a headless test that restores a
 checkpoint and matches every subsequent tripwire hash for 10 minutes of simulation.
+
+**Decision 2026-09-27 (owner): throttle first, checkpoints only if the throttle is not enough.** The
+owner's concern is CPU load on the player's machine rather than the wait: an unthrottled seek pegs one
+core for the whole rebuild (the 30 ms burst outlasted a 60 Hz frame and the vsync-paced loop never
+sleeps), which was audible as a fan. Shipped instead: `Core.ExtraStepDutyCycle` in the Nez fork with
+`FixedStepScheduler.ComputeRestSeconds`, driven by `ReplaySeekWallBudgetSeconds` (10 ms) and
+`ReplaySeekDutyCycle` (0.5): one burst per frame, then a sleep, so a rebuild holds one core at about
+half load for about twice the wall time. Every re-simulation path (Time Travel Here, Exit from an
+uncached saved replay, Simulated scrubs) goes through it. **Measured the same day** on an 8-hour
+session: Time Travel to the 8-hour mark took about 5 min in Release (~37 s per hour) and 8–10 min in
+Debug, CPU quiet in both. If that wait is acceptable #432 closes as not planned. If not, the survey of 2026-09-27
+(coroutine sites, state holders, rebuild paths) recorded on the issue sizes the go-lite variant at
+about four focused days across three PRs: (1) Nez active-coroutine count with a cosmetic tag,
+`ShuffleBag` / `SeedableRandom` state get/set, the speech RNG as a `SeedableRandom`, and a
+`--verify-replay` mode on the real exe as the harness criterion 3 asks for; (2) the snapshot
+participants, `SaveData` plus a mid-tick supplement; (3) the checkpoint service (third sidecar
+section, every 5 minutes at the first quiet tick, ~20–30 KB each) and the load path that restores the
+nearest checkpoint leaving at least a minute of verified simulation before T and falls back to the
+tick-0 rebuild when the first tripwire sample after the restore mismatches. Battles stay coroutines
+and simply contain no checkpoints.
 
 ## 9. Non-goals
 

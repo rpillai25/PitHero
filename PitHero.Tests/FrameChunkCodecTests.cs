@@ -213,7 +213,7 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void DeflateRoundTrip_PayloadShrinks_PrefixParsesBack()
+        public void CompressRoundTrip_PayloadShrinks_PrefixParsesBack()
         {
             var world = FrameTestWorld.Small(3);
             var records = new List<FrameTestWorld.TickRecord>();
@@ -229,7 +229,7 @@ namespace PitHero.Tests
             var chunk = FrameChunkCodec.Compress(raw);
             Assert.IsNull(raw.Buffer, "raw buffer released after compression");
             Assert.AreEqual(rawLength, chunk.PayloadRawLength);
-            Assert.IsTrue(chunk.PayloadLength < rawLength / 2, "deflate must shrink a synthetic chunk at least 2x: " + chunk.PayloadLength + " of " + rawLength);
+            Assert.IsTrue(chunk.PayloadLength < rawLength / 2, "brotli must shrink a synthetic chunk at least 2x: " + chunk.PayloadLength + " of " + rawLength);
             Assert.AreEqual(FrameChunk.PrefixSize + chunk.TableDeltaLength + chunk.PayloadLength, chunk.Length);
             Assert.AreEqual(GameConfig.ReplayFrameFormatVersion, chunk.FormatVersion);
 

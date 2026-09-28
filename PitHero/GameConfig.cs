@@ -754,7 +754,16 @@ namespace PitHero
         public static readonly string[] ReplayFrameViewSpeedStepLabels = { "1X", "2X", "4X", "8X", "16X", "32X" };
 
         // Replay playback
-        public const float ReplaySeekWallBudgetSeconds = 0.030f; // Wall time per 60 Hz frame spent running seek steps: ~2/3 of the frame, leaving CPU headroom (raise for faster seeks)
+        // Seek throttle (issue #432, 2026-09-27). A seek re-simulates at ~24k steps/s on the main thread; unthrottled it
+        // pegs one core for the whole rebuild (Time Travel Here, Exit from an uncached saved replay, backward scrubs in
+        // Simulated mode), which is what the player hears as a fan. Each rendered frame runs one burst of seek steps for
+        // ReplaySeekWallBudgetSeconds, then the main thread sleeps so the burst is ReplaySeekDutyCycle of the frame:
+        // 0.5 = one core at ~50%, the seek takes ~2x its unthrottled wall time. Measured by the owner on 2026-09-27
+        // with these values: an 8-hour session rebuilt in ~5 min in Release (~37 s per hour of session, ~5.8k steps/s
+        // effective) and ~8-10 min in Debug, quiet CPU in both. Raise the duty cycle for faster seeks, lower it for a
+        // cooler machine; 1 disables the rest entirely.
+        public const float ReplaySeekWallBudgetSeconds = 0.010f; // Wall time per rendered frame spent running seek steps (one burst)
+        public const float ReplaySeekDutyCycle = 0.5f;           // Share of the main thread a seek may use, (0, 1]; the rest of each frame is a Thread.Sleep
         public const int ReplayHashIntervalTicks = 60;           // Simulation ticks between divergence-tripwire state hashes (1 per sim second)
         public const long ReplayPauseSkipMinTicks = 120;         // Recorded pause stretches at least this long (2 s) are skipped during playback
         public const bool ReplaySeekSkipsCosmetics = true;       // Seeks skip purely visual per-step work (particles, floating text, Y-sort); flip to A/B a divergence
@@ -766,11 +775,16 @@ namespace PitHero
         // Replay frame stream (issue #424): one presentation frame per tick, recorded beside the command
         // recording so watching a replay never re-simulates. Headless model in Services/Replay/Frames.
         public const bool ReplayFrameCaptureEnabled = true;                    // Kill switch; off = today's pure re-simulation playback
-        public const int ReplayFrameChunkTicks = 120;                          // Ticks per chunk (Braid's 2 s GOP): base frame + previous-tick deltas, deflated as one unit
-        public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB deflated, so every chunk)
+        public const int ReplayFrameChunkTicks = 120;                          // Ticks per chunk (Braid's 2 s GOP): base frame + previous-tick deltas, compressed as one unit
+        public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 3;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints)
+        public const int ReplayFrameFormatVersion = 4;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate
+        // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
+        // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
+        // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
+        public const int ReplayFrameBrotliQuality = 5;                          // 0–11
+        public const int ReplayFrameBrotliWindowBits = 22;                      // 10–24
         public const string ReplayFrameFileExtension = ".frames";              // Sidecar next to the .bin it caches
         public const string ReplayFrameSessionFilePrefix = "session_";         // replays/session_<recordedAtUtcTicks>.frames while a session runs; stale ones are deleted at the next new session
         public const float ReplayFrameDebugLogIntervalSeconds = 60f;           // Wall seconds between frame-recorder stat lines (Debug.Log in Debug builds; replays/frame_recorder.log in every build while ReplayFrameStatsLog is on)
@@ -790,6 +804,9 @@ namespace PitHero
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge
+        public const float ReplayTimeTravelBannerFontScale = 2f; // "Time Travelling..." banner over the frozen frame during a rebuild (issue #432)
+        public const float ReplayTimeTravelBannerPad = 8f;       // Backdrop padding above and below the waving label, stage pixels
+        public const float ReplayTimeTravelBannerPadHorizontal = 24f; // Left/right padding: the wave draws glyph by glyph and runs wider than the label's measured width, so the text bled to the edges at 8
         public const string ReplayDirectoryName = "replays";     // Under the persistent data folder
         public const string ReplayFilePrefix = "replay_";
         public const string ReplayAutoFilePrefix = "replay_auto_";  // + 8 hex digits of the hero id: the quit-time recording, one per hero, overwritten every session (its .frames cache too)

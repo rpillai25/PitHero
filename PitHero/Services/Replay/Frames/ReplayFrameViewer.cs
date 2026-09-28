@@ -29,6 +29,8 @@ namespace PitHero.Services.Replay.Frames
 
         private readonly FrameRecorder _recorder; // null over a saved replay's file
         private readonly DecodedFrame _frozen = new DecodedFrame();
+        // Mercenary portraits pinned at Freeze: the record has none and a rebuilding scene has no mercenaries to read
+        private PitHero.UI.GraphicalHUD.PortraitSnapshot _frozenMerc1, _frozenMerc2;
         private readonly Func<IRenderable, bool> _filter;
         private Scene _scene;
         private RecordedFrameRenderer _world;
@@ -154,6 +156,8 @@ namespace PitHero.Services.Replay.Frames
             Refresh();
             _frozen.CopyFrom(CurrentFrame);
             CurrentFrame = _frozen.Tick >= 0 ? _frozen : null;
+            if (_scene is MainGameScene game)
+                game.CaptureMercenaryPortraits(out _frozenMerc1, out _frozenMerc2);
             IsFrozen = true;
             SoundsEnabled = false;
             if (_scene != null)
@@ -193,6 +197,8 @@ namespace PitHero.Services.Replay.Frames
                 scene.ApplyRecordedHud(in CurrentFrame.Hud);
                 scene.ApplyRecordedPortrait(CurrentFrame, Sprites);
             }
+            if (IsFrozen)
+                scene.ApplyMercenaryPortraits(in _frozenMerc1, in _frozenMerc2);
             SyncConsole(scene.EventConsole, Cursor.FrameTick);
         }
 

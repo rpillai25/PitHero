@@ -21,7 +21,7 @@ namespace PitHero.Services.Replay.Frames
         public long FirstTick { get; }
         public int TickCount { get; }
         public int FormatVersion { get; }
-        /// <summary>The complete chunk bytes (prefix + table delta + deflated payload). Never mutate.</summary>
+        /// <summary>The complete chunk bytes (prefix + table delta + compressed payload). Never mutate.</summary>
         public byte[] Bytes { get; }
         public int TableDeltaLength { get; }
         public int PayloadRawLength { get; }

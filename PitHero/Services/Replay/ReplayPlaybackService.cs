@@ -102,6 +102,12 @@ namespace PitHero.Services.Replay
         /// <summary>True when rewind is offered: recorded frames can be read in any order; a re-simulation cannot run backwards.</summary>
         public bool RewindAvailable => Mode == ReplayPlaybackMode.FrameView && _viewer != null && !_timeTravelInFlight;
 
+        /// <summary>
+        /// True from the Time Travel confirmation until the rebuilt world is handed back to live play:
+        /// the scene restart and the seek behind the frozen frame. The UI shows its banner on this.
+        /// </summary>
+        public bool IsTimeTravelling => _timeTravelInFlight;
+
         /// <summary>Whether time travel is unlocked at all: owning the Chronos Timepiece artifact.</summary>
         public static bool TimeTravelUnlocked => ArtifactService.Current != null && ArtifactService.Current.Owns(PitHero.Artifacts.ArtifactType.ChronosTimepiece);
 
@@ -637,7 +643,11 @@ namespace PitHero.Services.Replay
                     }
                     else
                     {
+                        // Throttled (issue #432): a burst per frame, then a rest, so a long rebuild warms one
+                        // core to the duty cycle instead of pegging it. Every re-simulation goes through here:
+                        // Time Travel Here, Exit from an uncached saved replay, scrubs in Simulated mode
                         Core.ExtraStepWallBudgetSeconds = GameConfig.ReplaySeekWallBudgetSeconds;
+                        Core.ExtraStepDutyCycle = GameConfig.ReplaySeekDutyCycle;
                         Core.PendingExtraSteps = remaining;
                     }
                     break;
@@ -835,6 +845,11 @@ namespace PitHero.Services.Replay
         {
             if (!IsActive)
                 return;
+            // A Time Travel rebuild owns the seek's continuation (CommitHere); an exit here would replace it
+            // with FinishExit and hand back the old timeline untruncated. The scrubber disables its buttons
+            // while seeking; this guards every other caller
+            if (_timeTravelInFlight)
+                return;
             Trace("Exit");
 
             if (Mode == ReplayPlaybackMode.FrameView && _viewer != null)
@@ -960,10 +975,15 @@ namespace PitHero.Services.Replay
             _returnSession = null;
             long tick = SimulationClock.CurrentTick;
             Trace($"CommitHere tick={tick}");
+            // Ticks 0..tick-1 are the new timeline's past; tick itself is simulated live next. Everything
+            // the old timeline recorded at or after it goes: a command drained at exactly this tick, a
+            // tripwire sample, the frame. (Keeping tick itself left the old frame in the stream, so the
+            // frame recorder refused the live capture of that tick with a "does not follow" warning.)
             // A fast playback may have overshot the recorded end by a few ticks; the recorder appended
-            // those, so the recording already runs up to this tick and the truncation is a no-op there
-            ReplayRecorder.Current?.TruncateAfter(tick);
-            Frames.FrameRecorder.Current?.TruncateAfter(tick);
+            // those, so the recording already ends at tick-1 there and the truncation is a no-op
+            long lastKept = tick - 1;
+            ReplayRecorder.Current?.TruncateAfter(lastKept);
+            Frames.FrameRecorder.Current?.TruncateAfter(lastKept);
             TotalTicks = tick;
             long divergence = DivergenceTick;
             bool decision = DivergenceIsDecision;

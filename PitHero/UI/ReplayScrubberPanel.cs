@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Nez;
+using Nez.Textures;
 using Nez.UI;
 using PitHero.Services;
 using PitHero.Services.Replay;
@@ -25,8 +26,11 @@ namespace PitHero.UI
         private Cell _continueCell;            // collapsed to zero width when time travel is not offered
         private float _continueWidth;
         private ConfirmationDialog _continueDialog;
-        private TextButton _playPauseButton;
-        private TextButton _rewindButton;
+        private ImageButton _playPauseButton;  // face swaps between the play and pause icons
+        private ImageButtonStyle _playStyle;
+        private ImageButtonStyle _pauseStyle;
+        private bool _showingPauseIcon;
+        private ImageButton _rewindButton;
         private Cell _rewindCell;              // collapsed to zero width outside the frame view
         private float _rewindWidth;
         private bool _rewindOffered = true;
@@ -59,6 +63,32 @@ namespace PitHero.UI
         }
 
         private const float ButtonHeight = 20f;
+        private const float IconButtonWidth = 30f;   // a 16 px icon on the nine-patch face with the same side room as a text button
+        private const string PlayIconSprite = "UIScrubberPlay";
+        private const string PauseIconSprite = "UIScrubberPause";
+        private const string RewindIconSprite = "UIScrubberRewind";
+        private static readonly Color IconDisabledTint = new Color(255, 255, 255, 110); // the icon fades while its button is dead
+
+        /// <summary>
+        /// The text buttons' nine-patch face with an icon on top instead of a label. Fresh nine-patch
+        /// instances: the skin's "ph-default" face carries 25 px of side padding to centre text, which
+        /// would push a 16 px icon out of a 30 px button.
+        /// </summary>
+        private static ImageButtonStyle MakeIconStyle(string spriteName)
+        {
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            var icon = uiAtlas.GetSprite(spriteName);
+            return new ImageButtonStyle
+            {
+                Up = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4)),
+                Down = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4)),
+                Over = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4)),
+                ImageUp = new SpriteDrawable(icon),
+                ImageDisabled = new SpriteDrawable(icon) { TintColor = IconDisabledTint },
+                PressedOffsetX = 1,
+                PressedOffsetY = 1
+            };
+        }
 
         /// <summary>Builds the panel. Positioned by MainGameScene.PositionReplayScrubber.</summary>
         public ReplayScrubberPanel(Skin skin) : base("", skin.Get<WindowStyle>("ph-default"))
@@ -74,10 +104,14 @@ namespace PitHero.UI
             _continueButton = new TextButton(GetText(UITextKey.ButtonReplayContinueHere), skin, "ph-default");
             _continueButton.OnClicked += (_) => ConfirmContinueHere();
 
-            _playPauseButton = new TextButton(GetText(UITextKey.ButtonReplayPause), skin, "ph-default");
+            // Play/Pause and Rewind are icons on the same nine-patch face as the text buttons
+            _playStyle = MakeIconStyle(PlayIconSprite);
+            _pauseStyle = MakeIconStyle(PauseIconSprite);
+            _playPauseButton = new ImageButton(_pauseStyle);
+            _showingPauseIcon = true;
             _playPauseButton.OnClicked += (_) => ReplayPlaybackService.Current?.TogglePause();
 
-            _rewindButton = new TextButton(GetText(UITextKey.ButtonReplayRewind), skin, "ph-default");
+            _rewindButton = new ImageButton(MakeIconStyle(RewindIconSprite));
             _rewindButton.OnClicked += (_) => ReplayPlaybackService.Current?.ToggleRewind();
 
             _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.SpeedStepLabels[0]), skin, "ph-default");
@@ -95,11 +129,9 @@ namespace PitHero.UI
             Add(_exitButton).Width(TextButtonWidth(_exitButton)).Height(ButtonHeight).SetPadLeft(EdgePad).SetPadRight(6f);
             _continueWidth = TextButtonWidth(_continueButton);
             _continueCell = Add(_continueButton).Width(_continueWidth).Height(ButtonHeight).SetPadRight(6f);
-            // Play/Pause swaps text: size for the wider of the two so the layout never shifts
-            float playPauseWidth = System.Math.Max(TextButtonWidth(_playPauseButton),
-                MeasureButtonText(GetText(UITextKey.ButtonReplayPlay)) + ButtonTextPad);
-            Add(_playPauseButton).Width(playPauseWidth).Height(ButtonHeight).SetPadRight(6f);
-            _rewindWidth = TextButtonWidth(_rewindButton);
+            // Both icons are 16 px, so the play/pause swap never shifts the layout
+            Add(_playPauseButton).Width(IconButtonWidth).Height(ButtonHeight).SetPadRight(6f);
+            _rewindWidth = IconButtonWidth;
             _rewindCell = Add(_rewindButton).Width(_rewindWidth).Height(ButtonHeight).SetPadRight(6f);
             // The speed face grows to "32X" in the frame view: size for the widest label of either ladder
             float speedWidth = TextButtonWidth(_speedButton);
@@ -236,10 +268,26 @@ namespace PitHero.UI
             if (state != _lastShownState)
             {
                 _lastShownState = state;
-                _playPauseButton.SetText(GetText(state == ReplayPlaybackState.Playing ? UITextKey.ButtonReplayPause : UITextKey.ButtonReplayPlay));
+                bool showPause = state == ReplayPlaybackState.Playing;
+                if (showPause != _showingPauseIcon)
+                {
+                    _showingPauseIcon = showPause;
+                    _playPauseButton.SetStyle(showPause ? _pauseStyle : _playStyle);
+                }
+                // Every button is dead while a seek runs (issue #432): an Exit mid-rebuild would hijack a Time
+                // Travel's continuation, a second Time Travel or a speed change mean nothing until the seek lands
                 bool busy = state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting;
+                _exitButton.SetDisabled(busy);
+                _continueButton.SetDisabled(busy);
                 _playPauseButton.SetDisabled(busy);
                 _rewindButton.SetDisabled(busy);
+                _speedButton.SetDisabled(busy);
+                // The slider too during a Time Travel: the service ignores drags then anyway, and a knob that
+                // looks live but does nothing reads as a broken seek. A plain Simulated scrub keeps it, because
+                // dragging mid-seek retargets the seek. Disabled only grays the art; the touchable flag blocks input
+                bool sliderLocked = busy && playback.IsTimeTravelling;
+                _slider.Disabled = sliderLocked;
+                _slider.SetTouchable(sliderLocked ? Touchable.Disabled : Touchable.Enabled);
                 SetTimeTravelOffered(playback.TimeTravelAllowed);
                 _lastSeekPercent = -1;
                 _lastShownDivergence = -2;

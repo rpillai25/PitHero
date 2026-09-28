@@ -85,6 +85,45 @@ namespace PitHero.UI
             _recordedHead = _recordedEyes = _recordedHair = null;
         }
 
+        /// <summary>The three paperdoll layers of a portrait with their tints; <see cref="Present"/> false draws nothing.</summary>
+        public struct PortraitSnapshot
+        {
+            public bool Present;
+            public Sprite Head, Eyes, Hair;
+            public Color HeadColor, EyesColor, HairColor;
+        }
+
+        /// <summary>
+        /// Copies the portrait this HUD is drawing right now (recorded or live paperdoll) so it can be
+        /// pinned across a scene rebuild (a Time Travel rebuild has no party entities to read from until
+        /// the seek lands, issue #432). False when there is nothing to draw.
+        /// </summary>
+        public bool TryCapturePortrait(out PortraitSnapshot snapshot)
+        {
+            snapshot = default;
+            if (_recordedPortrait)
+            {
+                snapshot.Head = _recordedHead; snapshot.HeadColor = _recordedHeadColor;
+                snapshot.Eyes = _recordedEyes; snapshot.EyesColor = _recordedEyesColor;
+                snapshot.Hair = _recordedHair; snapshot.HairColor = _recordedHairColor;
+                snapshot.Present = _recordedHead != null || _recordedEyes != null || _recordedHair != null;
+                return snapshot.Present;
+            }
+            if (!TryGetLivePortraitLayers(out snapshot.Head, out snapshot.HeadColor, out snapshot.Eyes, out snapshot.EyesColor, out snapshot.Hair, out snapshot.HairColor))
+                return false;
+            snapshot.Present = true;
+            return true;
+        }
+
+        /// <summary>Draws a pinned portrait instead of the live paperdoll (an absent snapshot draws nothing).</summary>
+        public void SetRecordedPortrait(in PortraitSnapshot snapshot)
+        {
+            if (snapshot.Present)
+                SetRecordedPortrait(snapshot.Head, snapshot.HeadColor, snapshot.Eyes, snapshot.EyesColor, snapshot.Hair, snapshot.HairColor);
+            else
+                SetRecordedPortrait(null, Color.White, null, Color.White, null, Color.White);
+        }
+
         /// <summary>
         /// Override Width to return the HUD template sprite width (fixes StackOverflowException)
         /// </summary>
@@ -257,104 +296,57 @@ namespace PitHero.UI
                 DrawPortraitLayer(batcher, _recordedHair, _recordedHairColor, at);
                 return;
             }
-            if (_heroEntity == null)
+            if (!TryGetLivePortraitLayers(out var headSprite, out var headColor, out var eyesSprite, out var eyesColor, out var hairSprite, out var hairColor))
                 return;
+            var renderPosition = hudPosition + new Vector2(xOffset, yOffset);
+            // Head first, eyes over it, hair on top, each cropped to the top 32x31 pixels of the frame
+            DrawPortraitLayer(batcher, headSprite, headColor, renderPosition);
+            DrawPortraitLayer(batcher, eyesSprite, eyesColor, renderPosition);
+            DrawPortraitLayer(batcher, hairSprite, hairColor, renderPosition);
+        }
+
+        /// <summary>
+        /// The live portrait's layers: frame 0 of the walk-down animation of the bound entity's head, eyes
+        /// and hair components with their tints. False when the entity or any layer is missing.
+        /// </summary>
+        private bool TryGetLivePortraitLayers(out Sprite head, out Color headColor, out Sprite eyes, out Color eyesColor, out Sprite hair, out Color hairColor)
+        {
+            head = eyes = hair = null;
+            headColor = eyesColor = hairColor = Color.White;
+            if (_heroEntity == null)
+                return false;
 
             var headAnimComponent = _heroEntity.GetComponent<HeroHeadAnimationComponent>();
             var eyesAnimComponent = _heroEntity.GetComponent<HeroEyesAnimationComponent>();
             var hairAnimComponent = _heroEntity.GetComponent<HeroHairAnimationComponent>();
-
             if (headAnimComponent == null || eyesAnimComponent == null || hairAnimComponent == null)
-                return;
-
-            // Get the walk down animation from each component's Animations dictionary
+                return false;
             if (headAnimComponent.Animations == null || eyesAnimComponent.Animations == null || hairAnimComponent.Animations == null)
-                return;
+                return false;
 
             var headAnimName = headAnimComponent.WalkDownAnimationName;
             var hairAnimName = hairAnimComponent.WalkDownAnimationName;
             var eyesAnimName = eyesAnimComponent.WalkDownAnimationName;
-
-            if (!headAnimComponent.Animations.ContainsKey(headAnimName) || 
+            if (!headAnimComponent.Animations.ContainsKey(headAnimName) ||
                 !hairAnimComponent.Animations.ContainsKey(hairAnimName) ||
                 !eyesAnimComponent.Animations.ContainsKey(eyesAnimName))
-                return;
+                return false;
 
             var headAnimation = headAnimComponent.Animations[headAnimName];
             var hairAnimation = hairAnimComponent.Animations[hairAnimName];
             var eyesAnimation = eyesAnimComponent.Animations[eyesAnimName];
-            // Get frame 0 sprite from each animation
             if (headAnimation.Sprites == null || headAnimation.Sprites.Length == 0 ||
                 hairAnimation.Sprites == null || hairAnimation.Sprites.Length == 0 ||
                 eyesAnimation.Sprites == null || eyesAnimation.Sprites.Length == 0)
-                return;
+                return false;
 
-            var headSprite = headAnimation.Sprites[0];
-            var hairSprite = hairAnimation.Sprites[0];
-            var eyesSprite = eyesAnimation.Sprites[0];
-            var renderPosition = hudPosition + new Vector2(xOffset, yOffset);
-
-            // Define the source rectangle to crop the top 32x31 pixels from the head sprite
-            var headCroppedSourceRect = new Rectangle(
-                headSprite.SourceRect.X,
-                headSprite.SourceRect.Y,
-                32,
-                31
-            );
-
-            // Render head sprite first (cropped) with head color from animation component
-            batcher.Draw(
-                headSprite.Texture2D,
-                renderPosition,
-                headCroppedSourceRect,
-                headAnimComponent.ComponentColor,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0f
-            );
-
-            // Define the source rectangle to crop the top 32x31 pixels from the eyes sprite
-            var eyesCroppedSourceRect = new Rectangle(
-                eyesSprite.SourceRect.X,
-                eyesSprite.SourceRect.Y,
-                32,
-                31
-            );
-            // Render eyes sprite on top (cropped) with eyes color from animation component
-            batcher.Draw(
-                eyesSprite.Texture2D,
-                renderPosition,
-                eyesCroppedSourceRect,
-                eyesAnimComponent.ComponentColor,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0f
-            );
-
-            // Define the source rectangle to crop the top 32x31 pixels from the hair sprite
-            var hairCroppedSourceRect = new Rectangle(
-                hairSprite.SourceRect.X,
-                hairSprite.SourceRect.Y,
-                32,
-                31
-            );
-
-            // Render hair sprite on top (cropped) with hair color from animation component
-            batcher.Draw(
-                hairSprite.Texture2D,
-                renderPosition,
-                hairCroppedSourceRect,
-                hairAnimComponent.ComponentColor,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0f
-            );
+            head = headAnimation.Sprites[0];
+            headColor = headAnimComponent.ComponentColor;
+            eyes = eyesAnimation.Sprites[0];
+            eyesColor = eyesAnimComponent.ComponentColor;
+            hair = hairAnimation.Sprites[0];
+            hairColor = hairAnimComponent.ComponentColor;
+            return true;
         }
 
         /// <summary>One recorded paperdoll layer, cropped to the top 32x31 pixels like the live portrait.</summary>

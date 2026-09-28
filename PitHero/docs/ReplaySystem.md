@@ -49,7 +49,7 @@ enables it with `GameConfig.SimulationFixedStepSeconds`, 1/60 s):
 | `SimulationSpeed` | Steps-per-wall-second multiplier, picked from the shared `GameConfig.SpeedSteps` ladder (`1 / 2.5 / 4 / 8`, shown to the player as `1X / 2X / 4X / 8X` via `GameConfig.SpeedStepLabels`) by both the live fast-forward button and the replay scrubber. **Never use `Time.TimeScale`** for speed: more steps of the same length keep the trajectory identical; a scaled delta does not |
 | `MaxStepsPerFrame` | Catch-up cap after a hitch or occlusion; the backlog is dropped (the sim slows, it never desyncs). Raised from `GameConfig.SimulationMaxStepsPerFrame` to `GameConfig.HighSpeedMaxStepsPerFrame` whenever the sim runs above 1x, so the top rung is not silently clamped |
 | `SimulationSuspended` | Zero steps this frame (replay paused / at end) |
-| `PendingExtraSteps` + `ExtraStepWallBudgetSeconds` | Seek: run as many extra steps per frame as fit the wall budget |
+| `PendingExtraSteps` + `ExtraStepWallBudgetSeconds` + `ExtraStepDutyCycle` | Seek: one burst of extra steps per frame, as many as fit the wall budget, then (duty cycle below 1) a `Thread.Sleep` proportional to the burst so a long seek holds that share of one core instead of pegging it |
 | `IsInSimulationStep` | True inside a step, false during the presentation pass |
 | `CosmeticUpdatesSuspended` | Set during seeks when `GameConfig.ReplaySeekSkipsCosmetics` is on |
 
@@ -254,9 +254,16 @@ the tables from the uncompressed chunk prefixes without inflating anything.
 **Chunks** (`ReplayFrameChunkTicks` = 120 ticks, Braid's 2 s GOP): a base frame, then entity-level
 deltas against the previous tick (an entity whose bytes changed is re-emitted whole; a tombstone
 marks one gone), the HUD record only when it changed, then the events section (tile, console, sound)
-and the tile keyframe, deflated as one unit on the sidecar worker. Chunks are contiguous (chunk *i*
-starts at tick *i* × 120); only the last may be partial. Measured cost: ~36 MB per hour on disk,
-40–70 µs per tick in Release (`replays/frame_recorder.log`).
+and the tile keyframe, compressed as one unit on the sidecar worker. Chunks are contiguous (chunk *i*
+starts at tick *i* × 120); only the last may be partial. Measured cost: 40–70 µs per tick in Release
+(`replays/frame_recorder.log`); on disk ~36 MB per hour for the census scene and 51 MB per hour for an
+8-hour farm with ~950 renderables under deflate. **Format v4 (issue #432) compresses with Brotli**
+(`ReplayFrameBrotliQuality` 5, `ReplayFrameBrotliWindowBits` 22): deflate's 32 KB window saw only a
+fifth of a 156 KB chunk, so the walk cycles repeating across it went unmatched; Brotli's 4 MB window
+keeps 13.3% of the raw bytes against 18.5% (that 8-hour session: ~37 MB per hour instead of 51) in
+1.8 ms per chunk against deflate's 1–6. Quality 9 gained nothing more and 11 gained 1.3 points for
+100 ms a chunk. Two remaining levers, not taken: 240-tick chunks (another ~12%) and capturing every
+second tick with position interpolation in the viewer (~37%).
 
 **Lifecycle rules** (mirroring the command recorder): the capture rule is `IsRecording || tick >
 Store.EndTick`, so a playback skips ticks that already have a frame and captures past the stream end;
@@ -269,7 +276,7 @@ same session adopts it; another session's stream is closed with its footer). Ent
 
 ```
 header    "PHFR", formatVersion i32, masterSeed i32, recordedAtUtcTicks i64, simulationVersion i32, chunkTicks i32
-chunks    [len u32][chunk bytes]…      (a chunk = uncompressed prefix + table delta + deflated payload)
+chunks    [len u32][chunk bytes]…      (a chunk = uncompressed prefix + table delta + Brotli payload)
 footer    "PHFX", totalTicks i64, count i32, {offset i64, firstTick i64, tickCount u16}…
           optional "PHFC", lineCount i32, {tick i64, segCount u8, {text, color u32, itemName}…}…   (console lines, plain text)
 trailer   footerOffset i64, "PHFE"
@@ -330,6 +337,13 @@ gold and clock labels are fed from the HUD record (`MainGameScene.ApplyRecordedH
 from the record's static head/eyes/hair sprites (`ApplyRecordedPortrait` →
 `GraphicalHUD.SetRecordedPortrait`), day/night grading and the clouds from the recorded clock, the event
 console from the console log (`EventConsolePanel.ShowRecorded` on a jump, appends while playing).
+The mercenary portraits are not recorded and keep reading the live mercenary entities; a Time Travel
+rebuild has none to read until the seek lands, so `Freeze` pins what the two panels were drawing
+(`MainGameScene.CaptureMercenaryPortraits` / `ApplyMercenaryPortraits`) for the rebuild. The party
+auto-hide keeps working while watching (the panels only take room while the party is on camera), but a
+seek parks them for its whole duration (`UpdateHudAutoHide(seeking)`, Seeking or Starting): the live
+party races through the session behind the frozen frame and made the panels slide up and down for
+minutes, and nobody needs the party HUD while a rebuild runs.
 
 **Particles** (`RecordedParticlePool`): each recorded emitter is re-simulated with Nez's own `Particle`
 code at the fixed step from a `System.Random` seeded by (effect key, start tick); forward play is one
@@ -365,7 +379,11 @@ The service has two **modes** (`ReplayPlaybackMode`):
   was (the live world never runs while watching). **Time Travel Here** freezes the current frame
   (`ReplayFrameViewer.Freeze` keeps a private copy that survives the stream truncation), switches to
   Simulated, rebuilds the world to the cursor with the frozen frame drawn over both the trampoline
-  scene and the rebuilding scene while the scrubber shows the seek progress, then commits
+  scene and the rebuilding scene while the scrubber shows the seek progress and a waving
+  "Time Travelling..." banner (`ReplayTimeTravelBanner`, on `ReplayPlaybackService.IsTimeTravelling`)
+  sits mid-screen so a minutes-long rebuild never reads as a hang, and every scrubber button is
+  disabled until the seek lands (an Exit mid-rebuild would replace the commit continuation; `Exit`
+  also ignores callers while a Time Travel is in flight), then commits
   (`CommitHere`: both recorders truncated). A cursor already at the live tick of the current session
   commits without a rebuild; a saved replay's live world underneath is another timeline, so it always
   rebuilds. A rebuild that diverged is reported once on the console. Kill switches:
@@ -384,17 +402,33 @@ services are keyed by type (constructing a second `MainGameScene` while the firs
   mode switches).
 - **Seek forward** = `Seeking` with `PendingExtraSteps`. **Seek backward** = restart the scene from
   tick 0 and fast-forward. There are no simulation keyframes: a `SaveData` snapshot is not faithful
-  mid-pit, so re-simulation is the only exact path. Measured throughput is roughly 250x real time (an
-  hour of play seeks in about 15 s); the Replay Info window carries the disclaimer for Time Travel and
-  uncached replays instead of any session-length limit.
+  mid-pit, so re-simulation is the only exact path. Unthrottled throughput is roughly 400x real time
+  (~24k steps/s, an hour of play in about 9 s); the Replay Info window carries the disclaimer for
+  Time Travel and uncached replays instead of any session-length limit.
+- **Seeks are throttled** (issue #432, 2026-09-27). Every re-simulation runs through the `Seeking`
+  state: Time Travel Here, Exit from an uncached saved replay (`ReturnToLiveSession`) and scrubs in
+  Simulated mode. Unthrottled, that loop pegged one core for the whole rebuild (the 30 ms seek burst
+  outlasted a 60 Hz frame, and the game runs vsync-paced with no sleep of its own), which a laptop
+  answers with its fan. Now each rendered frame runs one burst of `ReplaySeekWallBudgetSeconds`
+  (10 ms) and then the main thread sleeps so the burst is `ReplaySeekDutyCycle` (0.5) of the frame
+  (`Core.ExtraStepDutyCycle`, `FixedStepScheduler.ComputeRestSeconds`): one core at about half load,
+  a rebuild about twice as long, the frozen frame and progress bar updating at ~45 fps. The last
+  burst of a seek never rests. Raise the duty cycle for faster seeks; 1 disables the rest. **Measured
+  2026-09-27** on an 8-hour session with these values: Time Travel to the 8-hour mark took about
+  5 min in Release (~37 s per hour of session, ~5.8k steps/s effective, so a Release step is now
+  ~70 µs rather than the 42 µs of the September 7 profile) and 8–10 min in Debug, with the CPU quiet
+  in both. Whether that wait is acceptable, or simulation checkpoints (#432, design §8) are wanted,
+  is the owner's call.
 - During seeks: SFX muted, `Debug.QuietMode`, `CosmeticUpdatesSuspended`, camera view captured and
   restored (`CameraControllerComponent.CaptureView/RestoreView`), hero-follow never engages.
 - `GameEventService.Suppressed` and analytics are off during playback; the recruit-notification queue
   is cleared on exit.
 - **Exit** self-caches the replay if it was watched to its end, then re-simulates the set-aside live
   recording to its end and returns to the exact pre-replay live state. **Time Travel Here**
-  (`ContinueFromHere`, confirmed) truncates the recording at the current tick
-  (`ReplayRecorder.TruncateAfter`, `FrameRecorder.TruncateAfter`) and branches live play from there.
+  (`ContinueFromHere`, confirmed) truncates the recording to the ticks before the current one
+  (`ReplayRecorder.TruncateAfter(tick - 1)`, `FrameRecorder.TruncateAfter(tick - 1)`: the clock sits
+  at `tick`, which is simulated live next, so the old timeline's command, sample and frame at that tick
+  must go too) and branches live play from there.
 - `CheckDecision` / `CheckStateHash` set `DivergenceTick` on the first mismatch; the scrubber shows
   "Diverged at m:ss (state|decision)" and a diagnostic block is appended to
   `replay_divergence.log` next to the replay files, naming which part hash (`rng`, `hero`, `party`,
@@ -658,7 +692,7 @@ with the correct working directory (content paths are relative to it).
 ## Configuration (`GameConfig.cs`, "Simulation clock" and "Replay playback" blocks)
 
 `SimulationFixedStepSeconds`, `SimulationMaxStepsPerFrame`, `HighSpeedMaxStepsPerFrame`,
-`SimulationDefaultSpeedIndex`, `SpeedSteps`, `SpeedStepLabels`, `ReplaySeekWallBudgetSeconds`, `ReplayHashIntervalTicks`,
+`SimulationDefaultSpeedIndex`, `SpeedSteps`, `SpeedStepLabels`, `ReplaySeekWallBudgetSeconds`, `ReplaySeekDutyCycle`, `ReplayHashIntervalTicks`,
 `ReplayPauseSkipMinTicks`, `ReplaySeekSkipsCosmetics`, `ReplaySeekQuietLogging`,
 scrubber size constants, `ReplayDirectoryName` / `ReplayFilePrefix` / `ReplayFileExtension`,
 `ReplaySpeechSeedSalt`; artifact prices,
@@ -672,7 +706,8 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
-| `ReplayFrameFormatVersion` | 3 | Bump on any op / HUD record / events change; orphans every cache once |
+| `ReplayFrameFormatVersion` | 4 | Bump on any op / HUD record / events / codec change; orphans every cache once (v4 = Brotli payloads) |
+| `ReplayFrameBrotliQuality` / `ReplayFrameBrotliWindowBits` | 5 / 22 | Chunk payload compression; measured sweet spot (see "Chunks") |
 | `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
 | `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |
 | `ReplayFrameViewSoundCatchupMaxTicks` | 30 | A longer forward move (seek, skipped pause) plays no sounds |

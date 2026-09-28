@@ -76,6 +76,7 @@ namespace PitHero.ECS.Scenes
         private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
         private Services.Replay.Frames.FrameRecorder _frameRecorder; // Per-tick presentation frame stream (issue #424), behind ReplayFrameCaptureEnabled
         private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
+        private ReplayTimeTravelBanner _replayTimeTravelBanner; // "Time Travelling..." over the frozen frame while a rebuild seeks (issue #432)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private AutoSaveIndicator _autoSaveIndicator; // SaveIcon shown in the lower-right corner while an autosave writes (issue #409)
@@ -2447,6 +2448,8 @@ namespace PitHero.ECS.Scenes
             _replayScrubber = new ReplayScrubberPanel(PitHeroSkin.CreateSkin());
             uiCanvas.Stage.AddElement(_replayScrubber);
             PositionReplayScrubber();
+            _replayTimeTravelBanner = new ReplayTimeTravelBanner(PitHeroSkin.CreateSkin());
+            uiCanvas.Stage.AddElement(_replayTimeTravelBanner);
 
             // Let SettingsUI manage the shortcut bar hide/show animation
             _settingsUI?.SetShortcutBar(_shortcutBar);
@@ -2827,10 +2830,35 @@ namespace PitHero.ECS.Scenes
                 sprites.Get(hud.PortraitHair), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHairColor));
         }
 
-        /// <summary>The hero HUD's portrait reads the live paperdoll again (the viewer is gone).</summary>
+        /// <summary>The HUD portraits read the live paperdolls again (the viewer is gone).</summary>
         public void ClearRecordedPortrait()
         {
             _graphicalHUD?.ClearRecordedPortrait();
+            _mercenary1HUD?.ClearRecordedPortrait();
+            _mercenary2HUD?.ClearRecordedPortrait();
+        }
+
+        /// <summary>
+        /// Copies what the two mercenary HUDs are drawing as portraits, for the frame viewer to pin
+        /// across a Time Travel rebuild (issue #432): the record carries no mercenary portraits and the
+        /// rebuilding scene has no mercenary entities to read them from until the seek lands, so
+        /// without the pin the panels sat blank for the whole rebuild.
+        /// </summary>
+        public void CaptureMercenaryPortraits(out GraphicalHUD.PortraitSnapshot merc1, out GraphicalHUD.PortraitSnapshot merc2)
+        {
+            merc1 = default;
+            merc2 = default;
+            if (_mercenary1HUD != null)
+                _mercenary1HUD.TryCapturePortrait(out merc1);
+            if (_mercenary2HUD != null)
+                _mercenary2HUD.TryCapturePortrait(out merc2);
+        }
+
+        /// <summary>Draws pinned portraits on the mercenary HUDs (see <see cref="CaptureMercenaryPortraits"/>).</summary>
+        public void ApplyMercenaryPortraits(in GraphicalHUD.PortraitSnapshot merc1, in GraphicalHUD.PortraitSnapshot merc2)
+        {
+            _mercenary1HUD?.SetRecordedPortrait(in merc1);
+            _mercenary2HUD?.SetRecordedPortrait(in merc2);
         }
 
         /// <summary>
@@ -3083,9 +3111,13 @@ namespace PitHero.ECS.Scenes
         /// visualizations are suppressed for the whole slide: they render upwards out of the HUD
         /// heads, so sliding with the panels would leave them hanging in mid-air.
         /// </summary>
-        private void UpdateHudAutoHide()
+        private void UpdateHudAutoHide(bool seeking)
         {
-            _hudPartyVisible = IsPartyInCameraView();
+            // A replay seek parks the panels for its whole duration: the live party is racing through the
+            // session behind the frozen frame and made them slide up and down for minutes, and nobody
+            // needs the party HUD while a rebuild runs (issue #432). Watching a replay keeps the normal
+            // auto-hide, which the owner likes: the panels only take up room while the party is on camera
+            _hudPartyVisible = !seeking && IsPartyInCameraView();
 
             float target = _hudPartyVisible ? 0f : 1f;
             _hudSlideT = Mathf.Approach(_hudSlideT, target, Time.UnscaledDeltaTime / HudAutoHideDuration);
@@ -3522,6 +3554,8 @@ namespace PitHero.ECS.Scenes
                 if (replayActive)
                     _replayScrubber.Update();
             }
+            // A Time Travel rebuild sits behind a frozen frame for minutes on a long session: keep something moving
+            _replayTimeTravelBanner?.Update(replayActive && replayPlayback.IsTimeTravelling);
 
             // Camera before the UI stages, matching the entity-order the camera component used to update in
             _cameraController?.PresentationUpdate();
@@ -3730,7 +3764,12 @@ namespace PitHero.ECS.Scenes
                 UpdateHeroHUD();
             UpdateHudFontMode();
             if (!IsIntroActive)
-                UpdateHudAutoHide();
+            {
+                bool replaySeeking = replayActive &&
+                    (replayPlayback.State == Services.Replay.ReplayPlaybackState.Seeking ||
+                     replayPlayback.State == Services.Replay.ReplayPlaybackState.Starting);
+                UpdateHudAutoHide(replaySeeking);
+            }
 
             // Update shortcut bar position (handles offset when inventory open)
             PositionShortcutBar();

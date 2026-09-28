@@ -168,6 +168,7 @@ namespace PitHero
         public const string ReplayTimeFormat = "ReplayTimeFormat";
         public const string ReplaySeekingFormat = "ReplaySeekingFormat";
         public const string ReplayStarting = "ReplayStarting";
+        public const string ReplayTimeTravelling = "ReplayTimeTravelling";
         public const string ReplayDivergenceAt = "ReplayDivergenceAt";
         public const string ReplayDivergenceState = "ReplayDivergenceState";
         public const string ReplayDivergenceDecision = "ReplayDivergenceDecision";
