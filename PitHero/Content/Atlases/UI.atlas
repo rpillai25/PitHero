@@ -319,14 +319,23 @@ UICheckbox_Unchecked
 UICheckbox_Unchecked_Highlight
 	256,486,16,16
 	0.5,0.5
+UIScrubberPause
+	366,379,16,16
+	0.5,0.5
+UIScrubberPlay
+	333,412,16,16
+	0.5,0.5
+UIScrubberRewind
+	399,346,16,16
+	0.5,0.5
 UISliderKnob
 	231,493,14,14
 	0.5,0.5
 UISliderKnobDown
-	366,379,14,14
+	432,321,14,14
 	0.5,0.5
 UISliderKnobOver
-	333,412,14,14
+	457,288,14,14
 	0.5,0.5
 NinePatchButton_Down
 	481,150,12,12
