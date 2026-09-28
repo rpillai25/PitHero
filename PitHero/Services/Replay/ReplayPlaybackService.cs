@@ -845,6 +845,11 @@ namespace PitHero.Services.Replay
         {
             if (!IsActive)
                 return;
+            // A Time Travel rebuild owns the seek's continuation (CommitHere); an exit here would replace it
+            // with FinishExit and hand back the old timeline untruncated. The scrubber disables its buttons
+            // while seeking; this guards every other caller
+            if (_timeTravelInFlight)
+                return;
             Trace("Exit");
 
             if (Mode == ReplayPlaybackMode.FrameView && _viewer != null)

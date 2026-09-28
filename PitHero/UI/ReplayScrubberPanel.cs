@@ -237,9 +237,14 @@ namespace PitHero.UI
             {
                 _lastShownState = state;
                 _playPauseButton.SetText(GetText(state == ReplayPlaybackState.Playing ? UITextKey.ButtonReplayPause : UITextKey.ButtonReplayPlay));
+                // Every button is dead while a seek runs (issue #432): an Exit mid-rebuild would hijack a Time
+                // Travel's continuation, a second Time Travel or a speed change mean nothing until the seek lands
                 bool busy = state == ReplayPlaybackState.Seeking || state == ReplayPlaybackState.Starting;
+                _exitButton.SetDisabled(busy);
+                _continueButton.SetDisabled(busy);
                 _playPauseButton.SetDisabled(busy);
                 _rewindButton.SetDisabled(busy);
+                _speedButton.SetDisabled(busy);
                 SetTimeTravelOffered(playback.TimeTravelAllowed);
                 _lastSeekPercent = -1;
                 _lastShownDivergence = -2;
