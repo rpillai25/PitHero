@@ -245,6 +245,12 @@ namespace PitHero.UI
                 _playPauseButton.SetDisabled(busy);
                 _rewindButton.SetDisabled(busy);
                 _speedButton.SetDisabled(busy);
+                // The slider too during a Time Travel: the service ignores drags then anyway, and a knob that
+                // looks live but does nothing reads as a broken seek. A plain Simulated scrub keeps it, because
+                // dragging mid-seek retargets the seek. Disabled only grays the art; the touchable flag blocks input
+                bool sliderLocked = busy && playback.IsTimeTravelling;
+                _slider.Disabled = sliderLocked;
+                _slider.SetTouchable(sliderLocked ? Touchable.Disabled : Touchable.Enabled);
                 SetTimeTravelOffered(playback.TimeTravelAllowed);
                 _lastSeekPercent = -1;
                 _lastShownDivergence = -2;
