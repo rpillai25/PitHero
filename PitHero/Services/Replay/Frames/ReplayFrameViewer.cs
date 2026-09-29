@@ -96,10 +96,18 @@ namespace PitHero.Services.Replay.Frames
             owned?.Dispose();
         }
 
-        /// <summary>The renderables that keep drawing live while a recorded frame is shown: the UI canvas and the HUD (fed from the record).</summary>
+        /// <summary>
+        /// The renderables that keep drawing live while a recorded frame is shown: the UI canvas, the HUD
+        /// (fed from the record) and every other screen-space <see cref="ILiveOnlyRenderable"/> (the
+        /// hover markers). World-space live-only renderables are merged into the recorded frame by
+        /// <see cref="RecordedFrameRenderer"/> instead, which skips screen-space layers.
+        /// </summary>
         private static bool KeepsDrawingLive(IRenderable renderable)
         {
-            return renderable is UICanvas || renderable is GraphicalHUD;
+            if (renderable is UICanvas || renderable is GraphicalHUD)
+                return true;
+            return renderable is ILiveOnlyRenderable && renderable is RenderableComponent rc
+                && FrameCaptureContext.IsScreenSpaceLayer(rc.RenderLayer);
         }
 
         /// <summary>Installs the filter and renderers on <paramref name="scene"/> (the live scene, or each scene of a rebuild).</summary>

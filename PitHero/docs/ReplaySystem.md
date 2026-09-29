@@ -229,7 +229,8 @@ fork field `RenderableComponent.CaptureSlot`, so a re-sorted list costs no looku
 | `Text`, `Rect`, `NinePatch` | `IFrameCapturable` components (floating text, HP bars, outlines, speech bubbles) | anchor + `dx/dy` + `ConstantScreenSize` for constant on-screen size at any zoom; no layer (drawn after every sprite) |
 | `Particle` | `ParticleEmitter`s spawned by `ParticleEffectManager` | effect key, density, root, age in ticks, Emitting flag; the particles themselves are re-simulated by the viewer |
 
-Everything else: `ILiveOnlyRenderable` (clouds, tree bands, `GraphicalHUD`) keeps drawing live;
+Everything else: `ILiveOnlyRenderable` (clouds, tree bands, `GraphicalHUD`, the UI hover markers'
+`UIMarkerRenderer`) keeps drawing live and is never recorded;
 `TiledMapRenderer` and `UICanvas` are skipped silently; any other type is skipped with a one-time
 warning and **fails `FrameCaptureCoverageTests` by name**. That is the rule for feature authors: *a new
 `RenderableComponent` is stock, `IFrameCapturable` or `ILiveOnlyRenderable`*. Anything per-rendered-frame
@@ -317,8 +318,11 @@ trailer   footerOffset i64, "PHFE"
 
 ### Viewer (L2)
 
-`ReplayFrameViewer.AttachToScene` installs the Nez fork's `Scene.RenderableFilter` (only the `UICanvas`
-and the `GraphicalHUD`s keep drawing through the stock renderers) and two renderers:
+`ReplayFrameViewer.AttachToScene` installs the Nez fork's `Scene.RenderableFilter` (only the `UICanvas`,
+the `GraphicalHUD`s and any other `ILiveOnlyRenderable` on a screen-space layer, such as the hover
+markers, keep drawing through the stock renderers; a stock screen-space renderer used for UI chrome would
+be hidden live and replayed from the recording instead, which is how the console marker once appeared at
+random) and two renderers:
 
 - `RecordedFrameRenderer` (world pass, right after the DefaultRenderer so it covers that renderer's
   world-camera ghost of the HUD panels): the shadow tile layers (`ShadowTileLayers`, Base/Detail/FogOfWar
@@ -337,6 +341,10 @@ gold and clock labels are fed from the HUD record (`MainGameScene.ApplyRecordedH
 from the record's static head/eyes/hair sprites (`ApplyRecordedPortrait` →
 `GraphicalHUD.SetRecordedPortrait`), day/night grading and the clouds from the recorded clock, the event
 console from the console log (`EventConsolePanel.ShowRecorded` on a jump, appends while playing).
+Replay mode hides the top bar and the shortcut bar but leaves the event console on screen with its
+normal hover show/hide (`SettingsUI.SnapHudHiddenForIntro(includeConsole: false)` +
+`UpdateEventConsoleAutoHide`); until 2026-09-29 it pinned the console off-screen too, so the recorded
+lines were fed to a panel nobody could see.
 The mercenary portraits are not recorded and keep reading the live mercenary entities; a Time Travel
 rebuild has none to read until the seek lands, so `Freeze` pins what the two panels were drawing
 (`MainGameScene.CaptureMercenaryPortraits` / `ApplyMercenaryPortraits`) for the rebuild. The party
@@ -715,7 +723,7 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
-| `ReplayFrameFormatVersion` | 4 | Bump on any op / HUD record / events / codec change; orphans every cache once (v4 = Brotli payloads) |
+| `ReplayFrameFormatVersion` | 5 | Bump on any op / HUD record / events / codec change, or when something stops being recorded; orphans every cache once (v4 = Brotli payloads, v5 = hover markers live-only) |
 | `ReplayFrameBrotliQuality` / `ReplayFrameBrotliWindowBits` | 5 / 22 | Chunk payload compression; measured sweet spot (see "Chunks") |
 | `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
 | `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |

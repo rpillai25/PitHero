@@ -2375,11 +2375,13 @@ namespace PitHero.UI
                 return;
             }
 
-            // Replay mode: bars stay pinned off-screen (no blocker — the camera must stay live);
-            // the scrubber panel is the only interactive UI
+            // Replay mode: the top bar and the shortcut bar stay pinned off-screen (no blocker — the
+            // camera must stay live). The event console keeps its normal hover show/hide: the frame
+            // viewer feeds it the recorded lines at the playhead, and it never overlaps the scrubber
             if (_isReplayModeActive)
             {
-                SnapHudHiddenForIntro();
+                SnapHudHiddenForIntro(includeConsole: false);
+                UpdateEventConsoleAutoHide();
                 return;
             }
 
@@ -2866,7 +2868,7 @@ namespace PitHero.UI
             _constructionUI?.DismissSubButtons();
             _recruitmentNotificationUI?.HideNow();
             _isReplayModeActive = true;
-            SnapHudHiddenForIntro();
+            SnapHudHiddenForIntro(includeConsole: false); // the console stays as it was and keeps auto-hiding
         }
 
         /// <summary>Exits replay mode: slides the bars back into view.</summary>
@@ -2886,7 +2888,7 @@ namespace PitHero.UI
         /// and the window may still be resized during scene start, so offsets computed once inside
         /// Begin() can be stale by the first rendered frame.
         /// </summary>
-        private void SnapHudHiddenForIntro()
+        private void SnapHudHiddenForIntro(bool includeConsole = true)
         {
             _uiBarHidden = true;
             _uiBarAnimating = false;
@@ -2905,7 +2907,7 @@ namespace PitHero.UI
                 _shortcutBar.SetSlideOffsetY(_shortcutBarSlideY);
             }
 
-            if (_eventConsolePanel != null)
+            if (includeConsole && _eventConsolePanel != null)
             {
                 _consoleHidden = true;
                 _consoleAnimating = false;
@@ -2915,7 +2917,8 @@ namespace PitHero.UI
 
             _topBarMarker?.SetVisible(false);
             _shortcutBarMarker?.SetVisible(false);
-            _consoleMarker?.SetVisible(false);
+            if (includeConsole)
+                _consoleMarker?.SetVisible(false);
 
             _introBlocker?.SetBounds(0, 0, _stage.GetWidth(), _stage.GetHeight());
         }

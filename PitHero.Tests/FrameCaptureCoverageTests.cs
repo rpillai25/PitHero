@@ -29,6 +29,7 @@ namespace PitHero.Tests
             ("PitHero.ECS.Components.SelectBoxRenderComponent", "capturable"),
             ("PitHero.ECS.Components.CloudOverlayComponent", "live-only"),
             ("PitHero.ECS.Components.TreeBandComponent", "live-only"),
+            ("PitHero.ECS.Components.UIMarkerRenderer", "live-only"),
             ("PitHero.UI.GraphicalHUD", "live-only"),
             ("PitHero.ECS.Components.ActionQueueVisualizationComponent", "capturable"),
             ("PitHero.ECS.Components.SpriteCompositorBase", "stock"),
