@@ -337,6 +337,10 @@ gold and clock labels are fed from the HUD record (`MainGameScene.ApplyRecordedH
 from the record's static head/eyes/hair sprites (`ApplyRecordedPortrait` →
 `GraphicalHUD.SetRecordedPortrait`), day/night grading and the clouds from the recorded clock, the event
 console from the console log (`EventConsolePanel.ShowRecorded` on a jump, appends while playing).
+Replay mode hides the top bar and the shortcut bar but leaves the event console on screen with its
+normal hover show/hide (`SettingsUI.SnapHudHiddenForIntro(includeConsole: false)` +
+`UpdateEventConsoleAutoHide`); until 2026-09-29 it pinned the console off-screen too, so the recorded
+lines were fed to a panel nobody could see.
 The mercenary portraits are not recorded and keep reading the live mercenary entities; a Time Travel
 rebuild has none to read until the seek lands, so `Freeze` pins what the two panels were drawing
 (`MainGameScene.CaptureMercenaryPortraits` / `ApplyMercenaryPortraits`) for the rebuild. The party
