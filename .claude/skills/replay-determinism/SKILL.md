@@ -42,7 +42,10 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
    drawing implements `IFrameCapturable.CaptureFrame` (emit Sprite/Text/Rect/NinePatch ops through the
    context's interning, no allocation per tick) or is `ILiveOnlyRenderable` (draws live while viewing,
    only for what is not part of the recorded world). `FrameCaptureCoverageTests` fails by name until
-   the type is classified and added to its list.
+   the type is classified and added to its list. UI chrome built from a *stock* renderer (hover markers,
+   indicators on their own screen-space entity) must be an `ILiveOnlyRenderable` subclass such as
+   `UIMarkerRenderer`, or it is recorded, hidden live under the viewer and replayed at recording-time
+   visibility; screen-space live-only renderables pass the viewer's filter automatically.
 10. **A new simulation sound goes through `SoundEffectManager.PlaySound` / `PlaySoundAt`.** The frame
     stream records what the manager plays (type, rolled variant, position) so a replay hears it; a raw
     `SoundEffect.Play` is silent in replays. UI click sounds belong to the global button hooks
@@ -91,6 +94,7 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
 | New `MainGameScene` throws duplicate service key | Old scene still registered; scene swaps go through `ReplayBootScene`, services removed in `Unload` |
 | Diverges in a battle at a deflect/crit/hit roll, same roll value both sides | A combat passive was set by UI code (window refresh, hover, grid rebuild). Synergies are the precedent: they now live in `HeroSynergyResolver` (sim, per tick) and `InventoryGrid` only mirrors them. Any stat the sim reads must be derived in the sim |
 | Divergence report needs more than hashes | `GameConfig.ReplayDivergenceSnapshots`: the report prints the last in-sync state, the drifted state and `ReplayBattleTrace`; compare against the live analytics `.jsonl` by wall time (tick / 60 s after load) |
+| A UI marker or indicator shows at random in a replay, or never when it should | It is UI chrome on a stock renderer: recorded, hidden live by the viewer's filter, replayed at the visibility it had when the session was played. Make its renderer an `ILiveOnlyRenderable` subclass (`UIMarkerRenderer`) and bump `ReplayFrameFormatVersion` so old caches stop drawing the recorded copies |
 | A new visual is missing from replays (no divergence) | The renderable is not stock, `IFrameCapturable` or `ILiveOnlyRenderable` (`FrameCaptureCoverageTests` names it), or it draws per rendered frame / from a live service instead of per tick — a per-tick recording only sees what the sim step left behind |
 | A new sound is silent in replays | It bypassed `SoundEffectManager` (raw `SoundEffect.Play`), or it is one of the UI click types, which are never recorded |
 | Replay frame caches (`.frames`) all vanished after a change | `GameConfig.ReplayFrameFormatVersion` was bumped (any change to op layouts, the HUD record, the events section or the chunk codec): intended, caches are rebuilt by re-simulation and self-cached on exit; `.bin` recordings are never touched |

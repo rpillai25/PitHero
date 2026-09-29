@@ -45,7 +45,7 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            _renderer = Entity.AddComponent(new SpriteRenderer(sprite));
+            _renderer = Entity.AddComponent(new UIMarkerRenderer(sprite));
             _renderer.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD); // screen space, aligned with stage coords
             _renderer.FlipY = _flipY;
             _renderer.SetColor(Color.White);
@@ -80,6 +80,20 @@ namespace PitHero.ECS.Components
             }
 
             base.OnRemovedFromEntity();
+        }
+    }
+
+    /// <summary>
+    /// The marker's sprite renderer. UI chrome, not part of the recorded world, so it is
+    /// <see cref="Services.Replay.Frames.ILiveOnlyRenderable"/>: the frame recorder never captures it and
+    /// the replay viewer keeps drawing it live, so a marker shows exactly when its element is hidden
+    /// now. As a stock renderer it was recorded, hidden live under the viewer, and replays showed it
+    /// wherever it had happened to be visible when the session was played.
+    /// </summary>
+    public sealed class UIMarkerRenderer : SpriteRenderer, Services.Replay.Frames.ILiveOnlyRenderable
+    {
+        public UIMarkerRenderer(Nez.Textures.Sprite sprite) : base(sprite)
+        {
         }
     }
 }

@@ -779,7 +779,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 4;                         // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate
+        public const int ReplayFrameFormatVersion = 5;                        // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones)
         // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
         // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
         // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
