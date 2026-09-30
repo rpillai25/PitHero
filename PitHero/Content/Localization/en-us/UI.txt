@@ -541,6 +541,7 @@ ButtonReplayPlaySelected,Play Selected
 ReplayListEmpty,No saved replays yet. Use Save Session Replay to keep the current session.
 ReplayListEmptyFiltered,No saved replays for the current hero. Untick Filter to current hero to see all replays.
 ReplayFilterCurrentHero,Filter to current hero
+ReplayAutosaveReplays,Autosave Replays
 ReplayListShowingRecentFormat,Showing the {0} most recent of {1} replays
 ReplayRowTitleFormat,{0} the {1}
 ReplayRowDetailFormat,{0}  -  {1}  -  Pit {2}

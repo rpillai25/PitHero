@@ -189,6 +189,92 @@ namespace PitHero.Tests
             Assert.AreEqual(original.TotalTicks, loaded.TotalTicks);
         }
 
+        /// <summary>
+        /// v5 (issue #444): the optional console log round-trips segment by segment (text, packed
+        /// color, item name or none), a null log reads back null, and a v4 layout (the same bytes minus
+        /// the trailing presence flag, stamped 4) still reads with no console log.
+        /// </summary>
+        [TestMethod]
+        public void ReplayData_V5ConsoleLog_RoundTrips_AndV4LayoutReadsWithout()
+        {
+            var original = BuildSample(3);
+            original.ConsoleLog = new PitHero.Services.Replay.Frames.RecordedConsoleLog();
+            original.ConsoleLog.Add(10, new[] { new ConsoleSegment("Hero found ", Microsoft.Xna.Framework.Color.White), new ConsoleSegment("Rusty Blade", Microsoft.Xna.Framework.Color.Gold, "RustyBlade") });
+            original.ConsoleLog.Add(25, new[] { new ConsoleSegment("Night falls", new Microsoft.Xna.Framework.Color(12, 34, 56, 78)) });
+            original.ConsoleLog.Add(25, new ConsoleSegment[0]);
+
+            byte[] v5;
+            using (var ms = new MemoryStream())
+            {
+                var w = new ReuseableBinaryWriter(ms);
+                ((IPersistable)original).Persist(w);
+                w.Flush();
+                v5 = ms.ToArray();
+            }
+            var loaded = new ReplayData();
+            new ReuseableBinaryReader(new MemoryStream(v5)).ReadPersistableInto(loaded);
+            Assert.AreEqual(5, loaded.FormatVersion);
+            Assert.IsNotNull(loaded.ConsoleLog);
+            Assert.AreEqual(3, loaded.ConsoleLog.Count);
+            Assert.AreEqual(10L, loaded.ConsoleLog[0].Tick);
+            Assert.AreEqual(2, loaded.ConsoleLog[0].Segments.Length);
+            Assert.AreEqual("Hero found ", loaded.ConsoleLog[0].Segments[0].Text);
+            Assert.IsNull(loaded.ConsoleLog[0].Segments[0].ItemName, "an absent item name reads back as null");
+            Assert.AreEqual("Rusty Blade", loaded.ConsoleLog[0].Segments[1].Text);
+            Assert.AreEqual("RustyBlade", loaded.ConsoleLog[0].Segments[1].ItemName);
+            Assert.AreEqual(Microsoft.Xna.Framework.Color.Gold.PackedValue, loaded.ConsoleLog[0].Segments[1].Color.PackedValue);
+            Assert.AreEqual(new Microsoft.Xna.Framework.Color(12, 34, 56, 78).PackedValue, loaded.ConsoleLog[1].Segments[0].Color.PackedValue);
+            Assert.AreEqual(0, loaded.ConsoleLog[2].Segments.Length);
+            Assert.AreEqual(original.Commands.Count, loaded.Commands.Count, "the lists before the section are untouched");
+
+            // No log: the flag alone
+            var bare = BuildSample(2);
+            byte[] bareBytes;
+            using (var ms = new MemoryStream())
+            {
+                var w = new ReuseableBinaryWriter(ms);
+                ((IPersistable)bare).Persist(w);
+                w.Flush();
+                bareBytes = ms.ToArray();
+            }
+            var bareLoaded = new ReplayData();
+            new ReuseableBinaryReader(new MemoryStream(bareBytes)).ReadPersistableInto(bareLoaded);
+            Assert.IsNull(bareLoaded.ConsoleLog);
+
+            // The v4 layout: strip the trailing presence byte and stamp version 4
+            var v4 = new byte[bareBytes.Length - 1];
+            Buffer.BlockCopy(bareBytes, 0, v4, 0, v4.Length);
+            Buffer.BlockCopy(BitConverter.GetBytes(4), 0, v4, 0, 4);
+            var v4Loaded = new ReplayData();
+            new ReuseableBinaryReader(new MemoryStream(v4)).ReadPersistableInto(v4Loaded);
+            Assert.AreEqual(4, v4Loaded.FormatVersion);
+            Assert.IsNull(v4Loaded.ConsoleLog);
+            Assert.AreEqual(bare.Commands.Count, v4Loaded.Commands.Count);
+            Assert.AreEqual(1, v4Loaded.StateHashes.Count);
+            Assert.AreEqual(bare.TotalTicks, v4Loaded.TotalTicks);
+        }
+
+        /// <summary>TruncateAfter ends the recording at a tick: later commands, samples and console lines go, TotalTicks follows.</summary>
+        [TestMethod]
+        public void ReplayData_TruncateAfter_CutsEveryListAndTotalTicks()
+        {
+            var data = BuildSample(10); // command ticks 0, 7, 14, ... 63
+            data.StateHashes.Add(new ReplayHashSample(120, 43));
+            data.ConsoleLog = new PitHero.Services.Replay.Frames.RecordedConsoleLog();
+            data.ConsoleLog.Add(20, new ConsoleSegment[0]);
+            data.ConsoleLog.Add(21, new ConsoleSegment[0]);
+            data.ConsoleLog.Add(90, new ConsoleSegment[0]);
+
+            data.TruncateAfter(21);
+
+            Assert.AreEqual(22L, data.TotalTicks);
+            Assert.AreEqual(4, data.Commands.Count, "ticks 0, 7, 14, 21 stay");
+            Assert.AreEqual(21L, data.Commands[3].Tick);
+            Assert.AreEqual(2, data.Decisions.Count, "ticks 5 and 9 stay");
+            Assert.AreEqual(0, data.StateHashes.Count, "the samples at 60 and 120 go");
+            Assert.AreEqual(2, data.ConsoleLog.Count, "the line at 90 goes, the two at 20 and 21 stay");
+        }
+
         /// <summary>A file with an unsupported version is rejected cleanly.</summary>
         [TestMethod]
         public void ReplayData_UnsupportedVersion_Throws()

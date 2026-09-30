@@ -420,8 +420,10 @@ namespace PitHero.ECS.Scenes
             {
                 _frameRecorder = new Services.Replay.Frames.FrameRecorder();
                 Core.Services.AddService(_frameRecorder);
+                // Session files a recovery recording still refers to survive the stale cleanup (issue #444)
+                var replayFiles = Core.Services.GetService<Services.Replay.ReplayFileService>();
                 _frameRecorder.Initialize(masterSeed, _replayRecorder.RecordedAtUtcTicks, replayBootstrap?.Data,
-                    Core.Services.GetService<Services.Replay.ReplayFileService>()?.Directory_);
+                    replayFiles?.Directory_, replayFiles?.ProtectedSessionFilePaths());
                 if (replayBootstrap?.Data != null)
                     _frameRecorder.IsRecording = false;
             }

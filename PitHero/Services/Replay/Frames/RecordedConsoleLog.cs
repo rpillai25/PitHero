@@ -65,5 +65,19 @@ namespace PitHero.Services.Replay.Frames
         }
 
         public void Clear() => _lines.Clear();
+
+        /// <summary>
+        /// A detached copy of the log (the recovery snapshot, issue #444). The segment arrays are shared:
+        /// the emitter allocates a fresh array per line and nothing mutates one afterwards.
+        /// </summary>
+        public RecordedConsoleLog Clone()
+        {
+            var copy = new RecordedConsoleLog();
+            if (_lines.Count > copy._lines.Capacity)
+                copy._lines.Capacity = _lines.Count;
+            for (int i = 0; i < _lines.Count; i++)
+                copy._lines.Add(_lines[i]);
+            return copy;
+        }
     }
 }

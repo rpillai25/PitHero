@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero;
 using PitHero.Services;
+using PitHero.Services.Replay;
 using System;
 using System.Threading;
 
@@ -169,6 +170,98 @@ namespace PitHero.Tests
             service.WaitForCompletion();
             Assert.AreEqual(0, writes);
             Assert.IsFalse(service.IsSaving);
+        }
+
+        // ───────────── the replay stage (issue #444) ─────────────
+
+        private static ReplayData NewReplaySnapshot()
+        {
+            return new ReplayData { HeroId = 7, TotalTicks = 1800 };
+        }
+
+        [TestMethod]
+        public void AutoSave_ReplayStage_RunsOnTheWorkerAfterTheGameWrite()
+        {
+            int mainThreadId = Thread.CurrentThread.ManagedThreadId;
+            int gatherReplayThreadId = -1, writeReplayThreadId = -1;
+            int order = 0, gameWriteOrder = -1, replayWriteOrder = -1;
+            ReplayData written = null;
+            bool published = false;
+
+            var service = new AutoSaveService(
+                NewSnapshot,
+                _ => gameWriteOrder = Interlocked.Increment(ref order),
+                _ => published = true,
+                Interval);
+            service.SetReplayStage(
+                () => { gatherReplayThreadId = Thread.CurrentThread.ManagedThreadId; return NewReplaySnapshot(); },
+                data => { writeReplayThreadId = Thread.CurrentThread.ManagedThreadId; replayWriteOrder = Interlocked.Increment(ref order); written = data; });
+
+            Assert.IsTrue(service.TryStartAutoSave());
+            service.WaitForCompletion();
+
+            Assert.AreEqual(mainThreadId, gatherReplayThreadId, "the replay gather runs on the calling thread");
+            Assert.AreNotEqual(mainThreadId, writeReplayThreadId, "the replay write runs on the worker");
+            Assert.AreEqual(1, gameWriteOrder, "the game save is written first");
+            Assert.AreEqual(2, replayWriteOrder, "the replay is written after it, in the same task");
+            Assert.IsNotNull(written);
+            Assert.AreEqual(7, written.HeroId);
+            Assert.IsTrue(published);
+            Assert.IsFalse(service.IsSaving);
+        }
+
+        [TestMethod]
+        public void AutoSave_ReplayStage_ItsFailureLeavesTheGameSaveIntact()
+        {
+            Exception reported = null;
+            bool published = false;
+            int replayWrites = 0;
+            var service = new AutoSaveService(NewSnapshot, _ => { }, _ => published = true, Interval);
+            service.SetReplayStage(NewReplaySnapshot, _ => { Interlocked.Increment(ref replayWrites); throw new InvalidOperationException("replay disk full"); });
+            service.Failed += ex => reported = ex;
+
+            Assert.IsTrue(service.TryStartAutoSave());
+            service.WaitForCompletion();
+
+            Assert.AreEqual(1, replayWrites);
+            Assert.IsTrue(published, "the game snapshot is published although the replay write threw");
+            Assert.IsNull(reported, "a replay failure never counts as an autosave failure");
+            Assert.IsFalse(service.IsSaving);
+
+            // And the other way round: a failed game write still lets the replay stage run
+            replayWrites = 0;
+            var failing = new AutoSaveService(NewSnapshot, _ => throw new InvalidOperationException("disk full"), _ => { }, Interval);
+            failing.SetReplayStage(NewReplaySnapshot, _ => Interlocked.Increment(ref replayWrites));
+            failing.Failed += ex => reported = ex;
+            Assert.IsTrue(failing.TryStartAutoSave());
+            failing.WaitForCompletion();
+            Assert.AreEqual(1, replayWrites, "the replay stage runs after a failed game write");
+            Assert.IsNotNull(reported);
+            Assert.AreEqual("disk full", reported.Message);
+        }
+
+        [TestMethod]
+        public void AutoSave_ReplayStage_SkippedBySaveNowAndByANullGather()
+        {
+            int gameWrites = 0, replayWrites = 0;
+            var service = new AutoSaveService(NewSnapshot, _ => Interlocked.Increment(ref gameWrites), null, Interval);
+            service.SetReplayStage(NewReplaySnapshot, _ => Interlocked.Increment(ref replayWrites));
+
+            Assert.IsTrue(service.SaveNow(), "the quit-time save writes the game snapshot");
+            Assert.AreEqual(1, gameWrites);
+            Assert.AreEqual(0, replayWrites, "the quit path writes the auto replay itself, so SaveNow skips the stage");
+
+            TickSeconds(service, Interval);
+            service.WaitForCompletion();
+            Assert.AreEqual(2, gameWrites);
+            Assert.AreEqual(1, replayWrites, "the periodic save includes the stage");
+
+            var nothing = new AutoSaveService(NewSnapshot, _ => Interlocked.Increment(ref gameWrites), null, Interval);
+            nothing.SetReplayStage(() => null, _ => Interlocked.Increment(ref replayWrites));
+            Assert.IsTrue(nothing.TryStartAutoSave());
+            nothing.WaitForCompletion();
+            Assert.AreEqual(3, gameWrites);
+            Assert.AreEqual(1, replayWrites, "a null replay gather writes the game save only");
         }
 
         [TestMethod]

@@ -63,8 +63,8 @@ namespace PitHero.Services.Replay
     /// </summary>
     public class ReplayData : IPersistable
     {
-        /// <summary>Current replay file format version (2: state samples carry part hashes; 3: HeroId in the header; 4: SimulationVersion in the header).</summary>
-        public const int CurrentVersion = 4;
+        /// <summary>Current replay file format version (2: state samples carry part hashes; 3: HeroId in the header; 4: SimulationVersion in the header; 5: optional console log after the samples).</summary>
+        public const int CurrentVersion = 5;
         /// <summary>Oldest replay file format this build can read.</summary>
         public const int MinSupportedVersion = 2;
 
@@ -95,11 +95,52 @@ namespace PitHero.Services.Replay
         public List<ReplayHashSample> Decisions = new List<ReplayHashSample>();
         public List<ReplayHashSample> StateHashes = new List<ReplayHashSample>();
 
+        /// <summary>
+        /// The session's console lines, or null. Only the autosave's recovery recording carries them
+        /// (issue #444): a crashed session's frame file has no footer, and the footer is the only other
+        /// place the lines live as text. Saved replays leave this null (their <c>.frames</c> footer has them).
+        /// </summary>
+        public Frames.RecordedConsoleLog ConsoleLog;
+
         /// <summary>When true, <see cref="Recover"/> stops after the header (list previews).</summary>
         public bool HeaderOnly;
 
         /// <summary>Duration in seconds implied by TotalTicks and the fixed step.</summary>
         public float DurationSeconds => TotalTicks * GameConfig.SimulationFixedStepSeconds;
+
+        /// <summary>
+        /// Ends the recording at <paramref name="lastKeptTick"/>: every command, sample and console line
+        /// after it is dropped and <see cref="TotalTicks"/> becomes the tick after it (crash recovery
+        /// trims a recording to the frames that reached disk, issue #444).
+        /// </summary>
+        public void TruncateAfter(long lastKeptTick)
+        {
+            TruncateCommands(Commands, lastKeptTick);
+            TruncateSamples(Decisions, lastKeptTick);
+            TruncateSamples(StateHashes, lastKeptTick);
+            ConsoleLog?.TruncateAfter(lastKeptTick);
+            TotalTicks = lastKeptTick + 1;
+        }
+
+        /// <summary>Drops the trailing commands recorded after <paramref name="tick"/> (the list is in tick order).</summary>
+        public static void TruncateCommands(List<ReplayCommandRecord> commands, long tick)
+        {
+            int keep = commands.Count;
+            while (keep > 0 && commands[keep - 1].Tick > tick)
+                keep--;
+            if (keep < commands.Count)
+                commands.RemoveRange(keep, commands.Count - keep);
+        }
+
+        /// <summary>Drops the trailing samples recorded after <paramref name="tick"/> (the list is in tick order).</summary>
+        public static void TruncateSamples(List<ReplayHashSample> samples, long tick)
+        {
+            int keep = samples.Count;
+            while (keep > 0 && samples[keep - 1].Tick > tick)
+                keep--;
+            if (keep < samples.Count)
+                samples.RemoveRange(keep, samples.Count - keep);
+        }
 
         void IPersistable.Persist(IPersistableWriter writer)
         {
@@ -134,6 +175,57 @@ namespace PitHero.Services.Replay
 
             WriteSamples(writer, Decisions);
             WriteSamples(writer, StateHashes);
+            WriteConsoleLog(writer, ConsoleLog);
+        }
+
+        /// <summary>The v5 console section: a presence flag, then each line as tick, segment count and (text, packed color, item name) per segment.</summary>
+        private static void WriteConsoleLog(IPersistableWriter writer, Frames.RecordedConsoleLog log)
+        {
+            writer.Write(log != null);
+            if (log == null)
+                return;
+            writer.Write(log.Count);
+            for (int i = 0; i < log.Count; i++)
+            {
+                var line = log[i];
+                var segments = line.Segments;
+                int segCount = segments == null ? 0 : Math.Min(segments.Length, byte.MaxValue);
+                ReplayIO.WriteLong(writer, line.Tick);
+                writer.Write(segCount);
+                for (int s = 0; s < segCount; s++)
+                {
+                    writer.Write(segments[s].Text ?? string.Empty);
+                    writer.Write(segments[s].Color.PackedValue);
+                    writer.Write(segments[s].ItemName ?? string.Empty);
+                }
+            }
+        }
+
+        private static Frames.RecordedConsoleLog ReadConsoleLog(IPersistableReader reader)
+        {
+            if (!reader.ReadBool())
+                return null;
+            var log = new Frames.RecordedConsoleLog();
+            int lineCount = reader.ReadInt();
+            if (lineCount < 0)
+                throw new InvalidDataException("Bad console line count in replay file");
+            for (int i = 0; i < lineCount; i++)
+            {
+                long tick = ReplayIO.ReadLong(reader);
+                int segCount = reader.ReadInt();
+                if (segCount < 0 || segCount > byte.MaxValue)
+                    throw new InvalidDataException("Bad console segment count in replay file");
+                var segments = new ConsoleSegment[segCount];
+                for (int s = 0; s < segCount; s++)
+                {
+                    string text = reader.ReadString();
+                    var color = new Microsoft.Xna.Framework.Color { PackedValue = reader.ReadUInt() };
+                    string itemName = reader.ReadString();
+                    segments[s] = new ConsoleSegment(text, color, itemName.Length == 0 ? null : itemName);
+                }
+                log.Add(tick, segments);
+            }
+            return log;
         }
 
         private static void WriteSamples(IPersistableWriter writer, List<ReplayHashSample> samples)
@@ -195,6 +287,7 @@ namespace PitHero.Services.Replay
 
             Decisions = ReadSamples(reader);
             StateHashes = ReadSamples(reader);
+            ConsoleLog = FormatVersion >= 5 ? ReadConsoleLog(reader) : null;
         }
 
         private static List<ReplayHashSample> ReadSamples(IPersistableReader reader)

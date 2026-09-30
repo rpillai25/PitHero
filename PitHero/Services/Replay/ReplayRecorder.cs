@@ -40,6 +40,8 @@ namespace PitHero.Services.Replay
         public long RecordedAtUtcTicks => _recordedAtUtcTicks;
         /// <summary>The session's master seed.</summary>
         public int MasterSeed => _masterSeed;
+        /// <summary>The hero the session belongs to (0 until <see cref="SetSessionInfo"/> supplies it).</summary>
+        public int HeroId => _heroId;
 
         /// <summary>Recorded commands (read-only view for playback).</summary>
         public IReadOnlyList<ReplayCommandRecord> Commands => _commands;
@@ -137,27 +139,9 @@ namespace PitHero.Services.Replay
         /// </summary>
         public void TruncateAfter(long tick)
         {
-            TruncateCommands(tick);
-            TruncateSamples(_decisions, tick);
-            TruncateSamples(_stateHashes, tick);
-        }
-
-        private void TruncateCommands(long tick)
-        {
-            int keep = _commands.Count;
-            while (keep > 0 && _commands[keep - 1].Tick > tick)
-                keep--;
-            if (keep < _commands.Count)
-                _commands.RemoveRange(keep, _commands.Count - keep);
-        }
-
-        private static void TruncateSamples(List<ReplayHashSample> samples, long tick)
-        {
-            int keep = samples.Count;
-            while (keep > 0 && samples[keep - 1].Tick > tick)
-                keep--;
-            if (keep < samples.Count)
-                samples.RemoveRange(keep, samples.Count - keep);
+            ReplayData.TruncateCommands(_commands, tick);
+            ReplayData.TruncateSamples(_decisions, tick);
+            ReplayData.TruncateSamples(_stateHashes, tick);
         }
 
         /// <summary>Copies the recording into a new ReplayData ending at <paramref name="totalTicks"/>.</summary>

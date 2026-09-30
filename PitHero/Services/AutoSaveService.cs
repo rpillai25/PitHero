@@ -9,6 +9,10 @@ namespace PitHero.Services
     /// The state snapshot (<see cref="SaveLoadService.GatherCurrentState"/>) is gathered on the
     /// calling (main) thread; only the serialize-and-write step runs on a worker. Completion is
     /// observed by polling from the main thread, so no callback ever runs off-thread.
+    /// An optional second stage (<see cref="SetReplayStage"/>, issue #444) writes the session's replay
+    /// recording on the same worker task, sequentially after the game save, so there is one in-flight
+    /// flag and never two writers on the disk at once; it has its own try/catch and can neither fail
+    /// nor delay the game save's completion.
     /// Presentation-only: the timer is wall-clock and the service never touches simulation state.
     /// </summary>
     public sealed class AutoSaveService
@@ -16,12 +20,15 @@ namespace PitHero.Services
         private readonly Func<SaveData> _gather;
         private readonly Action<SaveData> _write;
         private readonly Action<SaveData> _onSaved;
+        private Func<Replay.ReplayData> _gatherReplay;
+        private Action<Replay.ReplayData> _writeReplay;
 
         private float _elapsed;
         private bool _isSaving;
         private Task _worker;
         private SaveData _inFlightData;
         private Exception _error;
+        private Exception _replayError;
 
         /// <summary>Wall seconds between autosaves.</summary>
         public float IntervalSeconds { get; set; }
@@ -58,6 +65,17 @@ namespace PitHero.Services
             IntervalSeconds = intervalSeconds;
         }
 
+        /// <summary>
+        /// Installs the replay stage (issue #444): <paramref name="gather"/> runs on the caller's thread
+        /// right after the game snapshot (null = nothing to write this time), <paramref name="write"/>
+        /// runs on the worker after the game write and must be thread-agnostic like it.
+        /// </summary>
+        public void SetReplayStage(Func<Replay.ReplayData> gather, Action<Replay.ReplayData> write)
+        {
+            _gatherReplay = gather;
+            _writeReplay = write;
+        }
+
         /// <summary>Restarts the countdown (session start, manual save).</summary>
         public void ResetTimer()
         {
@@ -88,10 +106,12 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Gathers the current state on the calling thread and starts the background write.
-        /// Returns false when a write is already in flight or the gather produced nothing.
+        /// Gathers the current state on the calling thread and starts the background write; with
+        /// <paramref name="includeReplay"/> the replay stage (when installed) is gathered here too and
+        /// written by the same worker after the game save. Returns false when a write is already in
+        /// flight or the gather produced nothing.
         /// </summary>
-        public bool TryStartAutoSave()
+        public bool TryStartAutoSave(bool includeReplay = true)
         {
             PollCompletion();
             if (_isSaving)
@@ -100,11 +120,14 @@ namespace PitHero.Services
             var data = _gather();
             if (data == null)
                 return false;
+            var replay = includeReplay && _gatherReplay != null ? _gatherReplay() : null;
 
             _inFlightData = data;
             _error = null;
+            _replayError = null;
             _isSaving = true;
             var write = _write;
+            var writeReplay = _writeReplay;
             _worker = Task.Run(() =>
             {
                 try
@@ -115,6 +138,17 @@ namespace PitHero.Services
                 {
                     // Recorded for the main thread; never log from the worker
                     _error = ex;
+                }
+                if (replay == null || writeReplay == null)
+                    return;
+                try
+                {
+                    writeReplay(replay);
+                }
+                catch (Exception ex)
+                {
+                    // Its own failure: the game save above stands
+                    _replayError = ex;
                 }
             });
             return true;
@@ -131,10 +165,15 @@ namespace PitHero.Services
 
             var data = _inFlightData;
             var error = _error ?? _worker.Exception;
+            var replayError = _replayError;
             _worker = null;
             _inFlightData = null;
             _error = null;
+            _replayError = null;
             _isSaving = false;
+
+            if (replayError != null)
+                Debug.Warn("[AutoSaveService] Replay recovery write failed: " + replayError.Message);
 
             if (error != null)
             {
@@ -149,13 +188,14 @@ namespace PitHero.Services
         /// <summary>
         /// Writes an autosave synchronously: waits for any in-flight write, gathers and writes a fresh
         /// one, waits for that to land, then restarts the countdown. Used by Quit to Title / Exit Game
-        /// (issue #411) so the session on disk is the one the player just left. Returns true when a
+        /// (issue #411) so the session on disk is the one the player just left. The replay stage is
+        /// skipped: the quit path writes the auto replay itself right after. Returns true when a
         /// snapshot was written.
         /// </summary>
         public bool SaveNow()
         {
             WaitForCompletion();
-            bool started = TryStartAutoSave();
+            bool started = TryStartAutoSave(includeReplay: false);
             if (started)
                 WaitForCompletion();
             ResetTimer();

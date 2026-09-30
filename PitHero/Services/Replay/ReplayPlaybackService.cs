@@ -985,12 +985,32 @@ namespace PitHero.Services.Replay
             ReplayRecorder.Current?.TruncateAfter(lastKept);
             Frames.FrameRecorder.Current?.TruncateAfter(lastKept);
             TotalTicks = tick;
+            DeleteRecoveryReplay();
             long divergence = DivergenceTick;
             bool decision = DivergenceIsDecision;
             Debug.Log($"[ReplayPlayback] Continuing live play from replay tick {tick}");
             FinishExit();
             if (divergence >= 0)
                 NotifyDivergence(divergence, decision);
+        }
+
+        /// <summary>
+        /// The autosave's recovery replay (issue #444) was written on the timeline just abandoned; the
+        /// session file has been cut and will refill with the new one, so a crash before the next
+        /// autosave must not pair the old recording with the new frames at the next launch. Deleted here,
+        /// after any write in flight has landed (none can start while a replay plays, but one begun on
+        /// the frame before playback started may still be running).
+        /// </summary>
+        private static void DeleteRecoveryReplay()
+        {
+            if (Core.Instance == null)
+                return;
+            var files = Core.Services.GetService<ReplayFileService>();
+            var recorder = ReplayRecorder.Current;
+            if (files == null || recorder == null || recorder.HeroId == 0)
+                return;
+            Core.Services.GetService<AutoSaveService>()?.WaitForCompletion();
+            files.DeleteRecovery(recorder.HeroId);
         }
 
         private void FinishExit()
