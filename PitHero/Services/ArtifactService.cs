@@ -52,6 +52,27 @@ namespace PitHero.Services
             Current = this;
         }
 
+        /// <summary>
+        /// The player's "Autosave Replays" preference (Replay tab, issue #444), kept in the system save
+        /// like the Global artifacts so it survives New Game and slot loads. Writing a changed value
+        /// saves the file at once. Off means neither the quit-time auto replay nor the autosave's
+        /// recovery recording is written; manual saves and Replay Current Session are unaffected.
+        /// </summary>
+        public bool AutoSaveReplays
+        {
+            get => _data.AutoSaveReplays;
+            set
+            {
+                if (_data.AutoSaveReplays == value)
+                    return;
+                _data.AutoSaveReplays = value;
+                Save();
+            }
+        }
+
+        /// <summary>The preference as the replay code reads it: on when no service is registered (headless tests).</summary>
+        public static bool AutoSaveReplaysEnabled => Current == null || Current.AutoSaveReplays;
+
         /// <summary>Clears the static instance (tests).</summary>
         public void Detach()
         {

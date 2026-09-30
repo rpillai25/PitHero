@@ -152,6 +152,7 @@ namespace PitHero
         public const string ReplayListEmpty = "ReplayListEmpty";
         public const string ReplayListEmptyFiltered = "ReplayListEmptyFiltered";
         public const string ReplayFilterCurrentHero = "ReplayFilterCurrentHero";
+        public const string ReplayAutosaveReplays = "ReplayAutosaveReplays";
         public const string ReplayListShowingRecentFormat = "ReplayListShowingRecentFormat";
         public const string ReplayRowTitleFormat = "ReplayRowTitleFormat";
         public const string ReplayRowDetailFormat = "ReplayRowDetailFormat";

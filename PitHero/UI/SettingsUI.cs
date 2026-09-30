@@ -1814,7 +1814,8 @@ namespace PitHero.UI
         /// not the live session. The autosave comes first so the file on disk is the state the player
         /// saw; the pause release that follows only exists so the recording does not end frozen.
         /// The autosave's recovery replay (issue #444) is deleted once the auto replay is written: it
-        /// exists only for sessions that never reach this path.
+        /// exists only for sessions that never reach this path. With the Replay tab's "Autosave
+        /// Replays" off, neither is written and any recovery file left from before the switch is deleted.
         /// </summary>
         private void SaveSessionBeforeLeaving()
         {
@@ -1829,6 +1830,12 @@ namespace PitHero.UI
             var files = Core.Services?.GetService<Services.Replay.ReplayFileService>();
             if (recorder == null || files == null)
                 return;
+            if (!ArtifactService.AutoSaveReplaysEnabled)
+            {
+                autoSave?.WaitForCompletion();
+                files.DeleteRecovery(recorder.HeroId);
+                return;
+            }
             ReplayTab.ReleasePausesOnRecord();
             var data = recorder.Snapshot(SimulationClock.CurrentTick);
             string fileName = files.SaveWithFrameCache(data, Services.Replay.Frames.FrameRecorder.Current, endSession: true, autoSave: true);

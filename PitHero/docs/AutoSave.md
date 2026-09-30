@@ -122,7 +122,9 @@ or touch the button directly.
    a recovery file exists on disk only for a session that never reached this path.
 9. **The replay stage rides the game autosave, never the other way round** (issue #444). It shares
    the countdown, the `SaveAllowed` gate and the worker task; it has no timer, no flag and no event
-   of its own. `ReplayFileService.WriteRecovery` is the only replay write that may run off-thread:
+   of its own. Its one extra gate is the Replay tab's **"Autosave Replays"** checkbox
+   (`ArtifactService.AutoSaveReplaysEnabled`, a player preference on the system save): off, the
+   gather returns null and the game autosave runs alone. `ReplayFileService.WriteRecovery` is the only replay write that may run off-thread:
    it uses the service's second `FileDataStore` and does nothing but `Save`. Everything else about
    the recovery file (promotion, pairing with the session frames, the tiebreak against the auto
    replay, the Time Travel deletion) is in `ReplaySystem.md` "Crash recovery".

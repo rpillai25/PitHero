@@ -24,6 +24,9 @@ namespace PitHero.UI
         private ScrollPane _scrollPane;
         private Label _selectedLabel;
         private CheckBox _filterCheckBox;      // on by default: list only the current hero's recordings
+        private CheckBox _autoSaveCheckBox;    // "Autosave Replays" (issue #444): the player's persisted preference
+        private bool _syncingAutoSave;         // guards the handler while the box is set from the service
+        private const float CheckBoxGap = 24f; // between the two checkboxes on their row
         private TextButton _playButton;
         private TextButton _deleteButton;
         private List<ReplayFileInfo> _entries = new List<ReplayFileInfo>();
@@ -125,6 +128,23 @@ namespace PitHero.UI
                 Refresh();
             };
 
+            // "Autosave Replays": a player-level preference on the system save, not a command (nothing
+            // the simulation reads). Off stops the quit-time auto replay and the autosave's recovery
+            // recording; switching it off also drops the recovery file written so far, so a crash
+            // later in the session never promotes a recording the player asked not to keep.
+            _autoSaveCheckBox = new CheckBox(GetText(UITextKey.ReplayAutosaveReplays), _skin, "ph-default");
+            _autoSaveCheckBox.IsChecked = ArtifactService.AutoSaveReplaysEnabled;
+            _autoSaveCheckBox.OnChanged += (isChecked) =>
+            {
+                if (_syncingAutoSave)
+                    return;
+                var artifacts = ArtifactService.Current;
+                if (artifacts != null)
+                    artifacts.AutoSaveReplays = isChecked;
+                if (!isChecked)
+                    DeleteRecoveryReplay();
+            };
+
             var buttons = new Table();
             _playButton = MakeSingleLineButton(GetText(UITextKey.ButtonReplayPlaySelected), out float playWidth);
             _playButton.OnClicked += (_) => OnPlaySelected();
@@ -161,7 +181,10 @@ namespace PitHero.UI
             // Label and button row share one centered block, so the label's left edge is the row's
             // left edge whatever widths the localized labels produce
             var bottom = new Table();
-            bottom.Add(_filterCheckBox).Left().SetPadBottom(4f);
+            var checkBoxes = new Table();
+            checkBoxes.Add(_filterCheckBox).Left().SetPadRight(CheckBoxGap);
+            checkBoxes.Add(_autoSaveCheckBox).Left();
+            bottom.Add(checkBoxes).Left().SetPadBottom(4f);
             bottom.Row();
             bottom.Add(_selectedLabel).Left().SetPadBottom(6f);
             bottom.Row();
@@ -179,6 +202,14 @@ namespace PitHero.UI
         {
             if (_rowsTable == null)
                 return;
+
+            if (_autoSaveCheckBox != null && _autoSaveCheckBox.IsChecked != ArtifactService.AutoSaveReplaysEnabled)
+            {
+                // Resync from the service without recording a change (the guard pattern of the Automation tab)
+                _syncingAutoSave = true;
+                _autoSaveCheckBox.IsChecked = ArtifactService.AutoSaveReplaysEnabled;
+                _syncingAutoSave = false;
+            }
 
             var fileService = Core.Services?.GetService<ReplayFileService>();
             var all = fileService != null ? fileService.Enumerate() : new List<ReplayFileInfo>();
@@ -335,6 +366,20 @@ namespace PitHero.UI
                 ReleasePausesOnRecord();
                 StartPlayback(current.Snapshot(SimulationClock.CurrentTick), isCurrentSession: true);
             });
+        }
+
+        /// <summary>
+        /// Drops the live hero's recovery recording after any autosave write in flight has landed
+        /// ("Autosave Replays" switched off mid-session, issue #444).
+        /// </summary>
+        private static void DeleteRecoveryReplay()
+        {
+            var files = Core.Services?.GetService<ReplayFileService>();
+            var recorder = ReplayRecorder.Current;
+            if (files == null || recorder == null || recorder.HeroId == 0)
+                return;
+            Core.Services.GetService<AutoSaveService>()?.WaitForCompletion();
+            files.DeleteRecovery(recorder.HeroId);
         }
 
         /// <summary>Applies and records pause releases immediately (the normal drain will not run before the scene swap).</summary>

@@ -19,13 +19,14 @@ namespace PitHero.Services.Replay
     {
         /// <summary>
         /// The recording to write as the hero's recovery file, or null when there is nothing to protect:
-        /// no session, a replay playing back, tick 0, or a hero without an id. Called on the main
-        /// thread by the autosave; the snapshot is a detached copy the worker may serialize freely.
-        /// Never releases pauses on the record (the quit path does, because its scene is ending).
+        /// the "Autosave Replays" preference off, no session, a replay playing back, tick 0, or a hero
+        /// without an id. Called on the main thread by the autosave; the snapshot is a detached copy the
+        /// worker may serialize freely. Never releases pauses on the record (the quit path does, because
+        /// its scene is ending).
         /// </summary>
         public static ReplayData GatherRecoverySnapshot()
         {
-            if (ReplayPlaybackService.IsPlaybackActive)
+            if (!ArtifactService.AutoSaveReplaysEnabled || ReplayPlaybackService.IsPlaybackActive)
                 return null;
             var recorder = ReplayRecorder.Current;
             if (recorder == null || !recorder.IsInitialized || recorder.HeroId == 0)

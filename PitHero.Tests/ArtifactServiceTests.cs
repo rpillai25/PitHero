@@ -296,6 +296,69 @@ namespace PitHero.Tests
             Assert.AreEqual(SystemSaveData.CurrentVersion, loaded.FormatVersion);
             CollectionAssert.AreEqual(new[] { (int)ArtifactType.ChronosTimepiece, 7 }, loaded.OwnedArtifacts,
                 "Unknown ordinals are kept so an older build never drops a purchase");
+            Assert.IsTrue(loaded.AutoSaveReplays, "on by default");
+        }
+
+        /// <summary>
+        /// The "Autosave Replays" preference (issue #444) lives in the system save: v2 round-trips it, a
+        /// v1 file (version + artifact list, nothing after) reads as on, and the service writes the file
+        /// the moment the value changes.
+        /// </summary>
+        [TestMethod]
+        public void SystemSave_AutoSaveReplays_RoundTrips_V1ReadsAsOn_AndTheServicePersistsAChange()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SystemSaveData { AutoSaveReplays = false };
+                original.OwnedArtifacts.Add((int)ArtifactType.KairosMetronome);
+                writer.Write(original);
+            }
+            var loaded = new SystemSaveData();
+            using (var reader = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+                reader.ReadPersistableInto(loaded);
+            Assert.AreEqual(2, loaded.FormatVersion);
+            Assert.IsFalse(loaded.AutoSaveReplays);
+            CollectionAssert.AreEqual(new[] { (int)ArtifactType.KairosMetronome }, loaded.OwnedArtifacts);
+
+            // The v1 layout, written by hand: version 1, count, ordinals — and nothing else
+            var v1 = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(v1))
+            {
+                writer.Write(1);
+                writer.Write(1);
+                writer.Write((int)ArtifactType.KairosMetronome);
+            }
+            var fromV1 = new SystemSaveData { AutoSaveReplays = false };
+            using (var reader = new BinaryPersistableReader(new MemoryStream(v1.ToArray())))
+                reader.ReadPersistableInto(fromV1);
+            Assert.AreEqual(1, fromV1.FormatVersion);
+            Assert.IsTrue(fromV1.AutoSaveReplays, "a pre-v2 file means the preference was never set: on");
+            CollectionAssert.AreEqual(new[] { (int)ArtifactType.KairosMetronome }, fromV1.OwnedArtifacts);
+
+            var dir = NewTempDir();
+            try
+            {
+                var service = new ArtifactService(dir, "system.bin");
+                Assert.IsTrue(service.AutoSaveReplays);
+                Assert.IsTrue(ArtifactService.AutoSaveReplaysEnabled);
+                service.AutoSaveReplays = false;
+                Assert.IsFalse(ArtifactService.AutoSaveReplaysEnabled);
+                service.Detach();
+                Assert.IsTrue(ArtifactService.AutoSaveReplaysEnabled, "no service registered reads as on (headless)");
+
+                var reopened = new ArtifactService(dir, "system.bin");
+                Assert.IsFalse(reopened.AutoSaveReplays, "the change was written at once and survives a relaunch");
+                reopened.AutoSaveReplays = true;
+                reopened.Detach();
+                Assert.IsTrue(new ArtifactService(dir, "system.bin").AutoSaveReplays);
+                ArtifactService.Current?.Detach();
+            }
+            finally
+            {
+                ArtifactService.Current?.Detach();
+                Directory.Delete(dir, true);
+            }
         }
     }
 }

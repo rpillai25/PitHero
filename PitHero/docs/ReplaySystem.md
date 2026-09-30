@@ -216,6 +216,15 @@ recording just became another timeline than the file). So it exists on disk only
 ended without the quit path — a crash, a kill, a power cut, an in-game Load — and the next launch
 promotes it (see "Crash recovery" under the sidecar section). `AutoSave.md` has the worker rules.
 
+**The Replay tab's "Autosave Replays" checkbox** (beside "Filter to current hero", on by default) is
+the switch for both automatic writes: off, the quit path writes no auto replay and the autosave's
+replay stage gathers nothing (`ArtifactService.AutoSaveReplaysEnabled`, read by
+`GatherRecoverySnapshot` and `SaveSessionBeforeLeaving`); switching it off, and a quit while it is
+off, delete the hero's recovery file so a later crash never promotes a recording the player asked
+not to keep. Manual saves, Replay Current Session and the session `.frames` file are unaffected. It
+is a player preference, not a command (nothing the simulation reads), persisted in the system save
+(`SystemSaveData.AutoSaveReplays`, v2; a v1 file reads as on).
+
 ## The frame stream (`Services/Replay/Frames`, issue #424)
 
 Design history and measurements: `features/feature_replay_frame_recording_424.md`. The layers:
