@@ -810,6 +810,7 @@ namespace PitHero
         public const string ReplayDirectoryName = "replays";     // Under the persistent data folder
         public const string ReplayFilePrefix = "replay_";
         public const string ReplayAutoFilePrefix = "replay_auto_";  // + 8 hex digits of the hero id: the quit-time recording, one per hero, overwritten every session (its .frames cache too)
+        public const string ReplayRecoveryFilePrefix = "replay_recovery_";  // + 8 hex digits of the hero id: the recording as of the last autosave (issue #444), promoted to the auto name at the next launch when a session never reached the quit path; hidden from the Replay tab
         public const string ReplayFileExtension = ".bin";
         public const int ReplayListMaxShown = 10;                // Replay tab lists at most this many recordings (newest first, after the hero filter)
         public const int ReplaySpeechSeedSalt = 0x5BEEC4;        // XOR'd with the master seed for the cosmetic speech-bubble RNG

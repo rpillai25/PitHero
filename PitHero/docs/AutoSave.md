@@ -13,6 +13,7 @@ the rules that keep it safe, and the decisions that are not obvious from the cod
 | `AutoSaveService` | `Services/AutoSaveService.cs`, registered in `Game1` (global) | Wall-clock countdown, gathers the snapshot on the main thread, writes it on a worker, publishes completion by polling |
 | `SaveLoadService.SaveAllowed` | `Services/SaveLoadService.cs` | The single save gate, written every presentation frame by `MainGameScene.ComputeSaveAllowed`; read by the autosave and the Session → Save button |
 | Autosave store | second `FileDataStore` passed to `SaveLoadService` in `Game1` | Dedicated writer for the worker thread; the slot store stays on the main thread |
+| Replay stage (issue #444) | `AutoSaveService.SetReplayStage`, wired in `Game1` to `ReplayCrashRecovery.GatherRecoverySnapshot` / `ReplayFileService.WriteRecovery` | The same worker task also writes the session's replay recording as `replays/replay_recovery_<HeroId as 8 hex digits>.bin`, after the game save; promoted at the next launch by `ReplayCrashRecovery.Run` when the session never reached the quit path — see `ReplaySystem.md` "Crash recovery" |
 | `AutoSaveEntry` + `AutoSaveEntries` | `Services/SaveLoadService.cs` | One entry per hero that has an autosave (`HeroId`, `Preview`, `LastWriteUtc`), most recently written first |
 | `AutoSaveIndicator` | `UI/AutoSaveIndicator.cs`, on `_uiStage` | Pulsing `SaveIcon` in the lower-right corner while a write is in flight |
 | Load UI rows | `UI/SaveLoadUI.cs` (`AutoSaveSlot = -1` + a hero id) | One row per hero's autosave, before the manual slots, in **Load** mode only; tinted row, Skullboy "AutoSave" tag |
@@ -38,17 +39,26 @@ nothing the simulation reads, so it needs no `PlayerCommand`.
 3. `TryStartAutoSave()` calls `SaveLoadService.GatherCurrentState()` **on the calling (main) thread**.
    That method walks live entities and services and must never run off-thread. It returns a fully
    detached `SaveData` (strings, ints, lists of structs, freshly allocated), which is safe to hand to
-   a worker.
+   a worker. Right after it, the replay stage's gather (`ReplayCrashRecovery.GatherRecoverySnapshot`,
+   issue #444) copies the session recording — `ReplayRecorder.Snapshot(SimulationClock.CurrentTick)`
+   plus a clone of `FrameRecorder.ConsoleLog` — on the same thread, or returns null (no session, a
+   replay playing, tick 0, hero id 0) and the stage is skipped this time. It never releases pauses on
+   the record the way the quit path does: that would mutate the recording mid-session.
 4. `Task.Run` executes `SaveLoadService.WriteAutoSave(data)`: `Persist` + file write through the
    dedicated autosave store, into the file named for `data.HeroId`. The worker body is
    `try { write } catch { record exception }` and **never logs, touches `Core`, or mutates the
-   entry list** — file deletion for the retention cap happens on the main thread.
+   entry list** — file deletion for the retention cap happens on the main thread. Then, **in the same
+   task, sequentially**, `ReplayFileService.WriteRecovery(replay)` writes the recording through the
+   replay service's own worker store, in its own `try/catch`: one in-flight flag, never two writers
+   on the disk at once, and a replay write that throws never marks the game save as failed (nor the
+   other way round). The `.frames` session file is never touched here — it is hundreds of MB and has
+   its own worker.
 5. `PollCompletion()` (called from `Tick`, from the `IsSaving` getter and from `WaitForCompletion`)
-   observes `Task.IsCompleted` on the main thread: clears `IsSaving`, then either `Debug.Warn`s and
-   raises `Failed`, or calls `SaveLoadService.SetAutoSavePreview(data)`, which republishes that
-   hero's snapshot in memory and enforces the retention cap. **A completed write is never read back
-   from disk**; the disk is scanned only by `RefreshAutoSavePreviews()` (the constructor and when the
-   Load window opens).
+   observes `Task.IsCompleted` on the main thread: clears `IsSaving`, `Debug.Warn`s a replay-stage
+   error, then either `Debug.Warn`s and raises `Failed`, or calls `SaveLoadService.SetAutoSavePreview(data)`,
+   which republishes that hero's snapshot in memory and enforces the retention cap. **A completed
+   write is never read back from disk**; the disk is scanned only by `RefreshAutoSavePreviews()` (the
+   constructor and when the Load window opens).
 6. `AutoSaveIndicator.Update(autoSaveService.IsSaving)` shows the icon while in flight and for
    `AutoSaveIconMinVisibleSeconds` afterwards, with a `Time.TotalTime` alpha pulse (wall clock is fine
    here: presentation only).
@@ -104,9 +114,18 @@ or touch the button directly.
    The worker writes and nothing else.
 8. **Quit to Title and Exit Game autosave synchronously first** (`AutoSaveService.SaveNow()` from
    `SettingsUI.SaveSessionBeforeLeaving`, issue #411): wait for any in-flight write, gather, write,
-   wait, reset the countdown — gated on `SaveAllowed` like every other save. The current replay
-   recording is saved right after it as `replay_auto_<HeroId as 8 hex digits>.bin` (one per hero,
-   overwritten every session, with its `.frames` cache; see `ReplaySystem.md`).
+   wait, reset the countdown — gated on `SaveAllowed` like every other save. `SaveNow` skips the
+   replay stage. The current replay recording is saved right after it as
+   `replay_auto_<HeroId as 8 hex digits>.bin` (one per hero, overwritten every session, with its
+   `.frames` cache; see `ReplaySystem.md`), and then the hero's `replay_recovery_*.bin` is deleted
+   (after `WaitForCompletion`, since a periodic write may still be landing when the gate was closed):
+   a recovery file exists on disk only for a session that never reached this path.
+9. **The replay stage rides the game autosave, never the other way round** (issue #444). It shares
+   the countdown, the `SaveAllowed` gate and the worker task; it has no timer, no flag and no event
+   of its own. `ReplayFileService.WriteRecovery` is the only replay write that may run off-thread:
+   it uses the service's second `FileDataStore` and does nothing but `Save`. Everything else about
+   the recovery file (promotion, pairing with the session frames, the tiebreak against the auto
+   replay, the Time Travel deletion) is in `ReplaySystem.md` "Crash recovery".
 
 ## Decisions that are not obvious from the code
 
@@ -177,7 +196,8 @@ autosave, and a second hero gets its own file instead of overwriting the first's
 
 | Area | Test file |
 |---|---|
-| Countdown, blocked reset, no overlapping write, thread affinity (gather/publish on caller, write on worker), faulting write recovery, null snapshot | `PitHero.Tests/AutoSaveServiceTests.cs` |
+| Countdown, blocked reset, no overlapping write, thread affinity (gather/publish on caller, write on worker), faulting write recovery, null snapshot; the replay stage's order on the worker, its independent failure, `SaveNow` and a null gather skipping it | `PitHero.Tests/AutoSaveServiceTests.cs` |
+| Recovery file naming, hidden from the list, protected session paths, delete; launch-time promotion, session-file pairing, trimming, the tiebreak | `PitHero.Tests/ReplayFileServiceTests.cs` (`RecoveryFile_*`), `PitHero.Tests/ReplayCrashRecoveryTests.cs` |
 | Per-hero round-trip and rediscovery from disk, a second hero not overwriting the first, cap eviction of the least recently written, legacy-file migration, incompatible-version autosave skipped, stale tmp replaced and no tmp left behind | `PitHero.Tests/SaveLoadTests.cs` (`SaveLoadService_AutoSave_*`, `SaveLoadService_LegacyAutoSaveFile_*`, `FileDataStore_Save_ReplacesStaleTmpAndLeavesNoTmp`) |
 
 The service takes its `gather` / `write` / `onSaved` delegates in the constructor, so tests run
@@ -202,3 +222,10 @@ without `Core`. Production wiring is in `Game1`.
    still holds 5 and the least recently played one is gone.
 8. Replay: Settings → Replay → Replay Current Session, seek back and forth. Status stays **In sync**
    and no icon appears during playback. Repeat from a loaded autosave.
+9. **Crash recovery (issue #444):** play 5 minutes past an autosave, kill the process from Task
+   Manager, relaunch and load the autosave. `replays/` holds no `replay_recovery_*` and no
+   `session_*` file any more; the Replay tab lists the session as **Auto** and **Cached**, it opens
+   in FrameView, scrubs both ways, and the event console shows the lines up to the last autosave.
+   Quit normally instead: no recovery file remains and the auto replay is written as before.
+   Time-travel, keep playing at least 30 s, kill: the recovered replay ends at the crash on the new
+   timeline.

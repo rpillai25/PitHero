@@ -176,6 +176,59 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>
+        /// The autosave's recovery recording (issue #444): one static name per hero, never listed, its
+        /// session file reported as protected, deleted by a clean quit.
+        /// </summary>
+        [TestMethod]
+        public void RecoveryFile_IsHiddenFromTheList_ProtectsItsSessionFile_AndIsDeletedOnDemand()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var svc = new ReplayFileService(dir);
+                long when = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc).Ticks;
+                var data = BuildReplay("Ann", 500, when, 2);
+                data.HeroId = 0x2A;
+                Assert.AreEqual("replay_recovery_0000002A.bin", ReplayFileService.RecoveryFileName(0x2A));
+                Assert.IsTrue(ReplayFileService.IsRecoveryFileName("replay_recovery_0000002A.bin"));
+                Assert.IsFalse(ReplayFileService.IsRecoveryFileName("replay_auto_0000002A.bin"));
+                Assert.IsFalse(ReplayFileService.IsAutoFileName("replay_recovery_0000002A.bin"));
+
+                svc.WriteRecovery(data);
+                Assert.IsTrue(File.Exists(Path.Combine(dir, "replay_recovery_0000002A.bin")));
+                Assert.IsFalse(File.Exists(Path.Combine(dir, "replay_recovery_0000002A.bin.tmp")), "the store's tmp is moved into place");
+                Assert.AreEqual(0, svc.Enumerate().Count, "a recovery file is never a listed recording");
+                var recoveries = svc.EnumerateRecoveryFiles();
+                Assert.AreEqual(1, recoveries.Count);
+                Assert.AreEqual(0x2A, recoveries[0].HeroId);
+                Assert.AreEqual(when, recoveries[0].RecordedAtUtc.Ticks);
+                var protectedPaths = svc.ProtectedSessionFilePaths();
+                Assert.AreEqual(1, protectedPaths.Count);
+                Assert.AreEqual(Path.Combine(dir, "session_" + when + ".frames"), protectedPaths[0]);
+                Assert.AreEqual(protectedPaths[0], svc.SessionFilePath(when));
+
+                // A later write replaces it; a manual save and the auto save leave it alone
+                var later = BuildReplay("Ann", 500, when, 5);
+                later.HeroId = 0x2A;
+                svc.WriteRecovery(later);
+                svc.Save(later);
+                svc.SaveAuto(later);
+                Assert.AreEqual(5 * ChunkTicks, svc.Load("replay_recovery_0000002A.bin").TotalTicks);
+                Assert.AreEqual(2, svc.Enumerate().Count);
+
+                Assert.IsTrue(svc.DeleteRecovery(0x2A));
+                Assert.IsFalse(File.Exists(Path.Combine(dir, "replay_recovery_0000002A.bin")));
+                Assert.IsFalse(svc.DeleteRecovery(0x2A), "nothing left to delete");
+                Assert.AreEqual(0, svc.ProtectedSessionFilePaths().Count);
+                Assert.AreEqual(2, svc.Enumerate().Count, "the recordings are untouched");
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
         [TestMethod]
         public void Delete_RemovesTheRecordingAndItsCache()
         {

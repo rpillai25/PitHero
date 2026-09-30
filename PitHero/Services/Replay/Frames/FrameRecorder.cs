@@ -115,14 +115,21 @@ namespace PitHero.Services.Replay.Frames
             Current = this;
         }
 
+        /// <summary>The session file's name for a recording: session_&lt;recordedAtUtcTicks&gt;.frames.</summary>
+        public static string SessionFileName(long recordedAtUtcTicks)
+        {
+            return GameConfig.ReplayFrameSessionFilePrefix + recordedAtUtcTicks + GameConfig.ReplayFrameFileExtension;
+        }
+
         /// <summary>
         /// Sets the stream up for this session: adopts the previous scene's stream when it is the same
         /// session (replay rebuild), else continues or creates the session file under
         /// <paramref name="directory"/>. With <paramref name="preload"/> (a replay) frames after its
         /// recorded end are dropped, as the command recorder drops commands. Stale session files of
-        /// other sessions are deleted when a genuinely new session starts.
+        /// other sessions are deleted when a genuinely new session starts, except those in
+        /// <paramref name="protectedSessionFiles"/> (files a recovery recording still refers to, issue #444).
         /// </summary>
-        public void Initialize(int masterSeed, long recordedAtUtcTicks, ReplayData preload, string directory)
+        public void Initialize(int masterSeed, long recordedAtUtcTicks, ReplayData preload, string directory, System.Collections.Generic.IReadOnlyList<string> protectedSessionFiles = null)
         {
             _identity = new FrameSidecarIdentity(masterSeed, recordedAtUtcTicks, GameConfig.SimulationVersion, GameConfig.ReplayFrameFormatVersion, -1);
             long keepThroughTick = preload != null ? preload.TotalTicks - 1 : long.MaxValue;
@@ -155,11 +162,11 @@ namespace PitHero.Services.Replay.Frames
                 ConsoleLog = new RecordedConsoleLog();
                 if (!string.IsNullOrEmpty(directory))
                 {
-                    string path = Path.Combine(directory, GameConfig.ReplayFrameSessionFilePrefix + recordedAtUtcTicks + GameConfig.ReplayFrameFileExtension);
+                    string path = Path.Combine(directory, SessionFileName(recordedAtUtcTicks));
                     // A finished session file (the way back from a saved replay) also gives its console lines back
                     _sidecar = FrameSessionSidecar.OpenOrCreate(path, _identity, ChunkTicks, Registry, ConsoleLog);
                     if (preload == null && handoff == null)
-                        DeleteStaleSessionFiles(directory, path);
+                        DeleteStaleSessionFiles(directory, path, protectedSessionFiles);
                 }
                 if (_sidecar != null)
                     Store.Preload(_sidecar);
@@ -821,14 +828,14 @@ namespace PitHero.Services.Replay.Frames
 
         // ───────────────────────────── files ─────────────────────────────
 
-        private static void DeleteStaleSessionFiles(string directory, string keepPath)
+        private static void DeleteStaleSessionFiles(string directory, string keepPath, System.Collections.Generic.IReadOnlyList<string> protectedPaths)
         {
             try
             {
                 var files = Directory.GetFiles(directory, GameConfig.ReplayFrameSessionFilePrefix + "*" + GameConfig.ReplayFrameFileExtension);
                 for (int i = 0; i < files.Length; i++)
                 {
-                    if (string.Equals(files[i], keepPath, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(files[i], keepPath, StringComparison.OrdinalIgnoreCase) || IsProtected(files[i], protectedPaths))
                         continue;
                     File.Delete(files[i]);
                 }
@@ -841,6 +848,19 @@ namespace PitHero.Services.Replay.Frames
             {
                 Debug.Warn("[FrameRecorder] Could not clean stale session files: " + ex.Message);
             }
+        }
+
+        /// <summary>True when a recovery recording still refers to the session file (its full path is in the list).</summary>
+        private static bool IsProtected(string path, System.Collections.Generic.IReadOnlyList<string> protectedPaths)
+        {
+            if (protectedPaths == null)
+                return false;
+            for (int i = 0; i < protectedPaths.Count; i++)
+            {
+                if (string.Equals(path, protectedPaths[i], StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
     }
 }

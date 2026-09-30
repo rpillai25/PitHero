@@ -40,12 +40,18 @@ namespace PitHero.Services.Replay
     /// Saves, lists, loads and deletes replay files under the persistent data folder
     /// (%LOCALAPPDATA%\&lt;exe&gt;\replays, alongside the save slots), and the <c>.frames</c> caches
     /// beside them (issue #429): a cache is written with the save, deleted with the recording, flagged
-    /// in the list when it matches, and kept under a disk budget that only ever deletes caches. Global service.
+    /// in the list when it matches, and kept under a disk budget that only ever deletes caches. Also
+    /// owns the autosave's <c>replay_recovery_&lt;hero&gt;.bin</c> (issue #444): written from the autosave
+    /// worker through its own store, hidden from the list, promoted to the auto name at the next launch
+    /// by <see cref="ReplayCrashRecovery"/> and deleted by a clean quit. Global service.
     /// </summary>
     public sealed class ReplayFileService
     {
         private readonly string _directory;
         private readonly FileDataStore _store;
+        // FileDataStore caches one binary writer per instance, so the recovery write, which runs on the
+        // autosave worker, must never share the main thread's store (the autosave's rule, issue #409)
+        private readonly FileDataStore _recoveryStore;
 
         /// <summary>Creates the service rooted at the default replays directory.</summary>
         public ReplayFileService() : this(DefaultDirectory())
@@ -58,6 +64,7 @@ namespace PitHero.Services.Replay
             _directory = directory;
             Directory.CreateDirectory(_directory);
             _store = new FileDataStore(_directory);
+            _recoveryStore = new FileDataStore(_directory);
         }
 
         /// <summary>The directory replay files live in.</summary>
@@ -104,6 +111,111 @@ namespace PitHero.Services.Replay
         public static bool IsAutoFileName(string fileName)
         {
             return !string.IsNullOrEmpty(fileName) && fileName.StartsWith(GameConfig.ReplayAutoFilePrefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>The autosave's recovery recording for a hero: replay_recovery_&lt;HeroId as 8 hex digits&gt;.bin (issue #444).</summary>
+        public static string RecoveryFileName(int heroId)
+        {
+            return GameConfig.ReplayRecoveryFilePrefix + ((uint)heroId).ToString("X8") + GameConfig.ReplayFileExtension;
+        }
+
+        /// <summary>True when the file name is a recovery recording (never listed; see <see cref="RecoveryFileName"/>).</summary>
+        public static bool IsRecoveryFileName(string fileName)
+        {
+            return !string.IsNullOrEmpty(fileName) && fileName.StartsWith(GameConfig.ReplayRecoveryFilePrefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Full path of the file the running session's frame stream is appended to: replays/session_&lt;recordedAtUtcTicks&gt;.frames.</summary>
+        public string SessionFilePath(long recordedAtUtcTicks)
+        {
+            return Path.Combine(_directory, Frames.FrameRecorder.SessionFileName(recordedAtUtcTicks));
+        }
+
+        /// <summary>
+        /// Writes the recording as the hero's recovery file (issue #444). Runs on the autosave worker:
+        /// thread-agnostic, no logging, no cache handling; the store's tmp-then-move keeps the previous
+        /// recovery intact if the process dies mid-write.
+        /// </summary>
+        public void WriteRecovery(ReplayData data)
+        {
+            if (data == null)
+                return;
+            _recoveryStore.Save(RecoveryFileName(data.HeroId), data);
+        }
+
+        /// <summary>
+        /// Deletes the hero's recovery file (main thread): a clean quit has written the auto replay, or
+        /// Time Travel has made the recording a different timeline than the file. Returns true when a
+        /// file was removed; a file that cannot be deleted is logged and left.
+        /// </summary>
+        public bool DeleteRecovery(int heroId)
+        {
+            string path = Path.Combine(_directory, RecoveryFileName(heroId));
+            try
+            {
+                if (!File.Exists(path))
+                    return false;
+                File.Delete(path);
+                return true;
+            }
+            catch (IOException ex)
+            {
+                Debug.Warn($"[ReplayFileService] Could not delete the recovery replay {Path.GetFileName(path)}: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Debug.Warn($"[ReplayFileService] Could not delete the recovery replay {Path.GetFileName(path)}: {ex.Message}");
+            }
+            return false;
+        }
+
+        /// <summary>The file names of every recovery recording on disk, readable or not.</summary>
+        public List<string> RecoveryFileNames()
+        {
+            var result = new List<string>();
+            if (!Directory.Exists(_directory))
+                return result;
+            var files = Directory.GetFiles(_directory, GameConfig.ReplayRecoveryFilePrefix + "*" + GameConfig.ReplayFileExtension);
+            for (int i = 0; i < files.Length; i++)
+                result.Add(Path.GetFileName(files[i]));
+            return result;
+        }
+
+        /// <summary>Lists the recovery recordings on disk (header only), unreadable files skipped.</summary>
+        public List<ReplayFileInfo> EnumerateRecoveryFiles()
+        {
+            var result = new List<ReplayFileInfo>();
+            if (!Directory.Exists(_directory))
+                return result;
+            var files = Directory.GetFiles(_directory, GameConfig.ReplayRecoveryFilePrefix + "*" + GameConfig.ReplayFileExtension);
+            for (int i = 0; i < files.Length; i++)
+            {
+                var info = ReadHeader(files[i]);
+                if (info != null)
+                    result.Add(info);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// The session frame files a recovery recording still refers to. A new session's stale-file
+        /// cleanup must keep them until <see cref="ReplayCrashRecovery"/> has paired them at a launch.
+        /// </summary>
+        public List<string> ProtectedSessionFilePaths()
+        {
+            var recoveries = EnumerateRecoveryFiles();
+            var paths = new List<string>(recoveries.Count);
+            for (int i = 0; i < recoveries.Count; i++)
+                paths.Add(SessionFilePath(recoveries[i].RecordedAtUtc.Ticks));
+            return paths;
+        }
+
+        /// <summary>Rewrites an existing recording in place (main thread; crash recovery trimming a promoted file).</summary>
+        public void Overwrite(string fileName, ReplayData data)
+        {
+            if (string.IsNullOrEmpty(fileName) || data == null)
+                return;
+            _store.Save(fileName, data);
         }
 
         /// <summary>
@@ -210,6 +322,16 @@ namespace PitHero.Services.Replay
             return result == Frames.FrameSidecarFile.OpenResult.Ok;
         }
 
+        /// <summary>True when a valid frame cache exists beside <paramref name="fileName"/> for the loaded recording <paramref name="data"/>.</summary>
+        public bool HasValidFrameCache(string fileName, ReplayData data)
+        {
+            if (string.IsNullOrEmpty(fileName) || data == null)
+                return false;
+            var result = TryOpenFrameCache(fileName, data.MasterSeed, data.RecordedAtUtcTicks, data.SimulationVersion, data.TotalTicks, out var reader);
+            reader?.Dispose();
+            return result == Frames.FrameSidecarFile.OpenResult.Ok;
+        }
+
         /// <summary>
         /// Deletes the oldest frame caches (by last write time) until the <c>replay_*.frames</c> files
         /// under the directory fit <paramref name="budgetBytes"/>. Recordings are never touched; a cache
@@ -311,6 +433,9 @@ namespace PitHero.Services.Replay
             var files = Directory.GetFiles(_directory, GameConfig.ReplayFilePrefix + "*" + GameConfig.ReplayFileExtension);
             for (int i = 0; i < files.Length; i++)
             {
+                // The recovery file shares the prefix but is the autosave's, never a listed recording
+                if (IsRecoveryFileName(Path.GetFileName(files[i])))
+                    continue;
                 var info = ReadHeader(files[i]);
                 if (info == null)
                     continue;

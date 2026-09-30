@@ -186,11 +186,13 @@ change nobody stamped.
 | `Commands` | `(tick, PlayerCommand)` in order |
 | `Decisions` | `(tick, hash)` of every successful hero GOAP plan (`ReplayTripwire.HashPlan`, reported from `HeroStateMachine`) |
 | `StateHashes` | One `ReplayHashSample` per `ReplayHashIntervalTicks` with the combined hash and its `Rng` / `Hero` / `Party` / `World` parts |
+| `ConsoleLog` (v5, optional) | The session's console lines as text (tick + segments), null in saved replays whose `.frames` footer carries them; only the autosave's recovery recording fills it (issue #444, below) |
 
 `ReplayIO` serializes through Nez `IPersistable` (longs as two ints, blobs as base64).
 `ReplayFileService` stores files as `replay_<hero>_<yyyyMMdd_HHmmss>.bin` under the persistent data
 folder's `replays/` directory and enumerates them header-only. A few hours of play is a few hundred
-KB. Bumping `ReplayData.CurrentVersion` is allowed to break old recordings (they are not user saves).
+KB. Bumping `ReplayData.CurrentVersion` is allowed to break old recordings (they are not user saves);
+v2–v4 files still read (`MinSupportedVersion` 2, the console section is read only from v5).
 
 Recordings are written by the Replay tab's "Save Session Replay" button (a new dated file each time)
 and **automatically on Quit to Title / Exit Game** (`SettingsUI.SaveSessionBeforeLeaving`, issue #411:
@@ -202,6 +204,17 @@ tens of MB per hour, and a dated file per quit would eat the disk); the Replay t
 Manual saves are the player's to keep. The Replay tab lists only the `GameConfig.ReplayListMaxShown`
 (10) newest recordings **after** the current-hero filter, with a "Showing the N most recent of M" note;
 deleting one re-enumerates the folder, so the next most recent slides in.
+
+**The autosave also writes the recording** (issue #444): every `AutoSaveIntervalSeconds` (30 s of wall
+clock, under the same `SaveAllowed` gate) the autosave worker writes the current recording, with the
+console lines, as `replay_recovery_<HeroId as 8 hex digits>.bin`, sequentially after the game save in
+the same task (`AutoSaveService.SetReplayStage`, `ReplayCrashRecovery.GatherRecoverySnapshot`,
+`ReplayFileService.WriteRecovery` — the one replay write that runs off-thread, through the service's
+second `FileDataStore`). The file is never listed (`Enumerate` skips `IsRecoveryFileName`), a clean
+quit deletes it right after writing the auto replay, and Time Travel deletes it at `CommitHere` (the
+recording just became another timeline than the file). So it exists on disk only for a session that
+ended without the quit path — a crash, a kill, a power cut, an in-game Load — and the next launch
+promotes it (see "Crash recovery" under the sidecar section). `AutoSave.md` has the worker rules.
 
 ## The frame stream (`Services/Replay/Frames`, issue #424)
 
@@ -287,7 +300,10 @@ trailer   footerOffset i64, "PHFE"
   worker thread (`FrameSessionSidecar`; the main thread never waits) and the file doubles as the reload
   source when the RAM ring (`ReplayFrameMemoryBudgetBytes`, 192 MB) evicts a chunk. A footer-less file
   (crash) is reindexed by scanning; stale `session_*` files are deleted when a genuinely new session
-  starts.
+  starts, **except the ones a `replay_recovery_*.bin` still refers to**
+  (`ReplayFileService.ProtectedSessionFilePaths`, passed to `FrameRecorder.Initialize`; a recovery
+  written in this process, by an in-game Load or a quit from inside a replay, would otherwise lose
+  its frames before the next launch pairs them).
 - **Saving a replay** writes the cache beside the `.bin` with the same name (`ReplayFileService.
   SaveWithFrameCache`). Save Session Replay mid-session **copies** the session file (raw byte copy of
   header + chunk records, fresh footer; the session goes on in its file). The quit-time save
@@ -315,6 +331,41 @@ trailer   footerOffset i64, "PHFE"
   the row gains "Cached" and the next play is instant FrameView. A replay left before its end stays
   uncached. Stretches that were seeked have no floating text or sounds in the cache (cosmetics skip and
   audio is muted during seeks); accepted.
+
+#### Crash recovery (issue #444)
+
+`ReplayCrashRecovery.Run` is called from `Game1.Initialize` right after the `ReplayFileService` is
+registered — before any scene, so before any stale-file cleanup — and handles every
+`replay_recovery_*.bin` on its own (a failure is `Debug.Warn`ed and the next file is tried; launch is
+never blocked; measured well under a second, the re-index reads 18 bytes per chunk and inflates nothing):
+
+1. **Settle against the hero's auto replay.** No `replay_auto_<hero>.bin`, or a different
+   `RecordedAtUtcTicks`: a different, crashed session — the recovery wins and overwrites the auto replay
+   and its cache, exactly as a normal quit would. The same `RecordedAtUtcTicks` is the same session
+   (a crash during the quit-time save itself): the **higher `TotalTicks` wins** — unless the shorter
+   recording is **not a prefix** of the longer one (`RecoveryWins` compares commands and state hashes),
+   which only a Time Travel branch inside the hero's own auto replay produces (the recorder keeps the
+   replay's recording time); the branch is the player's real timeline, so the recovery wins. The loser
+   is always deleted, so nothing is re-evaluated at every launch; an unreadable recovery file is deleted too.
+2. **Promote:** `File.Move` the recovery to the auto name (the stale auto cache goes first).
+3. **Attach the session frames** to the winner when it has no valid cache and
+   `session_<recordedAt>.frames` exists with its identity (seed, recording time, simulation version
+   **from the `.bin`**, frame format from this build): `FrameSidecarWriter.Reopen` re-indexes it (a
+   footer-less file by scanning, dropping the partial chunk the crash cut; an old footer — an in-game
+   Load's `Detach(false)` wrote one — is cut off), chunks that start at or after `TotalTicks` are cut
+   (`TruncateChunks`, the `ExportTo` rule), and the footer is written with the **console lines from the
+   `.bin`** (`FinishAndMove` beside the recording; then the disk budget). Only whole 120-tick chunks
+   ever reach the session file, so the frames may stop up to ~2 s short of the recording: a
+   **promoted** recovery is then **trimmed** to the frames (`ReplayData.TruncateAfter`, the `.bin`
+   rewritten before the move) so it opens in FrameView instead of re-simulating for a two-second tail;
+   a **kept auto replay is never shortened** to fit a shorter session file (left uncached). No, empty,
+   corrupt, format-mismatched or foreign session file: the recording is promoted uncached and plays by
+   re-simulation, self-caching on exit like any other.
+
+Caveats, accepted: the periodic snapshot never calls `ReleasePausesOnRecord`, so a recovered replay
+can end inside a pause span; Time Travel's deletion leaves the ~30 s until the next autosave
+unprotected, as before; an in-game Load writes no auto replay (unchanged), its abandoned session's
+recovery is promoted at the next launch unless a later session of the same hero overwrote it.
 
 ### Viewer (L2)
 
@@ -458,6 +509,11 @@ cheapens play. The artifact's ordinal is retired, see "Artifacts" below.)
   re-preloads the recorder from the recording and drops those ticks again.
 - **Time Travel Here always goes to the past** and confirms with `ConfirmContinueHereMessage` ("time
   travel to the selected point in the past? Anything that happened since then will be lost").
+- **A commit deletes the hero's `replay_recovery_*.bin`** (`CommitHere`, after the two `TruncateAfter`
+  calls and an `AutoSaveService.WaitForCompletion`, issue #444): the recovery file holds the abandoned
+  timeline while the session file has been cut and refills with the new one, and a crash before the
+  next autosave would otherwise pair the two at the next launch. The next periodic write starts the
+  protection over.
 - **Time travel needs the Chronos Timepiece artifact** (`ReplayPlaybackService.TimeTravelUnlocked`);
   without it the button is hidden in every replay.
 - **Time travel is hero-gated.** Every playthrough has one hero, identified by `GameStateService.HeroId`
@@ -730,13 +786,16 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayFrameViewSoundCatchupMaxTicks` | 30 | A longer forward move (seek, skipped pause) plays no sounds |
 | `ReplayFrameViewParticleRebuildMaxTicks` | 1200 | Oldest emitter age the viewer re-simulates |
 | `ReplayFrameViewCullMarginPixels` | 128 | Off-screen margin for recorded sprites |
-| `ReplayFrameSessionFilePrefix`, `ReplayFrameFileExtension`, `ReplayAutoFilePrefix` | | File naming |
+| `ReplayFrameSessionFilePrefix`, `ReplayFrameFileExtension`, `ReplayAutoFilePrefix`, `ReplayRecoveryFilePrefix` | | File naming (`replay_recovery_` = the autosave's copy of the recording, issue #444) |
 | `ReplayFrameStatsLog`, `ReplayPlaybackTraceLog` | true | `frame_recorder.log` / `replay_playback.log` in every build |
 
 ## Tests
 
 `FixedStepSchedulerTests`, `SeedableRandomTests`, `VirtualSimSeedableRandomTests`,
-`PlayerCommandServiceTests`, `ReplayDataTests`, `ReplayRecorderTruncateTests`,
+`PlayerCommandServiceTests`, `ReplayDataTests` (also the v5 console section and `TruncateAfter`),
+`ReplayRecorderTruncateTests`, `ReplayCrashRecoveryTests` and the `RecoveryFile_*` /
+`AutoSave_ReplayStage_*` tests (issue #444: promotion, session-file pairing, trimming, the tiebreak,
+the worker stage),
 `ReplayPauseSpansTests`, `ReplayTimeFormatterTests`, `ShuffleBagResetTests`, `ArtifactServiceTests`,
 `FastListStableSortTests` (update-order stability), `QuietLogHandlerTests` (log binding), the frame
 stream suites (`FrameOps/ChunkCodec/Store/Sidecar/Recorder/CaptureAdapter/CaptureCoverage/SizeBudget`

@@ -46,8 +46,12 @@ namespace PitHero
             Services.AddService(new HeroDesignService());
 
             // Replay system: replay files + playback survive scene swaps, so they are global
-            Services.AddService(new PitHero.Services.Replay.ReplayFileService());
+            var replayFiles = new PitHero.Services.Replay.ReplayFileService();
+            Services.AddService(replayFiles);
             Services.AddService(new PitHero.Services.Replay.ReplayPlaybackService());
+            // A session that never reached the quit path (crash, kill) left its recording in the
+            // autosave's recovery file: promote it before any scene can clean up its frame file (issue #444)
+            PitHero.Services.Replay.ReplayCrashRecovery.Run(replayFiles);
 
             // Register persistence services
             var fileDataStore = new FileDataStore(null);
@@ -57,11 +61,14 @@ namespace PitHero
             var autoSaveStore = new FileDataStore(null);
             var saveLoadService = new SaveLoadService(fileDataStore, autoSaveStore, PersistentPaths.BaseDirectory());
             Services.AddService(saveLoadService);
-            Services.AddService(new AutoSaveService(
+            var autoSaveService = new AutoSaveService(
                 SaveLoadService.GatherCurrentState,
                 saveLoadService.WriteAutoSave,
                 saveLoadService.SetAutoSavePreview,
-                GameConfig.AutoSaveIntervalSeconds));
+                GameConfig.AutoSaveIntervalSeconds);
+            // The same worker also writes the replay recording as the hero's recovery file (issue #444)
+            autoSaveService.SetReplayStage(PitHero.Services.Replay.ReplayCrashRecovery.GatherRecoverySnapshot, replayFiles.WriteRecovery);
+            Services.AddService(autoSaveService);
             // System save: Global artifacts belong to the player, not to a hero or slot; Local artifacts
             // (issue #411) are read through the same service but live on the session GameStateService
             var artifactService = new ArtifactService();

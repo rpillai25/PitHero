@@ -208,10 +208,18 @@ namespace PitHero.Tests
                     }
                 }
 
-                // ── A new session deletes the old session file ──
+                // ── A new session deletes the old session file, unless a recovery recording still refers to it (issue #444) ──
+                string unprotectedPath = Path.Combine(dir, FrameRecorder.SessionFileName(RecordedAt + 7));
+                File.Copy(sessionPath, unprotectedPath);
                 rec = new FrameRecorder();
-                rec.Initialize(Seed + 1, RecordedAt + 1, null, dir);
-                Assert.IsFalse(File.Exists(sessionPath), "stale session file removed");
+                rec.Initialize(Seed + 1, RecordedAt + 1, null, dir, new[] { sessionPath });
+                Assert.IsTrue(File.Exists(sessionPath), "a protected session file survives");
+                Assert.IsFalse(File.Exists(unprotectedPath), "an unprotected stale session file is removed");
+                Assert.IsTrue(File.Exists(rec.SessionFilePath));
+                rec.Detach(handoffToNextScene: false);
+                rec = new FrameRecorder();
+                rec.Initialize(Seed + 2, RecordedAt + 2, null, dir);
+                Assert.IsFalse(File.Exists(sessionPath), "stale session file removed once nothing protects it");
                 Assert.IsTrue(File.Exists(rec.SessionFilePath));
                 rec.Detach(handoffToNextScene: false);
                 rec = null;
