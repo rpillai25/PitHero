@@ -30,7 +30,7 @@ namespace PitHero.AI
         {
             if (!_pathCalculated)
             {
-                _pitEdgeTile = FindNearestPitEdge(mercenary);
+                _pitEdgeTile = FindPitEdge();
                 _pathCalculated = true;
             }
 
@@ -57,24 +57,6 @@ namespace PitHero.AI
             }
 
             var path = pathfinding.CalculatePath(currentTile, _pitEdgeTile);
-            if (path == null || path.Count == 0)
-            {
-                // The per-merc offset tile may be unreachable (map decor, runtime obstacles) —
-                // fall back to the shared center rim tile rather than dead-ending the plan.
-                // Overlapping at the edge beats a merc that never leaves for the pit at all.
-                var centerEdgeTile = new Point(_pitEdgeTile.X, GameConfig.PitCenterTileY);
-                if (_pitEdgeTile != centerEdgeTile)
-                {
-                    var fallbackPath = pathfinding.CalculatePath(currentTile, centerEdgeTile);
-                    if (fallbackPath != null && fallbackPath.Count > 0)
-                    {
-                        Debug.Warn($"[WalkToPitEdge] {mercenary.Entity.Name} cannot reach offset edge tile ({_pitEdgeTile.X},{_pitEdgeTile.Y}), falling back to center ({centerEdgeTile.X},{centerEdgeTile.Y})");
-                        _pitEdgeTile = centerEdgeTile;
-                        path = fallbackPath;
-                    }
-                }
-            }
-
             if (path == null || path.Count == 0)
             {
                 // Never cache the edge tile across attempts — the pit can widen between them
@@ -127,9 +109,10 @@ namespace PitHero.AI
         /// <summary>
         /// True when a higher-priority party member (the hero, or a merc hired earlier) is
         /// currently overlapping this merc's bounding box or standing on the tile it would step
-        /// onto next.
+        /// onto next. Shared with MercenaryJumpIntoPitAction so a merc also waits before jumping
+        /// onto a landing tile a party member ahead still occupies.
         /// </summary>
-        private bool ShouldYieldToPartyAhead(MercenaryComponent mercenary, Point nextTile)
+        public static bool ShouldYieldToPartyAhead(MercenaryComponent mercenary, Point nextTile)
         {
             var selfEntity = mercenary.Entity;
             var selfPos = selfEntity.Transform.Position;
@@ -180,38 +163,26 @@ namespace PitHero.AI
             );
         }
 
-        private Point FindNearestPitEdge(MercenaryComponent mercenary)
+        /// <summary>
+        /// The pit has exactly one entry point: the rim tile at (edgeX, PitCenterTileY), the same
+        /// tile the hero walks to and jumps from (HeroStateMachine.CalculatePitOutsideEdgeLocation).
+        /// Every party member targets it; the anti-overlap yield in Execute queues them single-file
+        /// behind whoever is ahead instead of spreading them along the rim.
+        /// </summary>
+        public static Point FindPitEdge()
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager == null)
                 return Point.Zero;
 
-            var pitLeft = GameConfig.PitRectX;
-            var pitWidth = pitWidthManager.CurrentPitRectWidthTiles;
-            var pitRight = pitLeft + pitWidth - 1;
-
-            int mercIndex = 0;
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
-            if (mercenaryManager != null)
-            {
-                var index = mercenaryManager.GetHiredMercenaries().IndexOf(mercenary.Entity);
-                if (index >= 0)
-                    mercIndex = index;
-            }
-
-            return CalculatePitEdgeTileForPartyIndex(pitRight, mercIndex);
+            // Width-based so an uninitialized manager still yields the default 13-wide pit's rim
+            var pitRight = GameConfig.PitRectX + pitWidthManager.CurrentPitRectWidthTiles - 1;
+            return CalculatePitEdgeTile(pitRight);
         }
 
-        /// <summary>
-        /// The hero targets (edgeX, PitCenterTileY); mercs offset vertically by hire order so the
-        /// party never converges on one tile — and their subsequent jump landings stay distinct too.
-        /// The rim rows directly adjacent to center (5 and 7) are collision tiles in the map's rim
-        /// column pattern, so the offsets must be ±2 to land on the open rows (4 and 8).
-        /// </summary>
-        public static Point CalculatePitEdgeTileForPartyIndex(int pitEdgeX, int mercIndex)
+        public static Point CalculatePitEdgeTile(int pitEdgeX)
         {
-            int yOffset = mercIndex == 0 ? -2 : 2;
-            return new Point(pitEdgeX, GameConfig.PitCenterTileY + yOffset);
+            return new Point(pitEdgeX, GameConfig.PitCenterTileY);
         }
 
         private Direction? GetDirectionToTile(Point current, Point target)

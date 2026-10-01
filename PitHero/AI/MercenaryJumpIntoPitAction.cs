@@ -15,6 +15,7 @@ namespace PitHero.AI
         private bool _isJumping = false;
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
+        private float _yieldTimer;
 
         public MercenaryJumpIntoPitAction() : base(GoapConstants.MercenaryJumpIntoPitAction, 1)
         {
@@ -62,6 +63,7 @@ namespace PitHero.AI
 
                 _isJumping = false;
                 _jumpFinished = false;
+                _yieldTimer = 0f;
 
                 tileMover?.UpdateTriggersAfterTeleport();
 
@@ -91,6 +93,18 @@ namespace PitHero.AI
                 Debug.Warn($"[MercenaryJumpIntoPit] {mercenary.Entity.Name} aborting jump from ({currentStartTile.X},{currentStartTile.Y}) — landing tile ({targetTile.Value.X},{targetTile.Value.Y}) is not inside the pit interior");
                 return true;
             }
+
+            // The whole party jumps from the same rim tile onto the same landing tile. Wait for
+            // a party member ahead (hero, or an earlier merc) to clear the landing before taking
+            // off, so nobody lands inside someone else. Priority ordering keeps the wait one-way;
+            // the timer is the safety valve if the member ahead parks on the landing tile.
+            if (WalkToPitEdgeAction.ShouldYieldToPartyAhead(mercenary, targetTile.Value))
+            {
+                _yieldTimer += Time.DeltaTime;
+                if (_yieldTimer < GameConfig.MovementStuckTimeoutSeconds)
+                    return false;
+            }
+            _yieldTimer = 0f;
 
             _plannedTargetTile = targetTile.Value;
 

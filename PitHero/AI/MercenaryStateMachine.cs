@@ -342,39 +342,11 @@ namespace PitHero.AI
 
         private bool IsAtPitEdge()
         {
-            var currentTile = GetCurrentTile();
-            var pitEdgeTile = FindPitEdge();
+            // The single pit entry tile every party member (hero included) jumps from
+            var pitEdgeTile = WalkToPitEdgeAction.FindPitEdge();
             if (pitEdgeTile == Point.Zero)
                 return false;
-            if (currentTile == pitEdgeTile)
-                return true;
-
-            // WalkToPitEdgeAction falls back to the shared center rim tile when this merc's
-            // offset tile is unreachable — standing there counts as at-edge too.
-            return currentTile == new Point(pitEdgeTile.X, GameConfig.PitCenterTileY);
-        }
-
-        private Point FindPitEdge()
-        {
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager == null)
-                return Point.Zero;
-
-            var pitLeft = GameConfig.PitRectX;
-            var pitWidth = pitWidthManager.CurrentPitRectWidthTiles;
-            var pitRight = pitLeft + pitWidth - 1;
-
-            // Same per-merc offset WalkToPitEdgeAction targets, keyed by hire order
-            int mercIndex = 0;
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
-            if (mercenaryManager != null)
-            {
-                var index = mercenaryManager.GetHiredMercenaries().IndexOf(Entity);
-                if (index >= 0)
-                    mercIndex = index;
-            }
-
-            return WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(pitRight, mercIndex);
+            return GetCurrentTile() == pitEdgeTile;
         }
 
         private Point GetCurrentTile()

@@ -7,62 +7,46 @@ using PitHero.AI;
 namespace PitHero.Tests
 {
     [TestClass]
-    public class MercenaryPitEdgeOffsetTests
+    public class MercenaryPitEdgeTileTests
     {
         // Pit interior rows span PitRectY+1 .. PitRectY+PitRectHeight-2; a merc's jump lands at
-        // (edgeX - 2, edgeY), so every offset rim tile must keep its row inside that span.
+        // (edgeX - 2, edgeY), so the rim tile must keep its row inside that span.
         private const int InteriorRowMin = GameConfig.PitRectY + 1;
         private const int InteriorRowMax = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;
 
         [TestMethod]
-        public void PartyPitEdgeTiles_AreDistinctPerMercAndFromHero()
+        public void PitEdgeTile_IsTheSingleEntryTileAtCenterRow()
         {
-            const int edgeX = 13;
-            var heroTile = new Point(edgeX, GameConfig.PitCenterTileY);
-            var merc0Tile = WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(edgeX, 0);
-            var merc1Tile = WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(edgeX, 1);
-
-            Assert.AreNotEqual(heroTile, merc0Tile, "Merc 0 must not share the hero's pit-edge tile");
-            Assert.AreNotEqual(heroTile, merc1Tile, "Merc 1 must not share the hero's pit-edge tile");
-            Assert.AreNotEqual(merc0Tile, merc1Tile, "Mercs must not share a pit-edge tile");
-        }
-
-        [TestMethod]
-        public void PartyPitEdgeTiles_StayOnEdgeColumn()
-        {
-            const int edgeX = 13;
-            Assert.AreEqual(edgeX, WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(edgeX, 0).X);
-            Assert.AreEqual(edgeX, WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(edgeX, 1).X);
-        }
-
-        [TestMethod]
-        public void PartyPitEdgeTiles_KeepJumpLandingRowsInsidePitInterior()
-        {
-            const int edgeX = 13;
-            for (int mercIndex = 0; mercIndex < 2; mercIndex++)
+            // The pit has exactly one entry point: the rim tile at (edgeX, PitCenterTileY). The
+            // hero (HeroStateMachine.CalculatePitOutsideEdgeLocation) and every merc walk to and
+            // jump from this same tile; mercs queue single-file via the yield rule instead of
+            // spreading along the rim. Per-merc row offsets (rows 4/8) were a regression: the
+            // party entered the pit at different places.
+            foreach (var edgeX in new[] { 13, 15, 23, 33 })
             {
-                var tile = WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(edgeX, mercIndex);
-                Assert.IsTrue(tile.Y >= InteriorRowMin && tile.Y <= InteriorRowMax,
-                    $"Merc {mercIndex} edge row {tile.Y} must be within interior rows {InteriorRowMin}..{InteriorRowMax}");
+                var tile = WalkToPitEdgeAction.CalculatePitEdgeTile(edgeX);
+                Assert.AreEqual(new Point(edgeX, GameConfig.PitCenterTileY), tile,
+                    $"Pit edge tile for edge column {edgeX} must be the center-row rim tile");
             }
         }
 
         [TestMethod]
-        public void PartyPitEdgeTiles_AvoidBlockedRimRows()
+        public void PitEdgeTile_KeepsJumpLandingRowInsidePitInterior()
+        {
+            var tile = WalkToPitEdgeAction.CalculatePitEdgeTile(13);
+            Assert.IsTrue(tile.Y >= InteriorRowMin && tile.Y <= InteriorRowMax,
+                $"Edge row {tile.Y} must be within interior rows {InteriorRowMin}..{InteriorRowMax}");
+        }
+
+        [TestMethod]
+        public void PitEdgeTile_AvoidsBlockedRimRows()
         {
             // The map's rim column pattern (PitHero.tmx Collision layer, stamped at every pit
-            // width by PitWidthManager) has collision tiles at rows 5 and 7 — only rows 4, 6
-            // and 8 are open within the interior span. Offsets that target 5 or 7 dead-end the
-            // merc's walk-to-edge plan and strand the party (issue #371 regression).
-            const int edgeX = 13;
-            for (int mercIndex = 0; mercIndex < 2; mercIndex++)
-            {
-                var tile = WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(edgeX, mercIndex);
-                Assert.AreNotEqual(GameConfig.PitCenterTileY - 1, tile.Y,
-                    $"Merc {mercIndex} must not target blocked rim row {GameConfig.PitCenterTileY - 1}");
-                Assert.AreNotEqual(GameConfig.PitCenterTileY + 1, tile.Y,
-                    $"Merc {mercIndex} must not target blocked rim row {GameConfig.PitCenterTileY + 1}");
-            }
+            // width by PitWidthManager) has collision tiles at rows 5 and 7 — the center row 6
+            // is open at every pit width.
+            var tile = WalkToPitEdgeAction.CalculatePitEdgeTile(13);
+            Assert.AreNotEqual(GameConfig.PitCenterTileY - 1, tile.Y);
+            Assert.AreNotEqual(GameConfig.PitCenterTileY + 1, tile.Y);
         }
 
         // ── Anti-overlap yield rule ──────────────────────────────────────────────
@@ -90,6 +74,15 @@ namespace PitHero.Tests
             // Other stands two tiles away but on the step destination
             Assert.IsTrue(WalkToPitEdgeAction.PartyMemberBlocksStep(
                 TileCenter(48, 6), TileCenter(50, 6), new Point(48, 6)));
+        }
+
+        [TestMethod]
+        public void PartyMemberBlocksStep_JumpLandingOccupied_Blocks()
+        {
+            // A merc on the rim tile (edgeX, 6) jumps to (edgeX - 2, 6); a party member ahead
+            // still standing on that landing tile must hold the jump.
+            Assert.IsTrue(WalkToPitEdgeAction.PartyMemberBlocksStep(
+                TileCenter(11, 6), TileCenter(13, 6), new Point(11, 6)));
         }
 
         [TestMethod]
