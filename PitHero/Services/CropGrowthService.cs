@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
+using PitHero.ECS.Components;
 using PitHero.Farming;
 using PitHero.Services.Analytics;
 using PitHero.Util;
@@ -71,8 +72,9 @@ namespace PitHero.Services
             {
                 entity = scene.CreateEntity("crop-" + type + "-" + tile.X + "-" + tile.Y);
                 entity.SetPosition(wx, wy);
-                var renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
                 renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                renderer.AnchorToBottomTile(); // tall crops (Apple Tree) sort by their bottom tile, like actors
                 if (!_cropsVisible)
                     entity.SetEnabled(false);
             }
@@ -207,8 +209,9 @@ namespace PitHero.Services
                 {
                     entity = scene.CreateEntity("crop-" + type + "-" + tile.X + "-" + tile.Y);
                     entity.SetPosition(wx, wy);
-                    var renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                    var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
                     renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                    renderer.AnchorToBottomTile(); // tall crops (Apple Tree) sort by their bottom tile, like actors
                     if (!_cropsVisible)
                         entity.SetEnabled(false);
                 }
@@ -273,13 +276,14 @@ namespace PitHero.Services
         {
             if (data.WorldEntity == null || data.WorldEntity.IsDestroyed)
                 return;
-            var renderer = data.WorldEntity.GetComponent<SpriteRenderer>();
+            var renderer = data.WorldEntity.GetComponent<YSortSpriteRenderer>();
             if (renderer == null)
                 return;
             var sprite = atlas?.GetSprite(CropConfig.GetFrameSpriteName(data.Type, data.CurrentFrame));
             if (sprite != null)
             {
                 renderer.Sprite = sprite;
+                renderer.AnchorToBottomTile();
                 float sprH = sprite.SourceRect.Height;
                 float wy = tile.Y * GameConfig.TileSize + GameConfig.TileSize - sprH / 2f;
                 data.WorldEntity.SetPosition(data.WorldEntity.Position.X, wy);

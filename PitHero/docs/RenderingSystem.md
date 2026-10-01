@@ -100,7 +100,16 @@ A renderable may implement `IYSortOffset { float YSortOffset { get; } }`; `YSort
 that offset to `entity.Y` before computing depth, moving the sort point off the entity centre.
 `YSortSpriteRenderer` exposes a settable `YSortOffset` (default 0).
 
-Used by **placed buildings** (Monster House / Crop Storage). A building's entity sits at its
+**Convention: every Y-sorted entity sorts at the centre of its bottom tile row.** A 32px actor
+sits on its tile centre, so it needs no offset; medium/large monsters are shifted up so their
+bottom tile does the same (`EnemyAnimationComponent.ApplyTileAnchorOffset`). A taller
+single-sprite object whose entity is at its sprite centre must opt in with
+`YSortSpriteRenderer.AnchorToBottomTile()` (offset `= (spriteHeight − 32) / 2`, zero for 32px
+sprites), and call it again whenever it swaps in a sprite of a different height. Used by crops and
+crop-plan previews (the 56×73 Apple Tree) and the 181px hero statue. Without it a tall crop planted
+on the row directly below a building sorts *above* the building's bottom edge and draws behind it.
+
+**Placed buildings** (Monster House / Crop Storage) deliberately sort lower than this convention. A building's entity sits at its
 sprite centre, but its "ground / front-face" line is the bottom of its footprint — the lower
 64 px (2 tiles) that `FarmPathfinder` walls off. Setting `YSortOffset = spriteHeight / 2` puts
 the sort point at the sprite's bottom edge, so a monster walking in the walkable top rows
@@ -235,9 +244,11 @@ centrally by `YSortManager`; this class exists solely as a semantic marker.
 ```csharp
 var r = entity.AddComponent(new YSortSpriteRenderer(mySprite));
 r.SetRenderLayer(GameConfig.RenderLayerSingleTileObject); // or RenderLayerActors
+r.AnchorToBottomTile(); // required when the sprite is taller than one tile; no-op for 32px
 ```
 
-Currently used by: pit walls, wizard orbs, hero statue.
+Currently used by: pit walls, wizard orbs, hero statue, crops and crop-plan previews, placed
+buildings (with the bottom-edge offset described above).
 
 ---
 

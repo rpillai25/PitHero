@@ -3,6 +3,7 @@ using Nez;
 using Nez.Sprites;
 using Nez.Textures;
 using Nez.UI;
+using PitHero.ECS.Components;
 using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Util;
@@ -352,8 +353,9 @@ namespace PitHero.UI
 
                 var entity   = _scene.CreateEntity("crop-plan-" + plan.Type + "-" + plan.TileX + "-" + plan.TileY);
                 entity.SetPosition(wx, wy);
-                var renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
                 renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                renderer.AnchorToBottomTile(); // match the live crop's sort point (see CropGrowthService)
                 renderer.Color = new Color(255, 255, 255, GameConfig.CropPlanPreviewAlpha);
 
                 service.SetPlanEntity(new Microsoft.Xna.Framework.Point(plan.TileX, plan.TileY), entity);
@@ -533,8 +535,9 @@ namespace PitHero.UI
                     "crop-plan-" + crop.ToString() + "-" + tileX + "-" + tileY);
                 entity.SetPosition(wx, wy);
 
-                var renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
                 renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                renderer.AnchorToBottomTile(); // match the live crop's sort point (see CropGrowthService)
                 renderer.Color = new Color(255, 255, 255, GameConfig.CropPlanPreviewAlpha);
             }
 

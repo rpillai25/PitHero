@@ -101,7 +101,7 @@ See `PitHero/docs/RenderingSystem.md` for the full reference.  Key rules:
 - Multi-layer humanoid actors (hero, mercenaries, innkeeper) → `MultiSpriteAnimator` at `RenderLayerActors`.
 - Multi-layer static objects (treasure chests) → `StaticSpriteCompositor` at `RenderLayerSingleTileObject`.
 - Single-sprite world objects (walls, orbs, statues, any ≤ 32×32 tile objects) → `YSortSpriteRenderer` at `RenderLayerSingleTileObject`.
-- Single-sprite larger world objects → `YSortSpriteRenderer` at `RenderLayerActors`.
+- Single-sprite larger world objects (crops, statue) → `YSortSpriteRenderer` at `RenderLayerActors` **with `AnchorToBottomTile()`**, so a tall sprite sorts at its bottom tile like actors do (re-apply after swapping to a sprite of a different height). Buildings use `YSortOffset = height / 2` instead (sort at the bottom edge).
 - Animated single-sprite monsters → subclass `EnemyAnimationComponent` at `RenderLayerActors`.
 - Y-sort (`LayerDepth`) updates are tile-row-snapped and change-gated — do not call `SetLayerDepth` every frame unconditionally.
 

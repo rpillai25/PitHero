@@ -2207,6 +2207,7 @@ namespace PitHero.ECS.Scenes
                 {
                     var renderer = statueEntity.AddComponent(new YSortSpriteRenderer(statueSprite));
                     renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                    renderer.AnchorToBottomTile(); // 181px sprite: sort at its base row, not 90px above it
                     Debug.Log($"[MainGameScene] Hero statue spawned at tile ({tileX}, {tileY}) with HeroStatue sprite");
                 }
                 else
