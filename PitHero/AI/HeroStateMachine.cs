@@ -100,6 +100,12 @@ namespace PitHero.AI
         public static bool IsBattleInProgress { get; set; } = false;
 
         /// <summary>
+        /// The monster entities of the battle in progress (null outside a battle). Presentation only:
+        /// the battle-monster HUD strip and the replay HUD record read it; the simulation never does.
+        /// </summary>
+        public static System.Collections.Generic.List<Nez.Entity> BattleMonsterEntities { get; set; }
+
+        /// <summary>
         /// The ally currently holding the monsters' attention (ThreatSystem.md), or null.
         /// Set by LiveBattleAdapter on every threat-target change and cleared at battle end;
         /// polled per frame by MainGameScene to tint exactly one party HUD panel red.

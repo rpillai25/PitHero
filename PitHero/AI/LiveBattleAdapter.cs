@@ -173,13 +173,8 @@ namespace PitHero.AI
         /// <inheritdoc/>
         public IEnumerator OnBattleStarted()
         {
-            // Add HP bars to all monster entities
-            for (int i = 0; i < _monsterEntities.Count; i++)
-            {
-                var me = _monsterEntities[i];
-                if (me != null && !me.IsDestroyed)
-                    me.AddComponent(new MonsterHPBarComponent());
-            }
+            // Monster HP is shown by the HUD strip beside the gold display (MainGameScene reads
+            // HeroStateMachine.BattleMonsterEntities, set below); nothing is drawn on the monsters.
 
             // Battle UI components for mercs already in the battle
             var scene = Core.Scene;
@@ -200,6 +195,7 @@ namespace PitHero.AI
                 _turnIndicator = _turnIndicatorEntity.AddComponent(new BattleTurnIndicatorComponent());
 
             HeroStateMachine.IsBattleInProgress = true;
+            HeroStateMachine.BattleMonsterEntities = _monsterEntities;
             HeroStateMachine.CurrentThreatTarget = null;
 
             Debug.Log($"[LiveBattleAdapter] Battle started. HeroStateMachine.IsBattleInProgress=true");
@@ -878,19 +874,11 @@ namespace PitHero.AI
         public void CleanupBattleUI(List<IBattleAlly> mercAllies)
         {
             HeroStateMachine.IsBattleInProgress = false;
+            HeroStateMachine.BattleMonsterEntities = null;
             HeroStateMachine.CurrentThreatTarget = null;
 
             if (_turnIndicatorEntity != null)
                 _turnIndicatorEntity.Destroy();
-
-            // Remove HP bars from monster entities
-            for (int i = 0; i < _monsterEntities.Count; i++)
-            {
-                var me = _monsterEntities[i];
-                if (me == null || me.IsDestroyed) continue;
-                var hpBar = me.GetComponent<MonsterHPBarComponent>();
-                if (hpBar != null) me.RemoveComponent(hpBar);
-            }
 
             // Remove bounce components from merc entities
             for (int i = 0; i < mercAllies.Count; i++)

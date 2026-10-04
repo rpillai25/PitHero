@@ -540,6 +540,7 @@ namespace PitHero.Services.Replay
             Time.TimeScale = 1f;
             Core.GetGlobalManager<CoroutineManager>()?.StopAllCoroutines();
             HeroStateMachine.IsBattleInProgress = false;
+            HeroStateMachine.BattleMonsterEntities = null;
             HeroStateMachine.CurrentThreatTarget = null;
             Core.Services.GetService<TileStateService>()?.Clear();
             Core.Services.GetService<PauseService>()?.ResetImmediate();

@@ -85,6 +85,17 @@ namespace PitHero.ECS.Components
             ApplyTileAnchorOffset();
         }
 
+        /// <summary>The monster's portrait: frame 0 of its MoveRight animation, or null when it is not loaded.</summary>
+        public Nez.Textures.Sprite PortraitSprite
+        {
+            get
+            {
+                if (Animations == null || !Animations.TryGetValue(AnimMoveRight, out var animation))
+                    return null;
+                return animation.Sprites != null && animation.Sprites.Length > 0 ? animation.Sprites[0] : null;
+            }
+        }
+
         /// <summary>Registers one named atlas animation on this animator. Returns false if the atlas lacks it.</summary>
         private bool TryAddAnimationFromAtlas(Nez.Sprites.SpriteAtlas atlas, string name)
         {

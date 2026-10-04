@@ -230,8 +230,11 @@ namespace PitHero.Tests
                 PitTier = 4,
                 InGameSeconds = 3661.5f,
                 Paused = true,
+                MonsterCount = 2,
             };
-            var w = new FrameWriter(new byte[128]);
+            hud.SetMonster(0, new HudMonster { Portrait = 7, PortraitColor = 0xFFFFFFFF, Hp = 12, MaxHp = 33, X = 496f, Y = 208f });
+            hud.SetMonster(1, new HudMonster { Portrait = 9, PortraitColor = 0xFF00FF00, Hp = 0, MaxHp = 80, X = 528f, Y = 176f });
+            var w = new FrameWriter(new byte[HudRecord.Size]);
             hud.Write(ref w);
             Assert.AreEqual(HudRecord.Size, w.Length);
             var r = new FrameReader(w.Buffer, 0, w.Length);

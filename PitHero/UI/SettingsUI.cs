@@ -1915,6 +1915,7 @@ namespace PitHero.UI
                 Core.PendingExtraSteps = 0;
                 Core.GetGlobalManager<CoroutineManager>().StopAllCoroutines();
                 AI.HeroStateMachine.IsBattleInProgress = false;
+                AI.HeroStateMachine.BattleMonsterEntities = null;
                 AI.HeroStateMachine.CurrentThreatTarget = null;
                 Core.Services.GetService<TileStateService>()?.Clear();
                 Core.Scene = new TitleScreenScene();

@@ -801,6 +801,35 @@ namespace PitHero.Services.Replay.Frames
                 hud.InGameSeconds = MathF.Floor(_time.AccumulatedSeconds); // the clock label shows minutes; whole seconds keep the record from changing every tick
             _pause ??= Service<PauseService>();
             hud.Paused = _pause != null && _pause.IsPaused;
+
+            // The monsters of the battle in progress, for the HUD strip beside the gold display
+            var battleMonsters = PitHero.AI.HeroStateMachine.IsBattleInProgress ? PitHero.AI.HeroStateMachine.BattleMonsterEntities : null;
+            if (battleMonsters != null)
+            {
+                int count = 0;
+                for (int i = 0; i < battleMonsters.Count && count < HudRecord.MaxMonsters; i++)
+                {
+                    var entity = battleMonsters[i];
+                    if (entity == null || entity.IsDestroyed || entity.Scene != scene)
+                        continue;
+                    var enemy = entity.GetComponent<EnemyComponent>()?.Enemy;
+                    if (enemy == null)
+                        continue;
+                    var animation = entity.GetComponent<EnemyAnimationComponent>();
+                    var position = entity.Transform.Position;
+                    var monster = new HudMonster
+                    {
+                        Portrait = Context.SpriteId(animation?.PortraitSprite),
+                        PortraitColor = (animation != null ? animation.ComponentColor : Microsoft.Xna.Framework.Color.White).PackedValue,
+                        Hp = enemy.CurrentHP,
+                        MaxHp = enemy.MaxHP,
+                        X = position.X,
+                        Y = position.Y,
+                    };
+                    hud.SetMonster(count++, in monster);
+                }
+                hud.MonsterCount = (byte)count;
+            }
             return hud;
         }
 
