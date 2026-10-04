@@ -30,6 +30,10 @@ namespace PitHero.ECS.Components
 
         private bool _tileAnchorApplied;
 
+        // Animator speed multiplier that turns the atlas animation's full rate into the normal (half) rate
+        private float _normalSpeedRatio = 1f;
+        private GameStateService _gameState;
+
         private Color _componentColor = Color.White;
         /// <summary>Gets the tint color for this component (default: White)</summary>
         public Color ComponentColor
@@ -102,8 +106,59 @@ namespace PitHero.ECS.Components
             int index = System.Array.IndexOf(atlas.AnimationNames, name);
             if (index < 0)
                 return false;
-            AddAnimation(name, atlas.SpriteAnimations[index]);
+            var animation = atlas.SpriteAnimations[index];
+            // The atlas packs every animation at one fps; monsters derive theirs from the frame count.
+            // The atlas animation is shared by every monster of the type, so this is idempotent.
+            if (animation.FrameRates != null)
+            {
+                float frameRate = FrameRateForFrameCount(animation.FrameRates.Length);
+                for (int i = 0; i < animation.FrameRates.Length; i++)
+                    animation.FrameRates[i] = frameRate;
+                if (name == AnimMoveRight)
+                    _normalSpeedRatio = NormalFrameRateForFrameCount(animation.FrameRates.Length) / frameRate;
+            }
+            AddAnimation(name, animation);
             return true;
+        }
+
+        /// <summary>
+        /// Monster animation speed in frames per second: twice the frame count, taken to the nearest
+        /// multiple of 5 (4 frames → 8 → 10; 9 frames → 18 → 20), never below 5. Every animation
+        /// therefore loops in roughly half a second however many frames it has.
+        /// </summary>
+        public static float FrameRateForFrameCount(int frameCount)
+        {
+            int rounded = (frameCount * 2 + 2) / 5 * 5; // 2n is even, so there are no ties to break
+            return rounded < 5 ? 5 : rounded;
+        }
+
+        /// <summary>
+        /// The normal (unboosted) monster animation speed: half of <see cref="FrameRateForFrameCount"/>,
+        /// moved up to the nearest multiple of 5 (10 → 5; 15 → 7.5 → 10; 20 → 10). Pit monsters always
+        /// animate at this speed; farm and kitchen workers do until the Hermes Boots double their
+        /// movement, when they animate at the full rate.
+        /// </summary>
+        public static float NormalFrameRateForFrameCount(int frameCount)
+        {
+            int full = (int)FrameRateForFrameCount(frameCount);
+            return (full + 9) / 10 * 5;
+        }
+
+        /// <summary>
+        /// Plays the animation at the normal (half) rate, or at the full rate for a farm/kitchen worker
+        /// whose movement the Hermes Boots have doubled. The atlas animation holds the full rate, so
+        /// this only moves the animator's speed multiplier. Read every step: the boots can be bought
+        /// mid-session.
+        /// </summary>
+        private void UpdateAnimationSpeed()
+        {
+            bool boosted = false;
+            if (_farmMover != null)
+            {
+                _gameState ??= Core.Services.GetService<GameStateService>();
+                boosted = PitHero.Artifacts.LocalArtifactEffects.GetWorkerMoveSpeedMultiplier(_gameState) > 1f;
+            }
+            Speed = boosted ? 1f : _normalSpeedRatio;
         }
 
         /// <summary>
@@ -141,6 +196,7 @@ namespace PitHero.ECS.Components
 
             CheckFogVisibility();
             UpdateWobble();
+            UpdateAnimationSpeed();
         }
 
         /// <summary>
