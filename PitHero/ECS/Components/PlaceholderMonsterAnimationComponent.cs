@@ -14,11 +14,7 @@ namespace PitHero.ECS.Components
         }
 
         // PlaceholderMonster is a static sprite, so we use the same sprite for all directions
-        protected override string DefaultAnimation => "PlaceholderMonster";
-        protected override string AnimDown => "PlaceholderMonster";
-        protected override string AnimLeft => "PlaceholderMonster";
-        protected override string AnimRight => "PlaceholderMonster";
-        protected override string AnimUp => "PlaceholderMonster";
+        protected override string AnimMoveRight => "PlaceholderMonster";
 
         public override void OnAddedToEntity()
         {

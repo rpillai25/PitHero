@@ -83,7 +83,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, level5Pool.Length);
             Assert.IsTrue(ContainsEnemy(level4Pool, EnemyId.Slime));
             Assert.IsTrue(ContainsEnemy(level4Pool, EnemyId.Bat));
-            Assert.IsTrue(ContainsEnemy(level4Pool, EnemyId.Rat));
+            Assert.IsTrue(ContainsEnemy(level4Pool, EnemyId.PitMouse));
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace PitHero.Tests
             Assert.IsTrue(level6Pool.Length > 0);
             Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Slime));
             Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Bat));
-            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Rat));
+            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.PitMouse));
             Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Goblin));
             Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Spider));
             Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Snake));

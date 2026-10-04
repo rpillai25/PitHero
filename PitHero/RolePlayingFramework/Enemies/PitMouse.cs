@@ -6,12 +6,12 @@ using PitHero;
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>Slightly evasive enemy.</summary>
-    public sealed class Rat : IEnemy
+    public sealed class PitMouse : IEnemy
     {
         private int _hp;
 
-        public string Name => MonsterTextKey.Monster_Rat;
-        public EnemyId EnemyId => EnemyId.Rat;
+        public string Name => MonsterTextKey.Monster_PitMouse;
+        public EnemyId EnemyId => EnemyId.PitMouse;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -27,9 +27,9 @@ namespace RolePlayingFramework.Enemies
         public bool IsBoss => false;
         public bool IsRecruitable => true;
 
-        public Rat(int level = 1)
+        public PitMouse(int level = 1)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Rat);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.PitMouse);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats
@@ -47,7 +47,7 @@ namespace RolePlayingFramework.Enemies
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
             GoldYield = BalanceConfig.CalculateMonsterGoldYield(Level);
 
-            // Rat is Neutral element: no special resistances
+            // PitMouse is Neutral element: no special resistances
             ElementalProps = new ElementalProperties(ElementType.Neutral);
         }
 

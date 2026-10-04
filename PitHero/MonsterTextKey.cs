@@ -17,7 +17,7 @@ namespace PitHero
         public const string Monster_MoltenTitan = "Monster_MoltenTitan";
         public const string Monster_Orc = "Monster_Orc";
         public const string Monster_PitLord = "Monster_PitLord";
-        public const string Monster_Rat = "Monster_Rat";
+        public const string Monster_PitMouse = "Monster_PitMouse";
         public const string Monster_ShadowBeast = "Monster_ShadowBeast";
         public const string Monster_ShadowImp = "Monster_ShadowImp";
         public const string Monster_Skeleton = "Monster_Skeleton";

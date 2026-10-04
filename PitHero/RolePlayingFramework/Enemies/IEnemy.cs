@@ -62,6 +62,12 @@ namespace RolePlayingFramework.Enemies
         /// </summary>
         float HatYOffset => 0f;
 
+        /// <summary>
+        /// Vertical nudge (pixels, negative = raise) applied to the crops or plates this monster
+        /// carries when it works a job. Defaults to 0 (centred on the body). Purely visual.
+        /// </summary>
+        float CarryYOffset => 0f;
+
         /// <summary>Inflicts damage, returns true if died.</summary>
         bool TakeDamage(int amount);
     }

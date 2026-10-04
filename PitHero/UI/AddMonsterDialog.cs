@@ -180,7 +180,7 @@ namespace PitHero.UI
             {
                 try
                 {
-                    var anim = actorsAtlas.GetAnimation($"{enemy.EnemyId}MoveDown");
+                    var anim = actorsAtlas.GetAnimation($"{enemy.EnemyId}MoveRight");
                     if (anim?.Sprites != null && anim.Sprites.Length > 0)
                         sprite = anim.Sprites[0];
                 }

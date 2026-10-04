@@ -17,7 +17,7 @@ namespace PitHero.Config
             // Level 1 enemies (spawn in Pit Level 1-3)
             [EnemyId.Slime] = 1,
             [EnemyId.Bat] = 1,
-            [EnemyId.Rat] = 1,
+            [EnemyId.PitMouse] = 1,
 
             // Level 2-4 enemies (early cave)
             [EnemyId.CaveMushroom] = 2,

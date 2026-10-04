@@ -12,7 +12,7 @@ Monster_MagmaOoze,Magma Ooze
 Monster_MoltenTitan,Molten Titan
 Monster_Orc,Orc
 Monster_PitLord,Pit Lord
-Monster_Rat,Rat
+Monster_PitMouse,Pit Mouse
 Monster_ShadowBeast,Shadow Beast
 Monster_ShadowImp,Shadow Imp
 Monster_Skeleton,Skeleton

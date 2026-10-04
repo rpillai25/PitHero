@@ -110,11 +110,11 @@ namespace PitHero.Tests
         public void AlliedMonsterManager_TryRecruit_SetsMonsterTypeName()
         {
             var manager = new AlliedMonsterManager();
-            var allied = new AlliedMonster(MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_Rat, 5, 5, 5);
+            var allied = new AlliedMonster(MonsterTextKey.Monster_PitMouse, MonsterTextKey.Monster_PitMouse, 5, 5, 5);
             manager.AddAlliedMonster(allied);
 
             Assert.AreEqual(1, manager.Count, "Count should be 1");
-            Assert.AreEqual(MonsterTextKey.Monster_Rat, manager.AlliedMonsters[0].MonsterTypeName,
+            Assert.AreEqual(MonsterTextKey.Monster_PitMouse, manager.AlliedMonsters[0].MonsterTypeName,
                 "MonsterTypeName should match what was provided");
         }
 
@@ -292,7 +292,7 @@ namespace PitHero.Tests
         {
             var manager = new AlliedMonsterManager();
             var kept = new AlliedMonster("Kept", MonsterTextKey.Monster_Slime, 1, 1, 1, monsterHouseId: 4);
-            var gone = new AlliedMonster("Gone", MonsterTextKey.Monster_Rat, 1, 1, 1, monsterHouseId: 4);
+            var gone = new AlliedMonster("Gone", MonsterTextKey.Monster_PitMouse, 1, 1, 1, monsterHouseId: 4);
             manager.AddAlliedMonster(kept);
             manager.AddAlliedMonster(gone);
 

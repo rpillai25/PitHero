@@ -25,10 +25,10 @@ namespace PitHero.Tests
         {
             var service = new DefeatedMonsterService();
 
-            service.MarkDefeated(EnemyId.Rat);
-            service.MarkDefeated(EnemyId.Rat); // duplicate should not double-count
+            service.MarkDefeated(EnemyId.PitMouse);
+            service.MarkDefeated(EnemyId.PitMouse); // duplicate should not double-count
 
-            Assert.IsTrue(service.IsDefeated(EnemyId.Rat));
+            Assert.IsTrue(service.IsDefeated(EnemyId.PitMouse));
             Assert.IsFalse(service.IsDefeated(EnemyId.Orc));
             Assert.AreEqual(1, service.GetAll().Count);
         }

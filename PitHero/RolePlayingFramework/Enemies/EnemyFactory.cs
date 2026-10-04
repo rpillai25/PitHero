@@ -24,7 +24,7 @@ namespace RolePlayingFramework.Enemies
             {
                 EnemyId.Slime => new Slime(levelToPass),
                 EnemyId.Bat => new Bat(levelToPass),
-                EnemyId.Rat => new Rat(levelToPass),
+                EnemyId.PitMouse => new PitMouse(levelToPass),
                 EnemyId.CaveMushroom => new CaveMushroom(levelToPass),
                 EnemyId.StoneBeetle => new StoneBeetle(levelToPass),
                 EnemyId.Goblin => new Goblin(levelToPass),

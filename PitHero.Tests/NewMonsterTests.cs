@@ -13,7 +13,7 @@ namespace PitHero.Tests
         {
             // Act - Create all new monsters
             var bat = new Bat();
-            var rat = new Rat();
+            var pitMouse = new PitMouse();
             var goblin = new Goblin();
             var spider = new Spider();
             var snake = new Snake();
@@ -24,7 +24,7 @@ namespace PitHero.Tests
 
             // Assert - All monsters should be created successfully
             Assert.IsNotNull(bat);
-            Assert.IsNotNull(rat);
+            Assert.IsNotNull(pitMouse);
             Assert.IsNotNull(goblin);
             Assert.IsNotNull(spider);
             Assert.IsNotNull(snake);
@@ -40,7 +40,7 @@ namespace PitHero.Tests
             // Act - Create monsters
             var slime = new Slime();
             var bat = new Bat();
-            var rat = new Rat();
+            var pitMouse = new PitMouse();
             var goblin = new Goblin();
             var spider = new Spider();
             var snake = new Snake();
@@ -52,7 +52,7 @@ namespace PitHero.Tests
             // Assert - Check levels match config
             Assert.AreEqual(1, slime.Level, "Slime should be level 1");
             Assert.AreEqual(1, bat.Level, "Bat should be level 1");
-            Assert.AreEqual(1, rat.Level, "Rat should be level 1");
+            Assert.AreEqual(1, pitMouse.Level, "PitMouse should be level 1");
             Assert.AreEqual(3, goblin.Level, "Goblin should be level 3");
             Assert.AreEqual(3, spider.Level, "Spider should be level 3");
             Assert.AreEqual(3, snake.Level, "Snake should be level 3");
@@ -68,7 +68,7 @@ namespace PitHero.Tests
             // Act - Create monsters
             var slime = new Slime();
             var bat = new Bat();
-            var rat = new Rat();
+            var pitMouse = new PitMouse();
             var goblin = new Goblin();
             var spider = new Spider();
             var snake = new Snake();
@@ -81,7 +81,7 @@ namespace PitHero.Tests
             // Formula: (25 + level * 8) * archetype_multiplier
             Assert.AreEqual(33, slime.MaxHP, "Slime should have HP: 33 (L1, Balanced)");
             Assert.AreEqual(23, bat.MaxHP, "Bat should have HP: 23 (L1, FastFragile)");
-            Assert.AreEqual(33, rat.MaxHP, "Rat should have HP: 33 (L1, Balanced)");
+            Assert.AreEqual(33, pitMouse.MaxHP, "PitMouse should have HP: 33 (L1, Balanced)");
             Assert.AreEqual(49, goblin.MaxHP, "Goblin should have HP: 49 (L3, Balanced)");
             Assert.AreEqual(34, spider.MaxHP, "Spider should have HP: 34 (L3, FastFragile)");
             Assert.AreEqual(34, snake.MaxHP, "Snake should have HP: 34 (L3, FastFragile)");
@@ -132,7 +132,7 @@ namespace PitHero.Tests
             // Assert - All monsters should be in the config
             Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Slime));
             Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Bat));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Rat));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.PitMouse));
             Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Goblin));
             Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Spider));
             Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Snake));

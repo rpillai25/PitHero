@@ -23,7 +23,7 @@ namespace PitHero.Tests
         [TestCategory("AlliedMonsters")]
         public void AlliedMonster_Constructor_StoresProficienciesCorrectly()
         {
-            var monster = new AlliedMonster("Alice", MonsterTextKey.Monster_Rat, 3, 7, 9);
+            var monster = new AlliedMonster("Alice", MonsterTextKey.Monster_PitMouse, 3, 7, 9);
 
             Assert.AreEqual(3, monster.FishingProficiency, "Fishing proficiency should be 3");
             Assert.AreEqual(7, monster.CookingProficiency, "Cooking proficiency should be 7");

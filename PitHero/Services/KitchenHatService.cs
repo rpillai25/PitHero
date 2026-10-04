@@ -44,33 +44,6 @@ namespace PitHero.Services
         private SpriteAtlas CropsAtlas
             => _cropsAtlas ??= Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
 
-        // Cached per-type hat offset so the monster definition isn't re-created on every attach.
-        private static readonly Dictionary<RolePlayingFramework.Enemies.EnemyId, float> _hatYOffsetCache
-            = new Dictionary<RolePlayingFramework.Enemies.EnemyId, float>();
-
-        /// <summary>
-        /// Per-monster-type vertical nudge (px, negative = raise) layered on the generic head-top hat
-        /// placement, read from the monster's own definition (<see cref="RolePlayingFramework.Enemies.IEnemy.HatYOffset"/>).
-        /// Most monsters use the default (0); a type that seats its head lower (e.g. Orc) overrides
-        /// HatYOffset in its own class, so no central table is needed here.
-        /// </summary>
-        private static float HatYOffsetFor(string monsterTypeName)
-        {
-            if (string.IsNullOrEmpty(monsterTypeName))
-                return 0f;
-            var bare = monsterTypeName.StartsWith("Monster_")
-                ? monsterTypeName.Substring("Monster_".Length)
-                : monsterTypeName;
-            if (!System.Enum.TryParse(bare, out RolePlayingFramework.Enemies.EnemyId id))
-                return 0f;
-            if (!_hatYOffsetCache.TryGetValue(id, out var offset))
-            {
-                offset = RolePlayingFramework.Enemies.EnemyFactory.Create(id).HatYOffset;
-                _hatYOffsetCache[id] = offset;
-            }
-            return offset;
-        }
-
         private static string SpriteNameFor(KitchenRole role)
         {
             switch (role)
@@ -112,13 +85,14 @@ namespace PitHero.Services
             renderer.Sprite = sprite;
 
             // Sit the hat on top of the head: body sprite is centered on the entity, so the head
-            // top is at -bodyHeight/2; overlap pulls the brim down onto the head.
+            // top is at -bodyHeight/2; overlap pulls the brim down onto the head. The monster type's
+            // own HatYOffset (e.g. Orc, whose head seats lower) is layered on top.
             float bodyHeight = bodyRenderer?.Sprite != null
                 ? bodyRenderer.Sprite.SourceRect.Height
                 : GameConfig.TileSize;
             float hatHeight = sprite.SourceRect.Height;
             float localY = -bodyHeight / 2f - hatHeight / 2f + GameConfig.KitchenHatOverlapPixels
-                           + HatYOffsetFor(monsterTypeName);
+                           + MonsterVisualOffsets.HatYOffsetFor(monsterTypeName);
 
             // Draw just above the body (same convention as the carry sprite)
             if (bodyRenderer != null)

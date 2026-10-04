@@ -33,8 +33,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void Rat_ShouldHaveNeutralElement()
         {
-            var rat = new Rat();
-            Assert.AreEqual(ElementType.Neutral, rat.Element);
+            var pitMouse = new PitMouse();
+            Assert.AreEqual(ElementType.Neutral, pitMouse.Element);
         }
 
         [TestMethod]
@@ -326,10 +326,10 @@ namespace PitHero.Tests
         [TestMethod]
         public void Rat_ShouldHaveElementalPropsWithNoResistances()
         {
-            var rat = new Rat();
-            Assert.IsNotNull(rat.ElementalProps);
-            Assert.AreEqual(ElementType.Neutral, rat.ElementalProps.Element);
-            Assert.AreEqual(0, rat.ElementalProps.Resistances.Count);
+            var pitMouse = new PitMouse();
+            Assert.IsNotNull(pitMouse.ElementalProps);
+            Assert.AreEqual(ElementType.Neutral, pitMouse.ElementalProps.Element);
+            Assert.AreEqual(0, pitMouse.ElementalProps.Resistances.Count);
         }
 
         [TestMethod]

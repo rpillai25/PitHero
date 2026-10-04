@@ -21,12 +21,9 @@ namespace PitHero.ECS.Components
         private float _wobbleTimer;
         private bool _wasWobbling;
 
-        // Abstract properties for animation names - each enemy type defines its own
-        protected abstract string DefaultAnimation { get; }
-        protected abstract string AnimDown { get; }
-        protected abstract string AnimLeft { get; }
-        protected abstract string AnimRight { get; }
-        protected abstract string AnimUp { get; }
+        // The single movement animation ("[MonsterName]MoveRight") - each enemy type defines its own.
+        // Moving left plays it flipped; moving up/down keeps whichever look was last playing.
+        protected abstract string AnimMoveRight { get; }
 
         /// <summary>Attack animation name, or null if none exists for this enemy.</summary>
         protected virtual string AnimAttack => null;
@@ -57,8 +54,15 @@ namespace PitHero.ECS.Components
                 var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
                 if (actorsAtlas != null)
                 {
-                    AddAnimationsFromAtlas(actorsAtlas);
-                    Play(DefaultAnimation, LoopMode.Loop);
+                    // Only this monster's own animations are registered - never the whole atlas
+                    bool hasMove = TryAddAnimationFromAtlas(actorsAtlas, AnimMoveRight);
+                    if (AnimAttack != null)
+                        TryAddAnimationFromAtlas(actorsAtlas, AnimAttack);
+
+                    if (hasMove)
+                        Play(AnimMoveRight, LoopMode.Loop);
+                    else
+                        Debug.Warn($"[EnemyAnimationComponent] Animation {AnimMoveRight} not found in Actors.atlas");
                 }
                 else
                 {
@@ -79,6 +83,16 @@ namespace PitHero.ECS.Components
             this.SetColor(ComponentColor);
 
             ApplyTileAnchorOffset();
+        }
+
+        /// <summary>Registers one named atlas animation on this animator. Returns false if the atlas lacks it.</summary>
+        private bool TryAddAnimationFromAtlas(Nez.Sprites.SpriteAtlas atlas, string name)
+        {
+            int index = System.Array.IndexOf(atlas.AnimationNames, name);
+            if (index < 0)
+                return false;
+            AddAnimation(name, atlas.SpriteAnimations[index]);
+            return true;
         }
 
         /// <summary>
@@ -170,7 +184,7 @@ namespace PitHero.ECS.Components
                 Play(AnimAttack, LoopMode.Once);
                 while (AnimationState == State.Running)
                     yield return null;
-                Play(DefaultAnimation, LoopMode.Loop);
+                Play(AnimMoveRight, LoopMode.Loop);
             }
             else
             {
@@ -250,38 +264,31 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Plays the appropriate walking animation for the given direction
+        /// Faces the looping MoveRight animation for the given direction: unflipped when heading right,
+        /// flipped ("MoveLeft") when heading left. Up/Down have no animations of their own, so the
+        /// current look just keeps playing. The animation itself is never restarted or stopped here.
         /// </summary>
         public void UpdateAnimationForDirection(Direction direction)
         {
-            string animationName = direction switch
+            bool shouldFlip;
+            switch (direction)
             {
-                Direction.Up => AnimUp,
-                Direction.Down => AnimDown,
-                Direction.Left => AnimLeft,
-                Direction.Right => AnimRight,
-                Direction.UpLeft => AnimLeft,
-                Direction.UpRight => AnimRight,
-                Direction.DownLeft => AnimLeft,
-                Direction.DownRight => AnimRight,
-                _ => AnimDown
-            };
+                case Direction.Left:
+                case Direction.UpLeft:
+                case Direction.DownLeft:
+                    shouldFlip = true;
+                    break;
+                case Direction.Right:
+                case Direction.UpRight:
+                case Direction.DownRight:
+                    shouldFlip = false;
+                    break;
+                default:
+                    return;
+            }
 
-            bool shouldFlip = direction == Direction.Left || direction == Direction.UpLeft || direction == Direction.DownLeft;
             if (FlipX != shouldFlip)
                 SetFlipXAndAdjustLocalOffset(shouldFlip);
-
-            if (IsAnimationActive(animationName))
-                return;
-
-            if (Animations != null && Animations.ContainsKey(animationName))
-            {
-                Play(animationName, LoopMode.Loop);
-            }
-            else
-            {
-                Debug.Warn($"[EnemyAnimationComponent] Animation {animationName} not found - animations may not be loaded");
-            }
         }
     }
 }

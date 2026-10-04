@@ -236,7 +236,7 @@ namespace PitHero.Tests
             // Test expected pool sizes for each pit level band
             // Updated to match 10-monster sliding window system
             
-            // Pool 1 (Pit 1-4): 5 monsters (Slime, Bat, Rat, Cave Mushroom, Stone Beetle)
+            // Pool 1 (Pit 1-4): 5 monsters (Slime, Bat, PitMouse, Cave Mushroom, Stone Beetle)
             for (int level = 1; level <= 4; level++)
             {
                 EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);

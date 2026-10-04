@@ -41,7 +41,7 @@ namespace PitHero.Services
         /// <summary>All defeated monster types.</summary>
         public IReadOnlyCollection<EnemyId> GetAll() => _defeated;
 
-        /// <summary>Serializes the defeated set to a list of bare enum names (e.g. "Rat") for saving.</summary>
+        /// <summary>Serializes the defeated set to a list of bare enum names (e.g. "PitMouse") for saving.</summary>
         public List<string> ToNames()
         {
             var names = new List<string>(_defeated.Count);
