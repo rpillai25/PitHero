@@ -20,7 +20,7 @@ namespace PitHero.Tests
         public void CaveEnemies_Pit1To4_OnlyTier1()
         {
             var generator = new PitGenerator((Nez.Scene)null!);
-            string[] allowed = { "Slime", "Bat", "Rat", "CaveMushroom", "StoneBeetle" };
+            string[] allowed = { "Slime", "Bat", "PitMouse", "CaveMushroom", "StoneBeetle" };
 
             for (int level = 1; level <= 4; level++)
             {
@@ -41,7 +41,7 @@ namespace PitHero.Tests
         public void CaveEnemies_Pit6To9_Tier1AndTier2()
         {
             var generator = new PitGenerator((Nez.Scene)null!);
-            string[] allowed = { "Slime", "Bat", "Rat", "CaveMushroom", "StoneBeetle", "Goblin", "Spider", "Snake", "ShadowImp", "TunnelWorm", "FireLizard" };
+            string[] allowed = { "Slime", "Bat", "PitMouse", "CaveMushroom", "StoneBeetle", "Goblin", "Spider", "Snake", "ShadowImp", "TunnelWorm", "FireLizard" };
 
             for (int level = 6; level <= 9; level++)
             {

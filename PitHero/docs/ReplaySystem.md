@@ -262,7 +262,9 @@ curve, the day/night clock and the clouds were all found this way).
 Beside the ops, every tick carries a **HUD record** (party hp/mp/level, gold, pit level/tier, in-game
 seconds floored to whole seconds so it does not churn, pause flag, and the hero's static portrait: the
 walk-down first frame of the head, eyes and hair layers as sprite ids with their tints, exactly what
-the live HUD draws). **Events** arrive through hooks and are stored with their tick: tile mutations
+the live HUD draws; since v6 also the monsters of the battle in progress — portrait sprite and tint, HP and
+world position, up to `HudRecord.MaxMonsters` — which feed the battle-monster strip beside the gold
+display, `BattleMonsterHud`). **Events** arrive through hooks and are stored with their tick: tile mutations
 (`TiledMapService.TileChanging`, same-gid writes and the undrawn Collision/Top layers dropped, plus a
 full keyframe of Base/Detail/FogOfWar at every chunk start), console lines
 (`GameEventService.OnEmitAny`, segments interned) and **sounds** (`SoundEffectManager.OnSoundPlayed`:
@@ -788,7 +790,7 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
-| `ReplayFrameFormatVersion` | 5 | Bump on any op / HUD record / events / codec change, or when something stops being recorded; orphans every cache once (v4 = Brotli payloads, v5 = hover markers live-only) |
+| `ReplayFrameFormatVersion` | 6 | Bump on any op / HUD record / events / codec change, or when something stops being recorded; orphans every cache once (v4 = Brotli payloads, v5 = hover markers live-only, v6 = battle monsters in the HUD record, on-monster HP bar ops gone) |
 | `ReplayFrameBrotliQuality` / `ReplayFrameBrotliWindowBits` | 5 / 22 | Chunk payload compression; measured sweet spot (see "Chunks") |
 | `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
 | `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |

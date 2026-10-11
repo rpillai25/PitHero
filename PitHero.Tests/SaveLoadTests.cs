@@ -216,6 +216,48 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>
+        /// A save written before Rat was renamed to PitMouse (issue #446) stores "Rat" / "Monster_Rat"
+        /// as text; loading it must yield the current names so the ally and its unlock survive.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_LegacyRatNames_LoadAsPitMouse()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_test_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.DefeatedMonsterTypes = new List<string> { "Slime", "Rat" };
+                original.AlliedMonsters = new List<SavedAlliedMonster>
+                {
+                    new SavedAlliedMonster { Name = "Squeak", MonsterTypeName = "Monster_Rat" },
+                    new SavedAlliedMonster { Name = "Blob", MonsterTypeName = "Monster_Slime" }
+                };
+
+                dataStore.Save("legacy_rat_save.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("legacy_rat_save.bin", loaded);
+
+                CollectionAssert.AreEqual(new List<string> { "Slime", "PitMouse" }, loaded.DefeatedMonsterTypes);
+                Assert.AreEqual(MonsterTextKey.Monster_PitMouse, loaded.AlliedMonsters[0].MonsterTypeName);
+                Assert.AreEqual("Monster_Slime", loaded.AlliedMonsters[1].MonsterTypeName);
+
+                var service = new DefeatedMonsterService();
+                service.LoadFrom(loaded.DefeatedMonsterTypes);
+                Assert.IsTrue(service.IsDefeated(RolePlayingFramework.Enemies.EnemyId.PitMouse));
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
         /// <summary>A fresh SaveData defaults DefeatedMonsterTypes to an empty (non-null) list.</summary>
         [TestMethod]
         public void SaveData_DefeatedMonsterTypes_DefaultsEmpty()

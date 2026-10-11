@@ -115,5 +115,27 @@ namespace PitHero.Tests
             // Assert
             Assert.AreEqual(customColor, slimeAnim.ComponentColor);
         }
+
+        /// <summary>Monster animation speed is twice the frame count, taken to the nearest multiple of 5.</summary>
+        [TestMethod]
+        public void FrameRateForFrameCount_IsTwiceFrameCountToNearestMultipleOfFive()
+        {
+            Assert.AreEqual(10f, EnemyAnimationComponent.FrameRateForFrameCount(4)); // 8 → 10
+            Assert.AreEqual(10f, EnemyAnimationComponent.FrameRateForFrameCount(5)); // 10
+            Assert.AreEqual(10f, EnemyAnimationComponent.FrameRateForFrameCount(6)); // 12 → 10
+            Assert.AreEqual(15f, EnemyAnimationComponent.FrameRateForFrameCount(7)); // 14 → 15
+            Assert.AreEqual(20f, EnemyAnimationComponent.FrameRateForFrameCount(9)); // 18 → 20
+            Assert.AreEqual(5f, EnemyAnimationComponent.FrameRateForFrameCount(1));  // never below 5
+        }
+
+        /// <summary>The normal (unboosted) speed is half the full rate, moved up to the nearest multiple of 5.</summary>
+        [TestMethod]
+        public void NormalFrameRateForFrameCount_IsHalfMovedUpToMultipleOfFive()
+        {
+            Assert.AreEqual(5f, EnemyAnimationComponent.NormalFrameRateForFrameCount(5));  // 10 → 5
+            Assert.AreEqual(10f, EnemyAnimationComponent.NormalFrameRateForFrameCount(7)); // 15 → 7.5 → 10
+            Assert.AreEqual(10f, EnemyAnimationComponent.NormalFrameRateForFrameCount(9)); // 20 → 10
+            Assert.AreEqual(5f, EnemyAnimationComponent.NormalFrameRateForFrameCount(2));  // 5 → 2.5 → 5
+        }
     }
 }

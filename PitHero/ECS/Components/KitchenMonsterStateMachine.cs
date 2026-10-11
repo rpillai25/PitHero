@@ -28,6 +28,8 @@ namespace PitHero.ECS.Components
     public class KitchenMonsterStateMachine : SimpleStateMachine<KitchenMonsterState>, IPausableComponent
     {
         private readonly AlliedMonster _monster;
+        // Per-type vertical nudge for carried plates/crops (IEnemy.CarryYOffset)
+        private readonly float _carryOffsetY;
         private readonly KitchenTaskCoordinator _coordinator;
         private readonly KitchenRole _role;
 
@@ -105,6 +107,7 @@ namespace PitHero.ECS.Components
             Point houseAnchorTile, KitchenRole role)
         {
             _monster = monster;
+            _carryOffsetY = MonsterVisualOffsets.CarryYOffsetFor(monster?.MonsterTypeName);
             _coordinator = coordinator;
             _houseAnchorTile = houseAnchorTile;
             _role = role;
@@ -1379,7 +1382,7 @@ namespace PitHero.ECS.Components
         {
             if (CarryRenderer == null || sprite == null) return;
             CarryRenderer.Sprite = sprite;
-            CarryRenderer.SetLocalOffset(Vector2.Zero);
+            CarryRenderer.SetLocalOffset(new Vector2(0f, _carryOffsetY));
             if (BodyAnimator != null)
                 CarryRenderer.SetLayerDepth(BodyAnimator.LayerDepth - 0.0001f);
             CarryRenderer.SetEnabled(true);
@@ -1442,7 +1445,7 @@ namespace PitHero.ECS.Components
                 return;
             }
             renderer.Sprite = sprite;
-            renderer.SetLocalOffset(new Vector2(offsetX, 0f));
+            renderer.SetLocalOffset(new Vector2(offsetX, _carryOffsetY));
             if (BodyAnimator != null)
                 renderer.SetLayerDepth(BodyAnimator.LayerDepth - 0.0001f);
             renderer.SetEnabled(true);

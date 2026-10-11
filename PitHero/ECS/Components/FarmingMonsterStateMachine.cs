@@ -82,6 +82,8 @@ namespace PitHero.ECS.Components
         private float _appleJumpStartElapsed;
         private float _appleJumpPeakPx;
         private float _bodyBaseOffsetY;
+        // Per-type vertical nudge for the carried harvest sprite (IEnemy.CarryYOffset)
+        private readonly float _carryOffsetY;
         private Nez.Sprites.SpriteAtlas _cropsAtlas;
 
         // Watering can charges: 0 = empty (must fill before watering), max = WateringCanMaxCharges
@@ -106,6 +108,7 @@ namespace PitHero.ECS.Components
         public FarmingMonsterStateMachine(AlliedMonster monster, FarmTaskCoordinator coordinator, Point houseAnchorTile)
         {
             _monster = monster;
+            _carryOffsetY = MonsterVisualOffsets.CarryYOffsetFor(monster?.MonsterTypeName);
             _coordinator = coordinator;
             _houseAnchorTile = houseAnchorTile;
         }
@@ -851,14 +854,14 @@ namespace PitHero.ECS.Components
 
             // Carry sprite tracks the body arc while descending
             if (_harvestPickedUp && HarvestCarryRenderer != null)
-                HarvestCarryRenderer.SetLocalOffset(new Vector2(0f, offsetY - _bodyBaseOffsetY));
+                HarvestCarryRenderer.SetLocalOffset(new Vector2(0f, offsetY - _bodyBaseOffsetY + _carryOffsetY));
 
             if (progress >= 1f)
             {
                 // Landed — reset body, centre the carry sprite, and walk to storage
                 if (BodyAnimator != null)
                     BodyAnimator.SetLocalOffset(new Vector2(BodyAnimator.LocalOffset.X, _bodyBaseOffsetY));
-                HarvestCarryRenderer?.SetLocalOffset(Vector2.Zero);
+                HarvestCarryRenderer?.SetLocalOffset(new Vector2(0f, _carryOffsetY));
                 _appleJumping = false;
                 TryWalkToStorageDoor();
                 CurrentState = FarmingMonsterState.CarryHarvestToStorage;
@@ -1105,7 +1108,7 @@ namespace PitHero.ECS.Components
             if (sprite == null)
                 return;
             HarvestCarryRenderer.Sprite = sprite;
-            HarvestCarryRenderer.SetLocalOffset(Vector2.Zero); // centre of the worker
+            HarvestCarryRenderer.SetLocalOffset(new Vector2(0f, _carryOffsetY)); // centre of the worker, plus its type's nudge
             // Renders on RenderLayerActorPropOverlay (set at spawn), so it always sits above the worker.
             HarvestCarryRenderer.SetEnabled(true);
         }

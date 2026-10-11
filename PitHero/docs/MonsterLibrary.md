@@ -86,7 +86,7 @@ Boss floors (5, 10, 15, 20, 25) spawn only the boss monster with a +2 level bonu
 
 ---
 
-#### 3. Rat
+#### 3. Pit Mouse
 - **Status**: `IMPLEMENTED`
 - **Biome(s)**: Cave
 - **Pit Level**: 1
@@ -96,7 +96,7 @@ Boss floors (5, 10, 15, 20, 25) spawn only the boss monster with a +2 level bonu
 - **Element**: Neutral
 - **Damage Kind**: Physical
 - **Visual Size**: Small (32×32)
-- **Description**: Scrappy cave rat with matted fur. Balanced stats, slightly evasive.
+- **Description**: Scrappy pit mouse with matted fur. Balanced stats, slightly evasive.
 - **Stats @ Level 1**:
   - HP: 15
   - STR: 1, AGI: 1, VIT: 1, MAG: 1
@@ -695,7 +695,7 @@ Boss floors (5, 10, 15, 20, 25) spawn only the boss monster with a +2 level bonu
 - Rare/special encounters outside normal pools
 
 ### Cross-Biome Considerations
-- Some Cave monsters could appear in other biomes (e.g., Bat, Rat)
+- Some Cave monsters could appear in other biomes (e.g., Bat, Pit Mouse)
 - Boss designs could be adapted for other biomes
 - Element distribution should remain biome-specific
 

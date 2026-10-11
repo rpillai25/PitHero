@@ -510,7 +510,7 @@ namespace PitHero.Tests
             var bat = new RolePlayingFramework.Enemies.Bat();
             var snake = new RolePlayingFramework.Enemies.Snake();
             var spider = new RolePlayingFramework.Enemies.Spider();
-            var rat = new RolePlayingFramework.Enemies.Rat();
+            var pitMouse = new RolePlayingFramework.Enemies.PitMouse();
             var orc = new RolePlayingFramework.Enemies.Orc();
             var skeleton = new RolePlayingFramework.Enemies.Skeleton();
             var wraith = new RolePlayingFramework.Enemies.Wraith();
@@ -526,8 +526,8 @@ namespace PitHero.Tests
             Assert.IsTrue(snake.SPYield > 0, "Snake SP");
             Assert.IsTrue(spider.JPYield > 0, "Spider JP");
             Assert.IsTrue(spider.SPYield > 0, "Spider SP");
-            Assert.IsTrue(rat.JPYield > 0, "Rat JP");
-            Assert.IsTrue(rat.SPYield > 0, "Rat SP");
+            Assert.IsTrue(pitMouse.JPYield > 0, "PitMouse JP");
+            Assert.IsTrue(pitMouse.SPYield > 0, "PitMouse SP");
             Assert.IsTrue(orc.JPYield > 0, "Orc JP");
             Assert.IsTrue(orc.SPYield > 0, "Orc SP");
             Assert.IsTrue(skeleton.JPYield > 0, "Skeleton JP");

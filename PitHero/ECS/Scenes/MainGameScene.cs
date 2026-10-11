@@ -41,6 +41,7 @@ namespace PitHero.ECS.Scenes
         private Image _goldHudPanel; // Translucent nine-patch behind the gold icon + amount
         private Image _clockHudPanel; // Translucent nine-patch behind the clock
         private Image _goldIcon; // Coin sprite standing in for the word "Gold"
+        private BattleMonsterHud _battleMonsterHud; // Portrait + HP bar per battle monster, right of the gold panel
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private int _lastDisplayedPitTier = -1; // Track last displayed tier to avoid string churn
         private int _lastDisplayedFunds = -1; // Track last displayed funds to avoid string churn
@@ -223,7 +224,7 @@ namespace PitHero.ECS.Scenes
             cameraEntity.AddComponent(Camera);
             _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
             // Delegate reads _uiStage at call time, so it is safe to wire before the stage exists
-            _cameraController.IsPointerOverUI = () => _uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null;
+            _cameraController.IsPointerOverUI = IsPointerOverUI;
             _cameraController.HasKeyboardFocus = () => _uiStage != null && _uiStage.GetKeyboardFocus() != null;
             // The till / restore-grass brush owns SHIFT+wheel while its mode is active (issue #422)
             _cameraController.IsShiftWheelClaimed = () => _settingsUI != null
@@ -2342,6 +2343,11 @@ namespace PitHero.ECS.Scenes
             _goldHudPanel = CreateHudPanel(uiCanvas.Stage, hudPanelSprite);
             _clockHudPanel = CreateHudPanel(uiCanvas.Stage, hudPanelSprite);
 
+            // Battle-monster strip (portrait + HP bar per monster in the current battle), right of the gold panel
+            var hpUnitSprite = hudAtlas != null && System.Array.IndexOf(hudAtlas.Names, "HPUnit") >= 0
+                ? hudAtlas.GetSprite("HPUnit") : null;
+            _battleMonsterHud = new BattleMonsterHud(uiCanvas.Stage, hudPanelSprite, HudPanelTint, hpUnitSprite);
+
             // Gold coin icon — stands in for the word "Gold" ahead of the amount. Drawn at its native
             // size; the HUD labels never rescale in half-height mode so no 2x variant is needed.
             var goldIconSprite = hudAtlas != null && System.Array.IndexOf(hudAtlas.Names, "GoldIcon") >= 0
@@ -2389,6 +2395,10 @@ namespace PitHero.ECS.Scenes
             _restoringGrassLabel.SetStyle(_modeStyleNormal);
             SizeHudLabel(_restoringGrassLabel);
             _restoringGrassLabel.SetVisible(false);
+
+            // Name of the pit monster under the mouse (screen space, live only)
+            var monsterHoverNameEntity = CreateEntity("monster-hover-name");
+            monsterHoverNameEntity.AddComponent(new MonsterHoverNameComponent()).SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
 
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
@@ -2831,6 +2841,85 @@ namespace PitHero.ECS.Scenes
                 sprites.Get(hud.PortraitHead), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHeadColor),
                 sprites.Get(hud.PortraitEyes), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesColor),
                 sprites.Get(hud.PortraitHair), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHairColor));
+
+            // The battle-monster strip, from the recorded battle rather than the live one
+            if (_battleMonsterHud != null)
+            {
+                var view = BattleMonsterView();
+                _battleMonsterHud.Begin();
+                for (int i = 0; i < hud.MonsterCount; i++)
+                {
+                    var monster = hud.GetMonster(i);
+                    if (IsTileInView(new Vector2(monster.X, monster.Y), view))
+                        _battleMonsterHud.Add(sprites.Get(monster.Portrait),
+                            Rendering.RecordedFrameRenderer.Packed(monster.PortraitColor), monster.Hp, monster.MaxHp);
+                }
+                EndBattleMonsterHud();
+            }
+        }
+
+        /// <summary>True while a UI element (window, button, panel) is under the mouse.</summary>
+        public bool IsPointerOverUI() => _uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null;
+
+        /// <summary>
+        /// Feeds the battle-monster strip from the live battle: one slot per monster of the battle in
+        /// progress that is on camera (a monster scrolled out of view drops its slot, like the party
+        /// HUD hides when the party is off camera). Empty outside a battle.
+        /// </summary>
+        private void UpdateBattleMonsterHud()
+        {
+            if (_battleMonsterHud == null)
+                return;
+
+            _battleMonsterHud.Begin();
+            var monsters = HeroStateMachine.IsBattleInProgress ? HeroStateMachine.BattleMonsterEntities : null;
+            if (monsters != null)
+            {
+                var view = BattleMonsterView();
+                for (int i = 0; i < monsters.Count; i++)
+                {
+                    var entity = monsters[i];
+                    if (entity == null || entity.IsDestroyed || entity.Scene != this || !IsActorInView(entity, view))
+                        continue;
+                    var enemy = entity.GetComponent<EnemyComponent>()?.Enemy;
+                    if (enemy == null)
+                        continue;
+                    var animation = entity.GetComponent<EnemyAnimationComponent>();
+                    _battleMonsterHud.Add(animation?.PortraitSprite, animation != null ? animation.ComponentColor : Color.White,
+                        enemy.CurrentHP, enemy.MaxHP);
+                }
+            }
+            EndBattleMonsterHud();
+        }
+
+        /// <summary>The camera rect a battle monster must overlap to keep its HUD slot.</summary>
+        private RectangleF BattleMonsterView()
+        {
+            var camera = Camera;
+            if (camera == null)
+                return new RectangleF(float.MinValue / 2f, float.MinValue / 2f, float.MaxValue, float.MaxValue);
+            var b = camera.Bounds;
+            return new RectangleF(b.X, b.Y, b.Width, b.Height);
+        }
+
+        /// <summary>Lays the strip out just right of the gold panel, on the shared top edge.</summary>
+        private void EndBattleMonsterHud()
+        {
+            float x;
+            if (_goldHudPanel != null)
+                x = _goldHudPanel.GetX() + _goldHudPanel.GetWidth() + FundsLabelGapX;
+            else if (_fundsLabel != null)
+                x = _fundsLabel.GetX() + _fundsLabel.GetWidth() + FundsLabelGapX;
+            else
+                x = HudEdgeMarginX;
+            _battleMonsterHud.End(x, HudEdgeMarginY);
+        }
+
+        /// <summary>True when a tile-sized footprint centred on a world position overlaps the given view rect.</summary>
+        private static bool IsTileInView(Vector2 position, RectangleF view)
+        {
+            const float half = GameConfig.TileSize * 0.5f;
+            return view.Intersects(new RectangleF(position.X - half, position.Y - half, GameConfig.TileSize, GameConfig.TileSize));
         }
 
         /// <summary>The HUD portraits read the live paperdolls again (the viewer is gone).</summary>
@@ -3765,6 +3854,12 @@ namespace PitHero.ECS.Scenes
             // A recorded frame on screen feeds the HUD from the record instead (ApplyRecordedHud)
             if (!IsIntroActive && !recordedHud)
                 UpdateHeroHUD();
+            // The battle-monster strip follows the live battle; a recorded frame feeds it from the
+            // record (ApplyRecordedPortrait), and with no frame to show it stays empty
+            if (!recordedHud)
+                UpdateBattleMonsterHud();
+            else if (frameViewer.CurrentFrame == null)
+                _battleMonsterHud?.Clear();
             UpdateHudFontMode();
             if (!IsIntroActive)
             {

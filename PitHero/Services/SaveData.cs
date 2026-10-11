@@ -1467,7 +1467,7 @@ namespace PitHero.Services
             {
                 SavedAlliedMonster monster;
                 monster.Name = reader.ReadString();
-                monster.MonsterTypeName = reader.ReadString();
+                monster.MonsterTypeName = RolePlayingFramework.Enemies.EnemyLegacyNames.Normalize(reader.ReadString());
                 monster.FishingProficiency = reader.ReadInt();
                 monster.CookingProficiency = reader.ReadInt();
                 monster.FarmingProficiency = reader.ReadInt();
@@ -1673,7 +1673,7 @@ namespace PitHero.Services
             int defeatedCount = reader.ReadInt();
             DefeatedMonsterTypes = new List<string>(defeatedCount);
             for (int i = 0; i < defeatedCount; i++)
-                DefeatedMonsterTypes.Add(reader.ReadString());
+                DefeatedMonsterTypes.Add(RolePlayingFramework.Enemies.EnemyLegacyNames.Normalize(reader.ReadString()));
 
             // 28. Dropped crops awaiting pickup
             int droppedCount = reader.ReadInt();

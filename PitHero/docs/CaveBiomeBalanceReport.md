@@ -84,7 +84,7 @@ Comprehensive balance test suite created for Cave Biome (Pit Levels 1-25) using 
 
 | Pool | Pit Levels | Pool Size | Expected Monsters |
 |------|------------|-----------|-------------------|
-| 1    | 1-4        | 5         | Slime, Bat, Rat, Cave Mushroom, Stone Beetle |
+| 1    | 1-4        | 5         | Slime, Bat, Pit Mouse, Cave Mushroom, Stone Beetle |
 | 2    | 6-9        | 10        | Pool 1 + Goblin, Spider, Snake, Shadow Imp, Tunnel Worm |
 | 3    | 11-14      | 10        | Goblin, Spider, Snake, Tunnel Worm, Fire Lizard, Skeleton, Orc, Wraith, Magma Ooze, Crystal Golem |
 | 4    | 16-19      | 10        | Skeleton, Orc, Wraith, Magma Ooze, Crystal Golem, Cave Troll, Ghost Miner, Shadow Beast, Lava Drake, Stone Wyrm |
@@ -136,7 +136,7 @@ Comprehensive balance test suite created for Cave Biome (Pit Levels 1-25) using 
 **Archetype Distribution**:
 - **Tank** (40%): Stone Beetle, Crystal Golem, Cave Troll, Stone Wyrm, + 4 bosses
 - **FastFragile** (28%): Bat, Shadow Imp, Spider, Shadow Beast
-- **Balanced** (16%): Slime, Rat, Cave Mushroom, Tunnel Worm, Fire Lizard
+- **Balanced** (16%): Slime, Pit Mouse, Cave Mushroom, Tunnel Worm, Fire Lizard
 - **MagicUser** (16%): Magma Ooze, Ghost Miner, Lava Drake
 
 **Element Distribution**:

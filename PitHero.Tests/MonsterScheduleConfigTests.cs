@@ -31,7 +31,7 @@ namespace PitHero.Tests
             Assert.IsFalse(MonsterScheduleConfig.IsNocturnal(MonsterTextKey.Monster_Slime));
             Assert.IsFalse(MonsterScheduleConfig.IsNocturnal(MonsterTextKey.Monster_CaveMushroom));
             Assert.IsFalse(MonsterScheduleConfig.IsNocturnal(MonsterTextKey.Monster_Goblin));
-            Assert.IsFalse(MonsterScheduleConfig.IsNocturnal(MonsterTextKey.Monster_Rat));
+            Assert.IsFalse(MonsterScheduleConfig.IsNocturnal(MonsterTextKey.Monster_PitMouse));
             Assert.IsFalse(MonsterScheduleConfig.IsNocturnal(MonsterTextKey.Monster_CrystalGolem));
         }
 

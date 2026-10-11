@@ -58,7 +58,7 @@ All 13 unit tests pass. All 26 enemy implementations carry a valid `JoinPercenta
 
 | Monster | Modifier | Effective % | Tier | Avg Fights to Recruit |
 |---------|----------|-------------|------|----------------------|
-| Rat | 1.50 | **15.0%** | Common | 7 |
+| PitMouse | 1.50 | **15.0%** | Common | 7 |
 | Slime | 1.20 | **12.0%** | Common | 8 |
 | Bat | 1.20 | **12.0%** | Common | 8 |
 | CaveMushroom | 1.00 | **10.0%** | Common | 10 |
@@ -98,7 +98,7 @@ All 13 unit tests pass. All 26 enemy implementations carry a valid `JoinPercenta
 
 | Scenario | Monsters Encountered | Avg Recruit Chance/Kill |
 |----------|---------------------|------------------------|
-| Pit 1–20 (Newcomer) | Rat, Slime, Bat, Spider, Snake, Goblin | **11.3%** |
+| Pit 1–20 (Newcomer) | PitMouse, Slime, Bat, Spider, Snake, Goblin | **11.3%** |
 | Pit 25–50 (Midgame) | GhostMiner, Skeleton, Orc, EarthElemental, ShadowImp, TunnelWorm, FireLizard | **6.7%** |
 | Pit 50–75 (Veteran) | CaveTroll, ShadowBeast, StoneGuardian, LavaDrake, Wraith, StoneBeetle | **4.5%** |
 | Pit 75–100 (Expert) | StoneWyrm, AncientWyrm, MoltenTitan, CrystalGolem, PitLord | **1.9%** |
@@ -109,8 +109,8 @@ All 13 unit tests pass. All 26 enemy implementations carry a valid `JoinPercenta
 
 | Monster | Formula | Effective Chance | Verdict |
 |---------|---------|-----------------|---------|
-| Rat | 10% × 1.5 | **15%** | ✅ Appropriate — common early fodder, rewarding for new players |
-| Slime | 10% × 1.2 | **12%** | ✅ Appropriate — slightly rarer than Rat, still very accessible |
+| PitMouse | 10% × 1.5 | **15%** | ✅ Appropriate — common early fodder, rewarding for new players |
+| Slime | 10% × 1.2 | **12%** | ✅ Appropriate — slightly rarer than PitMouse, still very accessible |
 | PitLord | 10% × 0.1 | **1%** | ✅ Appropriate — trophy recruit, expected ~100 kills to get one |
 | CrystalGolem | 10% × 0.15 | **1.5%** | ✅ Appropriate — elite guardian, ~67 kills average |
 
@@ -130,14 +130,14 @@ Breakdown:
 ```
 AncientWyrm=0.2  Bat=1.2  CaveMushroom=1.0  CaveTroll=0.4   CrystalGolem=0.15
 EarthElemental=0.6  FireLizard=0.5  GhostMiner=0.7  Goblin=0.9  LavaDrake=0.3
-MagmaOoze=0.5  MoltenTitan=0.2  Orc=0.6  PitLord=0.1  Rat=1.5  ShadowBeast=0.4
+MagmaOoze=0.5  MoltenTitan=0.2  Orc=0.6  PitLord=0.1  PitMouse=1.5  ShadowBeast=0.4
 ShadowImp=0.8  Skeleton=0.7  Slime=1.2  Snake=1.0  Spider=1.0  StoneBeetle=0.7
 StoneGuardian=0.4  StoneWyrm=0.3  TunnelWorm=0.8  Wraith=0.5
 ```
 
 **Modifier Range Check:**
 - Minimum: PitLord = 0.10 (no zeros or negatives — all monsters can theoretically join) ✅
-- Maximum: Rat = 1.50 (no modifier causes > 100% chance even hypothetically) ✅
+- Maximum: PitMouse = 1.50 (no modifier causes > 100% chance even hypothetically) ✅
 
 **Result: 26/26 enemies covered. ✅ PASS**
 
@@ -231,7 +231,7 @@ Time Elapsed 00:00:03.55
 |----|----------|---------|----------------|
 | R1 | 🟡 Low | **No roster size cap** — `AlliedMonsterManager` has no `MaxRosterSize` limit; a player could theoretically recruit unlimited monsters. | Add `GameConfig.MaxAlliedMonsters` (suggested: 10–20) and reject `TryRecruit` when full, or auto-dismiss oldest member. |
 | R2 | 🟡 Low | **No duplicate-name guard** — `TryRecruit` could generate the same `firstName` for two different allied monsters. | Track existing names in the manager and re-roll on collision. |
-| R3 | 🟢 Cosmetic | **Proficiency not seeded by monster type** — all monsters roll uniform 1–9 on all three proficiencies, regardless of theme (e.g., a PitLord could have Cooking:9). | Consider type-biased ranges (e.g., Rat: Battle 1–4, Cooking 4–9) to give allies flavor. Not required for Phase 1. |
+| R3 | 🟢 Cosmetic | **Proficiency not seeded by monster type** — all monsters roll uniform 1–9 on all three proficiencies, regardless of theme (e.g., a PitLord could have Cooking:9). | Consider type-biased ranges (e.g., PitMouse: Battle 1–4, Cooking 4–9) to give allies flavor. Not required for Phase 1. |
 | R4 | 🟢 Cosmetic | **No persistence** — allied monsters are held in memory only. | Phase 2 save/load integration needed if allied monsters persist across sessions. |
 
 ### ❌ No Blockers Found
@@ -276,7 +276,7 @@ No blocker-level balance issues were identified. The feature is well-scoped for 
 
 **5. Decisions / Findings:**
 
-- **Join probability curve is well-balanced.** Ranges from 15% (Rat) to 1% (PitLord), with a smooth decline across pit depth. The curve creates clear early-game accessibility and late-game rarity motivation.
+- **Join probability curve is well-balanced.** Ranges from 15% (PitMouse) to 1% (PitLord), with a smooth decline across pit depth. The curve creates clear early-game accessibility and late-game rarity motivation.
 - **All 26 IEnemy implementations have JoinPercentageModifier.** No coverage gaps.
 - **All 13 unit tests pass.** Coverage includes clamping, guaranteed recruit, zero chance, name assignment, count tracking, and proficiency range validation.
 - **Build is clean** — 0 errors, 0 warnings.

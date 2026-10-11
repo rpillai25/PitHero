@@ -173,13 +173,12 @@ namespace PitHero.AI
         /// <inheritdoc/>
         public IEnumerator OnBattleStarted()
         {
-            // Add HP bars to all monster entities
+            // Monster HP is shown by the HUD strip beside the gold display (MainGameScene reads
+            // HeroStateMachine.BattleMonsterEntities, set below); nothing is drawn on the monsters.
+
+            // Every monster turns toward the hero for the fight
             for (int i = 0; i < _monsterEntities.Count; i++)
-            {
-                var me = _monsterEntities[i];
-                if (me != null && !me.IsDestroyed)
-                    me.AddComponent(new MonsterHPBarComponent());
-            }
+                FaceMonsterTowardHero(_monsterEntities[i]);
 
             // Battle UI components for mercs already in the battle
             var scene = Core.Scene;
@@ -200,6 +199,7 @@ namespace PitHero.AI
                 _turnIndicator = _turnIndicatorEntity.AddComponent(new BattleTurnIndicatorComponent());
 
             HeroStateMachine.IsBattleInProgress = true;
+            HeroStateMachine.BattleMonsterEntities = _monsterEntities;
             HeroStateMachine.CurrentThreatTarget = null;
 
             Debug.Log($"[LiveBattleAdapter] Battle started. HeroStateMachine.IsBattleInProgress=true");
@@ -277,9 +277,8 @@ namespace PitHero.AI
             var monsterEntity = GetEntityForEnemy(enemy);
             if (monsterEntity == null) return null;
 
-            var targetEntity = GetEntityForAlly(target);
-            if (targetEntity != null)
-                FaceEntity(monsterEntity, targetEntity.Transform.Position);
+            // A battling monster keeps facing the hero, whoever it is attacking
+            FaceMonsterTowardHero(monsterEntity);
 
             var monsterAnim = monsterEntity.GetComponent<EnemyAnimationComponent>();
             if (monsterAnim == null) return null;
@@ -878,19 +877,11 @@ namespace PitHero.AI
         public void CleanupBattleUI(List<IBattleAlly> mercAllies)
         {
             HeroStateMachine.IsBattleInProgress = false;
+            HeroStateMachine.BattleMonsterEntities = null;
             HeroStateMachine.CurrentThreatTarget = null;
 
             if (_turnIndicatorEntity != null)
                 _turnIndicatorEntity.Destroy();
-
-            // Remove HP bars from monster entities
-            for (int i = 0; i < _monsterEntities.Count; i++)
-            {
-                var me = _monsterEntities[i];
-                if (me == null || me.IsDestroyed) continue;
-                var hpBar = me.GetComponent<MonsterHPBarComponent>();
-                if (hpBar != null) me.RemoveComponent(hpBar);
-            }
 
             // Remove bounce components from merc entities
             for (int i = 0; i < mercAllies.Count; i++)
@@ -954,6 +945,21 @@ namespace PitHero.AI
             else
                 faceDir = delta.Y < 0 ? Direction.Up : Direction.Down;
             entity.GetComponent<ActorFacingComponent>()?.SetFacing(faceDir);
+        }
+
+        /// <summary>
+        /// Turns a battling monster toward the hero by X alone: left when the hero is to its left, right
+        /// when the hero is to its right. Directly above or below (same X) it keeps its current facing.
+        /// </summary>
+        private void FaceMonsterTowardHero(Entity monsterEntity)
+        {
+            var heroEntity = _heroComponent?.Entity;
+            if (monsterEntity == null || monsterEntity.IsDestroyed || heroEntity == null)
+                return;
+            float deltaX = heroEntity.Transform.Position.X - monsterEntity.Transform.Position.X;
+            if (deltaX == 0f)
+                return;
+            monsterEntity.GetComponent<ActorFacingComponent>()?.SetFacing(deltaX < 0f ? Direction.Left : Direction.Right);
         }
 
         private static void AddMercenaryBattleUIComponents(Entity mercEntity)

@@ -274,6 +274,12 @@ Extends `PausableSpriteAnimator`.  Handles animation (walk, attack, wobble for
 1-frame sprites), fog-of-war visibility, and tile-row Y-sort in a single component.
 No separate compositor needed — monsters are single-sprite.
 
+A monster has one movement animation, `[MonsterName]MoveRight` (e.g. `SlimeMoveRight`), and only
+that one (plus `[MonsterName]Attack` when the atlas has it) is registered on the animator. It
+loops from spawn onwards, moving or idle. Facing left flips it (`FlipX`); facing up/down changes
+nothing, so the last left/right look keeps playing. Until dedicated attack animations exist, the
+attack is the flip-and-hop placeholder, which restores the prior flip when it ends.
+
 ---
 
 ## Adding a New World Entity

@@ -12,6 +12,7 @@ namespace RolePlayingFramework.Enemies
 
         public string Name => MonsterTextKey.Monster_CrystalGolem;
         public EnemyId EnemyId => EnemyId.CrystalGolem;
+        public float CarryYOffset => -8f; // Crystal Golem's hands sit high in-frame — raise carried items 8px
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;

@@ -24,7 +24,7 @@ namespace PitHero.Tests
             ("PitHero.ECS.Components.BouncyTextComponent", "capturable"),
             ("PitHero.ECS.Components.BouncyDigitComponent", "capturable"),
             ("PitHero.ECS.Components.SpeechBubbleComponent", "capturable"),
-            ("PitHero.ECS.Components.MonsterHPBarComponent", "capturable"),
+            ("PitHero.ECS.Components.MonsterHoverNameComponent", "live-only"),
             ("PitHero.ECS.Components.BuildingOutlineRenderComponent", "capturable"),
             ("PitHero.ECS.Components.SelectBoxRenderComponent", "capturable"),
             ("PitHero.ECS.Components.CloudOverlayComponent", "live-only"),

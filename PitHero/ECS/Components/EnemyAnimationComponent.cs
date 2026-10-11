@@ -21,17 +21,18 @@ namespace PitHero.ECS.Components
         private float _wobbleTimer;
         private bool _wasWobbling;
 
-        // Abstract properties for animation names - each enemy type defines its own
-        protected abstract string DefaultAnimation { get; }
-        protected abstract string AnimDown { get; }
-        protected abstract string AnimLeft { get; }
-        protected abstract string AnimRight { get; }
-        protected abstract string AnimUp { get; }
+        // The single movement animation ("[MonsterName]MoveRight") - each enemy type defines its own.
+        // Moving left plays it flipped; moving up/down keeps whichever look was last playing.
+        protected abstract string AnimMoveRight { get; }
 
         /// <summary>Attack animation name, or null if none exists for this enemy.</summary>
         protected virtual string AnimAttack => null;
 
         private bool _tileAnchorApplied;
+
+        // Animator speed multiplier that turns the atlas animation's full rate into the normal (half) rate
+        private float _normalSpeedRatio = 1f;
+        private GameStateService _gameState;
 
         private Color _componentColor = Color.White;
         /// <summary>Gets the tint color for this component (default: White)</summary>
@@ -57,8 +58,15 @@ namespace PitHero.ECS.Components
                 var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
                 if (actorsAtlas != null)
                 {
-                    AddAnimationsFromAtlas(actorsAtlas);
-                    Play(DefaultAnimation, LoopMode.Loop);
+                    // Only this monster's own animations are registered - never the whole atlas
+                    bool hasMove = TryAddAnimationFromAtlas(actorsAtlas, AnimMoveRight);
+                    if (AnimAttack != null)
+                        TryAddAnimationFromAtlas(actorsAtlas, AnimAttack);
+
+                    if (hasMove)
+                        Play(AnimMoveRight, LoopMode.Loop);
+                    else
+                        Debug.Warn($"[EnemyAnimationComponent] Animation {AnimMoveRight} not found in Actors.atlas");
                 }
                 else
                 {
@@ -79,6 +87,78 @@ namespace PitHero.ECS.Components
             this.SetColor(ComponentColor);
 
             ApplyTileAnchorOffset();
+        }
+
+        /// <summary>The monster's portrait: frame 0 of its MoveRight animation, or null when it is not loaded.</summary>
+        public Nez.Textures.Sprite PortraitSprite
+        {
+            get
+            {
+                if (Animations == null || !Animations.TryGetValue(AnimMoveRight, out var animation))
+                    return null;
+                return animation.Sprites != null && animation.Sprites.Length > 0 ? animation.Sprites[0] : null;
+            }
+        }
+
+        /// <summary>Registers one named atlas animation on this animator. Returns false if the atlas lacks it.</summary>
+        private bool TryAddAnimationFromAtlas(Nez.Sprites.SpriteAtlas atlas, string name)
+        {
+            int index = System.Array.IndexOf(atlas.AnimationNames, name);
+            if (index < 0)
+                return false;
+            var animation = atlas.SpriteAnimations[index];
+            // The atlas packs every animation at one fps; monsters derive theirs from the frame count.
+            // The atlas animation is shared by every monster of the type, so this is idempotent.
+            if (animation.FrameRates != null)
+            {
+                float frameRate = FrameRateForFrameCount(animation.FrameRates.Length);
+                for (int i = 0; i < animation.FrameRates.Length; i++)
+                    animation.FrameRates[i] = frameRate;
+                if (name == AnimMoveRight)
+                    _normalSpeedRatio = NormalFrameRateForFrameCount(animation.FrameRates.Length) / frameRate;
+            }
+            AddAnimation(name, animation);
+            return true;
+        }
+
+        /// <summary>
+        /// Monster animation speed in frames per second: twice the frame count, taken to the nearest
+        /// multiple of 5 (4 frames → 8 → 10; 9 frames → 18 → 20), never below 5. Every animation
+        /// therefore loops in roughly half a second however many frames it has.
+        /// </summary>
+        public static float FrameRateForFrameCount(int frameCount)
+        {
+            int rounded = (frameCount * 2 + 2) / 5 * 5; // 2n is even, so there are no ties to break
+            return rounded < 5 ? 5 : rounded;
+        }
+
+        /// <summary>
+        /// The normal (unboosted) monster animation speed: half of <see cref="FrameRateForFrameCount"/>,
+        /// moved up to the nearest multiple of 5 (10 → 5; 15 → 7.5 → 10; 20 → 10). Pit monsters always
+        /// animate at this speed; farm and kitchen workers do until the Hermes Boots double their
+        /// movement, when they animate at the full rate.
+        /// </summary>
+        public static float NormalFrameRateForFrameCount(int frameCount)
+        {
+            int full = (int)FrameRateForFrameCount(frameCount);
+            return (full + 9) / 10 * 5;
+        }
+
+        /// <summary>
+        /// Plays the animation at the normal (half) rate, or at the full rate for a farm/kitchen worker
+        /// whose movement the Hermes Boots have doubled. The atlas animation holds the full rate, so
+        /// this only moves the animator's speed multiplier. Read every step: the boots can be bought
+        /// mid-session.
+        /// </summary>
+        private void UpdateAnimationSpeed()
+        {
+            bool boosted = false;
+            if (_farmMover != null)
+            {
+                _gameState ??= Core.Services.GetService<GameStateService>();
+                boosted = PitHero.Artifacts.LocalArtifactEffects.GetWorkerMoveSpeedMultiplier(_gameState) > 1f;
+            }
+            Speed = boosted ? 1f : _normalSpeedRatio;
         }
 
         /// <summary>
@@ -116,6 +196,7 @@ namespace PitHero.ECS.Components
 
             CheckFogVisibility();
             UpdateWobble();
+            UpdateAnimationSpeed();
         }
 
         /// <summary>
@@ -170,7 +251,7 @@ namespace PitHero.ECS.Components
                 Play(AnimAttack, LoopMode.Once);
                 while (AnimationState == State.Running)
                     yield return null;
-                Play(DefaultAnimation, LoopMode.Loop);
+                Play(AnimMoveRight, LoopMode.Loop);
             }
             else
             {
@@ -250,38 +331,31 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Plays the appropriate walking animation for the given direction
+        /// Faces the looping MoveRight animation for the given direction: unflipped when heading right,
+        /// flipped ("MoveLeft") when heading left. Up/Down have no animations of their own, so the
+        /// current look just keeps playing. The animation itself is never restarted or stopped here.
         /// </summary>
         public void UpdateAnimationForDirection(Direction direction)
         {
-            string animationName = direction switch
+            bool shouldFlip;
+            switch (direction)
             {
-                Direction.Up => AnimUp,
-                Direction.Down => AnimDown,
-                Direction.Left => AnimLeft,
-                Direction.Right => AnimRight,
-                Direction.UpLeft => AnimLeft,
-                Direction.UpRight => AnimRight,
-                Direction.DownLeft => AnimLeft,
-                Direction.DownRight => AnimRight,
-                _ => AnimDown
-            };
+                case Direction.Left:
+                case Direction.UpLeft:
+                case Direction.DownLeft:
+                    shouldFlip = true;
+                    break;
+                case Direction.Right:
+                case Direction.UpRight:
+                case Direction.DownRight:
+                    shouldFlip = false;
+                    break;
+                default:
+                    return;
+            }
 
-            bool shouldFlip = direction == Direction.Left || direction == Direction.UpLeft || direction == Direction.DownLeft;
             if (FlipX != shouldFlip)
                 SetFlipXAndAdjustLocalOffset(shouldFlip);
-
-            if (IsAnimationActive(animationName))
-                return;
-
-            if (Animations != null && Animations.ContainsKey(animationName))
-            {
-                Play(animationName, LoopMode.Loop);
-            }
-            else
-            {
-                Debug.Warn($"[EnemyAnimationComponent] Animation {animationName} not found - animations may not be loaded");
-            }
         }
     }
 }

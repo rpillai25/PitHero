@@ -6,7 +6,7 @@ namespace RolePlayingFramework.Enemies
         // Early cave
         Slime,
         Bat,
-        Rat,
+        PitMouse,
         CaveMushroom,
         StoneBeetle,
 

@@ -12,6 +12,7 @@ namespace RolePlayingFramework.Enemies
 
         public string Name => MonsterTextKey.Monster_Slime;
         public EnemyId EnemyId => EnemyId.Slime;
+        public float HatYOffset => 6f; // Slime's body sits low in-frame — lower worn hats 6px
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;

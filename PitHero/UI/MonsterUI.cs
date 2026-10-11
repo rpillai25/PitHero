@@ -422,7 +422,7 @@ namespace PitHero.UI
                 var rowTable = new Table();
                 rowTable.Left();
 
-                // --- Left: monster sprite (frame 0 of MoveDown animation) ---
+                // --- Left: monster sprite (frame 0 of MoveRight animation) ---
                 Nez.Textures.Sprite monsterSprite = null;
                 if (actorsAtlas != null)
                 {
@@ -431,7 +431,7 @@ namespace PitHero.UI
                         string typeName = monster.MonsterTypeName.StartsWith("Monster_")
                             ? monster.MonsterTypeName.Substring("Monster_".Length)
                             : monster.MonsterTypeName;
-                        var anim = actorsAtlas.GetAnimation($"{typeName}MoveDown");
+                        var anim = actorsAtlas.GetAnimation($"{typeName}MoveRight");
                         if (anim?.Sprites != null && anim.Sprites.Length > 0)
                             monsterSprite = anim.Sprites[0];
                     }

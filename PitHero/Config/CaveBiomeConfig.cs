@@ -134,17 +134,17 @@ namespace PitHero.Config
             var levels = new EnemyId[CaveEndLevel + 1][];
 
             // Pool 1 (Pit 1-5): Early Cave
-            levels[1] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
-            levels[2] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
-            levels[3] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
-            levels[4] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
+            levels[1] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
+            levels[2] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
+            levels[3] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
+            levels[4] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle };
             levels[5] = System.Array.Empty<EnemyId>(); // Stone Guardian boss
 
             // Pool 2 (Pit 6-10): Mid Cave
-            levels[6] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
-            levels[7] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
-            levels[8] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
-            levels[9] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.FireLizard };
+            levels[6] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
+            levels[7] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
+            levels[8] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
+            levels[9] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.PitMouse, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.FireLizard };
             levels[10] = System.Array.Empty<EnemyId>(); // Earth Elemental boss
 
             // Pool 3 (Pit 11-15): Deep Cave

@@ -52,7 +52,7 @@ Fully implement and validate the Cave Biome system for pit levels 1-25, includin
    - Uncommon loot (Level 2): LongSword, IronShield, IronHelm, IronArmor, ProtectRing
 
 4. ✅ Enemy Roster - 10 enemies defined
-   - Tier 1 (Levels 1-4): Slime, Bat, Rat
+   - Tier 1 (Levels 1-4): Slime, Bat, Pit Mouse
    - Tier 2 (Levels 6-9): Goblin, Spider, Snake
    - Tier 3 (Levels 11-24): Skeleton, Orc, Wraith
    - Boss: PitLord (Levels 5/10/15/20/25)
@@ -81,7 +81,7 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
 
 | Pit Level | Player Level (Est.) | Boss Level | Enemy Pool |
 |-----------|---------------------|------------|------------|
-| 1-4       | 1-6                 | N/A        | Slime/Bat/Rat |
+| 1-4       | 1-6                 | N/A        | Slime/Bat/Pit Mouse |
 | 5         | 7-8                 | 9 (boss+2) | PitLord Boss |
 | 6-9       | 9-13                | N/A        | Goblin/Spider/Snake + Tier1 |
 | 10        | 15                  | 17 (boss+2)| PitLord Boss |
@@ -204,7 +204,7 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
 - **Files**: `PitHero.Tests/CaveBiomeConfigTests.cs`
 - **Subtasks**:
   - Add test: `CaveBiome_EnemyPools_MatchExpectedProgressionPattern()`
-    - Verify levels 1-4 have Slime/Bat/Rat
+    - Verify levels 1-4 have Slime/Bat/Pit Mouse
     - Verify levels 6-9 have both Tier1 + Tier2 (6 enemies)
     - Verify levels 11-14 have Tier2 + Tier3 (6 enemies)
     - Verify levels 16-19 have Tier2 + Tier3 (6 enemies)
@@ -297,10 +297,10 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
 - **Subtasks**:
   - Add test: `CaveEnemies_Pit1To4_OnlyTier1()`
     - Generate 50 enemies for each of pit levels 1-4
-    - Verify only Slime, Bat, Rat appear
+    - Verify only Slime, Bat, Pit Mouse appear
   - Add test: `CaveEnemies_Pit6To9_Tier1AndTier2()`
     - Generate 50 enemies for levels 6-9
-    - Verify Slime, Bat, Rat, Goblin, Spider, Snake appear
+    - Verify Slime, Bat, Pit Mouse, Goblin, Spider, Snake appear
   - Add test: `CaveEnemies_Pit11Plus_IncludesTier3()`
     - Generate 50 enemies for levels 11-24 (non-boss)
     - Verify Skeleton, Orc, Wraith appear in pools
@@ -584,7 +584,7 @@ dotnet test PitHero.Tests/
 **Internal Dependencies**
 1. `BalanceConfig.cs` - Must remain stable (no changes planned)
 2. `StatConstants.cs` - Caps must remain consistent
-3. Existing enemy implementations (Slime, Bat, Rat, etc.) - Already complete
+3. Existing enemy implementations (Slime, Bat, Pit Mouse, etc.) - Already complete
 4. Existing equipment items - Already complete
 5. `PitGenerator.cs` - Core generation logic intact
 6. `TreasureComponent.cs` - Loot generation logic intact
@@ -659,10 +659,10 @@ dotnet test PitHero.Tests/ --filter CaveBiome
 
 | Pit Level | Enemy Pool | Boss? | Enemy Level | Treasure Level | Rarity Band |
 |-----------|------------|-------|-------------|----------------|-------------|
-| 1 | Slime/Bat/Rat | No | 1-2 | 1 (100%) | Normal |
-| 2 | Slime/Bat/Rat | No | 3 | 1 (100%) | Normal |
-| 3 | Slime/Bat/Rat | No | 4-5 | 1 (100%) | Normal |
-| 4 | Slime/Bat/Rat | No | 6 | 1 (100%) | Normal |
+| 1 | Slime/Bat/Pit Mouse | No | 1-2 | 1 (100%) | Normal |
+| 2 | Slime/Bat/Pit Mouse | No | 3 | 1 (100%) | Normal |
+| 3 | Slime/Bat/Pit Mouse | No | 4-5 | 1 (100%) | Normal |
+| 4 | Slime/Bat/Pit Mouse | No | 6 | 1 (100%) | Normal |
 | 5 | PitLord | **YES** | **9** | 1 (100%) | Normal |
 | 6 | Tier1+Tier2 (6) | No | 9 | 1 (100%) | Normal |
 | 7 | Tier1+Tier2 (6) | No | 10-11 | 1 (100%) | Normal |
@@ -687,7 +687,7 @@ dotnet test PitHero.Tests/ --filter CaveBiome
 
 **Notes**:
 - Enemy levels are approximate based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`
-- Tier1 = Slime/Bat/Rat
+- Tier1 = Slime/Bat/Pit Mouse
 - Tier2 = Goblin/Spider/Snake
 - Tier3 = Skeleton/Orc/Wraith
 - Boss levels include +2 bonus

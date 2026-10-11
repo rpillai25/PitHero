@@ -73,7 +73,7 @@ namespace PitHero.Tests
             // Arrange & Act
             var slime = new Slime();
             var bat = new Bat();
-            var rat = new Rat();
+            var pitMouse = new PitMouse();
             var goblin = new Goblin();
             var spider = new Spider();
             var snake = new Snake();
@@ -85,7 +85,7 @@ namespace PitHero.Tests
             // Assert - Check all monsters have GoldYield > 0
             Assert.IsTrue(slime.GoldYield > 0, "Slime should have GoldYield");
             Assert.IsTrue(bat.GoldYield > 0, "Bat should have GoldYield");
-            Assert.IsTrue(rat.GoldYield > 0, "Rat should have GoldYield");
+            Assert.IsTrue(pitMouse.GoldYield > 0, "PitMouse should have GoldYield");
             Assert.IsTrue(goblin.GoldYield > 0, "Goblin should have GoldYield");
             Assert.IsTrue(spider.GoldYield > 0, "Spider should have GoldYield");
             Assert.IsTrue(snake.GoldYield > 0, "Snake should have GoldYield");
@@ -101,7 +101,7 @@ namespace PitHero.Tests
             // Arrange & Act
             var slime = new Slime();
             var bat = new Bat();
-            var rat = new Rat();
+            var pitMouse = new PitMouse();
             var goblin = new Goblin();
             var spider = new Spider();
             var snake = new Snake();
@@ -113,7 +113,7 @@ namespace PitHero.Tests
             // Assert - Check GoldYield matches expected formula
             Assert.AreEqual(BalanceConfig.CalculateMonsterGoldYield(slime.Level), slime.GoldYield);
             Assert.AreEqual(BalanceConfig.CalculateMonsterGoldYield(bat.Level), bat.GoldYield);
-            Assert.AreEqual(BalanceConfig.CalculateMonsterGoldYield(rat.Level), rat.GoldYield);
+            Assert.AreEqual(BalanceConfig.CalculateMonsterGoldYield(pitMouse.Level), pitMouse.GoldYield);
             Assert.AreEqual(BalanceConfig.CalculateMonsterGoldYield(goblin.Level), goblin.GoldYield);
             Assert.AreEqual(BalanceConfig.CalculateMonsterGoldYield(spider.Level), spider.GoldYield);
             Assert.AreEqual(BalanceConfig.CalculateMonsterGoldYield(snake.Level), snake.GoldYield);

@@ -39,15 +39,105 @@ namespace PitHero.Services.Replay.Frames
     }
 
     /// <summary>
+    /// One battle monster's slot in the HUD strip beside the gold display (format v6): its portrait
+    /// sprite and tint, its HP, and where it stands so the viewer can hide the slot while the
+    /// monster is off camera.
+    /// </summary>
+    public struct HudMonster : IEquatable<HudMonster>
+    {
+        public const int Size = 2 + 4 + 4 + 4 + 4 + 4;
+
+        /// <summary>Stream id of the portrait sprite (MoveRight frame 0), 0 when it could not be resolved.</summary>
+        public ushort Portrait;
+        /// <summary>Packed tint of the portrait.</summary>
+        public uint PortraitColor;
+        public int Hp, MaxHp;
+        /// <summary>World position of the monster.</summary>
+        public float X, Y;
+
+        public bool Equals(HudMonster o)
+            => Portrait == o.Portrait && PortraitColor == o.PortraitColor && Hp == o.Hp && MaxHp == o.MaxHp && X == o.X && Y == o.Y;
+        public override bool Equals(object obj) => obj is HudMonster m && Equals(m);
+        public override int GetHashCode() => (Hp * 397) ^ MaxHp ^ Portrait;
+
+        public void Write(ref FrameWriter w)
+        {
+            w.WriteU16(Portrait);
+            w.WriteU32(PortraitColor);
+            w.WriteI32(Hp);
+            w.WriteI32(MaxHp);
+            w.WriteF32(X);
+            w.WriteF32(Y);
+        }
+
+        public static HudMonster Read(ref FrameReader r)
+        {
+            HudMonster m;
+            m.Portrait = r.ReadU16();
+            m.PortraitColor = r.ReadU32();
+            m.Hp = r.ReadI32();
+            m.MaxHp = r.ReadI32();
+            m.X = r.ReadF32();
+            m.Y = r.ReadF32();
+            return m;
+        }
+    }
+
+    /// <summary>
     /// The fixed-layout HUD record captured with every frame (design §3.1): the numbers GraphicalHUD, the
     /// pit level label, the funds label and the clock show, plus (format v3, issue #431) the hero's
     /// static portrait: the walk-down first frame of the head, eyes and hair layers with their tints,
-    /// exactly what the live HUD draws. Stored whole in the base frame and re-emitted in a delta only
+    /// exactly what the live HUD draws, and (format v6) the monsters of the battle in progress for the
+    /// HUD strip beside the gold display. Stored whole in the base frame and re-emitted in a delta only
     /// when it changed.
     /// </summary>
     public struct HudRecord : IEquatable<HudRecord>
     {
-        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 3 * 2 + 3 * 4;
+        /// <summary>Battle monsters the record carries; a hero can be attacked from at most its eight neighbouring tiles.</summary>
+        public const int MaxMonsters = 8;
+
+        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 3 * 2 + 3 * 4 + 1 + MaxMonsters * HudMonster.Size;
+
+        /// <summary>How many of the monster slots are in use (0 outside a battle).</summary>
+        public byte MonsterCount;
+        private HudMonster _m0, _m1, _m2, _m3, _m4, _m5, _m6, _m7;
+
+        /// <summary>The battle monster in a slot (slots at or past <see cref="MonsterCount"/> are default).</summary>
+        public readonly HudMonster GetMonster(int index)
+        {
+            switch (index)
+            {
+                case 0: return _m0;
+                case 1: return _m1;
+                case 2: return _m2;
+                case 3: return _m3;
+                case 4: return _m4;
+                case 5: return _m5;
+                case 6: return _m6;
+                case 7: return _m7;
+                default: return default;
+            }
+        }
+
+        public void SetMonster(int index, in HudMonster monster)
+        {
+            switch (index)
+            {
+                case 0: _m0 = monster; break;
+                case 1: _m1 = monster; break;
+                case 2: _m2 = monster; break;
+                case 3: _m3 = monster; break;
+                case 4: _m4 = monster; break;
+                case 5: _m5 = monster; break;
+                case 6: _m6 = monster; break;
+                case 7: _m7 = monster; break;
+            }
+        }
+
+        private readonly bool MonstersEqual(in HudRecord o)
+            => MonsterCount == o.MonsterCount && _m0.Equals(o._m0) && _m1.Equals(o._m1) && _m2.Equals(o._m2) && _m3.Equals(o._m3)
+               && _m4.Equals(o._m4) && _m5.Equals(o._m5) && _m6.Equals(o._m6) && _m7.Equals(o._m7);
+
 
         public HudMember Hero, Merc1, Merc2;
         public long Gold;
@@ -63,7 +153,8 @@ namespace PitHero.Services.Replay.Frames
             => Hero.Equals(o.Hero) && Merc1.Equals(o.Merc1) && Merc2.Equals(o.Merc2) && Gold == o.Gold
                && PitLevel == o.PitLevel && PitTier == o.PitTier && InGameSeconds == o.InGameSeconds && Paused == o.Paused
                && PortraitHead == o.PortraitHead && PortraitEyes == o.PortraitEyes && PortraitHair == o.PortraitHair
-               && PortraitHeadColor == o.PortraitHeadColor && PortraitEyesColor == o.PortraitEyesColor && PortraitHairColor == o.PortraitHairColor;
+               && PortraitHeadColor == o.PortraitHeadColor && PortraitEyesColor == o.PortraitEyesColor && PortraitHairColor == o.PortraitHairColor
+               && MonstersEqual(in o);
         public override bool Equals(object obj) => obj is HudRecord r && Equals(r);
         public override int GetHashCode() => Hero.GetHashCode() ^ (int)Gold ^ (PitLevel << 4) ^ InGameSeconds.GetHashCode();
 
@@ -83,11 +174,14 @@ namespace PitHero.Services.Replay.Frames
             w.WriteU32(PortraitHeadColor);
             w.WriteU32(PortraitEyesColor);
             w.WriteU32(PortraitHairColor);
+            w.WriteU8(MonsterCount);
+            for (int i = 0; i < MaxMonsters; i++)
+                GetMonster(i).Write(ref w);
         }
 
         public static HudRecord Read(ref FrameReader r)
         {
-            HudRecord h;
+            var h = new HudRecord();
             h.Hero = HudMember.Read(ref r);
             h.Merc1 = HudMember.Read(ref r);
             h.Merc2 = HudMember.Read(ref r);
@@ -102,6 +196,9 @@ namespace PitHero.Services.Replay.Frames
             h.PortraitHeadColor = r.ReadU32();
             h.PortraitEyesColor = r.ReadU32();
             h.PortraitHairColor = r.ReadU32();
+            h.MonsterCount = r.ReadU8();
+            for (int i = 0; i < MaxMonsters; i++)
+                h.SetMonster(i, HudMonster.Read(ref r));
             return h;
         }
     }

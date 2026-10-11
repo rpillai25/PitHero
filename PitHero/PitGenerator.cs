@@ -155,13 +155,13 @@ namespace PitHero
                 };
             }
 
-            // Level 1-3: Slime, Bat, Rat
+            // Level 1-3: Slime, Bat, PitMouse
             int lowLevelChoice = Nez.Random.Range(0, 3);
             return lowLevelChoice switch
             {
                 0 => (new Slime(effectiveDepth), Color.LightGreen),
                 1 => (new Bat(effectiveDepth), Color.Purple),
-                _ => (new Rat(effectiveDepth), Color.Brown)
+                _ => (new PitMouse(effectiveDepth), Color.Brown)
             };
         }
 
@@ -177,7 +177,7 @@ namespace PitHero
             {
                 EnemyId.Slime => Color.LightGreen,
                 EnemyId.Bat => Color.Purple,
-                EnemyId.Rat => Color.Brown,
+                EnemyId.PitMouse => Color.Brown,
                 EnemyId.CaveMushroom => Color.SaddleBrown,
                 EnemyId.StoneBeetle => Color.Gray,
                 EnemyId.Goblin => Color.Green,

@@ -12,7 +12,7 @@
 
 Issue #291 changed three things that this report validates:
 
-1. **Enemy constructors honor requested levels** — 9 previously-frozen types (Bat, Goblin, Orc, PitLord, Rat, Skeleton, Snake, Spider, Wraith) now spawn at the floor's scaled level instead of preset L1–L10. This restores intended difficulty at pits 7–24 and the pit-20 boss.
+1. **Enemy constructors honor requested levels** — 9 previously-frozen types (Bat, Goblin, Orc, PitLord, PitMouse, Skeleton, Snake, Spider, Wraith) now spawn at the floor's scaled level instead of preset L1–L10. This restores intended difficulty at pits 7–24 and the pit-20 boss.
 2. **Pit tier system** — after pit 25 the pit loops to 1 and the tier increments (permanent). Monster levels follow the continuous-depth curve `EstimatePlayerLevelForPitLevel((tier−1)×25 + pitLevel)`; gear drops at tier ≥ 2 get scaled stats and a `+N` name suffix; tavern mercenaries get a `TierBaseLevel` floor at tier ≥ 2; respawned heroes start at `TierBaseLevel`.
 3. **Tier-2 loot** — chests at tier 2 use the cave gear pools (previously: potions only past pit 25).
 

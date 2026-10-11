@@ -84,7 +84,7 @@ namespace PitHero.Tests
             var goblin   = new Goblin(requested);
             var orc      = new Orc(requested);
             var pitLord  = new PitLord(requested);
-            var rat      = new Rat(requested);
+            var pitMouse      = new PitMouse(requested);
             var skeleton = new Skeleton(requested);
             var snake    = new Snake(requested);
             var spider   = new Spider(requested);
@@ -95,7 +95,7 @@ namespace PitHero.Tests
             Assert.AreEqual(requested, goblin.Level,   "Goblin should honour requested level");
             Assert.AreEqual(requested, orc.Level,      "Orc should honour requested level");
             Assert.AreEqual(requested, pitLord.Level,  "PitLord should honour requested level");
-            Assert.AreEqual(requested, rat.Level,      "Rat should honour requested level");
+            Assert.AreEqual(requested, pitMouse.Level,      "PitMouse should honour requested level");
             Assert.AreEqual(requested, skeleton.Level, "Skeleton should honour requested level");
             Assert.AreEqual(requested, snake.Level,    "Snake should honour requested level");
             Assert.AreEqual(requested, spider.Level,   "Spider should honour requested level");
@@ -106,7 +106,7 @@ namespace PitHero.Tests
             Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.Balanced),    goblin.MaxHP,   "Goblin MaxHP should match BalanceConfig at requested level");
             Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.Tank),        orc.MaxHP,      "Orc MaxHP should match BalanceConfig at requested level");
             Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.Tank),        pitLord.MaxHP,  "PitLord MaxHP should match BalanceConfig at requested level");
-            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.Balanced),    rat.MaxHP,      "Rat MaxHP should match BalanceConfig at requested level");
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.Balanced),    pitMouse.MaxHP,      "PitMouse MaxHP should match BalanceConfig at requested level");
             Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.Tank),        skeleton.MaxHP, "Skeleton MaxHP should match BalanceConfig at requested level");
             Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.FastFragile), snake.MaxHP,    "Snake MaxHP should match BalanceConfig at requested level");
             Assert.AreEqual(BalanceConfig.CalculateMonsterHP(requested, BalanceConfig.MonsterArchetype.FastFragile), spider.MaxHP,   "Spider MaxHP should match BalanceConfig at requested level");
@@ -121,7 +121,7 @@ namespace PitHero.Tests
             var goblin   = new Goblin(0);
             var orc      = new Orc(0);
             var pitLord  = new PitLord(0);
-            var rat      = new Rat(0);
+            var pitMouse      = new PitMouse(0);
             var skeleton = new Skeleton(0);
             var snake    = new Snake(0);
             var spider   = new Spider(0);
@@ -132,7 +132,7 @@ namespace PitHero.Tests
             Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.Goblin),   goblin.Level,   "Goblin(0) should use preset level");
             Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.Orc),      orc.Level,      "Orc(0) should use preset level");
             Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.PitLord),  pitLord.Level,  "PitLord(0) should use preset level");
-            Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.Rat),      rat.Level,      "Rat(0) should use preset level");
+            Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.PitMouse),      pitMouse.Level,      "PitMouse(0) should use preset level");
             Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.Skeleton), skeleton.Level, "Skeleton(0) should use preset level");
             Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.Snake),    snake.Level,    "Snake(0) should use preset level");
             Assert.AreEqual(EnemyLevelConfig.GetPresetLevel(EnemyId.Spider),   spider.Level,   "Spider(0) should use preset level");

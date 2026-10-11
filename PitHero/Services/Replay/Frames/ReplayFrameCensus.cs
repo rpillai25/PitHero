@@ -569,7 +569,6 @@ namespace PitHero.Services.Replay.Frames
             if (rc is BouncyTextComponent) return KBouncyText;
             if (rc is BouncyDigitComponent) return KBouncyDigit;
             if (rc is SpeechBubbleComponent) return KSpeechBubble;
-            if (rc is MonsterHPBarComponent) return KMonsterHpBar;
             if (rc is BuildingOutlineRenderComponent) return KBuildingOutline;
             if (rc is SelectBoxRenderComponent) return KSelectBox;
             if (rc is ActionQueueVisualizationComponent) return KActionQueueViz;
