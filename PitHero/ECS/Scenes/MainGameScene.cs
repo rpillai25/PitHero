@@ -177,10 +177,14 @@ namespace PitHero.ECS.Scenes
 
         public BitmapFont HudFont; // legacy reference (normal)
 
-        /// <summary>The replay frame font id of <see cref="GetHudFontForCurrentMode"/> (the viewer draws the same font).</summary>
-        public byte HudFrameFontId => _currentHudMode == HudMode.Half
-            ? Services.Replay.Frames.FrameFontId.Hud2x
-            : Services.Replay.Frames.FrameFontId.Hud;
+        /// <summary>
+        /// The HUD font replay frames are captured with: always the Normal (1x) font, whatever the live
+        /// window mode. The frame viewer plays at the full window height (ReplayPlaybackService.Start
+        /// forces it), so frames captured during half-window play must not carry the 2x HUD font or
+        /// its glyph spacing — they rendered at double size in the viewer. The viewer resolves
+        /// <see cref="Services.Replay.Frames.FrameFontId.Hud"/> to this font.
+        /// </summary>
+        public BitmapFont HudFrameFont => _hudFontNormal;
 
         public BitmapFont GetHudFontForCurrentMode()
         {

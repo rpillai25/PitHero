@@ -11,14 +11,16 @@ namespace PitHero.ECS.Components
 {
     public class RisingTextComponent : RenderableComponent, IUpdatable, Services.Replay.Frames.IFrameCapturable
     {
-        /// <summary>Replay frame: the rising text at its current offset, as Render draws it.</summary>
+        /// <summary>
+        /// Replay frame: the rising text at its current offset, as Render draws it — always with the
+        /// Normal HUD font (see MainGameScene.HudFrameFont), never the half-window 2x one.
+        /// </summary>
         public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
         {
             if (string.IsNullOrEmpty(_text))
                 return;
-            byte fontId = (Entity.Scene as PitHero.ECS.Scenes.MainGameScene)?.HudFrameFontId ?? Services.Replay.Frames.FrameFontId.Hud;
             w.WriteText(ctx.StringId(_text), _textPosition.X * 2, _textPosition.Y * 2 + _yOffset, _currentColor.PackedValue, 1f,
-                fontId, Services.Replay.Frames.FrameOpFlags.None);
+                Services.Replay.Frames.FrameFontId.Hud, Services.Replay.Frames.FrameOpFlags.None);
         }
 
         float _elapsedTime;

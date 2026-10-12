@@ -69,16 +69,21 @@ namespace PitHero.Services.Replay.Frames
         public const byte Graded = 128;
     }
 
-    /// <summary>Fonts a Text op can name; the viewer maps them to its own loaded fonts.</summary>
+    /// <summary>
+    /// Fonts a Text op can name; the viewer maps them to its own loaded fonts. Capture always writes
+    /// the 1x fonts: the viewer plays at the full window height whatever mode the live window was
+    /// in, so the half-window 2x presentation must not reach the stream (it drew at double size).
+    /// The 2x ids stay resolvable for frames recorded before that rule.
+    /// </summary>
     public static class FrameFontId
     {
         /// <summary>The HUD font (GameConfig.FontPathHud, "Skullboy").</summary>
         public const byte Hud = 0;
-        /// <summary>The half-window HUD font (GameConfig.FontPathHud2x).</summary>
+        /// <summary>The half-window HUD font (GameConfig.FontPathHud2x). Legacy: no longer written by capture.</summary>
         public const byte Hud2x = 1;
         /// <summary>The speech-bubble / main UI font (GameConfig.FontPathSpeechBubble, "Express").</summary>
         public const byte SpeechBubble = 2;
-        /// <summary>The half-window speech-bubble font (GameConfig.FontPathSpeechBubble2x).</summary>
+        /// <summary>The half-window speech-bubble font (GameConfig.FontPathSpeechBubble2x). Legacy: no longer written by capture.</summary>
         public const byte SpeechBubble2x = 3;
     }
 

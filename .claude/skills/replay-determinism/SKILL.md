@@ -46,6 +46,9 @@ Full reference: `PitHero/docs/ReplaySystem.md`. Rule summary: `AGENTS.md` → "R
    indicators on their own screen-space entity) must be an `ILiveOnlyRenderable` subclass such as
    `UIMarkerRenderer`, or it is recorded, hidden live under the viewer and replayed at recording-time
    visibility; screen-space live-only renderables pass the viewer's filter automatically.
+   `CaptureFrame` never reads the live window mode: it writes the Normal (1x) presentation —
+   `FrameFontId.Hud` / `SpeechBubble`, `MainGameScene.HudFrameFont` for spacing, 1x bubble scale —
+   because the viewer always plays at full window height; the half-window 2x fonts drew at double size.
 10. **A new simulation sound goes through `SoundEffectManager.PlaySound` / `PlaySoundAt`.** The frame
     stream records what the manager plays (type, rolled variant, position) so a replay hears it; a raw
     `SoundEffect.Play` is silent in replays. UI click sounds belong to the global button hooks

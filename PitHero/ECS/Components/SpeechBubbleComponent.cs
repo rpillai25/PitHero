@@ -28,18 +28,21 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Replay frame: the bubble body as a constant-screen-size NinePatch op anchored on the tail tip
         /// (the viewer draws the tail for this patch), plus the revealed slice of the wrapped text.
+        /// Always captured at the 1x design scale with the 1x font, whatever the live window mode: the
+        /// viewer plays at full window height, so a bubble recorded at the half-window 2x presentation
+        /// drew at double size there. The wrapped text is the same string in both modes (Express2x is an
+        /// exact 2x, so the line breaks match); only the bubble height (visible-line count) carries over.
         /// </summary>
         public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
         {
             if (!_active || _bubbleSprite == null || _activeFont == null)
                 return;
-            float s = _activeScale;
             float anchorX = Entity.Position.X;
             float anchorY = Entity.Position.Y + GetTailTipOffsetY();
-            float bubbleDx = -GameConfig.SpeechBubbleWidth * s / 2f;
-            float bubbleDy = -(TailSpriteH * s - GameConfig.SpeechBubbleTailOverlap * s + _activeDesignHeight * s);
+            float bubbleDx = -GameConfig.SpeechBubbleWidth / 2f;
+            float bubbleDy = -(TailSpriteH - GameConfig.SpeechBubbleTailOverlap + _activeDesignHeight);
             w.WriteNinePatch(ctx.NinePatchId(BubbleSpriteName), anchorX, anchorY, bubbleDx, bubbleDy,
-                GameConfig.SpeechBubbleWidth * s, _activeDesignHeight * s, BubbleColor.PackedValue,
+                GameConfig.SpeechBubbleWidth, _activeDesignHeight, BubbleColor.PackedValue,
                 Services.Replay.Frames.FrameOpFlags.ConstantScreenSize);
             if (_visibleText.Length > 0 && _wrappedText != null)
             {
@@ -47,9 +50,8 @@ namespace PitHero.ECS.Components
                 int start = _revealedCount - _visibleText.Length;
                 if (start < 0) start = 0;
                 w.WriteText(ctx.StringId(_wrappedText), anchorX, anchorY,
-                    bubbleDx + GameConfig.SpeechBubblePadding * s, bubbleDy + GameConfig.SpeechBubblePadding * s,
-                    TextColor.PackedValue, 1f,
-                    s >= 2 ? Services.Replay.Frames.FrameFontId.SpeechBubble2x : Services.Replay.Frames.FrameFontId.SpeechBubble,
+                    bubbleDx + GameConfig.SpeechBubblePadding, bubbleDy + GameConfig.SpeechBubblePadding,
+                    TextColor.PackedValue, 1f, Services.Replay.Frames.FrameFontId.SpeechBubble,
                     Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, (ushort)start, (ushort)count);
             }
         }

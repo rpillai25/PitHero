@@ -10,18 +10,25 @@ namespace PitHero.ECS.Components
     /// <summary>Bouncy combat digit renderer (world-space, constant screen size)</summary>
     internal class BouncyDigitComponent : RenderableComponent, IUpdatable, Services.Replay.Frames.IFrameCapturable
     {
-        /// <summary>Replay frame: one constant-screen-size Text op per digit, offset in screen pixels from the world anchor.</summary>
+        /// <summary>
+        /// Replay frame: one constant-screen-size Text op per digit, offset in screen pixels from the
+        /// world anchor. Always the Normal HUD font and its spacing (MainGameScene.HudFrameFont), whatever
+        /// the live window mode: the viewer plays at full window height, so the 2x half-window font
+        /// and spacing would draw the digits at double size there.
+        /// </summary>
         public void CaptureFrame(ref Services.Replay.Frames.FrameWriter w, Services.Replay.Frames.FrameCaptureContext ctx)
         {
-            // The spacing is what Render measures from the current HUD font: measured here too (read-only,
-            // no cache write) because a capture can run before this component's first Render, and the
-            // recorded default (6 px) drew the digits on top of each other in the viewer
-            var scene = Entity.Scene as PitHero.ECS.Scenes.MainGameScene;
-            var hudFont = scene?.GetHudFontForCurrentMode();
-            if (hudFont == null)
+            // Measured the way Render measures (not the recorded default of 6 px, which drew the digits
+            // on top of each other in the viewer); cached per font instance like Render's spacing
+            var frameFont = (Entity.Scene as PitHero.ECS.Scenes.MainGameScene)?.HudFrameFont;
+            if (frameFont == null)
                 return;
-            float spacing = ReferenceEquals(hudFont, _cachedFont) ? _digitSpacing : MeasureSpacing(hudFont);
-            byte fontId = scene.HudFrameFontId;
+            if (!ReferenceEquals(frameFont, _frameFont))
+            {
+                _frameSpacing = MeasureSpacing(frameFont);
+                _frameFont = frameFont;
+            }
+            float spacing = _frameSpacing;
             var worldPos = Entity.Position;
             for (int i = 0; i < 4; i++)
             {
@@ -30,7 +37,7 @@ namespace PitHero.ECS.Components
                 float dx = spacing * 3f - i * spacing;
                 float dy = -_digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)] * 2f;
                 w.WriteText(ctx.StringId(_digits[i]), worldPos.X, worldPos.Y, dx, dy, _currentColor.PackedValue, 1f,
-                    fontId, Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, 0, Services.Replay.Frames.FrameOpCode.AllChars);
+                    Services.Replay.Frames.FrameFontId.Hud, Services.Replay.Frames.FrameOpFlags.ConstantScreenSize, 0, Services.Replay.Frames.FrameOpCode.AllChars);
             }
         }
 
@@ -69,6 +76,10 @@ namespace PitHero.ECS.Components
         // Digit spacing cached per HUD font instance (screen-space pixel width of one glyph)
         private float _digitSpacing = 6f;
         private BitmapFont _cachedFont; // last font used to compute spacing
+
+        // The same for the replay frame font (the Normal HUD font even in half-window mode)
+        private float _frameSpacing = 6f;
+        private BitmapFont _frameFont;
 
         public override float Width => 32;
         public override float Height => 32;

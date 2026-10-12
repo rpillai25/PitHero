@@ -257,7 +257,13 @@ Everything else: `ILiveOnlyRenderable` (clouds, tree bands, `GraphicalHUD`, the 
 warning and **fails `FrameCaptureCoverageTests` by name**. That is the rule for feature authors: *a new
 `RenderableComponent` is stock, `IFrameCapturable` or `ILiveOnlyRenderable`*. Anything per-rendered-frame
 or read from a live service is wrong in a per-tick recording (the bouncy digits' spacing and bounce
-curve, the day/night clock and the clouds were all found this way).
+curve, the day/night clock and the clouds were all found this way). The live **window mode** is one
+such live read: a `CaptureFrame` always writes the Normal (1x) presentation — `FrameFontId.Hud` /
+`FrameFontId.SpeechBubble`, 1x glyph spacing, the 1x bubble scale (`MainGameScene.HudFrameFont`) —
+even while the player is in the half-size window with its 2x fonts, because the viewer always plays
+at the full window height (`ReplayPlaybackService.Start` forces it). Frames that carried the 2x
+fonts drew every speech bubble and battle digit at double size in the replay. The `Hud2x` /
+`SpeechBubble2x` ids remain resolvable for caches recorded before this rule.
 
 Beside the ops, every tick carries a **HUD record** (party hp/mp/level, gold, pit level/tier, in-game
 seconds floored to whole seconds so it does not churn, pause flag, and the hero's static portrait: the
