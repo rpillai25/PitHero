@@ -1531,7 +1531,7 @@ namespace PitHero.Services
                 }
                 merc.SkinColor = ReadColor(reader);
                 merc.HairColor = ReadColor(reader);
-                merc.HairstyleIndex = reader.ReadInt();
+                merc.HairstyleIndex = GameConfig.ClampHairstyleIndex(reader.ReadInt());
                 merc.ShirtColor = ReadColor(reader);
                 HiredMercenaries.Add(merc);
             }
@@ -1882,6 +1882,10 @@ namespace PitHero.Services
             HeroId = fileVersion >= 32
                 ? reader.ReadInt()
                 : ComputeLegacyHeroId(HeroName, HeroGender, SkinColor, HairColor, HairstyleIndex, ShirtColor);
+
+            // Older saves can hold a hairstyle that no longer exists. Clamped after the hash above so
+            // the legacy HeroId stays what it always was.
+            HairstyleIndex = GameConfig.ClampHairstyleIndex(HairstyleIndex);
 
             // 48. Local artifacts (section added in v34). Ordinals a newer build wrote are kept so a
             // save/load cycle on this build never drops a purchase.

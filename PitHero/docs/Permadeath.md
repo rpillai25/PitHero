@@ -18,7 +18,7 @@ When `hero.TakeDamage()` returns true (HP reached 0):
 - A shadow sprite (HeroShadow from Actors.atlas) is created at the hero's death location
 - Shadow properties:
   - Position: Same as hero's position when death occurs
-  - Sprite region: (198, 499, 27, 5) from Actors.atlas
+  - Sprite: `HeroShadow` from Actors.atlas
   - Color: Semi-transparent black (RGBA: 0, 0, 0, 128)
   - Render layer: Lowest layer (appears below hero)
 
@@ -29,10 +29,11 @@ The hero entity animates upward while fading out:
 - **Affected components**: All hero paperdoll layers fade simultaneously:
   - HeroBodyAnimationComponent
   - HeroHairAnimationComponent
+  - HeroArmorAnimationComponent (female only)
   - HeroShirtAnimationComponent
-  - HeroPantsAnimationComponent
-  - HeroHand1AnimationComponent
-  - HeroHand2AnimationComponent
+  - HeroHeadAnimationComponent
+  - HeroEyesBaseAnimationComponent
+  - HeroEyesAnimationComponent
 
 The shadow **remains in place** during this animation, creating the illusion of the hero floating higher and higher into the air.
 

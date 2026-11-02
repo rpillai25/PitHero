@@ -1,3 +1,4 @@
+using RolePlayingFramework;
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Textures;
@@ -252,9 +253,9 @@ namespace PitHero.UI
                     try
                     {
                         var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
-                        var drawable = new HeroPreviewDrawable(actorsAtlas, appearance.SkinColor, appearance.HairColor, appearance.ShirtColor, appearance.HairstyleIndex);
+                        var drawable = new HeroPreviewDrawable(actorsAtlas, appearance.SkinColor, appearance.HairColor, appearance.ShirtColor, appearance.HairstyleIndex, appearance.Gender);
                         var previewImage = new Image(drawable, Scaling.Fit);
-                        _previewContainers[m].Add(previewImage).Size(32f, 46f);
+                        _previewContainers[m].Add(previewImage).Size(32f, 48f);
                     }
                     catch (System.Exception ex)
                     {
@@ -501,5 +502,6 @@ namespace PitHero.UI
         public Color HairColor;
         public int HairstyleIndex;
         public Color ShirtColor;
+        public Gender Gender;
     }
 }

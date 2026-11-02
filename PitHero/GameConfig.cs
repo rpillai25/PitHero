@@ -75,7 +75,11 @@ namespace PitHero
         /// </summary>
         public static float BurstDamageRecoveryPercentDefensive = 0.80f; // Burst flag clears once HP recovers to 80% of MaxHP
         public const float ReplenishThresholdDefault = 0.9f;
-        public const int MaleHeroHairstyleCount = 5; // Number of available hairstyles for male heroes
+        public const int HeroHairstyleCount = 4; // Hairstyles available to each gender
+        public const int HeroLayerOffsetY = -15; // Paperdoll layer offset: puts the feet of a 32x48 frame at the entity position
+
+        /// <summary>Limits a 1-based hairstyle index to the hairstyles that exist; older saves can hold 5.</summary>
+        public static int ClampHairstyleIndex(int hairstyleIndex) => System.Math.Clamp(hairstyleIndex, 1, HeroHairstyleCount);
 
         // Threat System (see PitHero/docs/ThreatSystem.md). All threat is in percent-of-max-HP units
         // so the numbers stay meaningful from pit 1 to pit 100+. Runtime-tunable for balance runs.
@@ -779,7 +783,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 6;                        // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone
+        public const int ReplayFrameFormatVersion = 7;                        // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer
         // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
         // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
         // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
@@ -799,8 +803,8 @@ namespace PitHero
         public const int ReplayFrameViewParticleRebuildMaxTicks = 1200;        // A recorded particle emitter older than this (20 s) is re-simulated no further; effects in the game last a few seconds
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
-        // A recording whose stamp differs still plays, with a warning, but Time Travel Here is withheld.
-        public const int SimulationVersion = 8; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs
+        // A recording whose stamp differs still plays, with a warning, and Time Travel Here asks for confirmation.
+        public const int SimulationVersion = 9; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

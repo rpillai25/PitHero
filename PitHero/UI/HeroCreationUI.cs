@@ -39,8 +39,7 @@ namespace PitHero.UI
 
         // Current selections
         private string _currentName;
-        /// <summary>Hero gender. Male-only until female art exists; roll it here once it does.</summary>
-        private Gender _currentGender = Gender.Male;
+        private Gender _currentGender;
         private int _currentJobIndex;
         private int _currentSkinIndex;
         private int _currentHairColorIndex;
@@ -49,6 +48,7 @@ namespace PitHero.UI
 
         // UI labels that update when selections change
         private Label _nameLabel;
+        private Label _genderLabel;
         private Label _jobLabel;
         private Label _hairstyleLabel;
         private Label _skinLabel;
@@ -93,11 +93,12 @@ namespace PitHero.UI
             _textService = Core.Services.GetService<TextService>();
 
             // Randomize initial selections (UI stream: these rolls happen at wall-clock time, outside the sim)
+            _currentGender = (Gender)GameRandom.UiRange(0, 2);
             _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
             _currentJobIndex = GameRandom.UiRange(0, PrimaryJobNames.Length);
             _currentSkinIndex = GameRandom.UiRange(0, GameConfig.SkinColors.Count);
             _currentHairColorIndex = GameRandom.UiRange(0, GameConfig.HairColors.Count);
-            _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.MaleHeroHairstyleCount + 1);
+            _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.HeroHairstyleCount + 1);
             _currentShirtIndex = GameRandom.UiRange(0, GameConfig.ShirtColors.Count);
 
             _skin = PitHeroSkin.CreateSkin();
@@ -155,11 +156,13 @@ namespace PitHero.UI
             var rerollButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonReroll), skin);
             rerollButton.OnClicked += (btn) =>
             {
+                _currentGender = (Gender)GameRandom.UiRange(0, 2);
+                _genderLabel.SetText(GenderDisplayText());
                 _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
                 _currentJobIndex = GameRandom.UiRange(0, PrimaryJobNames.Length);
                 _currentSkinIndex = GameRandom.UiRange(0, GameConfig.SkinColors.Count);
                 _currentHairColorIndex = GameRandom.UiRange(0, GameConfig.HairColors.Count);
-                _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.MaleHeroHairstyleCount + 1);
+                _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.HeroHairstyleCount + 1);
                 _currentShirtIndex = GameRandom.UiRange(0, GameConfig.ShirtColors.Count);
                 _nameLabel.SetText(_currentName);
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
@@ -208,14 +211,14 @@ namespace PitHero.UI
             {
                 _currentHairstyleIndex--;
                 if (_currentHairstyleIndex < 1)
-                    _currentHairstyleIndex = GameConfig.MaleHeroHairstyleCount;
+                    _currentHairstyleIndex = GameConfig.HeroHairstyleCount;
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 RebuildPreviewAppearance();
             };
             hairStyleRight.OnClicked += (btn) =>
             {
                 _currentHairstyleIndex++;
-                if (_currentHairstyleIndex > GameConfig.MaleHeroHairstyleCount)
+                if (_currentHairstyleIndex > GameConfig.HeroHairstyleCount)
                     _currentHairstyleIndex = 1;
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 RebuildPreviewAppearance();
@@ -319,6 +322,20 @@ namespace PitHero.UI
             dirButtonsTable.Add(dirLeft).Size(30f, 24f).SetPadRight(4f);
             dirButtonsTable.Add(dirRight).Size(30f, 24f);
             previewControlsTable.Add(dirButtonsTable);
+            previewControlsTable.Row();
+
+            // Gender sits under the preview: the left column has no spare height at short design heights
+            var genderTable = new Table();
+            _genderLabel = new Label(GenderDisplayText(), skin);
+            _genderLabel.SetAlignment(Align.Center);
+            var genderLeft = new TextButton("<", skin);
+            var genderRight = new TextButton(">", skin);
+            genderLeft.OnClicked += (btn) => ToggleGender();
+            genderRight.OnClicked += (btn) => ToggleGender();
+            genderTable.Add(genderLeft).Size(30f, 24f);
+            genderTable.Add(_genderLabel).Width(70f);
+            genderTable.Add(genderRight).Size(30f, 24f);
+            previewControlsTable.Add(genderTable);
 
             topRow.Add(previewControlsTable).Center().SetPadLeft(20f);
 
@@ -343,6 +360,23 @@ namespace PitHero.UI
             _stage.AddElement(window);
         }
 
+        /// <summary>Gets the display text of the selected gender</summary>
+        private string GenderDisplayText()
+        {
+            string key = _currentGender == Gender.Female ? UITextKey.AppearanceGenderFemale : UITextKey.AppearanceGenderMale;
+            return _textService.DisplayText(TextType.UI, key);
+        }
+
+        /// <summary>Switches gender, drawing a new name from that gender's pool, and refreshes the preview</summary>
+        private void ToggleGender()
+        {
+            _currentGender = _currentGender == Gender.Female ? Gender.Male : Gender.Female;
+            _genderLabel.SetText(GenderDisplayText());
+            _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
+            _nameLabel.SetText(_currentName);
+            RebuildPreviewAppearance();
+        }
+
         /// <summary>Adds ActorFacingComponent, white border, and green background to the preview entity</summary>
         private void SetupPreviewEntity()
         {
@@ -351,13 +385,13 @@ namespace PitHero.UI
             var bgOffset = new Vector2(0, -GameConfig.TileSize / 2);
 
             // White border (renders first = behind everything)
-            var border = _previewEntity.AddComponent(new PrototypeSpriteRenderer(36, 50));
+            var border = _previewEntity.AddComponent(new PrototypeSpriteRenderer(36, 52));
             border.SetColor(Color.White);
             border.SetLocalOffset(bgOffset);
             border.SetRenderLayer(998);
 
             // Green background on top of white border, behind hero layers
-            var background = _previewEntity.AddComponent(new PrototypeSpriteRenderer(32, 46));
+            var background = _previewEntity.AddComponent(new PrototypeSpriteRenderer(32, 48));
             background.SetColor(Color.LightSkyBlue);
             background.SetLocalOffset(bgOffset);
             background.SetRenderLayer(998);
@@ -378,50 +412,43 @@ namespace PitHero.UI
             var skinColor = GameConfig.SkinColors[_currentSkinIndex];
             var hairColor = GameConfig.HairColors[_currentHairColorIndex];
             var shirtColor = GameConfig.ShirtColors[_currentShirtIndex];
-            var offset = new Vector2(0, -GameConfig.TileSize / 2 - 2);
+            var offset = new Vector2(0, -GameConfig.TileSize / 2); // Centered on the 32x48 background
+            var gender = _currentGender;
 
             // Body layer
-            var bodyAnimator = _previewEntity.AddComponent(new HeroBodyAnimationComponent(skinColor));
+            var bodyAnimator = _previewEntity.AddComponent(new HeroBodyAnimationComponent(HeroSpriteNames.BodyTint(gender, skinColor), gender));
             bodyAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             bodyAnimator.SetLocalOffset(offset);
 
-            // Hand2 layer
-            var hand2Animator = _previewEntity.AddComponent(new HeroHand2AnimationComponent(skinColor));
-            hand2Animator.SetRenderLayer(GameConfig.RenderLayerUI);
-            hand2Animator.SetLocalOffset(offset);
-            hand2Animator.ComponentColor = skinColor;
+            // Armor layer (female only)
+            var armorAnimator = HeroArmorAnimationComponent.AddTo(_previewEntity, gender, offset);
+            armorAnimator?.SetRenderLayer(GameConfig.RenderLayerUI);
 
-            // Pants layer
-            var pantsAnimator = _previewEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
-            pantsAnimator.SetLocalOffset(offset);
-
-            // Shirt layer
-            var shirtAnimator = _previewEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
+            // Shirt or Skirt layer
+            var shirtAnimator = _previewEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor, gender));
             shirtAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             shirtAnimator.SetLocalOffset(offset);
 
             // Head layer
-            var headAnimator = _previewEntity.AddComponent(new HeroHeadAnimationComponent(skinColor));
+            var headAnimator = _previewEntity.AddComponent(new HeroHeadAnimationComponent(skinColor, gender));
             headAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             headAnimator.SetLocalOffset(offset);
             headAnimator.ComponentColor = skinColor;
 
+            // Eye outline and whites
+            var eyesBaseAnimator = _previewEntity.AddComponent(new HeroEyesBaseAnimationComponent(gender));
+            eyesBaseAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
+            eyesBaseAnimator.SetLocalOffset(offset);
+
             // Eyes layer
-            var eyesAnimator = _previewEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            var eyesAnimator = _previewEntity.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
             eyesAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             eyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
-            var hairAnimator = _previewEntity.AddComponent(new HeroHairAnimationComponent(hairColor, _currentHairstyleIndex));
+            var hairAnimator = _previewEntity.AddComponent(new HeroHairAnimationComponent(hairColor, _currentHairstyleIndex, gender));
             hairAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             hairAnimator.SetLocalOffset(offset);
-
-            // Hand1 layer
-            var hand1Animator = _previewEntity.AddComponent(new HeroHand1AnimationComponent(skinColor));
-            hand1Animator.SetRenderLayer(GameConfig.RenderLayerUI);
-            hand1Animator.SetLocalOffset(offset);
-            hand1Animator.ComponentColor = skinColor;
         }
 
         /// <summary>Cycles the preview hero direction by the given step (-1 or +1)</summary>

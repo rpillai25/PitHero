@@ -10,23 +10,23 @@ namespace PitHero.ECS.Components
     {
         private ActorFacingComponent _facing;
         private Direction _lastDirection = Direction.Down; // Default to down
+        private readonly HeroLayerNames _names;
 
-        // Abstract properties for animation names - each layer defines its own
-        protected abstract string DefaultAnimation { get; }
-        protected abstract string AnimDown { get; }
-        protected abstract string AnimLeft { get; }
-        protected abstract string AnimRight { get; }
-        protected abstract string AnimUp { get; }
-        protected abstract string JumpAnimDown { get; }
-        protected abstract string JumpAnimLeft { get; }
-        protected abstract string JumpAnimRight { get; }
-        protected abstract string JumpAnimUp { get; }
+        // Animation names come from the layer's HeroSpriteNames entry
+        protected string DefaultAnimation => _names.Down;
+        protected string AnimDown => _names.Down;
+        protected string AnimLeft => _names.Right;   // Flipped in code
+        protected string AnimRight => _names.Right;
+        protected string AnimUp => _names.Up;
+        protected string JumpAnimDown => _names.Jump;
+        protected string JumpAnimLeft => _names.Jump;  // Flipped in code
+        protected string JumpAnimRight => _names.Jump;
+        protected string JumpAnimUp => _names.Jump;
 
-        // Virtual sleep animation properties - default to walk animations; subclasses may override
-        protected virtual string SleepDown => AnimDown;
-        protected virtual string SleepRight => AnimRight;
-        protected virtual string SleepLeft => SleepRight;   // Flipped in code, same sprite as SleepRight
-        protected virtual string SleepUp => AnimUp;
+        protected string SleepDown => _names.SleepDown;
+        protected string SleepRight => _names.SleepRight;
+        protected string SleepLeft => _names.SleepRight;   // Flipped in code, same sprite as SleepRight
+        protected string SleepUp => _names.Up;
 
         private Color _componentColor = Color.White;
         /// <summary>Gets the tint color for this component (default: White)</summary>
@@ -50,12 +50,13 @@ namespace PitHero.ECS.Components
             return base.IsVisibleFromCamera(camera);
         }
 
-        /// <summary>Gets the walk down animation name for this animation component</summary>
-        public string WalkDownAnimationName => AnimDown;
+        /// <summary>Gets the move down animation name for this animation component</summary>
+        public string MoveDownAnimationName => AnimDown;
 
-        public HeroAnimationComponent(Color color)
+        public HeroAnimationComponent(Color color, HeroLayerNames names)
         {
             _componentColor = color;
+            _names = names;
         }
 
         public override void OnAddedToEntity()
@@ -173,8 +174,8 @@ namespace PitHero.ECS.Components
 
         /// <summary>
         /// Plays the appropriate sleep animation for the given direction.
-        /// For most layers this is the same as the walk animation; eye layers use dedicated sleep sprites.
-        /// Falls back to the walk animation if a sleep animation is not found.
+        /// Most layers hold their move animation; EyesBase shows the closed slits and Eyes is empty.
+        /// Falls back to the move animation if a sleep animation is not found.
         /// </summary>
         public void PlaySleepAnimationForDirection(Direction direction)
         {

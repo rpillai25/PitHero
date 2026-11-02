@@ -216,8 +216,7 @@ namespace PitHero.Services
             // Generate random base stats (simplified for now - just use defaults)
             var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
 
-            // Every mercenary is male until female art exists; roll the gender here once it does.
-            var gender = Gender.Male;
+            var gender = Nez.Random.NextFloat() < 0.5f ? Gender.Female : Gender.Male;
             var name = Util.NameGenerator.GenerateRandomName(gender);
 
             // Create mercenary
@@ -240,7 +239,7 @@ namespace PitHero.Services
             mercEntity.AddComponent(new ActorFacingComponent());
 
             // Add animation components (similar to hero)
-            var offset = new Vector2(0, -GameConfig.TileSize / 2);
+            var offset = new Vector2(0, GameConfig.HeroLayerOffsetY);
 
             var bodyColor = GameConfig.SkinColors.RandomItem();
             var shirtColor = GameConfig.ShirtColors.RandomItem();
@@ -248,34 +247,30 @@ namespace PitHero.Services
             var hairstyleService = Core.Services.GetService<HairstyleQueueService>();
             var hairstyleIndex = hairstyleService.GetNextHairstyle();
 
-            var bodyAnimator = mercEntity.AddComponent(new HeroBodyAnimationComponent(bodyColor));
+            var bodyAnimator = mercEntity.AddComponent(new HeroBodyAnimationComponent(HeroSpriteNames.BodyTint(gender, bodyColor), gender));
             bodyAnimator.SetLocalOffset(offset);
 
-            var hand2Animator = mercEntity.AddComponent(new HeroHand2AnimationComponent(bodyColor));
-            hand2Animator.SetLocalOffset(offset);
+            var armorAnimator = HeroArmorAnimationComponent.AddTo(mercEntity, gender, offset);
 
-            var pantsAnimator = mercEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            pantsAnimator.SetLocalOffset(offset);
-
-            var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
+            var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor, gender));
             shirtAnimator.SetLocalOffset(offset);
 
-            var headAnimator = mercEntity.AddComponent(new HeroHeadAnimationComponent(bodyColor));
+            var headAnimator = mercEntity.AddComponent(new HeroHeadAnimationComponent(bodyColor, gender));
             headAnimator.SetLocalOffset(offset);
 
-            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            var eyesBaseAnimator = mercEntity.AddComponent(new HeroEyesBaseAnimationComponent(gender));
+            eyesBaseAnimator.SetLocalOffset(offset);
+
+            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
             eyesAnimator.SetLocalOffset(offset);
 
-            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(hairColor, hairstyleIndex));
+            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(hairColor, hairstyleIndex, gender));
             hairAnimator.SetLocalOffset(offset);
-
-            var hand1Animator = mercEntity.AddComponent(new HeroHand1AnimationComponent(bodyColor));
-            hand1Animator.SetLocalOffset(offset);
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
             var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator(
-                hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
-                headAnimator, eyesAnimator, hairAnimator, hand1Animator));
+                bodyAnimator, armorAnimator, shirtAnimator, headAnimator,
+                eyesBaseAnimator, eyesAnimator, hairAnimator));
             mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             // Speech bubble (paperdoll is 32 px — same as hero; no AnchorRenderer needed)
@@ -582,18 +577,20 @@ namespace PitHero.Services
 
             // Get all animation components and switch to walk down
             var bodyAnim = mercEntity.GetComponent<HeroBodyAnimationComponent>();
-            var hand1Anim = mercEntity.GetComponent<HeroHand1AnimationComponent>();
-            var hand2Anim = mercEntity.GetComponent<HeroHand2AnimationComponent>();
-            var pantsAnim = mercEntity.GetComponent<HeroPantsAnimationComponent>();
+            var armorAnim = mercEntity.GetComponent<HeroArmorAnimationComponent>();
             var shirtAnim = mercEntity.GetComponent<HeroShirtAnimationComponent>();
+            var headAnim = mercEntity.GetComponent<HeroHeadAnimationComponent>();
+            var eyesBaseAnim = mercEntity.GetComponent<HeroEyesBaseAnimationComponent>();
+            var eyesAnim = mercEntity.GetComponent<HeroEyesAnimationComponent>();
             var hairAnim = mercEntity.GetComponent<HeroHairAnimationComponent>();
 
             // Switch all animations to walk down
             if (bodyAnim != null) bodyAnim.UpdateAnimationForDirection(Direction.Down);
-            if (hand1Anim != null) hand1Anim.UpdateAnimationForDirection(Direction.Down);
-            if (hand2Anim != null) hand2Anim.UpdateAnimationForDirection(Direction.Down);
-            if (pantsAnim != null) pantsAnim.UpdateAnimationForDirection(Direction.Down);
+            if (armorAnim != null) armorAnim.UpdateAnimationForDirection(Direction.Down);
             if (shirtAnim != null) shirtAnim.UpdateAnimationForDirection(Direction.Down);
+            if (headAnim != null) headAnim.UpdateAnimationForDirection(Direction.Down);
+            if (eyesBaseAnim != null) eyesBaseAnim.UpdateAnimationForDirection(Direction.Down);
+            if (eyesAnim != null) eyesAnim.UpdateAnimationForDirection(Direction.Down);
             if (hairAnim != null) hairAnim.UpdateAnimationForDirection(Direction.Down);
 
             // Smoothly slide down 64 pixels to go offscreen
@@ -1161,36 +1158,33 @@ namespace PitHero.Services
             mercEntity.AddComponent(new ActorFacingComponent());
 
             // Animation components using saved appearance
-            var offset = new Vector2(0, -GameConfig.TileSize / 2);
+            var offset = new Vector2(0, GameConfig.HeroLayerOffsetY);
+            var gender = saved.Gender;
 
-            var bodyAnimator = mercEntity.AddComponent(new HeroBodyAnimationComponent(saved.SkinColor));
+            var bodyAnimator = mercEntity.AddComponent(new HeroBodyAnimationComponent(HeroSpriteNames.BodyTint(gender, saved.SkinColor), gender));
             bodyAnimator.SetLocalOffset(offset);
 
-            var hand2Animator = mercEntity.AddComponent(new HeroHand2AnimationComponent(saved.SkinColor));
-            hand2Animator.SetLocalOffset(offset);
+            var armorAnimator = HeroArmorAnimationComponent.AddTo(mercEntity, gender, offset);
 
-            var pantsAnimator = mercEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            pantsAnimator.SetLocalOffset(offset);
-
-            var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(saved.ShirtColor));
+            var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(saved.ShirtColor, gender));
             shirtAnimator.SetLocalOffset(offset);
 
-            var headAnimator = mercEntity.AddComponent(new HeroHeadAnimationComponent(saved.SkinColor));
+            var headAnimator = mercEntity.AddComponent(new HeroHeadAnimationComponent(saved.SkinColor, gender));
             headAnimator.SetLocalOffset(offset);
 
-            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            var eyesBaseAnimator = mercEntity.AddComponent(new HeroEyesBaseAnimationComponent(gender));
+            eyesBaseAnimator.SetLocalOffset(offset);
+
+            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
             eyesAnimator.SetLocalOffset(offset);
 
-            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(saved.HairColor, saved.HairstyleIndex));
+            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(saved.HairColor, saved.HairstyleIndex, gender));
             hairAnimator.SetLocalOffset(offset);
-
-            var hand1Animator = mercEntity.AddComponent(new HeroHand1AnimationComponent(saved.SkinColor));
-            hand1Animator.SetLocalOffset(offset);
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
             var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator(
-                hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
-                headAnimator, eyesAnimator, hairAnimator, hand1Animator));
+                bodyAnimator, armorAnimator, shirtAnimator, headAnimator,
+                eyesBaseAnimator, eyesAnimator, hairAnimator));
             mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             // Speech bubble (paperdoll is 32 px — same as hero; no AnchorRenderer needed)

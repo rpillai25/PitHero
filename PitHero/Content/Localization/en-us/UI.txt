@@ -187,6 +187,8 @@ AppearanceHairstyle,Hairstyle {0}
 AppearanceSkin,Skin {0}
 AppearanceHairColor,Hair Color {0}
 AppearanceShirt,Shirt {0}
+AppearanceGenderMale,Male
+AppearanceGenderFemale,Female
 AppearanceRolePrefix,Role: 
 AppearanceSkillsLabel,Skills:
 AppearanceNoJobSkills,No job skills

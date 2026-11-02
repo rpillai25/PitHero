@@ -1,27 +1,17 @@
 using Microsoft.Xna.Framework;
+using RolePlayingFramework;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Manages hero Eyes layer sprite animations based on movement direction using the Actors.atlas
+    /// Manages the hero's colored iris layer, drawn over HeroEyesBaseAnimationComponent, using the
+    /// Actors.atlas. Its sleep frames are empty, so the iris disappears while asleep.
     /// </summary>
     public class HeroEyesAnimationComponent : HeroAnimationComponent
     {
-        public HeroEyesAnimationComponent(Color color) : base(color)
+        public HeroEyesAnimationComponent(Color color, Gender gender = Gender.Male)
+            : base(color, HeroSpriteNames.Get(gender, HeroLayer.Eyes))
         {
         }
-
-        protected override string DefaultAnimation => "MaleHeroEyesWalkDown";
-        protected override string AnimDown => "MaleHeroEyesWalkDown";
-        protected override string AnimLeft => "MaleHeroEyesWalkRight";   // Flipped in code
-        protected override string AnimRight => "MaleHeroEyesWalkRight";
-        protected override string AnimUp => "MaleHeroEyesWalkUp";
-        protected override string JumpAnimDown => "MaleHeroEyesJumpRight";
-        protected override string JumpAnimLeft => "MaleHeroEyesJumpRight";  // Flipped in code
-        protected override string JumpAnimRight => "MaleHeroEyesJumpRight";
-        protected override string JumpAnimUp => "MaleHeroEyesJumpRight";
-
-        protected override string SleepDown => "MaleHeroEyesSleepDown";
-        protected override string SleepRight => "MaleHeroEyesSleepRight";  // Also used for SleepLeft (flipped in code)
     }
 }

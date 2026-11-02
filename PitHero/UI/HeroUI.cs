@@ -931,7 +931,7 @@ namespace PitHero.UI
                     if (designService != null && designService.HasDesign)
                     {
                         var design = designService.GetDesign();
-                        _heroCrystalTab.UpdateHeroPreview(design.SkinColor, design.HairColor, design.ShirtColor, design.HairstyleIndex);
+                        _heroCrystalTab.UpdateHeroPreview(design.SkinColor, design.HairColor, design.ShirtColor, design.HairstyleIndex, design.Gender);
                     }
                 }
 
@@ -1059,7 +1059,8 @@ namespace PitHero.UI
                                 SkinColor = mc.SkinColor,
                                 HairColor = mc.HairColor,
                                 HairstyleIndex = mc.HairstyleIndex,
-                                ShirtColor = mc.ShirtColor
+                                ShirtColor = mc.ShirtColor,
+                                Gender = mc.LinkedMercenary.Gender
                             });
                         }
                     }

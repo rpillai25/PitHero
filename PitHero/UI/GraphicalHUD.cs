@@ -60,18 +60,20 @@ namespace PitHero.UI
 
         // A recorded portrait (replay frame viewer, issue #431) replaces the live paperdoll while set
         private bool _recordedPortrait;
-        private Sprite _recordedHead, _recordedEyes, _recordedHair;
-        private Color _recordedHeadColor, _recordedEyesColor, _recordedHairColor;
+        private Sprite _recordedHead, _recordedEyesBase, _recordedEyes, _recordedHair;
+        private Color _recordedHeadColor, _recordedEyesBaseColor, _recordedEyesColor, _recordedHairColor;
 
         /// <summary>
-        /// Shows the portrait from a recorded frame instead of the live hero's paperdoll: the head, eyes
+        /// Shows the portrait from a recorded frame instead of the live hero's paperdoll: the head, eye
         /// and hair layer sprites at that tick with their recorded tints. Null sprites draw nothing.
         /// </summary>
-        public void SetRecordedPortrait(Sprite head, Color headColor, Sprite eyes, Color eyesColor, Sprite hair, Color hairColor)
+        public void SetRecordedPortrait(Sprite head, Color headColor, Sprite eyesBase, Color eyesBaseColor, Sprite eyes, Color eyesColor, Sprite hair, Color hairColor)
         {
             _recordedPortrait = true;
             _recordedHead = head;
             _recordedHeadColor = headColor;
+            _recordedEyesBase = eyesBase;
+            _recordedEyesBaseColor = eyesBaseColor;
             _recordedEyes = eyes;
             _recordedEyesColor = eyesColor;
             _recordedHair = hair;
@@ -82,15 +84,15 @@ namespace PitHero.UI
         public void ClearRecordedPortrait()
         {
             _recordedPortrait = false;
-            _recordedHead = _recordedEyes = _recordedHair = null;
+            _recordedHead = _recordedEyesBase = _recordedEyes = _recordedHair = null;
         }
 
-        /// <summary>The three paperdoll layers of a portrait with their tints; <see cref="Present"/> false draws nothing.</summary>
+        /// <summary>The paperdoll layers of a portrait with their tints; <see cref="Present"/> false draws nothing.</summary>
         public struct PortraitSnapshot
         {
             public bool Present;
-            public Sprite Head, Eyes, Hair;
-            public Color HeadColor, EyesColor, HairColor;
+            public Sprite Head, EyesBase, Eyes, Hair;
+            public Color HeadColor, EyesBaseColor, EyesColor, HairColor;
         }
 
         /// <summary>
@@ -104,12 +106,13 @@ namespace PitHero.UI
             if (_recordedPortrait)
             {
                 snapshot.Head = _recordedHead; snapshot.HeadColor = _recordedHeadColor;
+                snapshot.EyesBase = _recordedEyesBase; snapshot.EyesBaseColor = _recordedEyesBaseColor;
                 snapshot.Eyes = _recordedEyes; snapshot.EyesColor = _recordedEyesColor;
                 snapshot.Hair = _recordedHair; snapshot.HairColor = _recordedHairColor;
                 snapshot.Present = _recordedHead != null || _recordedEyes != null || _recordedHair != null;
                 return snapshot.Present;
             }
-            if (!TryGetLivePortraitLayers(out snapshot.Head, out snapshot.HeadColor, out snapshot.Eyes, out snapshot.EyesColor, out snapshot.Hair, out snapshot.HairColor))
+            if (!TryGetLivePortraitLayers(out snapshot.Head, out snapshot.HeadColor, out snapshot.EyesBase, out snapshot.EyesBaseColor, out snapshot.Eyes, out snapshot.EyesColor, out snapshot.Hair, out snapshot.HairColor))
                 return false;
             snapshot.Present = true;
             return true;
@@ -119,9 +122,9 @@ namespace PitHero.UI
         public void SetRecordedPortrait(in PortraitSnapshot snapshot)
         {
             if (snapshot.Present)
-                SetRecordedPortrait(snapshot.Head, snapshot.HeadColor, snapshot.Eyes, snapshot.EyesColor, snapshot.Hair, snapshot.HairColor);
+                SetRecordedPortrait(snapshot.Head, snapshot.HeadColor, snapshot.EyesBase, snapshot.EyesBaseColor, snapshot.Eyes, snapshot.EyesColor, snapshot.Hair, snapshot.HairColor);
             else
-                SetRecordedPortrait(null, Color.White, null, Color.White, null, Color.White);
+                SetRecordedPortrait(null, Color.White, null, Color.White, null, Color.White, null, Color.White);
         }
 
         /// <summary>
@@ -235,7 +238,7 @@ namespace PitHero.UI
             RenderText(batcher, position, _currentHp.ToString(), hpTextXOffset, hpTextYOffset);
             RenderText(batcher, position, _currentMp.ToString(), mpTextXOffset, mpTextYOffset);
             
-            // Render hero body and hair sprites at level position (32x31 cropped from 32x46)
+            // Render hero body and hair sprites at level position (32x31 cropped from 32x48)
             RenderHeroSprites(batcher, position, levelTextXOffset-7, levelTextYOffset-15);
             
             // Render level text on top of hero sprites
@@ -284,7 +287,7 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Render hero body and hair sprites at the specified position (32x36 cropped from 32x46)
+        /// Render hero body and hair sprites at the specified position (32x36 cropped from 32x48)
         /// </summary>
         private void RenderHeroSprites(Batcher batcher, Vector2 hudPosition, int xOffset, int yOffset)
         {
@@ -292,60 +295,55 @@ namespace PitHero.UI
             {
                 var at = hudPosition + new Vector2(xOffset, yOffset);
                 DrawPortraitLayer(batcher, _recordedHead, _recordedHeadColor, at);
+                DrawPortraitLayer(batcher, _recordedEyesBase, _recordedEyesBaseColor, at);
                 DrawPortraitLayer(batcher, _recordedEyes, _recordedEyesColor, at);
                 DrawPortraitLayer(batcher, _recordedHair, _recordedHairColor, at);
                 return;
             }
-            if (!TryGetLivePortraitLayers(out var headSprite, out var headColor, out var eyesSprite, out var eyesColor, out var hairSprite, out var hairColor))
+            if (!TryGetLivePortraitLayers(out var headSprite, out var headColor, out var eyesBaseSprite, out var eyesBaseColor, out var eyesSprite, out var eyesColor, out var hairSprite, out var hairColor))
                 return;
             var renderPosition = hudPosition + new Vector2(xOffset, yOffset);
             // Head first, eyes over it, hair on top, each cropped to the top 32x31 pixels of the frame
             DrawPortraitLayer(batcher, headSprite, headColor, renderPosition);
+            DrawPortraitLayer(batcher, eyesBaseSprite, eyesBaseColor, renderPosition);
             DrawPortraitLayer(batcher, eyesSprite, eyesColor, renderPosition);
             DrawPortraitLayer(batcher, hairSprite, hairColor, renderPosition);
         }
 
         /// <summary>
-        /// The live portrait's layers: frame 0 of the walk-down animation of the bound entity's head, eyes
+        /// The live portrait's layers: frame 0 of the move-down animation of the bound entity's head, eye
         /// and hair components with their tints. False when the entity or any layer is missing.
         /// </summary>
-        private bool TryGetLivePortraitLayers(out Sprite head, out Color headColor, out Sprite eyes, out Color eyesColor, out Sprite hair, out Color hairColor)
+        private bool TryGetLivePortraitLayers(out Sprite head, out Color headColor, out Sprite eyesBase, out Color eyesBaseColor, out Sprite eyes, out Color eyesColor, out Sprite hair, out Color hairColor)
         {
-            head = eyes = hair = null;
-            headColor = eyesColor = hairColor = Color.White;
+            eyesBase = eyes = hair = null;
+            eyesBaseColor = eyesColor = hairColor = Color.White;
             if (_heroEntity == null)
+            {
+                head = null;
+                headColor = Color.White;
                 return false;
+            }
 
-            var headAnimComponent = _heroEntity.GetComponent<HeroHeadAnimationComponent>();
-            var eyesAnimComponent = _heroEntity.GetComponent<HeroEyesAnimationComponent>();
-            var hairAnimComponent = _heroEntity.GetComponent<HeroHairAnimationComponent>();
-            if (headAnimComponent == null || eyesAnimComponent == null || hairAnimComponent == null)
-                return false;
-            if (headAnimComponent.Animations == null || eyesAnimComponent.Animations == null || hairAnimComponent.Animations == null)
-                return false;
+            return TryGetFirstFrame(_heroEntity.GetComponent<HeroHeadAnimationComponent>(), out head, out headColor)
+                && TryGetFirstFrame(_heroEntity.GetComponent<HeroEyesBaseAnimationComponent>(), out eyesBase, out eyesBaseColor)
+                && TryGetFirstFrame(_heroEntity.GetComponent<HeroEyesAnimationComponent>(), out eyes, out eyesColor)
+                && TryGetFirstFrame(_heroEntity.GetComponent<HeroHairAnimationComponent>(), out hair, out hairColor);
+        }
 
-            var headAnimName = headAnimComponent.WalkDownAnimationName;
-            var hairAnimName = hairAnimComponent.WalkDownAnimationName;
-            var eyesAnimName = eyesAnimComponent.WalkDownAnimationName;
-            if (!headAnimComponent.Animations.ContainsKey(headAnimName) ||
-                !hairAnimComponent.Animations.ContainsKey(hairAnimName) ||
-                !eyesAnimComponent.Animations.ContainsKey(eyesAnimName))
+        /// <summary>The first move-down frame of a paperdoll layer with its tint, or false when it has none.</summary>
+        private static bool TryGetFirstFrame(HeroAnimationComponent layer, out Sprite sprite, out Color color)
+        {
+            sprite = null;
+            color = Color.White;
+            if (layer == null || layer.Animations == null)
                 return false;
-
-            var headAnimation = headAnimComponent.Animations[headAnimName];
-            var hairAnimation = hairAnimComponent.Animations[hairAnimName];
-            var eyesAnimation = eyesAnimComponent.Animations[eyesAnimName];
-            if (headAnimation.Sprites == null || headAnimation.Sprites.Length == 0 ||
-                hairAnimation.Sprites == null || hairAnimation.Sprites.Length == 0 ||
-                eyesAnimation.Sprites == null || eyesAnimation.Sprites.Length == 0)
+            if (!layer.Animations.TryGetValue(layer.MoveDownAnimationName, out var animation))
                 return false;
-
-            head = headAnimation.Sprites[0];
-            headColor = headAnimComponent.ComponentColor;
-            eyes = eyesAnimation.Sprites[0];
-            eyesColor = eyesAnimComponent.ComponentColor;
-            hair = hairAnimation.Sprites[0];
-            hairColor = hairAnimComponent.ComponentColor;
+            if (animation.Sprites == null || animation.Sprites.Length == 0)
+                return false;
+            sprite = animation.Sprites[0];
+            color = layer.ComponentColor;
             return true;
         }
 

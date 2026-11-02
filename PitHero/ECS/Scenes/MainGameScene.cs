@@ -14,6 +14,7 @@ using PitHero.Services;
 using PitHero.Rendering;
 using PitHero.UI;
 using PitHero.Util;
+using RolePlayingFramework;
 using RolePlayingFramework.AlliedMonsters;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
@@ -1920,48 +1921,42 @@ namespace PitHero.ECS.Scenes
             // Add facing component first so animators can query it immediately
             hero.AddComponent(new ActorFacingComponent());
 
-            // Add all paperdoll layer animators in the correct order (Hand2 to Hand1)
-            var offset = new Vector2(0, -GameConfig.TileSize / 2); // Offset so feet are at entity position
+            // Add all paperdoll layer animators in draw order, back to front
+            var offset = new Vector2(0, GameConfig.HeroLayerOffsetY); // Offset so feet are at entity position
+            var gender = design.Gender;
 
             // Body layer
-            var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(design.SkinColor));
+            var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(HeroSpriteNames.BodyTint(gender, design.SkinColor), gender));
             heroBodyAnimator.SetLocalOffset(offset);
 
-            // Hand2 layer (top-most paperdoll layer)
-            var heroHand2Animator = hero.AddComponent(new HeroHand2AnimationComponent(design.SkinColor));
-            heroHand2Animator.SetLocalOffset(offset);
-            heroHand2Animator.ComponentColor = design.SkinColor;
+            // Armor layer (female only)
+            var heroArmorAnimator = HeroArmorAnimationComponent.AddTo(hero, gender, offset);
 
-            // Pants layer
-            var heroPantsAnimator = hero.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            heroPantsAnimator.SetLocalOffset(offset);
-
-            // Shirt layer
-            var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(design.ShirtColor));
+            // Shirt or Skirt layer
+            var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(design.ShirtColor, gender));
             heroShirtAnimator.SetLocalOffset(offset);
 
             // Head layer
-            var heroHeadAnimator = hero.AddComponent(new HeroHeadAnimationComponent(design.SkinColor));
+            var heroHeadAnimator = hero.AddComponent(new HeroHeadAnimationComponent(design.SkinColor, gender));
             heroHeadAnimator.SetLocalOffset(offset);
             heroHeadAnimator.ComponentColor = design.SkinColor;
 
-            // Eyes layer
-            var heroEyesAnimator = hero.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            // Eye outline and whites, or the closed slits while asleep
+            var heroEyesBaseAnimator = hero.AddComponent(new HeroEyesBaseAnimationComponent(gender));
+            heroEyesBaseAnimator.SetLocalOffset(offset);
+
+            // Colored eyes layer
+            var heroEyesAnimator = hero.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
             heroEyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
-            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(design.HairColor, design.HairstyleIndex));
+            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(design.HairColor, design.HairstyleIndex, gender));
             heroHairAnimator.SetLocalOffset(offset);
-
-            // Hand1 layer (bottom-most paperdoll layer)
-            var heroHand1Animator = hero.AddComponent(new HeroHand1AnimationComponent(design.SkinColor));
-            heroHand1Animator.SetLocalOffset(offset);
-            heroHand1Animator.ComponentColor = design.SkinColor;
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
             var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator(
-                heroHand2Animator, heroBodyAnimator, heroPantsAnimator, heroShirtAnimator,
-                heroHeadAnimator, heroEyesAnimator, heroHairAnimator, heroHand1Animator));
+                heroBodyAnimator, heroArmorAnimator, heroShirtAnimator, heroHeadAnimator,
+                heroEyesBaseAnimator, heroEyesAnimator, heroHairAnimator));
             heroMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             // Add jump animation component for pit jumping animations
@@ -2248,18 +2243,12 @@ namespace PitHero.ECS.Scenes
             facingComponent.SetFacing(Direction.Left);
 
             // Add animation components (similar to hero/mercenary)
-            var offset = new Vector2(0, -GameConfig.TileSize / 2);
+            var offset = new Vector2(0, GameConfig.HeroLayerOffsetY);
 
             // Use a distinct color scheme for innkeeper
             var bodyColor = new Color(251, 200, 178); // Fair skin tone
-            var bodyAnimator = innkeeperEntity.AddComponent(new HeroBodyAnimationComponent(bodyColor));
+            var bodyAnimator = innkeeperEntity.AddComponent(new HeroBodyAnimationComponent(HeroSpriteNames.BodyTint(Gender.Male, bodyColor)));
             bodyAnimator.SetLocalOffset(offset);
-
-            var hand2Animator = innkeeperEntity.AddComponent(new HeroHand2AnimationComponent(bodyColor));
-            hand2Animator.SetLocalOffset(offset);
-
-            var pantsAnimator = innkeeperEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            pantsAnimator.SetLocalOffset(offset);
 
             // Use a distinctive shirt color for innkeeper (brown/beige for apron-like appearance)
             var shirtColor = new Color(140, 91, 62); // Brown
@@ -2269,6 +2258,9 @@ namespace PitHero.ECS.Scenes
             var headAnimator = innkeeperEntity.AddComponent(new HeroHeadAnimationComponent(bodyColor));
             headAnimator.SetLocalOffset(offset);
 
+            var eyesBaseAnimator = innkeeperEntity.AddComponent(new HeroEyesBaseAnimationComponent());
+            eyesBaseAnimator.SetLocalOffset(offset);
+
             var eyesAnimator = innkeeperEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
             eyesAnimator.SetLocalOffset(offset);
 
@@ -2277,12 +2269,9 @@ namespace PitHero.ECS.Scenes
             var hairAnimator = innkeeperEntity.AddComponent(new HeroHairAnimationComponent(hairColor, hairstyleIndex: 1)); // Use default hairstyle for innkeeper
             hairAnimator.SetLocalOffset(offset);
 
-            var hand1Animator = innkeeperEntity.AddComponent(new HeroHand1AnimationComponent(bodyColor));
-            hand1Animator.SetLocalOffset(offset);
-
             var innkeeperMultiAnimator = innkeeperEntity.AddComponent(new MultiSpriteAnimator(
-                hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
-                headAnimator, eyesAnimator, hairAnimator, hand1Animator));
+                bodyAnimator, shirtAnimator, headAnimator,
+                eyesBaseAnimator, eyesAnimator, hairAnimator));
             innkeeperMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             innkeeperEntity.AddComponent(new SpeechBubbleComponent());
@@ -2833,7 +2822,7 @@ namespace PitHero.ECS.Scenes
 
         /// <summary>
         /// Feeds the hero HUD's portrait from the recorded frame (replay frame viewer, issue #431): the
-        /// HUD record carries the walk-down first frame of the head, eyes and hair layers with their
+        /// HUD record carries the move-down first frame of the head, eye and hair layers with their
         /// tints, the same static portrait the live HUD draws. Without a hero the portrait is blank.
         /// </summary>
         public void ApplyRecordedPortrait(Services.Replay.Frames.DecodedFrame frame, Rendering.FrameSpriteResolver sprites)
@@ -2843,6 +2832,7 @@ namespace PitHero.ECS.Scenes
             ref readonly var hud = ref frame.Hud;
             _graphicalHUD.SetRecordedPortrait(
                 sprites.Get(hud.PortraitHead), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHeadColor),
+                sprites.Get(hud.PortraitEyesBase), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesBaseColor),
                 sprites.Get(hud.PortraitEyes), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesColor),
                 sprites.Get(hud.PortraitHair), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHairColor));
 

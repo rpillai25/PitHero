@@ -6,7 +6,7 @@ namespace PitHero.Tests
 {
     /// <summary>
     /// Tests for the hairstyle implementation to verify that:
-    /// 1. GameConfig has a MaleHeroHairstyleCount constant
+    /// 1. GameConfig has a HeroHairstyleCount constant
     /// 2. HeroHairAnimationComponent accepts hairstyle index
     /// 3. Animation names are correctly formatted based on hairstyle index
     /// </summary>
@@ -14,16 +14,16 @@ namespace PitHero.Tests
     public class HairstyleImplementationTests
     {
         [TestMethod]
-        public void GameConfig_ShouldHaveMaleHeroHairstyleCount()
+        public void GameConfig_ShouldHaveHeroHairstyleCount()
         {
-            // Verify that GameConfig has MaleHeroHairstyleCount constant
-            var hairstyleCount = GameConfig.MaleHeroHairstyleCount;
-            Assert.IsTrue(hairstyleCount >= 1, "MaleHeroHairstyleCount should be at least 1");
-            Assert.AreEqual(5, hairstyleCount, "MaleHeroHairstyleCount should be 5");
+            // Verify that GameConfig has HeroHairstyleCount constant
+            var hairstyleCount = GameConfig.HeroHairstyleCount;
+            Assert.IsTrue(hairstyleCount >= 1, "HeroHairstyleCount should be at least 1");
+            Assert.AreEqual(4, hairstyleCount, "HeroHairstyleCount should be 4");
         }
 
         [TestMethod]
-        public void HeroHairAnimationComponent_DefaultHairstyle_ShouldHaveNoSuffix()
+        public void HeroHairAnimationComponent_DefaultHairstyle_ShouldHave1Suffix()
         {
             // Create component with default hairstyle (1)
             var component = new HeroHairAnimationComponent(Color.White, hairstyleIndex: 1);
@@ -35,8 +35,8 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHairWalkDown", defaultAnim, 
-                "Hairstyle 1 should use 'MaleHeroHairWalkDown' (no number suffix)");
+            Assert.AreEqual("MaleHeroHair1MoveDown", defaultAnim, 
+                "Hairstyle 1 should use 'MaleHeroHair1MoveDown'");
         }
 
         [TestMethod]
@@ -52,8 +52,8 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHair2WalkDown", defaultAnim, 
-                "Hairstyle 2 should use 'MaleHeroHair2WalkDown'");
+            Assert.AreEqual("MaleHeroHair2MoveDown", defaultAnim, 
+                "Hairstyle 2 should use 'MaleHeroHair2MoveDown'");
         }
 
         [TestMethod]
@@ -69,8 +69,8 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHair3WalkDown", defaultAnim, 
-                "Hairstyle 3 should use 'MaleHeroHair3WalkDown'");
+            Assert.AreEqual("MaleHeroHair3MoveDown", defaultAnim, 
+                "Hairstyle 3 should use 'MaleHeroHair3MoveDown'");
         }
 
         [TestMethod]
@@ -82,10 +82,10 @@ namespace PitHero.Tests
 
             var animProperties = new[]
             {
-                ("AnimDown", "MaleHeroHair2WalkDown"),
-                ("AnimUp", "MaleHeroHair2WalkUp"),
-                ("AnimRight", "MaleHeroHair2WalkRight"),
-                ("AnimLeft", "MaleHeroHair2WalkRight"), // Left uses Right (flipped)
+                ("AnimDown", "MaleHeroHair2MoveDown"),
+                ("AnimUp", "MaleHeroHair2MoveUp"),
+                ("AnimRight", "MaleHeroHair2MoveRight"),
+                ("AnimLeft", "MaleHeroHair2MoveRight"), // Left uses Right (flipped)
                 ("JumpAnimDown", "MaleHeroHair2JumpRight"),
                 ("JumpAnimLeft", "MaleHeroHair2JumpRight"),
                 ("JumpAnimRight", "MaleHeroHair2JumpRight"),
@@ -116,15 +116,15 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHairWalkDown", defaultAnim, 
+            Assert.AreEqual("MaleHeroHair1MoveDown", defaultAnim, 
                 "Default constructor should use hairstyle 1");
         }
 
         [TestMethod]
         public void HeroHairAnimationComponent_AllHairstyles_ShouldBeValid()
         {
-            // Test that all hairstyles from 1 to MaleHeroHairstyleCount can be created
-            for (int i = 1; i <= GameConfig.MaleHeroHairstyleCount; i++)
+            // Test that all hairstyles from 1 to HeroHairstyleCount can be created
+            for (int i = 1; i <= GameConfig.HeroHairstyleCount; i++)
             {
                 var component = new HeroHairAnimationComponent(Color.White, hairstyleIndex: i);
                 Assert.IsNotNull(component, $"Should be able to create component with hairstyle {i}");
@@ -134,8 +134,7 @@ namespace PitHero.Tests
                 Assert.IsNotNull(defaultAnimProperty, "DefaultAnimation property should exist");
                 var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
 
-                string expectedSuffix = i == 1 ? "" : i.ToString();
-                string expectedAnimation = $"MaleHeroHair{expectedSuffix}WalkDown";
+                string expectedAnimation = $"MaleHeroHair{i}MoveDown";
                 Assert.AreEqual(expectedAnimation, defaultAnim,
                     $"Hairstyle {i} should use animation '{expectedAnimation}'");
             }
