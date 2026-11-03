@@ -45,6 +45,8 @@ namespace PitHero.UI
         private int _currentHairColorIndex;
         private int _currentHairstyleIndex;
         private int _currentShirtIndex;
+        private int _currentEyeColorIndex;
+        private int _previewScale = 1;
 
         // UI labels that update when selections change
         private Label _nameLabel;
@@ -53,7 +55,11 @@ namespace PitHero.UI
         private Label _hairstyleLabel;
         private Label _skinLabel;
         private Label _hairColorLabel;
+        private Label _eyeColorLabel;
         private Label _shirtLabel;
+        private TextButton _zoomButton;
+        private PrototypeSpriteRenderer _previewBorder;
+        private PrototypeSpriteRenderer _previewBackground;
 
         // Pre-allocated array of primary job names (AOT safe)
         private static readonly string[] PrimaryJobNames = { "Knight", "Monk", "Mage", "Priest", "Archer", "Thief" };
@@ -100,6 +106,7 @@ namespace PitHero.UI
             _currentHairColorIndex = GameRandom.UiRange(0, GameConfig.HairColors.Count);
             _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.HeroHairstyleCount + 1);
             _currentShirtIndex = GameRandom.UiRange(0, GameConfig.ShirtColors.Count);
+            _currentEyeColorIndex = GameRandom.UiRange(0, GameConfig.EyeColors.Count);
 
             _skin = PitHeroSkin.CreateSkin();
 
@@ -145,10 +152,10 @@ namespace PitHero.UI
 
             // Left: controls table
             var controlsTable = new Table();
-            controlsTable.Defaults().SetPadBottom(3f); // tight rows so the Appearance content fits short design heights
+            controlsTable.Defaults().SetPadBottom(1f); // tight rows so seven Appearance rows fit short design heights
 
             const float arrowWidth = 40f;
-            const float arrowHeight = 26f;
+            const float arrowHeight = 24f;
             const float labelWidth = 160f;
 
             // --- Name row ---
@@ -164,12 +171,14 @@ namespace PitHero.UI
                 _currentHairColorIndex = GameRandom.UiRange(0, GameConfig.HairColors.Count);
                 _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.HeroHairstyleCount + 1);
                 _currentShirtIndex = GameRandom.UiRange(0, GameConfig.ShirtColors.Count);
+                _currentEyeColorIndex = GameRandom.UiRange(0, GameConfig.EyeColors.Count);
                 _nameLabel.SetText(_currentName);
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 _skinLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1));
                 _hairColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1));
-                _shirtLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1));
+                _eyeColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1));
+                _shirtLabel.SetText(ShirtLabelText());
                 RebuildPreviewAppearance();
                 RefreshJobInfoWindow();
             };
@@ -203,31 +212,6 @@ namespace PitHero.UI
             controlsTable.Add(jobRight).Size(arrowWidth, arrowHeight);
             controlsTable.Row();
 
-            // --- Hairstyle row ---
-            _hairstyleLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex), skin);
-            var hairStyleLeft = new TextButton("<", skin);
-            var hairStyleRight = new TextButton(">", skin);
-            hairStyleLeft.OnClicked += (btn) =>
-            {
-                _currentHairstyleIndex--;
-                if (_currentHairstyleIndex < 1)
-                    _currentHairstyleIndex = GameConfig.HeroHairstyleCount;
-                _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
-                RebuildPreviewAppearance();
-            };
-            hairStyleRight.OnClicked += (btn) =>
-            {
-                _currentHairstyleIndex++;
-                if (_currentHairstyleIndex > GameConfig.HeroHairstyleCount)
-                    _currentHairstyleIndex = 1;
-                _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
-                RebuildPreviewAppearance();
-            };
-            controlsTable.Add(hairStyleLeft).Size(arrowWidth, arrowHeight);
-            controlsTable.Add(_hairstyleLabel).Width(labelWidth);
-            controlsTable.Add(hairStyleRight).Size(arrowWidth, arrowHeight);
-            controlsTable.Row();
-
             // --- Skin Color row ---
             _skinLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1), skin);
             var skinLeft = new TextButton("<", skin);
@@ -251,6 +235,31 @@ namespace PitHero.UI
             controlsTable.Add(skinLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_skinLabel).Width(labelWidth);
             controlsTable.Add(skinRight).Size(arrowWidth, arrowHeight);
+            controlsTable.Row();
+
+            // --- Hairstyle row ---
+            _hairstyleLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex), skin);
+            var hairStyleLeft = new TextButton("<", skin);
+            var hairStyleRight = new TextButton(">", skin);
+            hairStyleLeft.OnClicked += (btn) =>
+            {
+                _currentHairstyleIndex--;
+                if (_currentHairstyleIndex < 1)
+                    _currentHairstyleIndex = GameConfig.HeroHairstyleCount;
+                _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
+                RebuildPreviewAppearance();
+            };
+            hairStyleRight.OnClicked += (btn) =>
+            {
+                _currentHairstyleIndex++;
+                if (_currentHairstyleIndex > GameConfig.HeroHairstyleCount)
+                    _currentHairstyleIndex = 1;
+                _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
+                RebuildPreviewAppearance();
+            };
+            controlsTable.Add(hairStyleLeft).Size(arrowWidth, arrowHeight);
+            controlsTable.Add(_hairstyleLabel).Width(labelWidth);
+            controlsTable.Add(hairStyleRight).Size(arrowWidth, arrowHeight);
             controlsTable.Row();
 
             // --- Hair Color row ---
@@ -278,8 +287,33 @@ namespace PitHero.UI
             controlsTable.Add(hairColorRight).Size(arrowWidth, arrowHeight);
             controlsTable.Row();
 
-            // --- Shirt Color row ---
-            _shirtLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1), skin);
+            // --- Eye Color row ---
+            _eyeColorLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1), skin);
+            var eyeColorLeft = new TextButton("<", skin);
+            var eyeColorRight = new TextButton(">", skin);
+            eyeColorLeft.OnClicked += (btn) =>
+            {
+                _currentEyeColorIndex--;
+                if (_currentEyeColorIndex < 0)
+                    _currentEyeColorIndex = GameConfig.EyeColors.Count - 1;
+                _eyeColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1));
+                RebuildPreviewAppearance();
+            };
+            eyeColorRight.OnClicked += (btn) =>
+            {
+                _currentEyeColorIndex++;
+                if (_currentEyeColorIndex >= GameConfig.EyeColors.Count)
+                    _currentEyeColorIndex = 0;
+                _eyeColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1));
+                RebuildPreviewAppearance();
+            };
+            controlsTable.Add(eyeColorLeft).Size(arrowWidth, arrowHeight);
+            controlsTable.Add(_eyeColorLabel).Width(labelWidth);
+            controlsTable.Add(eyeColorRight).Size(arrowWidth, arrowHeight);
+            controlsTable.Row();
+
+            // --- Shirt (or Skirt) Color row ---
+            _shirtLabel = new Label(ShirtLabelText(), skin);
             var shirtLeft = new TextButton("<", skin);
             var shirtRight = new TextButton(">", skin);
             shirtLeft.OnClicked += (btn) =>
@@ -287,7 +321,7 @@ namespace PitHero.UI
                 _currentShirtIndex--;
                 if (_currentShirtIndex < 0)
                     _currentShirtIndex = GameConfig.ShirtColors.Count - 1;
-                _shirtLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1));
+                _shirtLabel.SetText(ShirtLabelText());
                 RebuildPreviewAppearance();
             };
             shirtRight.OnClicked += (btn) =>
@@ -295,7 +329,7 @@ namespace PitHero.UI
                 _currentShirtIndex++;
                 if (_currentShirtIndex >= GameConfig.ShirtColors.Count)
                     _currentShirtIndex = 0;
-                _shirtLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1));
+                _shirtLabel.SetText(ShirtLabelText());
                 RebuildPreviewAppearance();
             };
             controlsTable.Add(shirtLeft).Size(arrowWidth, arrowHeight);
@@ -319,8 +353,11 @@ namespace PitHero.UI
             var dirRight = new TextButton(">", skin);
             dirLeft.OnClicked += (btn) => CyclePreviewDirection(-1);
             dirRight.OnClicked += (btn) => CyclePreviewDirection(1);
+            _zoomButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.AppearanceZoomIn), skin);
+            _zoomButton.OnClicked += (btn) => TogglePreviewZoom();
             dirButtonsTable.Add(dirLeft).Size(30f, 24f).SetPadRight(4f);
-            dirButtonsTable.Add(dirRight).Size(30f, 24f);
+            dirButtonsTable.Add(dirRight).Size(30f, 24f).SetPadRight(4f);
+            dirButtonsTable.Add(_zoomButton).Size(30f, 24f);
             previewControlsTable.Add(dirButtonsTable);
             previewControlsTable.Row();
 
@@ -374,7 +411,36 @@ namespace PitHero.UI
             _genderLabel.SetText(GenderDisplayText());
             _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
             _nameLabel.SetText(_currentName);
+            _shirtLabel.SetText(ShirtLabelText());
             RebuildPreviewAppearance();
+        }
+
+        /// <summary>Gets the clothing row text: Skirt for a female hero, Shirt for a male one</summary>
+        private string ShirtLabelText()
+        {
+            string key = _currentGender == Gender.Female ? UITextKey.AppearanceSkirt : UITextKey.AppearanceShirt;
+            return string.Format(_textService.DisplayText(TextType.UI, key), _currentShirtIndex + 1);
+        }
+
+        /// <summary>Switches the preview between normal and double size</summary>
+        private void TogglePreviewZoom()
+        {
+            _previewScale = _previewScale == 1 ? 2 : 1;
+            _zoomButton.SetText(_textService.DisplayText(TextType.UI, _previewScale == 1 ? UITextKey.AppearanceZoomIn : UITextKey.AppearanceZoomOut));
+            _previewEntity.SetScale(_previewScale);
+            _previewBorder.SetLocalOffset(PreviewOffset());
+            _previewBackground.SetLocalOffset(PreviewOffset());
+            RebuildPreviewAppearance();
+        }
+
+        /// <summary>
+        /// Offset of every preview renderer at the current scale. Scale grows a renderer around its center
+        /// and leaves the offset alone, so the offset moves with the scale to keep the 48 px frame's bottom
+        /// edge at the same place: the doubled preview grows upward, away from the buttons below it.
+        /// </summary>
+        private Vector2 PreviewOffset()
+        {
+            return new Vector2(0, 8 - 24 * _previewScale);
         }
 
         /// <summary>Adds ActorFacingComponent, white border, and green background to the preview entity</summary>
@@ -382,19 +448,17 @@ namespace PitHero.UI
         {
             _previewEntity.AddComponent(new ActorFacingComponent());
 
-            var bgOffset = new Vector2(0, -GameConfig.TileSize / 2);
-
             // White border (renders first = behind everything)
-            var border = _previewEntity.AddComponent(new PrototypeSpriteRenderer(36, 52));
-            border.SetColor(Color.White);
-            border.SetLocalOffset(bgOffset);
-            border.SetRenderLayer(998);
+            _previewBorder = _previewEntity.AddComponent(new PrototypeSpriteRenderer(36, 52));
+            _previewBorder.SetColor(Color.White);
+            _previewBorder.SetLocalOffset(PreviewOffset());
+            _previewBorder.SetRenderLayer(998);
 
             // Green background on top of white border, behind hero layers
-            var background = _previewEntity.AddComponent(new PrototypeSpriteRenderer(32, 48));
-            background.SetColor(Color.LightSkyBlue);
-            background.SetLocalOffset(bgOffset);
-            background.SetRenderLayer(998);
+            _previewBackground = _previewEntity.AddComponent(new PrototypeSpriteRenderer(32, 48));
+            _previewBackground.SetColor(Color.LightSkyBlue);
+            _previewBackground.SetLocalOffset(PreviewOffset());
+            _previewBackground.SetRenderLayer(998);
         }
 
         /// <summary>Removes all animation components and re-adds them with current appearance selections</summary>
@@ -412,7 +476,7 @@ namespace PitHero.UI
             var skinColor = GameConfig.SkinColors[_currentSkinIndex];
             var hairColor = GameConfig.HairColors[_currentHairColorIndex];
             var shirtColor = GameConfig.ShirtColors[_currentShirtIndex];
-            var offset = new Vector2(0, -GameConfig.TileSize / 2); // Centered on the 32x48 background
+            var offset = PreviewOffset(); // Centered on the 32x48 background
             var gender = _currentGender;
 
             // Body layer
@@ -441,7 +505,7 @@ namespace PitHero.UI
             eyesBaseAnimator.SetLocalOffset(offset);
 
             // Eyes layer
-            var eyesAnimator = _previewEntity.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
+            var eyesAnimator = _previewEntity.AddComponent(new HeroEyesAnimationComponent(GameConfig.EyeColors[_currentEyeColorIndex], gender));
             eyesAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             eyesAnimator.SetLocalOffset(offset);
 
@@ -604,7 +668,8 @@ namespace PitHero.UI
                 _currentHairstyleIndex,
                 GameConfig.ShirtColors[_currentShirtIndex],
                 PrimaryJobNames[_currentJobIndex],
-                _currentGender
+                _currentGender,
+                GameConfig.EyeColors[_currentEyeColorIndex]
             );
 
             var designService = Core.Services.GetService<HeroDesignService>();

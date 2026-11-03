@@ -256,6 +256,10 @@ namespace PitHero
         public const string AppearanceSkin = "AppearanceSkin";
         public const string AppearanceHairColor = "AppearanceHairColor";
         public const string AppearanceShirt = "AppearanceShirt";
+        public const string AppearanceSkirt = "AppearanceSkirt";
+        public const string AppearanceEyeColor = "AppearanceEyeColor";
+        public const string AppearanceZoomIn = "AppearanceZoomIn";
+        public const string AppearanceZoomOut = "AppearanceZoomOut";
         public const string AppearanceGenderMale = "AppearanceGenderMale";
         public const string AppearanceGenderFemale = "AppearanceGenderFemale";
         public const string AppearanceRolePrefix = "AppearanceRolePrefix";

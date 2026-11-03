@@ -253,7 +253,7 @@ namespace PitHero.UI
                     try
                     {
                         var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
-                        var drawable = new HeroPreviewDrawable(actorsAtlas, appearance.SkinColor, appearance.HairColor, appearance.ShirtColor, appearance.HairstyleIndex, appearance.Gender);
+                        var drawable = new HeroPreviewDrawable(actorsAtlas, appearance.SkinColor, appearance.HairColor, appearance.ShirtColor, appearance.HairstyleIndex, appearance.Gender, appearance.EyeColor);
                         var previewImage = new Image(drawable, Scaling.Fit);
                         _previewContainers[m].Add(previewImage).Size(32f, 48f);
                     }
@@ -503,5 +503,6 @@ namespace PitHero.UI
         public int HairstyleIndex;
         public Color ShirtColor;
         public Gender Gender;
+        public Color EyeColor;
     }
 }

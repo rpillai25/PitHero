@@ -56,6 +56,9 @@ namespace PitHero.ECS.Components
         /// <summary>Hairstyle index used for rendering (saved for persistence).</summary>
         public int HairstyleIndex { get; set; }
 
+        /// <summary>Eye color used for rendering (saved for persistence).</summary>
+        public Color EyeColor { get; set; }
+
         /// <summary>Shirt color used for rendering (saved for persistence).</summary>
         public Color ShirtColor { get; set; }
 

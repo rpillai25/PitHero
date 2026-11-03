@@ -243,6 +243,7 @@ namespace PitHero.Services
 
             var bodyColor = GameConfig.SkinColors.RandomItem();
             var shirtColor = GameConfig.ShirtColors.RandomItem();
+            var eyeColor = GameConfig.EyeColors.RandomItem();
             var hairColor = GameConfig.HairColors.RandomItem();
             var hairstyleService = Core.Services.GetService<HairstyleQueueService>();
             var hairstyleIndex = hairstyleService.GetNextHairstyle();
@@ -261,7 +262,7 @@ namespace PitHero.Services
             var eyesBaseAnimator = mercEntity.AddComponent(new HeroEyesBaseAnimationComponent(gender));
             eyesBaseAnimator.SetLocalOffset(offset);
 
-            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
+            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(eyeColor, gender));
             eyesAnimator.SetLocalOffset(offset);
 
             var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(hairColor, hairstyleIndex, gender));
@@ -302,7 +303,8 @@ namespace PitHero.Services
                 SkinColor = bodyColor,
                 HairColor = hairColor,
                 HairstyleIndex = hairstyleIndex,
-                ShirtColor = shirtColor
+                ShirtColor = shirtColor,
+                EyeColor = eyeColor
             });
 
             // Increment spawn ID counter for next mercenary
@@ -1175,7 +1177,7 @@ namespace PitHero.Services
             var eyesBaseAnimator = mercEntity.AddComponent(new HeroEyesBaseAnimationComponent(gender));
             eyesBaseAnimator.SetLocalOffset(offset);
 
-            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
+            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(saved.EyeColor, gender));
             eyesAnimator.SetLocalOffset(offset);
 
             var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(saved.HairColor, saved.HairstyleIndex, gender));
@@ -1237,7 +1239,8 @@ namespace PitHero.Services
                 SkinColor = saved.SkinColor,
                 HairColor = saved.HairColor,
                 HairstyleIndex = saved.HairstyleIndex,
-                ShirtColor = saved.ShirtColor
+                ShirtColor = saved.ShirtColor,
+                EyeColor = saved.EyeColor
             });
             _nextSpawnId++;
 

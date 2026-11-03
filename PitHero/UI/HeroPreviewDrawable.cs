@@ -25,7 +25,7 @@ namespace PitHero.UI
         public float MinHeight { get; set; }
 
         /// <summary>Creates a composite drawable from the Actors atlas using saved hero design data.</summary>
-        public HeroPreviewDrawable(SpriteAtlas actorsAtlas, Color skinColor, Color hairColor, Color shirtColor, int hairstyleIndex, Gender gender = Gender.Male)
+        public HeroPreviewDrawable(SpriteAtlas actorsAtlas, Color skinColor, Color hairColor, Color shirtColor, int hairstyleIndex, Gender gender, Color eyeColor)
         {
             _sprites = new Sprite[LayerCount];
             _tints = new Color[LayerCount];
@@ -37,7 +37,7 @@ namespace PitHero.UI
             SetLayer(actorsAtlas, 2, gender, HeroLayer.Clothing, shirtColor);
             SetLayer(actorsAtlas, 3, gender, HeroLayer.Head, skinColor);
             SetLayer(actorsAtlas, 4, gender, HeroLayer.EyesBase, Color.White);
-            SetLayer(actorsAtlas, 5, gender, HeroLayer.Eyes, Color.White);
+            SetLayer(actorsAtlas, 5, gender, HeroLayer.Eyes, eyeColor);
             SetLayer(actorsAtlas, 6, gender, HeroSpriteNames.HairLayer(hairstyleIndex), hairColor);
 
             // Set minimum size from the first valid sprite (all hero frames are 32x48)

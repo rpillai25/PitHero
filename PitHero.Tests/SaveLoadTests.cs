@@ -1945,6 +1945,76 @@ namespace PitHero.Tests
             Assert.AreEqual(9, loaded.Level);
         }
 
+        /// <summary>v40 appends the hero's and each hired mercenary's eye color; both must round-trip.</summary>
+        [TestMethod]
+        public void SaveData_V40_EyeColors_RoundTrip()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                original.HeroName = "EyedHero";
+                original.EyeColor = GameConfig.EYE_COLOR_3;
+                original.HiredMercenaries = new List<SavedMercenary>
+                {
+                    new SavedMercenary { Name = "MercA", JobName = JobTextKey.Job_Knight_Name, EquipmentNames = new string[6], EyeColor = GameConfig.EYE_COLOR_6 },
+                    new SavedMercenary { Name = "MercB", JobName = JobTextKey.Job_Mage_Name, EquipmentNames = new string[6], EyeColor = GameConfig.EYE_COLOR_2 }
+                };
+                writer.Write(original);
+            }
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(ms.ToArray())))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual(GameConfig.EYE_COLOR_3, loaded.EyeColor, "Hero eye color should round-trip");
+            Assert.AreEqual(GameConfig.EYE_COLOR_6, loaded.HiredMercenaries[0].EyeColor, "Merc 0 eye color should round-trip");
+            Assert.AreEqual(GameConfig.EYE_COLOR_2, loaded.HiredMercenaries[1].EyeColor, "Merc 1 eye color should round-trip");
+            Assert.AreEqual("MercB", loaded.HiredMercenaries[1].Name);
+        }
+
+        /// <summary>
+        /// Backwards compatibility for the v40 eye color bump: a v39 file ends before section 54, so the
+        /// hero loads with the default eye color and every earlier field reads as before. Built by
+        /// writing a v40 stream with no mercenaries, cutting the hero's 16-byte color off the end, and
+        /// patching the version header down to 39.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V39_File_LoadsWithDefaultEyeColor()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                original.HeroName = "OldEyes";
+                original.EyeColor = GameConfig.EYE_COLOR_5; // must be dropped along with the bytes
+                original.SkinColor = new Color(11, 22, 33, 255);
+                original.Level = 7;
+                writer.Write(original);
+            }
+
+            byte[] v40 = ms.ToArray();
+            var v39 = new byte[v40.Length - 16];
+            Array.Copy(v40, v39, v39.Length);
+            v39[0] = 39;
+            v39[1] = 0;
+            v39[2] = 0;
+            v39[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v39)))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual(GameConfig.DefaultEyeColor, loaded.EyeColor, "A v39 file has no eye color and must use the default");
+            Assert.AreEqual("OldEyes", loaded.HeroName);
+            Assert.AreEqual(new Color(11, 22, 33, 255), loaded.SkinColor);
+            Assert.AreEqual(7, loaded.Level);
+        }
+
         /// <summary>v32 appends HeroId as the last field; it must survive a round trip.</summary>
         [TestMethod]
         public void SaveData_V32_HeroId_RoundTrip()

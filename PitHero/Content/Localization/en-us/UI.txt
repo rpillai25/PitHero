@@ -187,6 +187,10 @@ AppearanceHairstyle,Hairstyle {0}
 AppearanceSkin,Skin {0}
 AppearanceHairColor,Hair Color {0}
 AppearanceShirt,Shirt {0}
+AppearanceSkirt,Skirt {0}
+AppearanceEyeColor,Eye Color {0}
+AppearanceZoomIn,2x
+AppearanceZoomOut,1x
 AppearanceGenderMale,Male
 AppearanceGenderFemale,Female
 AppearanceRolePrefix,Role: 

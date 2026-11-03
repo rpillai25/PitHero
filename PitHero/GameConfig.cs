@@ -804,7 +804,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, and Time Travel Here asks for confirmation.
-        public const int SimulationVersion = 9; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll
+        public const int SimulationVersion = 10; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll; v10: mercenary eye color roll
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge
@@ -974,6 +974,25 @@ namespace PitHero
             HAIR_SHADE_6,
             HAIR_SHADE_7,
             HAIR_SHADE_8
+        };
+
+        // Eye colors tint the gray iris layer (Eyes); the first is the default for saves made before eye color existed
+        public static readonly Color EYE_COLOR_1 = new Color(99, 155, 255);  // Blue
+        public static readonly Color EYE_COLOR_2 = new Color(95, 205, 228);  // Teal
+        public static readonly Color EYE_COLOR_3 = new Color(106, 190, 48);  // Green
+        public static readonly Color EYE_COLOR_4 = new Color(217, 160, 102); // Amber
+        public static readonly Color EYE_COLOR_5 = new Color(155, 173, 183); // Gray
+        public static readonly Color EYE_COLOR_6 = new Color(217, 87, 99);   // Red
+        public static Color DefaultEyeColor => EYE_COLOR_1;
+
+        public static readonly List<Color> EyeColors = new List<Color>
+        {
+            EYE_COLOR_1,
+            EYE_COLOR_2,
+            EYE_COLOR_3,
+            EYE_COLOR_4,
+            EYE_COLOR_5,
+            EYE_COLOR_6
         };
 
         public static readonly List<Color> ShirtColors = new List<Color>

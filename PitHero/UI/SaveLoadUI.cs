@@ -195,7 +195,7 @@ namespace PitHero.UI
                 {
                     var heroDrawable = new HeroPreviewDrawable(
                         _actorsAtlas, preview.SkinColor, preview.HairColor,
-                        preview.ShirtColor, preview.HairstyleIndex, preview.HeroGender);
+                        preview.ShirtColor, preview.HairstyleIndex, preview.HeroGender, preview.EyeColor);
                     var heroImage = new Image(heroDrawable, Scaling.Fit);
                     rowTable.Add(heroImage).Size(32f, 48f).SetPadLeft(4f).SetPadRight(8f);
                 }

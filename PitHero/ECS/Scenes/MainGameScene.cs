@@ -1946,7 +1946,7 @@ namespace PitHero.ECS.Scenes
             heroEyesBaseAnimator.SetLocalOffset(offset);
 
             // Colored eyes layer
-            var heroEyesAnimator = hero.AddComponent(new HeroEyesAnimationComponent(Color.White, gender));
+            var heroEyesAnimator = hero.AddComponent(new HeroEyesAnimationComponent(design.EyeColor, gender));
             heroEyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
@@ -2261,7 +2261,7 @@ namespace PitHero.ECS.Scenes
             var eyesBaseAnimator = innkeeperEntity.AddComponent(new HeroEyesBaseAnimationComponent());
             eyesBaseAnimator.SetLocalOffset(offset);
 
-            var eyesAnimator = innkeeperEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            var eyesAnimator = innkeeperEntity.AddComponent(new HeroEyesAnimationComponent(GameConfig.EYE_COLOR_4));
             eyesAnimator.SetLocalOffset(offset);
 
             // Gray hair for older innkeeper appearance

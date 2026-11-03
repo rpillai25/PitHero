@@ -248,6 +248,7 @@ namespace PitHero.Services
         public Color HairColor;
         public int HairstyleIndex;
         public Color ShirtColor;
+        public Color EyeColor;
     }
 
     /// <summary>Lightweight struct representing a placed stencil saved to disk (v27).</summary>
@@ -280,7 +281,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 39; // v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
+        public const int CurrentVersion = 40; // v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -311,6 +312,9 @@ namespace PitHero.Services
 
         /// <summary>Index of the selected hairstyle.</summary>
         public int HairstyleIndex;
+
+        /// <summary>Eye color of the hero (section added in v40).</summary>
+        public Color EyeColor;
 
         /// <summary>Shirt color of the hero.</summary>
         public Color ShirtColor;
@@ -1225,6 +1229,11 @@ namespace PitHero.Services
             // 53. Farm task priority (v38): the Monsters-Decide flag and the player's claim order
             writer.Write(FarmMonstersDecidePriority);
             WriteIntArray(writer, FarmPriorityOrder);
+
+            // 54. Eye colors (v40): the hero, then each hired mercenary in section order
+            WriteColor(writer, EyeColor);
+            for (int i = 0; i < HiredMercenaries.Count; i++)
+                WriteColor(writer, HiredMercenaries[i].EyeColor);
         }
 
         /// <summary>
@@ -1533,6 +1542,7 @@ namespace PitHero.Services
                 merc.HairColor = ReadColor(reader);
                 merc.HairstyleIndex = GameConfig.ClampHairstyleIndex(reader.ReadInt());
                 merc.ShirtColor = ReadColor(reader);
+                merc.EyeColor = GameConfig.DefaultEyeColor; // read in section 54 (v40)
                 HiredMercenaries.Add(merc);
             }
 
@@ -1961,6 +1971,16 @@ namespace PitHero.Services
             {
                 FarmMonstersDecidePriority = true;
                 FarmPriorityOrder = DefaultFarmPriorityOrder();
+            }
+
+            // 54. Eye colors (section added in v40). Older files had no eye color, so everyone gets
+            // the default.
+            EyeColor = fileVersion >= 40 ? ReadColor(reader) : GameConfig.DefaultEyeColor;
+            for (int i = 0; i < HiredMercenaries.Count; i++)
+            {
+                var merc = HiredMercenaries[i];
+                merc.EyeColor = fileVersion >= 40 ? ReadColor(reader) : GameConfig.DefaultEyeColor;
+                HiredMercenaries[i] = merc;
             }
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
