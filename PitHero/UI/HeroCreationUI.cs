@@ -370,7 +370,7 @@ namespace PitHero.UI
             genderLeft.OnClicked += (btn) => ToggleGender();
             genderRight.OnClicked += (btn) => ToggleGender();
             genderTable.Add(genderLeft).Size(30f, 24f);
-            genderTable.Add(_genderLabel).Width(70f);
+            genderTable.Add(_genderLabel).Width(70f).SetPadLeft(4f); // the text sat left of center between the arrows
             genderTable.Add(genderRight).Size(30f, 24f);
             previewControlsTable.Add(genderTable);
 
