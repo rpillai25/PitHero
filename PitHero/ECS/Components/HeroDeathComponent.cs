@@ -21,12 +21,6 @@ namespace PitHero.ECS.Components
         private const float DeathFadeOutDuration = 2.0f; // 2 seconds for rise and fade
         private const float DeathRiseDistance = 64f; // Distance hero rises in pixels
 
-        // HeroShadow sprite coordinates from Actors.atlas
-        private const int ShadowSpriteX = 198;
-        private const int ShadowSpriteY = 499;
-        private const int ShadowSpriteWidth = 27;
-        private const int ShadowSpriteHeight = 5;
-
         private Entity _shadowEntity;
         private bool _deathAnimationStarted;
 
@@ -94,12 +88,16 @@ namespace PitHero.ECS.Components
             var endPosition = startPosition + new Vector2(0, -DeathRiseDistance);
 
             // Get all renderers to fade them out
-            var bodyRenderer = Entity.GetComponent<HeroBodyAnimationComponent>();
-            var hairRenderer = Entity.GetComponent<HeroHairAnimationComponent>();
-            var shirtRenderer = Entity.GetComponent<HeroShirtAnimationComponent>();
-            var pantsRenderer = Entity.GetComponent<HeroPantsAnimationComponent>();
-            var hand1Renderer = Entity.GetComponent<HeroHand1AnimationComponent>();
-            var hand2Renderer = Entity.GetComponent<HeroHand2AnimationComponent>();
+            var renderers = new HeroAnimationComponent[]
+            {
+                Entity.GetComponent<HeroBodyAnimationComponent>(),
+                Entity.GetComponent<HeroArmorAnimationComponent>(),
+                Entity.GetComponent<HeroShirtAnimationComponent>(),
+                Entity.GetComponent<HeroHeadAnimationComponent>(),
+                Entity.GetComponent<HeroEyesBaseAnimationComponent>(),
+                Entity.GetComponent<HeroEyesAnimationComponent>(),
+                Entity.GetComponent<HeroHairAnimationComponent>()
+            };
 
             // Animate rise and fade
             float elapsed = 0f;
@@ -124,35 +122,14 @@ namespace PitHero.ECS.Components
                 byte alpha = (byte)(255 * (1f - progress));
 
                 // Apply alpha to all renderers
-                if (bodyRenderer != null)
+                for (int i = 0; i < renderers.Length; i++)
                 {
-                    var color = bodyRenderer.Color;
-                    bodyRenderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (hairRenderer != null)
-                {
-                    var color = hairRenderer.Color;
-                    hairRenderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (shirtRenderer != null)
-                {
-                    var color = shirtRenderer.Color;
-                    shirtRenderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (pantsRenderer != null)
-                {
-                    var color = pantsRenderer.Color;
-                    pantsRenderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (hand1Renderer != null)
-                {
-                    var color = hand1Renderer.Color;
-                    hand1Renderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (hand2Renderer != null)
-                {
-                    var color = hand2Renderer.Color;
-                    hand2Renderer.Color = new Color(color.R, color.G, color.B, alpha);
+                    var renderer = renderers[i];
+                    if (renderer != null)
+                    {
+                        var color = renderer.Color;
+                        renderer.Color = new Color(color.R, color.G, color.B, alpha);
+                    }
                 }
 
                 yield return null;
@@ -254,11 +231,7 @@ namespace PitHero.ECS.Components
         private void CreateShadowAtDeathLocation()
         {
             // Load the HeroShadow sprite from the Actors atlas
-            var shadowTexture = Entity.Scene.Content.LoadTexture("Content/Atlases/Actors.png");
-
-            // Create sprite from atlas region: HeroShadow coordinates
-            var shadowRegion = new Sprite(shadowTexture, new Rectangle(ShadowSpriteX, ShadowSpriteY, ShadowSpriteWidth, ShadowSpriteHeight));
-            shadowRegion.Origin = new Vector2(ShadowSpriteWidth * 0.5f, ShadowSpriteHeight * 0.5f); // Center origin
+            var shadowRegion = Entity.Scene.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas").GetSprite("HeroShadow");
 
             // Create shadow entity
             _shadowEntity = Entity.Scene.CreateEntity("hero-shadow");

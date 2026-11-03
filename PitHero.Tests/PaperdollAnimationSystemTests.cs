@@ -22,14 +22,12 @@ namespace PitHero.Tests
             
             _paperdollLayers = new List<HeroAnimationComponent>
             {
-                _heroEntity.AddComponent(new HeroHand2AnimationComponent(Color.White)),
                 _heroEntity.AddComponent(new HeroBodyAnimationComponent(Color.White)),
-                _heroEntity.AddComponent(new HeroPantsAnimationComponent(Color.White)),
                 _heroEntity.AddComponent(new HeroShirtAnimationComponent(Color.White)),
                 _heroEntity.AddComponent(new HeroHeadAnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroEyesBaseAnimationComponent()),
                 _heroEntity.AddComponent(new HeroEyesAnimationComponent(Color.White)),
-                _heroEntity.AddComponent(new HeroHairAnimationComponent(Color.White)),
-                _heroEntity.AddComponent(new HeroHand1AnimationComponent(Color.White))
+                _heroEntity.AddComponent(new HeroHairAnimationComponent(Color.White))
             };
             
             _heroEntity.AddComponent(new TileByTileMover());
@@ -44,7 +42,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void PaperdollSystem_AllLayersCreated_ShouldHaveCorrectCount()
         {
-            Assert.AreEqual(8, _paperdollLayers.Count, "Should have exactly 8 paperdoll layers");
+            Assert.AreEqual(6, _paperdollLayers.Count, "Should have exactly 6 paperdoll layers");
             Assert.IsTrue(_paperdollLayers.All(layer => layer != null), "All layers should be non-null");
         }
 
@@ -53,14 +51,12 @@ namespace PitHero.Tests
         {
             var expectedAnimations = new[]
             {
-                "MaleHeroBackArmWalkDown",
-                "MaleHeroBodyWalkDown", 
-                "MaleHeroPantsWalkDown",
-                "MaleHeroShirtWalkDown",
-                "MaleHeroHeadWalkDown",
-                "MaleHeroEyesWalkDown",
-                "MaleHeroHairWalkDown",
-                "MaleHeroArmWalkDown"
+                "MaleHeroBodyMoveDown",
+                "MaleHeroShirtMoveDown",
+                "MaleHeroHeadMoveDown",
+                "MaleHeroEyesBaseMoveDown",
+                "MaleHeroEyesMoveDown",
+                "MaleHeroHair1MoveDown"
             };
 
             for (int i = 0; i < _paperdollLayers.Count; i++)

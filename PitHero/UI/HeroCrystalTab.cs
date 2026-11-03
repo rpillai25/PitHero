@@ -1,3 +1,4 @@
+using RolePlayingFramework;
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Textures;
@@ -255,7 +256,7 @@ namespace PitHero.UI
         }
 
         /// <summary>Updates the hero sprite preview with appearance data</summary>
-        public void UpdateHeroPreview(Color skinColor, Color hairColor, Color shirtColor, int hairstyleIndex)
+        public void UpdateHeroPreview(Color skinColor, Color hairColor, Color shirtColor, int hairstyleIndex, Gender gender, Color eyeColor)
         {
             if (_heroPreviewContainer == null) return;
 
@@ -264,9 +265,9 @@ namespace PitHero.UI
             try
             {
                 var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
-                var heroDrawable = new HeroPreviewDrawable(actorsAtlas, skinColor, hairColor, shirtColor, hairstyleIndex);
+                var heroDrawable = new HeroPreviewDrawable(actorsAtlas, skinColor, hairColor, shirtColor, hairstyleIndex, gender, eyeColor);
                 var heroPreviewImage = new Image(heroDrawable, Scaling.Fit);
-                _heroPreviewContainer.Add(heroPreviewImage).Size(32f, 46f);
+                _heroPreviewContainer.Add(heroPreviewImage).Size(32f, 48f);
             }
             catch (System.Exception ex)
             {

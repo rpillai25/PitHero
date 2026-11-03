@@ -101,6 +101,7 @@ namespace PitHero.Services.Replay.Frames
         private Entity _hero;
         private HeroComponent _heroComponent;
         private HeroHeadAnimationComponent _heroHead;
+        private HeroEyesBaseAnimationComponent _heroEyesBase;
         private HeroEyesAnimationComponent _heroEyes;
         private HeroHairAnimationComponent _heroHair;
 
@@ -769,14 +770,16 @@ namespace PitHero.Services.Replay.Frames
                 _hero = scene.FindEntity(HeroEntityName);
                 _heroComponent = _hero?.GetComponent<HeroComponent>();
                 _heroHead = _hero?.GetComponent<HeroHeadAnimationComponent>();
+                _heroEyesBase = _hero?.GetComponent<HeroEyesBaseAnimationComponent>();
                 _heroEyes = _hero?.GetComponent<HeroEyesAnimationComponent>();
                 _heroHair = _hero?.GetComponent<HeroHairAnimationComponent>();
             }
             var linked = _heroComponent?.LinkedHero;
             if (linked != null && _hero != null && !_hero.HasComponent<HeroDeathComponent>())
                 hud.Hero = new HudMember { Present = true, Hp = linked.CurrentHP, MaxHp = linked.MaxHP, Mp = linked.CurrentMP, MaxMp = linked.MaxMP, Level = linked.Level };
-            // The static portrait the live HUD draws: walk-down frame 0 of each layer, with its tint
+            // The static portrait the live HUD draws: move-down frame 0 of each layer, with its tint
             hud.PortraitHead = PortraitSpriteId(_heroHead, out hud.PortraitHeadColor);
+            hud.PortraitEyesBase = PortraitSpriteId(_heroEyesBase, out hud.PortraitEyesBaseColor);
             hud.PortraitEyes = PortraitSpriteId(_heroEyes, out hud.PortraitEyesColor);
             hud.PortraitHair = PortraitSpriteId(_heroHair, out hud.PortraitHairColor);
 
@@ -833,13 +836,13 @@ namespace PitHero.Services.Replay.Frames
             return hud;
         }
 
-        /// <summary>The first walk-down frame of a paperdoll layer (what GraphicalHUD.RenderHeroSprites draws) as a stream id, or 0.</summary>
+        /// <summary>The first move-down frame of a paperdoll layer (what GraphicalHUD.RenderHeroSprites draws) as a stream id, or 0.</summary>
         private ushort PortraitSpriteId(HeroAnimationComponent layer, out uint color)
         {
             color = 0;
             if (layer == null || layer.Animations == null)
                 return 0;
-            string name = layer.WalkDownAnimationName;
+            string name = layer.MoveDownAnimationName;
             if (name == null || !layer.Animations.TryGetValue(name, out var animation) || animation.Sprites == null || animation.Sprites.Length == 0)
                 return 0;
             color = layer.ComponentColor.PackedValue;

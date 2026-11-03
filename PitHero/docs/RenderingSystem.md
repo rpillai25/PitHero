@@ -167,7 +167,7 @@ Y-sort is handled centrally by `YSortManager`.
 
 **File:** `ECS/Components/MultiSpriteAnimator.cs`
 
-Composites any `ICompositeLayer` stack into a single 32×46 RT. Generic — works for hero
+Composites any `ICompositeLayer` stack into a single 32×48 RT. Generic — works for hero
 paperdolls, innkeeper, mercenaries, and any future multi-part animated actor (e.g. a dragon
 built from independently-animated body-part components). Extends `SpriteCompositorBase`.
 
@@ -175,22 +175,22 @@ built from independently-animated body-part components). Extends `SpriteComposit
 1. Constructor receives any `ICompositeLayer[]` in back-to-front draw order.
 2. `OnAddedToEntity` sets `OwnedByComposite = true` on each layer (suppresses direct render),
    then calls `InitCompositor` with a draw callback that iterates layers via the interface.
-3. Each frame in `Render()` (base class): ends the outer batcher, switches to a 32×46
+3. Each frame in `Render()` (base class): ends the outer batcher, switches to a 32×48
    `RenderTarget2D`, draws layers with a translation matrix that maps entity world-position →
    RT pixel (16, 39), restores the scene RT, and blits the composited sprite.
 4. Y-sort is applied each frame by `YSortManager` (SceneComponent).
 
 **Key constants:**
-- `RT_WIDTH = 32`, `RT_HEIGHT = 46`
-- `RtEntityPivot = (16, 39)` — accounts for center sprite origin (16, 23) + local offset
-  (0, −16): `pivot.Y = origin.Y + |offset.Y| = 23 + 16 = 39`
+- `RT_WIDTH = 32`, `RT_HEIGHT = 48`
+- `RtEntityPivot = (16, 39)` — accounts for center sprite origin (16, 24) + local offset
+  (0, −15, `GameConfig.HeroLayerOffsetY`): `pivot.Y = origin.Y + |offset.Y| = 24 + 15 = 39`
 
 **Usage (hero/mercenary — existing ICompositeLayer implementors):**
 ```csharp
 // Add paperdoll components first, then pass them in back-to-front order:
 var animator = entity.AddComponent(new MultiSpriteAnimator(
-    hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
-    headAnimator, eyesAnimator, hairAnimator, hand1Animator));
+    bodyAnimator, armorAnimator, shirtAnimator, headAnimator, // armorAnimator is null for males and skipped
+    eyesBaseAnimator, eyesAnimator, hairAnimator));
 animator.SetRenderLayer(GameConfig.RenderLayerActors);
 ```
 
@@ -308,7 +308,7 @@ order relative to heroes and monsters.
 ```
 1. prevRTs = GraphicsDevice.GetRenderTargets()
 2. batcher.End()                        // flush pending outer batch to scene RT
-3. compositor.RenderComposite(entityPos) // sets 32×32/32×46 RT, draws children, ends
+3. compositor.RenderComposite(entityPos) // sets 32×32/32×48 RT, draws children, ends
 4. GraphicsDevice.SetRenderTargets(prevRTs) // restore scene RT
 5. batcher.Begin(BlendState.AlphaBlend, SamplerState.PointClamp, ..., camera.TransformMatrix, ...)
 6. batcher.Draw(compositeSprite, ...)   // queue composite into resumed outer batch

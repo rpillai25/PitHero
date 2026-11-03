@@ -6,7 +6,7 @@ using Nez;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Composites multiple ICompositeLayer layers into a single 32×46 render target at
+    /// Composites multiple ICompositeLayer layers into a single 32×48 render target at
     /// RenderLayerActors. Prevents z-fighting where individual layers could appear on different
     /// sides of world objects.
     ///
@@ -19,7 +19,7 @@ namespace PitHero.ECS.Components
     public class MultiSpriteAnimator : SpriteCompositorBase
     {
         public const int RT_WIDTH  = 32;
-        public const int RT_HEIGHT = 46;
+        public const int RT_HEIGHT = 48;
 
         // Entity world-position maps to RT pixel (16, 39) — sprite top sits flush at RT y=0.
         private static readonly Vector2 RtEntityPivot = new Vector2(RT_WIDTH / 2f, 39f);
@@ -32,10 +32,14 @@ namespace PitHero.ECS.Components
         /// <summary>Layer at <paramref name="index"/>, back to front.</summary>
         public ICompositeLayer GetLayer(int index) => _layers[index];
 
-        /// <param name="layers">Layers in back-to-front draw order.</param>
+        /// <param name="layers">Layers in back-to-front draw order; null entries are skipped.</param>
         public MultiSpriteAnimator(params ICompositeLayer[] layers)
         {
-            _layers = new List<ICompositeLayer>(layers);
+            _layers = new List<ICompositeLayer>(layers.Length);
+            for (int i = 0; i < layers.Length; i++)
+            {
+                if (layers[i] != null) _layers.Add(layers[i]);
+            }
         }
 
         public override void OnAddedToEntity()

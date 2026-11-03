@@ -57,14 +57,13 @@ namespace PitHero.ECS.Components
             // Keep individual animator list for SetColor and any legacy fallback
             _heroAnimators = new List<HeroAnimationComponent>
             {
-                Entity?.GetComponent<HeroHand2AnimationComponent>(),
                 Entity?.GetComponent<HeroBodyAnimationComponent>(),
-                Entity?.GetComponent<HeroPantsAnimationComponent>(),
+                Entity?.GetComponent<HeroArmorAnimationComponent>(),
                 Entity?.GetComponent<HeroShirtAnimationComponent>(),
                 Entity?.GetComponent<HeroHeadAnimationComponent>(),
+                Entity?.GetComponent<HeroEyesBaseAnimationComponent>(),
                 Entity?.GetComponent<HeroEyesAnimationComponent>(),
-                Entity?.GetComponent<HeroHairAnimationComponent>(),
-                Entity?.GetComponent<HeroHand1AnimationComponent>()
+                Entity?.GetComponent<HeroHairAnimationComponent>()
             };
             _heroAnimators.RemoveAll(animator => animator == null);
 

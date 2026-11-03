@@ -1,25 +1,17 @@
 using Microsoft.Xna.Framework;
+using RolePlayingFramework;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Manages hero Shirt layer sprite animations based on movement direction using the Actors.atlas
+    /// Manages the hero clothing layer sprite animations (male Shirt, female Skirt) based on movement
+    /// direction using the Actors.atlas
     /// </summary>
     public class HeroShirtAnimationComponent : HeroAnimationComponent
     {
-        public HeroShirtAnimationComponent(Color color) : base(color)
+        public HeroShirtAnimationComponent(Color color, Gender gender = Gender.Male)
+            : base(color, HeroSpriteNames.Get(gender, HeroLayer.Clothing))
         {
         }
-
-        protected override string DefaultAnimation => "MaleHeroShirtWalkDown";
-        protected override string AnimDown => "MaleHeroShirtWalkDown";
-        protected override string AnimLeft => "MaleHeroShirtWalkRight";   // Flipped in code
-        protected override string AnimRight => "MaleHeroShirtWalkRight";
-        protected override string AnimUp => "MaleHeroShirtWalkUp";
-        protected override string JumpAnimDown => "MaleHeroShirtJumpRight";
-        protected override string JumpAnimLeft => "MaleHeroShirtJumpRight";  // Flipped in code
-        protected override string JumpAnimRight => "MaleHeroShirtJumpRight";
-        protected override string JumpAnimUp => "MaleHeroShirtJumpRight";
-
     }
 }

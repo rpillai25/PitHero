@@ -1022,19 +1022,19 @@ namespace PitHero.AI
         {
             if (mercenaryEntity == null || mercenaryEntity.IsDestroyed) yield break;
 
-            var bodyAnim   = mercenaryEntity.GetComponent<HeroBodyAnimationComponent>();
-            var hand1Anim  = mercenaryEntity.GetComponent<HeroHand1AnimationComponent>();
-            var hand2Anim  = mercenaryEntity.GetComponent<HeroHand2AnimationComponent>();
-            var pantsAnim  = mercenaryEntity.GetComponent<HeroPantsAnimationComponent>();
-            var shirtAnim  = mercenaryEntity.GetComponent<HeroShirtAnimationComponent>();
-            var hairAnim   = mercenaryEntity.GetComponent<HeroHairAnimationComponent>();
-
-            Color origBody  = bodyAnim  != null ? bodyAnim.Color  : Color.White;
-            Color origHand1 = hand1Anim != null ? hand1Anim.Color : Color.White;
-            Color origHand2 = hand2Anim != null ? hand2Anim.Color : Color.White;
-            Color origPants = pantsAnim != null ? pantsAnim.Color : Color.White;
-            Color origShirt = shirtAnim != null ? shirtAnim.Color : Color.White;
-            Color origHair  = hairAnim  != null ? hairAnim.Color  : Color.White;
+            var layers = new HeroAnimationComponent[]
+            {
+                mercenaryEntity.GetComponent<HeroBodyAnimationComponent>(),
+                mercenaryEntity.GetComponent<HeroArmorAnimationComponent>(),
+                mercenaryEntity.GetComponent<HeroShirtAnimationComponent>(),
+                mercenaryEntity.GetComponent<HeroHeadAnimationComponent>(),
+                mercenaryEntity.GetComponent<HeroEyesBaseAnimationComponent>(),
+                mercenaryEntity.GetComponent<HeroEyesAnimationComponent>(),
+                mercenaryEntity.GetComponent<HeroHairAnimationComponent>()
+            };
+            var origColors = new Color[layers.Length];
+            for (int i = 0; i < layers.Length; i++)
+                origColors[i] = layers[i] != null ? layers[i].Color : Color.White;
 
             const float fadeDuration = 0.5f;
             float elapsed = 0f;
@@ -1045,12 +1045,11 @@ namespace PitHero.AI
                 elapsed += Time.DeltaTime;
                 float progress = elapsed < 0f ? 0f : (elapsed > fadeDuration ? 1f : elapsed / fadeDuration);
                 byte alpha = (byte)(255 * (1f - progress));
-                if (bodyAnim  != null) bodyAnim.Color  = new Color(origBody.R,  origBody.G,  origBody.B,  alpha);
-                if (hand1Anim != null) hand1Anim.Color = new Color(origHand1.R, origHand1.G, origHand1.B, alpha);
-                if (hand2Anim != null) hand2Anim.Color = new Color(origHand2.R, origHand2.G, origHand2.B, alpha);
-                if (pantsAnim != null) pantsAnim.Color = new Color(origPants.R, origPants.G, origPants.B, alpha);
-                if (shirtAnim != null) shirtAnim.Color = new Color(origShirt.R, origShirt.G, origShirt.B, alpha);
-                if (hairAnim  != null) hairAnim.Color  = new Color(origHair.R,  origHair.G,  origHair.B,  alpha);
+                for (int i = 0; i < layers.Length; i++)
+                {
+                    if (layers[i] != null)
+                        layers[i].Color = new Color(origColors[i].R, origColors[i].G, origColors[i].B, alpha);
+                }
                 yield return null;
             }
 

@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using RolePlayingFramework;
 
 namespace PitHero.ECS.Components
 {
@@ -7,18 +8,9 @@ namespace PitHero.ECS.Components
     /// </summary>
     public class HeroHeadAnimationComponent : HeroAnimationComponent
     {
-        public HeroHeadAnimationComponent(Color color) : base(color)
+        public HeroHeadAnimationComponent(Color color, Gender gender = Gender.Male)
+            : base(color, HeroSpriteNames.Get(gender, HeroLayer.Head))
         {
         }
-
-        protected override string DefaultAnimation => "MaleHeroHeadWalkDown";
-        protected override string AnimDown => "MaleHeroHeadWalkDown";
-        protected override string AnimLeft => "MaleHeroHeadWalkRight";   // Flipped in code
-        protected override string AnimRight => "MaleHeroHeadWalkRight";
-        protected override string AnimUp => "MaleHeroHeadWalkUp";
-        protected override string JumpAnimDown => "MaleHeroHeadJumpRight";
-        protected override string JumpAnimLeft => "MaleHeroHeadJumpRight";  // Flipped in code
-        protected override string JumpAnimRight => "MaleHeroHeadJumpRight";
-        protected override string JumpAnimUp => "MaleHeroHeadJumpRight";
     }
 }

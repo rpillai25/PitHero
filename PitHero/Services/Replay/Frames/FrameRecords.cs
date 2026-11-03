@@ -96,7 +96,7 @@ namespace PitHero.Services.Replay.Frames
         /// <summary>Battle monsters the record carries; a hero can be attacked from at most its eight neighbouring tiles.</summary>
         public const int MaxMonsters = 8;
 
-        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 3 * 2 + 3 * 4 + 1 + MaxMonsters * HudMonster.Size;
+        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 4 * 2 + 4 * 4 + 1 + MaxMonsters * HudMonster.Size;
 
         /// <summary>How many of the monster slots are in use (0 outside a battle).</summary>
         public byte MonsterCount;
@@ -144,16 +144,16 @@ namespace PitHero.Services.Replay.Frames
         public int PitLevel, PitTier;
         public float InGameSeconds;
         public bool Paused;
-        /// <summary>Sprite ids of the portrait layers (walk-down frame 0), 0 when the hero has no such layer on screen.</summary>
-        public ushort PortraitHead, PortraitEyes, PortraitHair;
+        /// <summary>Sprite ids of the portrait layers (move-down frame 0), 0 when the hero has no such layer on screen.</summary>
+        public ushort PortraitHead, PortraitEyesBase, PortraitEyes, PortraitHair;
         /// <summary>Packed tints of the portrait layers.</summary>
-        public uint PortraitHeadColor, PortraitEyesColor, PortraitHairColor;
+        public uint PortraitHeadColor, PortraitEyesBaseColor, PortraitEyesColor, PortraitHairColor;
 
         public bool Equals(HudRecord o)
             => Hero.Equals(o.Hero) && Merc1.Equals(o.Merc1) && Merc2.Equals(o.Merc2) && Gold == o.Gold
                && PitLevel == o.PitLevel && PitTier == o.PitTier && InGameSeconds == o.InGameSeconds && Paused == o.Paused
-               && PortraitHead == o.PortraitHead && PortraitEyes == o.PortraitEyes && PortraitHair == o.PortraitHair
-               && PortraitHeadColor == o.PortraitHeadColor && PortraitEyesColor == o.PortraitEyesColor && PortraitHairColor == o.PortraitHairColor
+               && PortraitHead == o.PortraitHead && PortraitEyesBase == o.PortraitEyesBase && PortraitEyes == o.PortraitEyes && PortraitHair == o.PortraitHair
+               && PortraitHeadColor == o.PortraitHeadColor && PortraitEyesBaseColor == o.PortraitEyesBaseColor && PortraitEyesColor == o.PortraitEyesColor && PortraitHairColor == o.PortraitHairColor
                && MonstersEqual(in o);
         public override bool Equals(object obj) => obj is HudRecord r && Equals(r);
         public override int GetHashCode() => Hero.GetHashCode() ^ (int)Gold ^ (PitLevel << 4) ^ InGameSeconds.GetHashCode();
@@ -169,9 +169,11 @@ namespace PitHero.Services.Replay.Frames
             w.WriteF32(InGameSeconds);
             w.WriteU8(Paused ? (byte)1 : (byte)0);
             w.WriteU16(PortraitHead);
+            w.WriteU16(PortraitEyesBase);
             w.WriteU16(PortraitEyes);
             w.WriteU16(PortraitHair);
             w.WriteU32(PortraitHeadColor);
+            w.WriteU32(PortraitEyesBaseColor);
             w.WriteU32(PortraitEyesColor);
             w.WriteU32(PortraitHairColor);
             w.WriteU8(MonsterCount);
@@ -191,9 +193,11 @@ namespace PitHero.Services.Replay.Frames
             h.InGameSeconds = r.ReadF32();
             h.Paused = r.ReadU8() != 0;
             h.PortraitHead = r.ReadU16();
+            h.PortraitEyesBase = r.ReadU16();
             h.PortraitEyes = r.ReadU16();
             h.PortraitHair = r.ReadU16();
             h.PortraitHeadColor = r.ReadU32();
+            h.PortraitEyesBaseColor = r.ReadU32();
             h.PortraitEyesColor = r.ReadU32();
             h.PortraitHairColor = r.ReadU32();
             h.MonsterCount = r.ReadU8();
