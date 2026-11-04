@@ -33,5 +33,22 @@ namespace PitHero.Artifacts
                 ? GameConfig.HermesBootsWorkerMoveSpeedMultiplier
                 : 1f;
         }
+
+        /// <summary>
+        /// Tiles a worker waters per can-full (issue #450): the best owned watering can wins
+        /// (Platinum over Gold over Silver), the cans never stack; the plain can without one.
+        /// </summary>
+        public static int GetWateringCanCapacity(GameStateService gameState)
+        {
+            if (gameState == null)
+                return GameConfig.WateringCanMaxCharges;
+            if (gameState.OwnsLocalArtifact(ArtifactType.PlatinumWateringCan))
+                return GameConfig.PlatinumWateringCanCharges;
+            if (gameState.OwnsLocalArtifact(ArtifactType.GoldWateringCan))
+                return GameConfig.GoldWateringCanCharges;
+            if (gameState.OwnsLocalArtifact(ArtifactType.SilverWateringCan))
+                return GameConfig.SilverWateringCanCharges;
+            return GameConfig.WateringCanMaxCharges;
+        }
     }
 }

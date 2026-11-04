@@ -506,7 +506,86 @@ namespace PitHero.Services
             // Destroy candidates must be known first: ValidateWater skips crops about to be swap-destroyed.
             PopulateDestroyQueue();
             PopulateWaterQueue();
-            return TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action);
+
+            var gameState = GetService<GameStateService>();
+            var cropGrowth = GetService<CropGrowthService>();
+            if (gameState == null || cropGrowth == null)
+                return TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action);
+
+            // Crop watering priority (issue #450): drop the stale entries first (the same checks
+            // TryClaimFromQueue makes), then claim among the crops of the best-ranked type only.
+            // queuePick still spreads workers across that subset, so they do not cluster.
+            for (int i = _waterQueue.Count - 1; i >= 0; i--)
+            {
+                var tile = _waterQueue[i].TargetTile;
+                if (!_waterTracked.Contains(tile))
+                {
+                    _waterQueue.RemoveAt(i);
+                    continue;
+                }
+                if (_buildingService.IsTileOccupied(tile.X, tile.Y) || !ValidateWater(tile))
+                {
+                    _waterQueue.RemoveAt(i);
+                    _waterTracked.Remove(tile);
+                }
+            }
+
+            int count = _waterQueue.Count;
+            if (count == 0)
+            {
+                action = default;
+                return false;
+            }
+            if (_waterRankScratch.Length < count)
+                _waterRankScratch = new int[count * 2];
+            for (int i = 0; i < count; i++)
+            {
+                var crop = cropGrowth.GetCropType(_waterQueue[i].TargetTile);
+                _waterRankScratch[i] = crop.HasValue ? gameState.GetWateringRank(crop.Value) : int.MaxValue;
+            }
+
+            int index = SelectBestRankedIndex(_waterRankScratch, count, queuePick);
+            action = _waterQueue[index];
+            _waterQueue.RemoveAt(index);
+            return true;
+        }
+
+        // Per-claim scratch of water-queue ranks; grown (rarely) instead of allocated per claim.
+        private int[] _waterRankScratch = new int[64];
+
+        /// <summary>
+        /// Picks a queue index among the entries holding the lowest rank (0 = highest priority):
+        /// queuePick (0-1) chooses which of those, by its position among them, so each worker keeps
+        /// to its own part of the field. Returns -1 for an empty range. Pure; unit-tested.
+        /// </summary>
+        public static int SelectBestRankedIndex(int[] ranks, int count, float queuePick)
+        {
+            if (ranks == null || count <= 0)
+                return -1;
+            int best = int.MaxValue;
+            int matches = 0;
+            for (int i = 0; i < count; i++)
+            {
+                if (ranks[i] < best)
+                {
+                    best = ranks[i];
+                    matches = 1;
+                }
+                else if (ranks[i] == best)
+                {
+                    matches++;
+                }
+            }
+            int target = matches == 1 ? 0 : (int)(queuePick * (matches - 1) + 0.5f);
+            for (int i = 0; i < count; i++)
+            {
+                if (ranks[i] != best)
+                    continue;
+                if (target == 0)
+                    return i;
+                target--;
+            }
+            return -1;
         }
 
         /// <summary>

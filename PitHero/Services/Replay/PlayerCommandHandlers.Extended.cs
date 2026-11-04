@@ -259,6 +259,15 @@ namespace PitHero.Services.Replay
                     Services?.GetService<FarmTaskCoordinator>()?.SetPriorityOrder(cmd.A, cmd.B, cmd.C, cmd.D);
                     return true;
                 }
+                case PlayerCommandType.SwapWateringPriority:
+                {
+                    // Names the two crops, never list positions, so the result does not depend on
+                    // which crops were unlocked (visible) when the player clicked. SwapWateringPriority
+                    // ignores an unknown or identical pair.
+                    Services?.GetService<GameStateService>()?.SwapWateringPriority(
+                        (PitHero.Farming.CropType)cmd.A, (PitHero.Farming.CropType)cmd.B);
+                    return true;
+                }
 
                 // ── Inventory / shop ─────────────────────────────────────────────────
                 case PlayerCommandType.SwapSlots:

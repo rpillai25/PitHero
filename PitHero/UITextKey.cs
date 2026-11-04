@@ -99,6 +99,7 @@ namespace PitHero
         public const string BuildingDescCropStorage = "BuildingDescCropStorage";
         public const string WindowBuildings = "WindowBuildings";
         public const string WindowSeeds = "WindowSeeds";
+        public const string WindowWateringPriority = "WindowWateringPriority";
         public const string WindowHarvestedCrops = "WindowHarvestedCrops";
         public const string ButtonBuild = "ButtonBuild";
         public const string BuildingCostFormat = "BuildingCostFormat";
@@ -406,6 +407,12 @@ namespace PitHero
         public const string ArtifactLightningGrowFertilizerDesc = "ArtifactLightningGrowFertilizerDesc";
         public const string ArtifactHermesBootsName = "ArtifactHermesBootsName";
         public const string ArtifactHermesBootsDesc = "ArtifactHermesBootsDesc";
+        public const string ArtifactSilverWateringCanName = "ArtifactSilverWateringCanName";
+        public const string ArtifactSilverWateringCanDesc = "ArtifactSilverWateringCanDesc";
+        public const string ArtifactGoldWateringCanName = "ArtifactGoldWateringCanName";
+        public const string ArtifactGoldWateringCanDesc = "ArtifactGoldWateringCanDesc";
+        public const string ArtifactPlatinumWateringCanName = "ArtifactPlatinumWateringCanName";
+        public const string ArtifactPlatinumWateringCanDesc = "ArtifactPlatinumWateringCanDesc";
         public const string ArtifactScopeGlobal = "ArtifactScopeGlobal";
         public const string ArtifactScopeLocal = "ArtifactScopeLocal";
         public const string ArtifactScopeGlobalTooltip = "ArtifactScopeGlobalTooltip";

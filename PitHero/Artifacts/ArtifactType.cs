@@ -24,6 +24,15 @@ namespace PitHero.Artifacts
 
         /// <summary>Local: farm and kitchen workers move twice as fast.</summary>
         HermesBoots = 5,
+
+        /// <summary>Local: watering cans hold 6 charges (issue #450).</summary>
+        SilverWateringCan = 6,
+
+        /// <summary>Local: watering cans hold 12 charges. Requires the Silver Watering Can first.</summary>
+        GoldWateringCan = 7,
+
+        /// <summary>Local: watering cans hold 24 charges. Requires the Gold Watering Can first.</summary>
+        PlatinumWateringCan = 8,
     }
 
     /// <summary>
@@ -40,7 +49,7 @@ namespace PitHero.Artifacts
     public static class ArtifactCatalog
     {
         /// <summary>Number of artifact kinds (the enum is dense from 0; retired ordinals count).</summary>
-        public const int Count = 6;
+        public const int Count = 9;
 
         /// <summary>
         /// True for an artifact that no longer exists in the game but whose ordinal is reserved because
@@ -62,6 +71,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.FastGrowFertilizer: return "FastGrowFertilizer";
                 case ArtifactType.LightningGrowFertilizer: return "LightningGrowFertilizer";
                 case ArtifactType.HermesBoots: return "HermesBoots";
+                case ArtifactType.SilverWateringCan: return "SilverWateringCan";
+                case ArtifactType.GoldWateringCan: return "GoldWateringCan";
+                case ArtifactType.PlatinumWateringCan: return "PlatinumWateringCan";
                 default: return string.Empty;
             }
         }
@@ -76,6 +88,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.FastGrowFertilizer: return UITextKey.ArtifactFastGrowFertilizerName;
                 case ArtifactType.LightningGrowFertilizer: return UITextKey.ArtifactLightningGrowFertilizerName;
                 case ArtifactType.HermesBoots: return UITextKey.ArtifactHermesBootsName;
+                case ArtifactType.SilverWateringCan: return UITextKey.ArtifactSilverWateringCanName;
+                case ArtifactType.GoldWateringCan: return UITextKey.ArtifactGoldWateringCanName;
+                case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanName;
                 default: return string.Empty;
             }
         }
@@ -90,6 +105,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.FastGrowFertilizer: return UITextKey.ArtifactFastGrowFertilizerDesc;
                 case ArtifactType.LightningGrowFertilizer: return UITextKey.ArtifactLightningGrowFertilizerDesc;
                 case ArtifactType.HermesBoots: return UITextKey.ArtifactHermesBootsDesc;
+                case ArtifactType.SilverWateringCan: return UITextKey.ArtifactSilverWateringCanDesc;
+                case ArtifactType.GoldWateringCan: return UITextKey.ArtifactGoldWateringCanDesc;
+                case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanDesc;
                 default: return string.Empty;
             }
         }
@@ -117,6 +135,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.FastGrowFertilizer: return GameConfig.ArtifactFastGrowFertilizerPrice;
                 case ArtifactType.LightningGrowFertilizer: return GameConfig.ArtifactLightningGrowFertilizerPrice;
                 case ArtifactType.HermesBoots: return GameConfig.ArtifactHermesBootsPrice;
+                case ArtifactType.SilverWateringCan: return GameConfig.ArtifactSilverWateringCanPrice;
+                case ArtifactType.GoldWateringCan: return GameConfig.ArtifactGoldWateringCanPrice;
+                case ArtifactType.PlatinumWateringCan: return GameConfig.ArtifactPlatinumWateringCanPrice;
                 default: return 0;
             }
         }
@@ -129,6 +150,9 @@ namespace PitHero.Artifacts
                 case ArtifactType.FastGrowFertilizer:
                 case ArtifactType.LightningGrowFertilizer:
                 case ArtifactType.HermesBoots:
+                case ArtifactType.SilverWateringCan:
+                case ArtifactType.GoldWateringCan:
+                case ArtifactType.PlatinumWateringCan:
                     return ArtifactScope.Local;
                 default:
                     return ArtifactScope.Global;
@@ -149,6 +173,12 @@ namespace PitHero.Artifacts
         private static readonly ArtifactType[] LightningPrerequisites =
             { ArtifactType.FastGrowFertilizer };
 
+        private static readonly ArtifactType[] GoldCanPrerequisites =
+            { ArtifactType.SilverWateringCan };
+
+        private static readonly ArtifactType[] PlatinumCanPrerequisites =
+            { ArtifactType.GoldWateringCan };
+
         /// <summary>
         /// Every artifact that must be owned before this one is offered, or an empty array. The
         /// timepiece is the capstone: hurrying time along comes before changing it. The lightning
@@ -160,6 +190,8 @@ namespace PitHero.Artifacts
             {
                 case ArtifactType.ChronosTimepiece: return TimepiecePrerequisites;
                 case ArtifactType.LightningGrowFertilizer: return LightningPrerequisites;
+                case ArtifactType.GoldWateringCan: return GoldCanPrerequisites;
+                case ArtifactType.PlatinumWateringCan: return PlatinumCanPrerequisites;
                 default: return NoPrerequisites;
             }
         }
@@ -174,6 +206,8 @@ namespace PitHero.Artifacts
             switch (type)
             {
                 case ArtifactType.FastGrowFertilizer: return ArtifactType.LightningGrowFertilizer;
+                case ArtifactType.SilverWateringCan: return ArtifactType.GoldWateringCan;
+                case ArtifactType.GoldWateringCan: return ArtifactType.PlatinumWateringCan;
                 default: return null;
             }
         }

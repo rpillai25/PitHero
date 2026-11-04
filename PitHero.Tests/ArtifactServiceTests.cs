@@ -163,7 +163,17 @@ namespace PitHero.Tests
         [TestMethod]
         public void Catalog_ScopesAndPrices()
         {
-            Assert.AreEqual(6, ArtifactCatalog.Count, "The retired Sphere keeps its ordinal; the enum is never renumbered");
+            Assert.AreEqual(9, ArtifactCatalog.Count, "The retired Sphere keeps its ordinal; the enum is never renumbered");
+            Assert.AreEqual(6, (int)ArtifactType.SilverWateringCan, "Persisted ordinals are append-only");
+            Assert.AreEqual(7, (int)ArtifactType.GoldWateringCan);
+            Assert.AreEqual(8, (int)ArtifactType.PlatinumWateringCan);
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.SilverWateringCan));
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.GoldWateringCan));
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.PlatinumWateringCan));
+            Assert.AreEqual("PlatinumWateringCan", ArtifactCatalog.GetSpriteName(ArtifactType.PlatinumWateringCan));
+            Assert.AreEqual(50000, ArtifactCatalog.GetPrice(ArtifactType.SilverWateringCan));
+            Assert.AreEqual(200000, ArtifactCatalog.GetPrice(ArtifactType.GoldWateringCan));
+            Assert.AreEqual(500000, ArtifactCatalog.GetPrice(ArtifactType.PlatinumWateringCan));
             Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.ChronosTimepiece));
             Assert.AreEqual(ArtifactScope.Global, ArtifactCatalog.GetScope(ArtifactType.KairosMetronome));
             Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.FastGrowFertilizer));
@@ -175,6 +185,37 @@ namespace PitHero.Tests
             Assert.AreEqual("FastGrowFertilizer", ArtifactCatalog.GetSpriteName(ArtifactType.FastGrowFertilizer));
             Assert.AreEqual("LightningGrowFertilizer", ArtifactCatalog.GetSpriteName(ArtifactType.LightningGrowFertilizer));
             Assert.AreEqual("HermesBoots", ArtifactCatalog.GetSpriteName(ArtifactType.HermesBoots));
+        }
+
+        [TestMethod]
+        public void WateringCans_ChainSilverGoldPlatinum_AndSupersede()
+        {
+            var dir = NewTempDir();
+            try
+            {
+                var service = new ArtifactService(dir, "system.bin");
+                service.AttachLocalStore(new GameStateService());
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.SilverWateringCan));
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.GoldWateringCan), "Gold needs the silver can first");
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.PlatinumWateringCan), "Platinum needs the gold can first");
+
+                service.Grant(ArtifactType.SilverWateringCan);
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.GoldWateringCan));
+                Assert.IsFalse(service.IsAvailableInShop(ArtifactType.PlatinumWateringCan));
+
+                service.Grant(ArtifactType.GoldWateringCan);
+                Assert.IsTrue(service.IsAvailableInShop(ArtifactType.PlatinumWateringCan));
+                Assert.IsTrue(service.IsSuperseded(ArtifactType.SilverWateringCan), "Gold supersedes silver in the owned grid");
+
+                service.Grant(ArtifactType.PlatinumWateringCan);
+                Assert.IsTrue(service.IsSuperseded(ArtifactType.GoldWateringCan), "Platinum supersedes gold");
+                Assert.IsFalse(service.IsSuperseded(ArtifactType.PlatinumWateringCan));
+                service.Detach();
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
 
         [TestMethod]

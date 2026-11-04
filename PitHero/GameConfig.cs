@@ -29,6 +29,8 @@ namespace PitHero
         // UI layout budget (all UI windows fit themselves to Stage.GetHeight() at show time)
         /// <summary>Gap kept between a stage-fitted window and the top/bottom stage edges.</summary>
         public const float UIStageMargin = 4f;
+        public const float WateringPriorityIconSize = 16f;   // Crop sprite cell in the Watering Priority list (issue #450)
+        public const float WateringPriorityPanelGap = 4f;    // Stage pixels between the Seeds window and the Watering Priority card
         /// <summary>Gap between a top-bar button and the window opened beneath it.</summary>
         public const float UIWindowBelowBarGap = 4f;
         /// <summary>Gap (before UI scale) between the shortcut grid and the Party window's left-docked elements while the inventory is open.</summary>
@@ -236,7 +238,7 @@ namespace PitHero
         public const int WetZeroTileIndex = 154;         // GIDs 154-169 are the 16 wet-tile bitmask variants
         public const float WaterBaseDurationSeconds = 3f;  // watering time at FarmingProficiency 1
         public const float PlantBaseDurationSeconds = 2f;  // planting time at FarmingProficiency 1
-        public const int WateringCanMaxCharges = 3;         // tiles watered per can-full before refill
+        public const int WateringCanMaxCharges = 3;         // tiles watered per can-full before refill (plain can; the watering-can artifacts raise it, LocalArtifactEffects.GetWateringCanCapacity)
         public const float WateringCanFillDurationSeconds = 1f; // seconds to display can while filling at pond
         public const int FarmMinTillTileX = 120;         // tiles at x >= this can be marked for tilling
         public const int FarmMinTillTileY = 1;           // tiles at y >= this can be marked for tilling
@@ -783,7 +785,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 7;                        // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer
+        public const int ReplayFrameFormatVersion = 8;                        // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed
         // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
         // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
         // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
@@ -804,7 +806,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, and Time Travel Here asks for confirmation.
-        public const int SimulationVersion = 10; // v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll; v10: mercenary eye color roll
+        public const int SimulationVersion = 11; // v11: #450 watering-can artifacts raise can capacity, water claims follow the crop watering priority; v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll; v10: mercenary eye color roll
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge
@@ -827,6 +829,12 @@ namespace PitHero
         public const int ArtifactFastGrowFertilizerPrice = 250000;       // Gold; crops grow 2x
         public const int ArtifactLightningGrowFertilizerPrice = 1000000; // Gold; crops grow 3x (requires the fast fertilizer first)
         public const int ArtifactHermesBootsPrice = 500000;              // Gold; workers move 2x
+        public const int ArtifactSilverWateringCanPrice = 50000;         // Gold; cans hold SilverWateringCanCharges (issue #450)
+        public const int ArtifactGoldWateringCanPrice = 200000;          // Gold; requires the silver can first
+        public const int ArtifactPlatinumWateringCanPrice = 500000;      // Gold; requires the gold can first
+        public const int SilverWateringCanCharges = 6;                   // Tiles watered per can-full; the best owned can wins, the cans never stack
+        public const int GoldWateringCanCharges = 12;
+        public const int PlatinumWateringCanCharges = 24;
         public const float FastGrowFertilizerCropGrowthMultiplier = 2f;
         public const float LightningGrowFertilizerCropGrowthMultiplier = 3f; // Wins over the fast fertilizer; the two never stack
         public const float HermesBootsWorkerMoveSpeedMultiplier = 2f;    // Every FarmMonsterMover (farm + kitchen staff); stacks with the runner sprint

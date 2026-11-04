@@ -281,7 +281,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 40; // v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
+        public const int CurrentVersion = 41; // v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -560,6 +560,10 @@ namespace PitHero.Services
 
         /// <summary>The player's farm claim order as FarmPriorityKind ordinals. Always a permutation of 0..3.</summary>
         public int[] FarmPriorityOrder = DefaultFarmPriorityOrder();
+
+        // Crop watering priority (v41, issue #450)
+        /// <summary>CropType ordinals in watering order, highest priority first. Always a permutation of every crop.</summary>
+        public int[] WateringPriorityOrder = GameStateService.DefaultWateringPriorityOrder();
 
         /// <summary>True when values is a permutation of 0..FarmPriorityCount-1 (a usable claim order).</summary>
         public static bool IsFarmPriorityPermutation(int[] values)
@@ -1234,6 +1238,9 @@ namespace PitHero.Services
             WriteColor(writer, EyeColor);
             for (int i = 0; i < HiredMercenaries.Count; i++)
                 WriteColor(writer, HiredMercenaries[i].EyeColor);
+
+            // 55. Crop watering priority (v41, issue #450): CropType ordinals, highest priority first
+            WriteIntArray(writer, WateringPriorityOrder);
         }
 
         /// <summary>
@@ -1981,6 +1988,20 @@ namespace PitHero.Services
                 var merc = HiredMercenaries[i];
                 merc.EyeColor = fileVersion >= 40 ? ReadColor(reader) : GameConfig.DefaultEyeColor;
                 HiredMercenaries[i] = merc;
+            }
+
+            // 55. Crop watering priority (section added in v41, issue #450). Older files water the
+            // highest tier first, the default. A corrupt order (not a full permutation; a build with
+            // more crops wrote it) also falls back rather than reaching the claim loop.
+            if (fileVersion >= 41)
+            {
+                WateringPriorityOrder = ReadIntArray(reader, Farming.CropTypeInfo.Count);
+                if (!GameStateService.IsWateringPriorityPermutation(WateringPriorityOrder))
+                    WateringPriorityOrder = GameStateService.DefaultWateringPriorityOrder();
+            }
+            else
+            {
+                WateringPriorityOrder = GameStateService.DefaultWateringPriorityOrder();
             }
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
