@@ -572,7 +572,7 @@ artifacts rewind with the save, so charging for them is safe.
   grant, a load or a New Game refreshes every version-cached UI (Party tab, shop rows) for free.
 - **Shop:** Second Chance → Artifacts tab lists what `IsAvailableInShop` allows (not owned, every
   prerequisite owned); rows disappear once granted. Clicking a slot opens `ArtifactInfoDialog` — title,
-  a **Global / Local** line, sprite, description — with a Grant (Global) or Buy (Local) button that
+  a **Global / Local** line, sprite, description — with a Show (Global: proof of gold) or Buy (Local) button that
   acts at once, grayed and dead when the hero cannot show that much gold.
 - **Party → Artifacts tab:** a fixed `ArtifactGridColumns` x `ArtifactGridRows` grid: the player's
   Global artifacts, then this hero's Local ones; clicking one opens the same card without the button.

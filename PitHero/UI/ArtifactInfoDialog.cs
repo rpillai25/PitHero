@@ -7,7 +7,7 @@ namespace PitHero.UI
 {
     /// <summary>
     /// The artifact card: the artifact's name (title), its Global/Local scope, sprite and description.
-    /// From the Party tab it closes with OK; from the shop it also offers a Grant (Global) or Buy (Local)
+    /// From the Party tab it closes with OK; from the shop it also offers a Show (Global, proof of gold) or Buy (Local)
     /// button that hands the purchase back to the caller. Registered as a UI prompt so outside-click
     /// dismissal of the parent window waits for it.
     /// </summary>
@@ -34,7 +34,7 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Builds the card. When <paramref name="grantPrice"/> is set a Grant (Global) or Buy (Local)
+        /// Builds the card. When <paramref name="grantPrice"/> is set a Show (Global, proof of gold) or Buy (Local)
         /// button is shown and <paramref name="onGrant"/> runs (after the card closes) when it is
         /// clicked; with <paramref name="canAfford"/> false the button is grayed and dead. For a Global
         /// artifact the price is the wealth the player must show, for a Local one it is the cost.

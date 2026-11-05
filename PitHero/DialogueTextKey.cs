@@ -81,7 +81,7 @@ namespace PitHero
         public const string SecondChanceInterestedWares   = "SecondChanceInterestedWares";
         public const string SecondChanceBuyBackSomething  = "SecondChanceBuyBackSomething";
         public const string SecondChanceMissSomething     = "SecondChanceMissSomething";
-        public const string SecondChanceProveWealth       = "SecondChanceProveWealth";
+        public const string SecondChanceArtifacts         = "SecondChanceArtifacts";
 
         // Issue #392 — lunch and dinner auto-dine dialogue
         public const string HeroLunchTime                 = "HeroLunchTime";

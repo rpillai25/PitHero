@@ -419,7 +419,6 @@ namespace PitHero
         public const string ArtifactScopeLocalTooltip = "ArtifactScopeLocalTooltip";
         public const string ArtifactBuyButtonFormat = "ArtifactBuyButtonFormat";
         public const string ArtifactGrantButtonFormat = "ArtifactGrantButtonFormat";
-        public const string ArtifactShopHeader = "ArtifactShopHeader";
         public const string ArtifactPriceFormat = "ArtifactPriceFormat";
         public const string ArtifactShopEmpty = "ArtifactShopEmpty";
         public const string SecondChanceOwnedCount = "SecondChanceOwnedCount";
