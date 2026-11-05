@@ -29,6 +29,21 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void WateringCan_BestOwnedCanWins_NeverStacks()
+        {
+            var state = new GameStateService();
+            Assert.AreEqual(GameConfig.WateringCanMaxCharges, LocalArtifactEffects.GetWateringCanCapacity(state));
+            Assert.AreEqual(GameConfig.WateringCanMaxCharges, LocalArtifactEffects.GetWateringCanCapacity(null), "No state means the plain can");
+
+            state.GrantLocalArtifact(ArtifactType.SilverWateringCan);
+            Assert.AreEqual(6, LocalArtifactEffects.GetWateringCanCapacity(state));
+            state.GrantLocalArtifact(ArtifactType.GoldWateringCan);
+            Assert.AreEqual(12, LocalArtifactEffects.GetWateringCanCapacity(state));
+            state.GrantLocalArtifact(ArtifactType.PlatinumWateringCan);
+            Assert.AreEqual(24, LocalArtifactEffects.GetWateringCanCapacity(state), "Owning all three gives 24, not 42");
+        }
+
+        [TestMethod]
         public void WorkerSpeed_HermesBoots_Doubles()
         {
             var state = new GameStateService();

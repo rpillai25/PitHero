@@ -114,6 +114,11 @@ namespace PitHero.Services.Replay
         SetFarmMonstersDecide = 124,     // A = 0/1 (1 = the game picks the order, the default)
         SetFarmPriorityOrder = 125,      // A,B,C,D = FarmPriorityKind ordinals in claim order
 
+        // Crop watering priority (Watering Priority dialog beside Seeds, issue #450). A swap of two
+        // crops rather than the whole order: 13 crops do not fit A..D, and the Up/Down buttons only
+        // ever exchange a crop with its visible neighbour.
+        SwapWateringPriority = 126,      // A, B = CropType ordinals to exchange in the watering order
+
         // Debug
         DebugQueuePitLevel = 200,    // A = level
     }

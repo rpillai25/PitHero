@@ -60,6 +60,8 @@ namespace PitHero.Services
             if (gained == 0)
                 return;
 
+            PromoteUnlockedInWateringOrder(gameState, gained);
+
             var events = Core.Services?.GetService<GameEventService>();
             for (int i = 0; i < CropTypeInfo.Count; i++)
             {
@@ -69,6 +71,23 @@ namespace PitHero.Services
                 AnalyticsService.LogCropUnlocked(unlocked.ToString());
                 events?.EmitLocalized(EventPriority.High, UITextKey.ConsoleCropUnlocked,
                     (events.LocalizeUI(CropConfig.GetDisplayNameKey(unlocked)), UnlockColor));
+            }
+        }
+
+        /// <summary>
+        /// A newly unlocked crop jumps to the top of the watering order (issue #450): later crops are
+        /// normally worth the most. Crops that unlock together are promoted in progression order, so
+        /// the later one ends on top — the same order the default list gives them.
+        /// </summary>
+        public static void PromoteUnlockedInWateringOrder(GameStateService gameState, int gainedMask)
+        {
+            if (gameState == null || gainedMask == 0)
+                return;
+            var progression = CropUnlockConfig.ProgressionOrder;
+            for (int i = 0; i < progression.Length; i++)
+            {
+                if ((gainedMask & (1 << (int)progression[i])) != 0)
+                    gameState.PromoteWateringPriority(progression[i]);
             }
         }
     }

@@ -13,13 +13,22 @@ namespace PitHero.UI
         private readonly Skin _skin;
         private bool _grayed;
 
+        private readonly Func<T, bool, Element> _createItemElement;
+
         public Action<int, int, T> OnReordered;
 
-        public ReorderableTableList(Skin skin, List<T> items, Action<int, int, T> onReordered = null)
+        /// <summary>
+        /// Creates the list. <paramref name="createItemElement"/> optionally builds each row's item
+        /// cell (given the item and whether the list is grayed); without it the row shows the item's
+        /// ToString() as a label.
+        /// </summary>
+        public ReorderableTableList(Skin skin, List<T> items, Action<int, int, T> onReordered = null,
+            Func<T, bool, Element> createItemElement = null)
         {
             _skin = skin;
             _items = items;
             OnReordered = onReordered;
+            _createItemElement = createItemElement;
             Top().Left();
             Build();
         }
@@ -63,7 +72,9 @@ namespace PitHero.UI
             var num = new Label((index + 1).ToString(), _skin, styleName);
 
             // Item text
-            var txt = new Label(item?.ToString() ?? string.Empty, _skin, styleName);
+            Element txt = _createItemElement != null
+                ? _createItemElement(item, _grayed)
+                : new Label(item?.ToString() ?? string.Empty, _skin, styleName);
 
             // Up button
             var upButton = new TextButton("Up", _skin, styleName);

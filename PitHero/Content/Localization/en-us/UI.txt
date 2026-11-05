@@ -85,6 +85,7 @@ BuildingDescMonsterHouse,Houses 16 monsters
 BuildingDescCropStorage,Holds 32 stacks of crops
 WindowBuildings,Buildings
 WindowSeeds,Seeds
+WindowWateringPriority,Watering Priority
 WindowHarvestedCrops,Harvested Crops
 ButtonBuild,Build
 BuildingCostFormat,Cost {0} G
@@ -289,13 +290,18 @@ ArtifactLightningGrowFertilizerName,Lightning Grow Fertilizer
 ArtifactLightningGrowFertilizerDesc,Crops grow three times as fast with this legendary fertilizer
 ArtifactHermesBootsName,Hermes Boots
 ArtifactHermesBootsDesc,Boots worn by Hermes. Workers move twice as fast.
+ArtifactSilverWateringCanName,Silver Watering Can
+ArtifactSilverWateringCanDesc,A sturdy silver can. Workers water 6 crops before refilling.
+ArtifactGoldWateringCanName,Gold Watering Can
+ArtifactGoldWateringCanDesc,A gleaming gold can. Workers water 12 crops before refilling.
+ArtifactPlatinumWateringCanName,Platinum Watering Can
+ArtifactPlatinumWateringCanDesc,A flawless platinum can. Workers water 24 crops before refilling.
 ArtifactScopeGlobal,Global
 ArtifactScopeLocal,Local
 ArtifactScopeGlobalTooltip,Affects all hero sessions
 ArtifactScopeLocalTooltip,Affects current hero session
 ArtifactBuyButtonFormat,Buy ({0}G)
-ArtifactGrantButtonFormat,Grant ({0}G)
-ArtifactShopHeader,Show proof of gold to be granted an artifact
+ArtifactGrantButtonFormat,Show ({0}G)
 ArtifactPriceFormat,{0}G
 ArtifactShopEmpty,No artifacts are for sale right now.
 SecondChanceBuyPrompt,Buy for {0} gold?

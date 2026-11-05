@@ -153,6 +153,7 @@ namespace PitHero.UI
                 gameState.HeroId = GameStateService.GenerateHeroId(); // a new hero: new identity for saves and replays
                 gameState.ClearLocalArtifacts(); // Local artifacts belong to the previous hero (issue #411)
                 gameState.ClearProgressCounters(); // Crop unlocks and farm stats restart with the new hero (issue #413)
+                gameState.ResetWateringPriority(); // The watering order restarts at the default with the new hero (issue #450)
             }
             var heroCreationScene = new HeroCreationScene(mapPath);
             Core.Scene = heroCreationScene;

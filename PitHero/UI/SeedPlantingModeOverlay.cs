@@ -44,6 +44,7 @@ namespace PitHero.UI
 
         // ── Inventory window ──────────────────────────────────────────────────────
         private Window _inventoryWindow;
+        private WateringPriorityPanel _wateringPanel;
 
         // ── Drag-tracking ─────────────────────────────────────────────────────────
         private static readonly Point NoTile = new Point(int.MinValue, int.MinValue);
@@ -116,6 +117,7 @@ namespace PitHero.UI
             DestroyTileIndicator();
             HideStackCountLabel();
             _inventoryWindow?.SetVisible(false);
+            _wateringPanel?.HidePanel();
             _state = PlacementState.Choosing;
             _lastDragTile = NoTile;
         }
@@ -156,6 +158,9 @@ namespace PitHero.UI
         /// <summary>Per-frame update; runs during Placing and Removing states.</summary>
         public void Update()
         {
+            // A swap applies on the next sim step, and a crop may unlock while the card is open
+            _wateringPanel?.RefreshIfChanged();
+
             if (_state != PlacementState.Placing && _state != PlacementState.Removing)
                 return;
 
@@ -394,6 +399,10 @@ namespace PitHero.UI
             _inventoryWindow.SetVisible(false);
             _stage.AddElement(_inventoryWindow);
 
+            // Watering Priority card (issue #450), docked to the right of the Seeds window
+            _wateringPanel = new WateringPriorityPanel(skin, _stage, _cropsAtlas);
+            _stage.AddElement(_wateringPanel);
+
             // Create the stage-space stack count label used during placing
             _stackCountLabel = new Label("", new LabelStyle { Font = Nez.Graphics.Instance.BitmapFont, FontColor = Microsoft.Xna.Framework.Color.White });
             _stackCountLabel.SetVisible(false);
@@ -424,10 +433,11 @@ namespace PitHero.UI
             UILayout.FitScrollCellToStage(_inventoryWindow, _outerTable, _scrollCell, ScrollHeight, stageH, GameConfig.UIStageMargin);
             float w = _inventoryWindow.GetWidth();
             float h = _inventoryWindow.GetHeight();
-            _inventoryWindow.SetPosition(
-                (_stage.GetWidth()  - w) / 2f,
-                UILayout.CenterY(h, stageH, CenterYBias));
+            float x = (_stage.GetWidth() - w) / 2f;
+            float y = UILayout.CenterY(h, stageH, CenterYBias);
+            _inventoryWindow.SetPosition(x, y);
             _inventoryWindow.SetVisible(true);
+            _wateringPanel?.ShowBeside(x + w + GameConfig.WateringPriorityPanelGap, y, h);
         }
 
         // ── State transitions ─────────────────────────────────────────────────────
@@ -444,6 +454,7 @@ namespace PitHero.UI
 
             _selectedCrop = crop;
             _inventoryWindow.SetVisible(false);
+            _wateringPanel?.HidePanel();
             CreateGhost(_selectedCrop);
             CreateTileIndicator();
             _stackCountLabel?.SetVisible(true);

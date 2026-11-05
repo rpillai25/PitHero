@@ -86,7 +86,7 @@ namespace PitHero.ECS.Components
         private readonly float _carryOffsetY;
         private Nez.Sprites.SpriteAtlas _cropsAtlas;
 
-        // Watering can charges: 0 = empty (must fill before watering), max = WateringCanMaxCharges
+        // Watering can charges: 0 = empty (must fill before watering), max = LocalArtifactEffects.GetWateringCanCapacity
         private int _wateringCanCharges = 0;
         private bool _fillAnimating;
         private float _fillDisplayTimer;
@@ -739,7 +739,10 @@ namespace PitHero.ECS.Components
             if (_fillDisplayTimer < GameConfig.WateringCanFillDurationSeconds)
                 return;
 
-            _wateringCanCharges = GameConfig.WateringCanMaxCharges;
+            // The best owned watering-can artifact sets the capacity (issue #450), read at fill time
+            // so a can bought mid-shift takes effect on the next refill.
+            _wateringCanCharges = PitHero.Artifacts.LocalArtifactEffects.GetWateringCanCapacity(
+                Core.Instance != null ? Core.Services.GetService<GameStateService>() : null);
             AnalyticsService.LogWateringCanFilled(_monster.Name, _monster.MonsterTypeName,
                 _mover.CurrentTile.X, _mover.CurrentTile.Y);
 

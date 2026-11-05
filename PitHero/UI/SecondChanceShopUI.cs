@@ -50,6 +50,10 @@ namespace PitHero.UI
         // Greeting bubble above the merchant's head; persists until the shop closes (issue #385)
         private MerchantSpeechBubble _merchantBubble;
 
+        // The greeting drawn when the shop opened, so leaving the Artifacts tab brings the same line
+        // back instead of drawing another from the greeting bag
+        private string _greetingLine;
+
         private bool _windowVisible = false;
         private ImageButtonStyle _shopNormalStyle;
         private ImageButtonStyle _shopHalfStyle;
@@ -382,11 +386,6 @@ namespace PitHero.UI
 
             var content = new Table();
             content.Top().Left().Pad(8f).PadLeft(24f);
-            // Artifacts are granted on proof of wealth, not sold: say so above the rows
-            var header = new Label(GetText(TextType.UI, UITextKey.ArtifactShopHeader), skin, "ph-default");
-            header.SetWrap(true);
-            content.Add(header).Width(290f).Left().SetPadBottom(6f);
-            content.Row();
             content.Add(_artifactShopTable).Top().Left();
 
             tab.ClearChildren();
@@ -444,7 +443,7 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Opens the artifact card with a Grant (Global) or Buy (Local) button — the amount is on the
+        /// Opens the artifact card with a Show (Global, proof of gold) or Buy (Local) button — the amount is on the
         /// button, so no confirmation. The button is grayed and dead when the player cannot show that much gold.
         /// </summary>
         private void ShowArtifactPurchaseCard(PitHero.Artifacts.ArtifactType type)
@@ -537,6 +536,7 @@ namespace PitHero.UI
         /// <summary>Shows the correct right-side hero panel when the active tab changes.</summary>
         private void HandleTabChanged(int tabIndex)
         {
+            int previousTab = _activeTabIndex;
             _activeTabIndex = tabIndex;
             HideVaultCrystalCard();
             if (!_windowVisible) return;
@@ -555,9 +555,21 @@ namespace PitHero.UI
             {
                 _heroInventoryWindow?.SetVisible(false);
                 _heroCrystalWindow?.SetVisible(false);
-                if (tabIndex == 3)
-                    ShowMerchantArtifactLine();
             }
+
+            // The merchant pitches artifacts on the Artifacts tab and goes back to the greeting on
+            // any other tab
+            if (tabIndex == 3)
+                ShowMerchantArtifactLine();
+            else if (previousTab == 3)
+                ShowMerchantGreetingLine();
+        }
+
+        /// <summary>Re-shows the greeting the shop opened with (after leaving the Artifacts tab).</summary>
+        private void ShowMerchantGreetingLine()
+        {
+            if (_greetingLine != null && _merchantBubble != null && _merchantBubble.GetStage() != null)
+                _merchantBubble.Show(_greetingLine);
         }
 
         // ──────────────────────────────────────────────────────────────────────────
@@ -619,6 +631,7 @@ namespace PitHero.UI
 
                 // Greeting bubble above the merchant's head; persists until the shop closes
                 var greeting = SpeechBubbleDialogue.GetSecondChanceGreeting();
+                _greetingLine = greeting;
                 if (greeting != null && _merchantBubble != null)
                 {
                     _stage.AddElement(_merchantBubble);

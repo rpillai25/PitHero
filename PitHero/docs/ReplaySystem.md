@@ -562,6 +562,9 @@ artifacts rewind with the save, so charging for them is safe.
 | Fast Grow Fertilizer | Local | `ArtifactFastGrowFertilizerPrice` | Crops grow 2x (`FastGrowFertilizerCropGrowthMultiplier`) | none |
 | Lightning Grow Fertilizer | Local | `ArtifactLightningGrowFertilizerPrice` | Crops grow 3x (wins over Fast; never stacks). Supersedes Fast in the owned grid (`ArtifactCatalog.GetSupersededBy`): Fast stays owned underneath, just not shown | Fast Grow Fertilizer |
 | Hermes Boots | Local | `ArtifactHermesBootsPrice` | Farm and kitchen workers move 2x (`HermesBootsWorkerMoveSpeedMultiplier`; the runner sprint stacks on top) | none |
+| Silver Watering Can | Local | `ArtifactSilverWateringCanPrice` | A farm worker waters 6 crops per can-full instead of 3 (`SilverWateringCanCharges`, issue #450) | none |
+| Gold Watering Can | Local | `ArtifactGoldWateringCanPrice` | 12 crops per can-full. Supersedes Silver in the owned grid | Silver Watering Can |
+| Platinum Watering Can | Local | `ArtifactPlatinumWateringCanPrice` | 24 crops per can-full; the best owned can wins, the cans never stack (`LocalArtifactEffects.GetWateringCanCapacity`, read when the can is filled). Supersedes Gold | Gold Watering Can |
 
 - **One query surface.** `ArtifactService` (global, Game1) answers `Owns` / `GetOwnedInOrder` /
   `IsAvailableInShop` / `Grant` for both scopes: Global from the system file, Local from the attached
@@ -569,7 +572,7 @@ artifacts rewind with the save, so charging for them is safe.
   grant, a load or a New Game refreshes every version-cached UI (Party tab, shop rows) for free.
 - **Shop:** Second Chance → Artifacts tab lists what `IsAvailableInShop` allows (not owned, every
   prerequisite owned); rows disappear once granted. Clicking a slot opens `ArtifactInfoDialog` — title,
-  a **Global / Local** line, sprite, description — with a Grant (Global) or Buy (Local) button that
+  a **Global / Local** line, sprite, description — with a Show (Global: proof of gold) or Buy (Local) button that
   acts at once, grayed and dead when the hero cannot show that much gold.
 - **Party → Artifacts tab:** a fixed `ArtifactGridColumns` x `ArtifactGridRows` grid: the player's
   Global artifacts, then this hero's Local ones; clicking one opens the same card without the button.
@@ -579,7 +582,8 @@ artifacts rewind with the save, so charging for them is safe.
 - **Local effects are sim-read every fixed step**, never cached across ticks:
   `LocalArtifactEffects.GetCropGrowthMultiplier` is written into `CropGrowthService.GrowthSpeedMultiplier`
   right before its update in `MainGameScene.Update`, and `FarmMonsterMover` reads
-  `GetWorkerMoveSpeedMultiplier` per update. A replay's start blob is a `SaveData` (so it carries
+  `GetWorkerMoveSpeedMultiplier` per update; `FarmingMonsterStateMachine` reads `GetWateringCanCapacity`
+  each time a can is filled at the pond. A replay's start blob is a `SaveData` (so it carries
   `LocalArtifacts`), mid-session purchases are commands, and `SimulationStateHasher.HashWorld` hashes
   `GameStateService.LocalArtifactMask` — a drift shows up as a `world` divergence, not a silent speed
   mismatch. Recordings whose blob predates v34 read an empty list, which is correct.

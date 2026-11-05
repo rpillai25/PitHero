@@ -268,5 +268,128 @@ namespace PitHero.Services
                 target[i] = v < 0 ? 0 : v;
             }
         }
+
+        // ── Watering priority (issue #450) ───────────────────────────────────────
+        // Which crop a farm worker waters first: a permutation of every CropType ordinal, highest
+        // priority first. Locked crops keep a place in it (the UI just hides them) so a crop's spot
+        // never depends on what happens to be unlocked. Sim-read by FarmTaskCoordinator's water
+        // claim, changed only by the SwapWateringPriority command and by crop unlocks, saved with
+        // the hero (v41), restored by ApplyLoadedState (replay start included), reset for a new hero.
+
+        private readonly int[] _wateringOrder = DefaultWateringPriorityOrder();
+        private readonly int[] _wateringRank = BuildWateringRanks(DefaultWateringPriorityOrder());
+
+        /// <summary>Incremented on every watering-priority change so version-cached UI refreshes.</summary>
+        public int WateringPriorityVersion { get; private set; }
+
+        /// <summary>
+        /// The order a new hero (and every pre-v41 save) starts with: highest crop tier first, i.e.
+        /// <see cref="Farming.CropUnlockConfig.ProgressionOrder"/> reversed, because later crops are
+        /// worth the most.
+        /// </summary>
+        public static int[] DefaultWateringPriorityOrder()
+        {
+            var progression = Farming.CropUnlockConfig.ProgressionOrder;
+            var order = new int[Farming.CropTypeInfo.Count];
+            for (int i = 0; i < order.Length; i++)
+                order[i] = (int)progression[progression.Length - 1 - i];
+            return order;
+        }
+
+        /// <summary>True when values holds every CropType ordinal exactly once.</summary>
+        public static bool IsWateringPriorityPermutation(int[] values)
+        {
+            if (values == null || values.Length != Farming.CropTypeInfo.Count)
+                return false;
+            int seen = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                int v = values[i];
+                if (v < 0 || v >= Farming.CropTypeInfo.Count || (seen & (1 << v)) != 0)
+                    return false;
+                seen |= 1 << v;
+            }
+            return true;
+        }
+
+        private static int[] BuildWateringRanks(int[] order)
+        {
+            var ranks = new int[order.Length];
+            for (int i = 0; i < order.Length; i++)
+                ranks[order[i]] = i;
+            return ranks;
+        }
+
+        private void RebuildWateringRanks()
+        {
+            for (int i = 0; i < _wateringOrder.Length; i++)
+                _wateringRank[_wateringOrder[i]] = i;
+            WateringPriorityVersion++;
+        }
+
+        /// <summary>The crop's place in the watering order, 0 = watered first (int.MaxValue for an unknown ordinal).</summary>
+        public int GetWateringRank(Farming.CropType crop)
+        {
+            int i = (int)crop;
+            return i >= 0 && i < _wateringRank.Length ? _wateringRank[i] : int.MaxValue;
+        }
+
+        /// <summary>Copies the watering order (crop ordinals, first = highest priority) into dest.</summary>
+        public void CopyWateringPriorityOrder(int[] dest)
+        {
+            if (dest == null || dest.Length < _wateringOrder.Length)
+                return;
+            for (int i = 0; i < _wateringOrder.Length; i++)
+                dest[i] = _wateringOrder[i];
+        }
+
+        /// <summary>The watering order as a fresh array, for the save gather.</summary>
+        public int[] CopyWateringPriorityOrderArray()
+        {
+            var copy = new int[_wateringOrder.Length];
+            CopyWateringPriorityOrder(copy);
+            return copy;
+        }
+
+        /// <summary>Replaces the watering order from a save; anything that is not a full permutation restores the default.</summary>
+        public void SetWateringPriorityOrder(int[] order)
+        {
+            var source = IsWateringPriorityPermutation(order) ? order : DefaultWateringPriorityOrder();
+            for (int i = 0; i < _wateringOrder.Length; i++)
+                _wateringOrder[i] = source[i];
+            RebuildWateringRanks();
+        }
+
+        /// <summary>Restores the default watering order (a new hero).</summary>
+        public void ResetWateringPriority() => SetWateringPriorityOrder(null);
+
+        /// <summary>
+        /// Swaps two crops' places in the watering order — the Up/Down buttons swap a crop with its
+        /// visible neighbour. Returns false (no change) for an unknown or identical pair.
+        /// </summary>
+        public bool SwapWateringPriority(Farming.CropType a, Farming.CropType b)
+        {
+            int ia = (int)a, ib = (int)b;
+            if (ia == ib || ia < 0 || ib < 0 || ia >= _wateringRank.Length || ib >= _wateringRank.Length)
+                return false;
+            int ra = _wateringRank[ia];
+            int rb = _wateringRank[ib];
+            _wateringOrder[ra] = ib;
+            _wateringOrder[rb] = ia;
+            RebuildWateringRanks();
+            return true;
+        }
+
+        /// <summary>Moves a crop to the top of the watering order (a newly unlocked crop). Everything above it shifts down one.</summary>
+        public void PromoteWateringPriority(Farming.CropType crop)
+        {
+            int c = (int)crop;
+            if (c < 0 || c >= _wateringRank.Length)
+                return;
+            for (int i = _wateringRank[c]; i > 0; i--)
+                _wateringOrder[i] = _wateringOrder[i - 1];
+            _wateringOrder[0] = c;
+            RebuildWateringRanks();
+        }
     }
 }
