@@ -178,6 +178,29 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
 
 ---
 
+## Gem Dig Site (`Config/GemDigConfig.cs`, issue #452)
+
+Clicking the dirt mound at tile (59, 9) digs up one random gem worth gold. It is the only
+active-play gold source: it pays only while the player is clicking, never while idle.
+
+Odds are exact integer weights out of 16,800,000. Each rarity tier is **20× rarer** than the one
+before it, and inside a tier each gem is **half as likely** as the gem listed before it:
+
+| Tier (odds of the tier) | Gem — gold — odds per dig |
+|---|---|
+| Common (~94.7%) | Agate 1 g 54.1% · Amethyst 2 g 27.1% · Peridot 5 g 13.5% |
+| Uncommon (1 in 20) | Garnet 10 g 1 in 30 · Aquamarine 50 g 1 in 60 |
+| Rare (1 in 400) | Spinel 100 g 1 in 700 · Tourmaline 300 g 1 in 1,400 · Tanzanite 700 g 1 in 2,800 |
+| Epic (1 in 8,000) | Sapphire 1,000 g 1 in 15,000 · Ruby 1,500 g 1 in 30,000 · Emerald 2,000 g 1 in 60,000 · Alexandrite 5,000 g 1 in 120,000 |
+| Legendary (1 in 160,000) | Diamond 10,000 g |
+
+**Expected value ≈ 3.8 gold per dig** (Common 1.76, Uncommon 1.17, Rare 0.61, Epic 0.19,
+Legendary 0.06). Digs are gated to one per `GemDigCooldownSeconds` (0.4 s), so non-stop clicking
+caps out near **34,000 gold per real hour**; a relaxed one dig per second is ~13,700 g/h. Tune the
+tier step (20×) or the cooldown, not the gem values, which come from the issue.
+
+---
+
 ## Design Targets (measured)
 
 | Scenario (economy simulation, seed 417) | Net gold per real hour | Notes |

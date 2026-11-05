@@ -595,3 +595,19 @@ ReplayInfoWarning,NOTE: Time Travel Here rebuilds the world up to the chosen mom
 SaveLoadAutoSave,AutoSave
 SettingsSaveAutosaveInProgressTooltip,Autosave in progress
 ConfirmLoadAutoSave,Load the AutoSave for {0}?
+
+# Gem dig site (issue #452)
+GemDigLabelFormat,{0} (+{1})
+GemAgate,Agate
+GemAmethyst,Amethyst
+GemPeridot,Peridot
+GemGarnet,Garnet
+GemAquamarine,Aquamarine
+GemSpinel,Spinel
+GemTourmaline,Tourmaline
+GemTanzanite,Tanzanite
+GemSapphire,Sapphire
+GemRuby,Ruby
+GemEmerald,Emerald
+GemAlexandrite,Alexandrite
+GemDiamond,Diamond

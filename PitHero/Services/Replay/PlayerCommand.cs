@@ -119,6 +119,10 @@ namespace PitHero.Services.Replay
         // ever exchange a crop with its visible neighbour.
         SwapWateringPriority = 126,      // A, B = CropType ordinals to exchange in the watering order
 
+        // Gem dig site (issue #452). The gem is rolled on GameRandom.Ui at click time and carried
+        // here, so the sim RNG stream is untouched and a replay pays out the same gem.
+        DigGem = 127,                    // A = GemType ordinal
+
         // Debug
         DebugQueuePitLevel = 200,    // A = level
     }

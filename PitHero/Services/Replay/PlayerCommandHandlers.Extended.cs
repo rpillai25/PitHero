@@ -269,6 +269,10 @@ namespace PitHero.Services.Replay
                     return true;
                 }
 
+                case PlayerCommandType.DigGem:
+                    ApplyDigGem(cmd.A);
+                    return true;
+
                 // ── Inventory / shop ─────────────────────────────────────────────────
                 case PlayerCommandType.SwapSlots:
                 {
@@ -500,6 +504,26 @@ namespace PitHero.Services.Replay
             pb.WorldEntity?.Destroy();
             services.GetService<GameStateService>()?.AddFunds(gold, "sell_building");
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemSell);
+        }
+
+        /// <summary>
+        /// Pays out a dug-up gem and shows it rising out of the dig site (issue #452). The gem was
+        /// rolled on the UI stream at click time; an unknown ordinal is ignored.
+        /// </summary>
+        private static void ApplyDigGem(int gemOrdinal)
+        {
+            if (!PitHero.Config.GemDigConfig.IsValid(gemOrdinal))
+                return;
+            var services = Services;
+            var gameState = services?.GetService<GameStateService>();
+            if (gameState == null)
+                return;
+            var gem = (PitHero.Config.GemType)gemOrdinal;
+            gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(gem), "gem_dig");
+
+            // Cosmetic only: the effect never feeds back into the simulation
+            if (Core.Instance != null && Core.Scene is PitHero.ECS.Scenes.MainGameScene scene)
+                scene.SpawnGemDigEffect(gem);
         }
 
         private static void ApplyAutomation(AutomationKind kind, bool enabled)

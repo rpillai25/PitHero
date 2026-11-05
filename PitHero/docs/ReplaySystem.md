@@ -800,7 +800,7 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
-| `ReplayFrameFormatVersion` | 7 | Bump on any op / HUD record / events / codec change, when something stops being recorded, or when an atlas is repacked (sprite ids key on texture and rect, so an old cache would draw the wrong regions); orphans every cache once (v4 = Brotli payloads, v5 = hover markers live-only, v6 = battle monsters in the HUD record, on-monster HP bar ops gone, v7 = Actors atlas rebuilt, EyesBase portrait layer) |
+| `ReplayFrameFormatVersion` | 9 | Bump on any op / HUD record / events / codec change, when something stops being recorded, or when an atlas is repacked (sprite ids key on texture and rect, so an old cache would draw the wrong regions); orphans every cache once (v4 = Brotli payloads, v5 = hover markers live-only, v6 = battle monsters in the HUD record, on-monster HP bar ops gone, v7 = Actors atlas rebuilt, EyesBase portrait layer, v8 = Items atlas repacked, v9 = CropsProps atlas repacked for the gem dig site) |
 | `ReplayFrameBrotliQuality` / `ReplayFrameBrotliWindowBits` | 5 / 22 | Chunk payload compression; measured sweet spot (see "Chunks") |
 | `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
 | `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |

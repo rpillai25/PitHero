@@ -587,5 +587,21 @@ namespace PitHero
         public const string SaveLoadAutoSave = "SaveLoadAutoSave";
         public const string SettingsSaveAutosaveInProgressTooltip = "SettingsSaveAutosaveInProgressTooltip";
         public const string ConfirmLoadAutoSave = "ConfirmLoadAutoSave";
+
+        // Gem dig site (issue #452)
+        public const string GemDigLabelFormat = "GemDigLabelFormat";
+        public const string GemAgate = "GemAgate";
+        public const string GemAmethyst = "GemAmethyst";
+        public const string GemPeridot = "GemPeridot";
+        public const string GemGarnet = "GemGarnet";
+        public const string GemAquamarine = "GemAquamarine";
+        public const string GemSpinel = "GemSpinel";
+        public const string GemTourmaline = "GemTourmaline";
+        public const string GemTanzanite = "GemTanzanite";
+        public const string GemSapphire = "GemSapphire";
+        public const string GemRuby = "GemRuby";
+        public const string GemEmerald = "GemEmerald";
+        public const string GemAlexandrite = "GemAlexandrite";
+        public const string GemDiamond = "GemDiamond";
     }
 }
