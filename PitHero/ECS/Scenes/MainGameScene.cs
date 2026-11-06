@@ -4613,8 +4613,9 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Digs up a gem when the gem dig site is clicked: the gem is rolled on the UI stream here and
-        /// carried in the DigGem command, which pays out and shows the rising gem. A short wall-clock
+        /// Digs up a gem when the gem dig site is clicked: a uniform roll is drawn on the UI stream here
+        /// and carried in the DigGem command, whose handler picks the gem under the pity counters,
+        /// pays out and shows the rising gem. A short wall-clock
         /// cooldown allows at most one dig per GemDigCooldownSeconds (presentation-side only: the
         /// handler never depends on it, so replays need no record of it).
         /// </summary>
@@ -4632,9 +4633,9 @@ namespace PitHero.ECS.Scenes
             if (!IsMouseOverGemDigSite())
                 return;
 
-            var gem = Config.GemDigConfig.Roll(GameRandom.Ui);
-            Services.Replay.PlayerCommandService.Dispatch(
-                new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.DigGem, (int)gem));
+            var command = new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.DigGem);
+            command.L = GameRandom.Ui.NextInt64(Config.GemDigConfig.RollRange);
+            Services.Replay.PlayerCommandService.Dispatch(command);
             _gemDigCooldown = GameConfig.GemDigCooldownSeconds;
         }
 

@@ -270,7 +270,7 @@ namespace PitHero.Services.Replay
                 }
 
                 case PlayerCommandType.DigGem:
-                    ApplyDigGem(cmd.A);
+                    ApplyDigGem(cmd.L);
                     return true;
 
                 // ── Inventory / shop ─────────────────────────────────────────────────
@@ -507,18 +507,17 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>
-        /// Pays out a dug-up gem and shows it rising out of the dig site (issue #452). The gem was
-        /// rolled on the UI stream at click time; an unknown ordinal is ignored.
+        /// Digs one gem at the gem dig site (issue #452): the click's uniform roll (drawn on the UI
+        /// stream) is turned into a gem here, under the sim-side pity counters, so the payout depends
+        /// only on sim state and the recorded roll. Pays out and shows the gem rising out of the mound.
         /// </summary>
-        private static void ApplyDigGem(int gemOrdinal)
+        private static void ApplyDigGem(long roll)
         {
-            if (!PitHero.Config.GemDigConfig.IsValid(gemOrdinal))
-                return;
             var services = Services;
             var gameState = services?.GetService<GameStateService>();
             if (gameState == null)
                 return;
-            var gem = (PitHero.Config.GemType)gemOrdinal;
+            var gem = gameState.DigGem(roll);
             gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(gem), "gem_dig");
 
             // Cosmetic only: the effect never feeds back into the simulation

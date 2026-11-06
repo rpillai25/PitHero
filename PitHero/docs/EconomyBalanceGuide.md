@@ -194,10 +194,42 @@ before it, and inside a tier each gem is **half as likely** as the gem listed be
 | Epic (1 in 8,000) | Sapphire 1,000 g 1 in 15,000 · Ruby 1,500 g 1 in 30,000 · Emerald 2,000 g 1 in 60,000 · Alexandrite 5,000 g 1 in 120,000 |
 | Legendary (1 in 160,000) | Diamond 10,000 g |
 
-**Expected value ≈ 3.8 gold per dig** (Common 1.76, Uncommon 1.17, Rare 0.61, Epic 0.19,
-Legendary 0.06). Digs are gated to one per `GemDigCooldownSeconds` (0.4 s), so non-stop clicking
-caps out near **34,000 gold per real hour**; a relaxed one dig per second is ~13,700 g/h. Tune the
-tier step (20×) or the cooldown, not the gem values, which come from the issue.
+Those are the **base odds** (expected value ≈ 3.8 gold per dig: Common 1.76, Uncommon 1.17,
+Rare 0.61, Epic 0.19, Legendary 0.06).
+
+### Pity (bad-luck protection)
+
+Each tier above Common has a saved counter (`GameStateService`, save v42): digs since that tier
+or a better one came up. Past the tier's soft start, its odds multiplier climbs every dig up to a
+cap. A find resets its own tier's counter and every lower one; a Diamond resets all four. The
+knobs live in `GemDigConfig`:
+
+| Knob | Uncommon | Rare | Epic | Legendary |
+|---|---|---|---|---|
+| `PitySoftStartDigs` | — | 100 | 600 | 10,000 |
+| `PityGrowthPerDig` (× `PityStrength`) | 0 (off) | 0.04 | 0.006 | 0.0004 |
+| `PityMaxMultiplier` (odds at the cap) | 1× | 10× (1 in 40) | 25× (1 in 320) | 8× (1 in 20,000) |
+
+`PityStrength` (default 1) scales every tier's growth; **0 turns pity off** (pure base odds).
+Measured over 20M digs at strength 1:
+
+| | Base | With pity |
+|---|---|---|
+| Rare or better | every 400 digs | every ~160 |
+| Epic or better | every 8,000 | every ~1,740 |
+| Diamond | 1 in 160,000 | 1 in ~35,000 (Alexandrite ~1 in 27,700) |
+| Gold per dig | 3.8 | ~5.4 |
+
+The Legendary cap keeps Diamond the rarest gem: above ~10× it overtakes Alexandrite
+(`GemDigPityTests` fails if any gem becomes more common than the one listed before it). Changing
+a knob changes what a recorded dig pays out, so bump `GameConfig.SimulationVersion` with it.
+
+### Pace
+
+Digs are gated to one per `GemDigCooldownSeconds` (0.4 s), so non-stop clicking caps out near
+**49,000 gold per real hour** with pity (34,000 without); a relaxed one dig per second is
+~19,500 g/h. Tune `PityStrength`, the tier step (20×) or the cooldown, not the gem values, which
+come from the issue.
 
 ---
 

@@ -281,7 +281,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 41; // v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
+        public const int CurrentVersion = 42; // v42: gem dig site pity counters (issue #452); v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -564,6 +564,10 @@ namespace PitHero.Services
         // Crop watering priority (v41, issue #450)
         /// <summary>CropType ordinals in watering order, highest priority first. Always a permutation of every crop.</summary>
         public int[] WateringPriorityOrder = GameStateService.DefaultWateringPriorityOrder();
+
+        // Gem dig pity (v42, issue #452)
+        /// <summary>Digs since each gem tier (Uncommon, Rare, Epic, Legendary) or better last came up at the gem dig site.</summary>
+        public int[] GemPity = new int[Config.GemDigConfig.PityTierCount];
 
         /// <summary>True when values is a permutation of 0..FarmPriorityCount-1 (a usable claim order).</summary>
         public static bool IsFarmPriorityPermutation(int[] values)
@@ -1241,6 +1245,9 @@ namespace PitHero.Services
 
             // 55. Crop watering priority (v41, issue #450): CropType ordinals, highest priority first
             WriteIntArray(writer, WateringPriorityOrder);
+
+            // 56. Gem dig pity counters (v42, issue #452): Uncommon, Rare, Epic, Legendary
+            WriteIntArray(writer, GemPity);
         }
 
         /// <summary>
@@ -2003,6 +2010,12 @@ namespace PitHero.Services
             {
                 WateringPriorityOrder = GameStateService.DefaultWateringPriorityOrder();
             }
+
+            // 56. Gem dig pity counters (section added in v42, issue #452). Older files start with no
+            // bad-luck streak: every counter 0, the base odds.
+            GemPity = fileVersion >= 42
+                ? ReadIntArray(reader, Config.GemDigConfig.PityTierCount)
+                : new int[Config.GemDigConfig.PityTierCount];
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
             // value. Older files carried two; reproduce the old EFFECTIVE sell floor (raised to the
