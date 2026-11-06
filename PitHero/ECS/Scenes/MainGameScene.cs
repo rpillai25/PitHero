@@ -2244,6 +2244,17 @@ namespace PitHero.ECS.Scenes
             renderer.AnchorToBottomTile();
             if (_colorGrading?.Material != null)
                 renderer.SetMaterial(_colorGrading.Material);
+
+            // Glints on the mound's gems show how much pity has built up (ungraded: they glow at night too)
+            var dot = atlas.GetSprite("GemGlint1");
+            var plus = atlas.GetSprite("GemGlint2");
+            var star = atlas.GetSprite("GemGlint3");
+            if (dot != null && plus != null && star != null)
+            {
+                var glints = CreateEntity("gem-dig-site-glints");
+                glints.SetPosition(GetGemDigSiteCenter());
+                glints.AddComponent(new GemDigSparkleComponent(dot, plus, star, GetGemDigSiteCenter() + new Vector2(0f, -8f)));
+            }
         }
 
         /// <summary>World-space center of the gem dig site (its anchor tile's center, nudged down by GemDigSiteOffsetY).</summary>

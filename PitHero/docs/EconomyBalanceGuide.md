@@ -224,6 +224,12 @@ The Legendary cap keeps Diamond the rarest gem: above ~10× it overtakes Alexand
 (`GemDigPityTests` fails if any gem becomes more common than the one listed before it). Changing
 a knob changes what a recorded dig pays out, so bump `GameConfig.SimulationVersion` with it.
 
+**Seeing it:** the mound shows its pity as glints on its gems (`GemDigSparkleComponent`). Heat
+(`GemDigConfig.GetPityHeat`) is how far the luckiest tier has climbed toward its cap. At heat 0 a
+lone white glint appears every ~3 s; hotter means faster glints (down to ~0.2 s apart) tinted
+cyan / pink / yellow for Rare / Epic / Legendary; at heat 0.9+ a gold glimmer puff rises every
+2.5 s. The glint knobs are the `GemGlint*` / `GemGlimmer*` constants in `GameConfig`.
+
 ### Pace
 
 Digs are gated to one per `GemDigCooldownSeconds` (0.4 s), so non-stop clicking caps out near

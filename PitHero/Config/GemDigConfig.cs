@@ -285,6 +285,32 @@ namespace PitHero.Config
         }
 
         /// <summary>
+        /// How close the luckiest pity tier is to its cap, 0 (base odds everywhere) to 1 (capped),
+        /// for the mound's glints. hottestTier is the tier with the most progress (the better tier on
+        /// a tie), or Normal when no tier has started climbing.
+        /// </summary>
+        public static float GetPityHeat(int[] pity, out ItemRarity hottestTier)
+        {
+            float heat = 0f;
+            hottestTier = ItemRarity.Normal;
+            if (pity == null)
+                return 0f;
+            for (int i = 0; i < PityTierCount; i++)
+            {
+                double cap = PityMaxMultiplier[i];
+                if (cap <= 1.0)
+                    continue; // pity off for this tier
+                float progress = (float)((GetPityMultiplier(i, pity[i]) - 1.0) / (cap - 1.0));
+                if (progress > 0f && progress >= heat)
+                {
+                    heat = progress;
+                    hottestTier = (ItemRarity)(i + 1);
+                }
+            }
+            return heat > 1f ? 1f : heat;
+        }
+
+        /// <summary>
         /// Advances the pity counters after a dig: tiers at or below the found gem's tier reset to 0,
         /// better tiers count one more dig without them.
         /// </summary>

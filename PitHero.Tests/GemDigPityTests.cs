@@ -125,6 +125,39 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void Heat_IsZeroAtBaseOdds_AndFollowsTheLuckiestTier()
+        {
+            Assert.AreEqual(0f, GemDigConfig.GetPityHeat(new int[GemDigConfig.PityTierCount], out var tier));
+            Assert.AreEqual(ItemRarity.Normal, tier);
+
+            // Rare capped, Epic barely started: Rare is the hottest at full heat
+            Assert.AreEqual(1f, GemDigConfig.GetPityHeat(new[] { 0, 100_000, GemDigConfig.PitySoftStartDigs[Epic] + 1, 0 }, out tier), 1e-6f);
+            Assert.AreEqual(ItemRarity.Rare, tier);
+
+            // Both capped: the better tier wins the tie
+            GemDigConfig.GetPityHeat(new[] { 0, 100_000, 100_000, 0 }, out tier);
+            Assert.AreEqual(ItemRarity.Epic, tier);
+
+            // Uncommon has pity off: its counter never warms the mound
+            Assert.AreEqual(0f, GemDigConfig.GetPityHeat(new[] { 100_000, 0, 0, 0 }, out tier));
+
+            // Partway up the ramp: strictly between 0 and 1
+            float mid = GemDigConfig.GetPityHeat(new[] { 0, GemDigConfig.PitySoftStartDigs[Rare] + 50, 0, 0 }, out tier);
+            Assert.IsTrue(mid > 0f && mid < 1f, "heat " + mid);
+        }
+
+        [TestMethod]
+        public void GlintPoints_SitOnTheMound_AndGlimmerOrdinalIsPinned()
+        {
+            var offsets = GameConfig.GemDigSiteGlintOffsets;
+            Assert.IsTrue(offsets.Length > 0);
+            for (int i = 0; i < offsets.Length; i++)
+                Assert.IsTrue(Math.Abs(offsets[i].X) <= 48 && Math.Abs(offsets[i].Y) <= 48, "glint point " + i + " is off the 96x96 mound");
+            // Particle ordinals are recorded in replay frames: append only
+            Assert.AreEqual(4, (int)PitHero.Util.ParticleEffectType.GemGlimmer);
+        }
+
+        [TestMethod]
         public void SetGemPity_ClampsAndToleratesShortArrays()
         {
             var state = new GameStateService();
