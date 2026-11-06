@@ -296,6 +296,9 @@ ArtifactGoldWateringCanName,Gold Watering Can
 ArtifactGoldWateringCanDesc,A gleaming gold can. Workers water 12 crops before refilling.
 ArtifactPlatinumWateringCanName,Platinum Watering Can
 ArtifactPlatinumWateringCanDesc,A flawless platinum can. Workers water 24 crops before refilling.
+ArtifactProspectorsMapName,Prospector's Map
+ArtifactProspectorsMapDesc,A weathered map. X marks a gem deposit buried by the road.
+ArtifactProspectorsMapEffect,Reveals the gem dig site west of the tavern. Click the mound to dig up gems worth gold.
 ArtifactScopeGlobal,Global
 ArtifactScopeLocal,Local
 ArtifactScopeGlobalTooltip,Affects all hero sessions

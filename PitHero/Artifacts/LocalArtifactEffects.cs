@@ -50,5 +50,14 @@ namespace PitHero.Artifacts
                 return GameConfig.SilverWateringCanCharges;
             return GameConfig.WateringCanMaxCharges;
         }
+
+        /// <summary>
+        /// True when the gem dig site exists for this hero (issue #452): the Prospector's Map reveals
+        /// it. The DigGem handler ignores digs without it; the scene spawns the mound only with it.
+        /// </summary>
+        public static bool HasGemDigSite(GameStateService gameState)
+        {
+            return gameState != null && gameState.OwnsLocalArtifact(ArtifactType.ProspectorsMap);
+        }
     }
 }

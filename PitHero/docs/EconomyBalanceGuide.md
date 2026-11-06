@@ -180,7 +180,7 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
 
 ## Gem Dig Site (`Config/GemDigConfig.cs`, issue #452)
 
-Clicking the dirt mound at tile (59, 9) digs up one random gem worth gold. It is the only
+The gem dig site is revealed by the **Prospector's Map**, a Local artifact (50,000 G) in the Second Chance shop: without it there is no mound and no digging. Clicking the dirt mound at tile (59, 9) digs up one random gem worth gold. It is the only
 active-play gold source: it pays only while the player is clicking, never while idle.
 
 Odds are exact integer weights out of 16,800,000. Each rarity tier is **20× rarer** than the one

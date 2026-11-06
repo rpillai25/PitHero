@@ -33,6 +33,9 @@ namespace PitHero.Artifacts
 
         /// <summary>Local: watering cans hold 24 charges. Requires the Gold Watering Can first.</summary>
         PlatinumWateringCan = 8,
+
+        /// <summary>Local: reveals the gem dig site by the road (issue #452).</summary>
+        ProspectorsMap = 9,
     }
 
     /// <summary>
@@ -49,7 +52,7 @@ namespace PitHero.Artifacts
     public static class ArtifactCatalog
     {
         /// <summary>Number of artifact kinds (the enum is dense from 0; retired ordinals count).</summary>
-        public const int Count = 9;
+        public const int Count = 10;
 
         /// <summary>
         /// True for an artifact that no longer exists in the game but whose ordinal is reserved because
@@ -74,6 +77,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return "SilverWateringCan";
                 case ArtifactType.GoldWateringCan: return "GoldWateringCan";
                 case ArtifactType.PlatinumWateringCan: return "PlatinumWateringCan";
+                case ArtifactType.ProspectorsMap: return "ProspectorsMap";
                 default: return string.Empty;
             }
         }
@@ -91,6 +95,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return UITextKey.ArtifactSilverWateringCanName;
                 case ArtifactType.GoldWateringCan: return UITextKey.ArtifactGoldWateringCanName;
                 case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanName;
+                case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapName;
                 default: return string.Empty;
             }
         }
@@ -108,6 +113,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return UITextKey.ArtifactSilverWateringCanDesc;
                 case ArtifactType.GoldWateringCan: return UITextKey.ArtifactGoldWateringCanDesc;
                 case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanDesc;
+                case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapDesc;
                 default: return string.Empty;
             }
         }
@@ -121,6 +127,7 @@ namespace PitHero.Artifacts
             switch (type)
             {
                 case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeEffect;
+                case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapEffect;
                 default: return string.Empty;
             }
         }
@@ -138,6 +145,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return GameConfig.ArtifactSilverWateringCanPrice;
                 case ArtifactType.GoldWateringCan: return GameConfig.ArtifactGoldWateringCanPrice;
                 case ArtifactType.PlatinumWateringCan: return GameConfig.ArtifactPlatinumWateringCanPrice;
+                case ArtifactType.ProspectorsMap: return GameConfig.ArtifactProspectorsMapPrice;
                 default: return 0;
             }
         }
@@ -153,6 +161,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan:
                 case ArtifactType.GoldWateringCan:
                 case ArtifactType.PlatinumWateringCan:
+                case ArtifactType.ProspectorsMap:
                     return ArtifactScope.Local;
                 default:
                     return ArtifactScope.Global;

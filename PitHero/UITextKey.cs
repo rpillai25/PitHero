@@ -413,6 +413,9 @@ namespace PitHero
         public const string ArtifactGoldWateringCanDesc = "ArtifactGoldWateringCanDesc";
         public const string ArtifactPlatinumWateringCanName = "ArtifactPlatinumWateringCanName";
         public const string ArtifactPlatinumWateringCanDesc = "ArtifactPlatinumWateringCanDesc";
+        public const string ArtifactProspectorsMapName = "ArtifactProspectorsMapName";
+        public const string ArtifactProspectorsMapDesc = "ArtifactProspectorsMapDesc";
+        public const string ArtifactProspectorsMapEffect = "ArtifactProspectorsMapEffect";
         public const string ArtifactScopeGlobal = "ArtifactScopeGlobal";
         public const string ArtifactScopeLocal = "ArtifactScopeLocal";
         public const string ArtifactScopeGlobalTooltip = "ArtifactScopeGlobalTooltip";

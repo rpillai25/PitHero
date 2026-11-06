@@ -477,6 +477,11 @@ namespace PitHero.Services.Replay
             if (PitHero.Artifacts.ArtifactCatalog.IsLocal(type))
                 gameState.SpendFunds(price, "artifact");
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
+
+            // The Prospector's Map reveals the gem dig site right away, with a glimmer (issue #452)
+            if (type == PitHero.Artifacts.ArtifactType.ProspectorsMap && Core.Instance != null
+                && Core.Scene is PitHero.ECS.Scenes.MainGameScene scene)
+                scene.RevealGemDigSite();
         }
 
         private static void ApplyRemoveBuilding(int uniqueId)
@@ -515,7 +520,9 @@ namespace PitHero.Services.Replay
         {
             var services = Services;
             var gameState = services?.GetService<GameStateService>();
-            if (gameState == null)
+            // No site without the Prospector's Map: a dig the hero cannot make pays nothing and
+            // leaves the pity counters alone
+            if (!PitHero.Artifacts.LocalArtifactEffects.HasGemDigSite(gameState))
                 return;
             var gem = gameState.DigGem(roll);
             gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(gem), "gem_dig");

@@ -452,7 +452,6 @@ namespace PitHero.ECS.Scenes
 
             var hero = SpawnHero(isNewGame);
             SpawnHeroStatue();
-            SpawnGemDigSite();
             SpawnInnkeeper();
 
             // Connect shortcut bar to hero
@@ -2223,6 +2222,43 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
+        /// Keeps the gem dig site in step with the Prospector's Map (issue #452): spawned while the
+        /// hero owns it, removed while not. Runs every presentation frame, which covers a loaded save,
+        /// a new hero and a replay restart alike; a purchase reveals it at once via RevealGemDigSite.
+        /// </summary>
+        private void SyncGemDigSite()
+        {
+            bool owned = Artifacts.LocalArtifactEffects.HasGemDigSite(Core.Services.GetService<GameStateService>());
+            if (owned && _gemDigSiteEntity == null)
+                SpawnGemDigSite();
+            else if (!owned && _gemDigSiteEntity != null)
+                DespawnGemDigSite();
+        }
+
+        /// <summary>
+        /// The Prospector's Map was just bought: raise the mound now (no waiting for the next
+        /// presentation frame) with a gold glimmer puff. Called by the GrantArtifact handler.
+        /// </summary>
+        public void RevealGemDigSite()
+        {
+            if (_gemDigSiteEntity == null)
+                SpawnGemDigSite();
+            if (!Core.CosmeticUpdatesSuspended)
+                ParticleEffectManager.Current?.SpawnEffectAtPosition(ParticleEffectType.GemGlimmer,
+                    GetGemDigSiteCenter() + new Vector2(0f, -8f), this, GameConfig.RenderLayerActorPropOverlay);
+        }
+
+        private void DespawnGemDigSite()
+        {
+            _gemDigSiteEntity?.Destroy();
+            _gemDigSiteEntity = null;
+            _gemDigGlintEntity?.Destroy();
+            _gemDigGlintEntity = null;
+            _gemDigSiteHovered = false;
+            _gemDigSiteHoverOutlineEntity?.SetEnabled(false);
+        }
+
+        /// <summary>
         /// Spawn the gem dig site (issue #452): a 96x96 dirt mound centered on
         /// GameConfig.GemDigSiteTileX/Y (59, 9), Y-sorted at its bottom tile row and drawn through the
         /// day/night grading material like the other terrain-attached props.
@@ -2251,9 +2287,9 @@ namespace PitHero.ECS.Scenes
             var star = atlas.GetSprite("GemGlint3");
             if (dot != null && plus != null && star != null)
             {
-                var glints = CreateEntity("gem-dig-site-glints");
-                glints.SetPosition(GetGemDigSiteCenter());
-                glints.AddComponent(new GemDigSparkleComponent(dot, plus, star, GetGemDigSiteCenter() + new Vector2(0f, -8f)));
+                _gemDigGlintEntity = CreateEntity("gem-dig-site-glints");
+                _gemDigGlintEntity.SetPosition(GetGemDigSiteCenter());
+                _gemDigGlintEntity.AddComponent(new GemDigSparkleComponent(dot, plus, star, GetGemDigSiteCenter() + new Vector2(0f, -8f)));
             }
         }
 
@@ -3982,6 +4018,7 @@ namespace PitHero.ECS.Scenes
                 HandleFridgeClicks();
 
             // Handle gem-dig-site hover outline and click-to-dig
+            SyncGemDigSite();
             HandleGemDigSiteHover();
             if (!replayActive)
                 HandleGemDigSiteClicks();
@@ -4557,6 +4594,7 @@ namespace PitHero.ECS.Scenes
         }
 
         private Entity _gemDigSiteEntity;
+        private Entity _gemDigGlintEntity;
         private bool _gemDigSiteHovered;
         private Entity _gemDigSiteHoverOutlineEntity;
         private float _gemDigCooldown;
