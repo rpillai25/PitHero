@@ -2269,7 +2269,8 @@ namespace PitHero.ECS.Scenes
             var text = entity.AddComponent(new GemValueTextComponent(
                 GetDigLabel(find), labelColor, sprite != null ? -sprite.SourceRect.Height / 2f : 0f));
             text.SetRenderLayer(GameConfig.RenderLayerSpeechBubble);
-            entity.AddComponent(new GemDigEffectComponent(renderer, text));
+            entity.AddComponent(new GemDigEffectComponent(renderer, text,
+                find.IsGem ? GameConfig.GemRiseDurationSeconds : GameConfig.JunkRiseDurationSeconds));
         }
 
         // Sparkle burst density per gem rarity (Normal..Legendary): every gem sparkles, rarer ones more

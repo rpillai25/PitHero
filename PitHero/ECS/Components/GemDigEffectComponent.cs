@@ -17,12 +17,17 @@ namespace PitHero.ECS.Components
         private Vector2 _start;
         private float _elapsed;
         private PauseService _pauseService;
+        private readonly float _duration;
 
-        /// <summary>Creates the driver for a find's renderer (null for an empty dig) and its label on the same entity.</summary>
-        public GemDigEffectComponent(SpriteRenderer gem, GemValueTextComponent text)
+        /// <summary>
+        /// Creates the driver for a find's renderer (null for none) and its label on the same entity;
+        /// the whole rise and fade takes durationSeconds (gems linger longer than junk).
+        /// </summary>
+        public GemDigEffectComponent(SpriteRenderer gem, GemValueTextComponent text, float durationSeconds)
         {
             _gem = gem;
             _text = text;
+            _duration = durationSeconds > 0f ? durationSeconds : GameConfig.GemRiseDurationSeconds;
         }
 
         /// <summary>Captures the start position and the pause service.</summary>
@@ -44,7 +49,7 @@ namespace PitHero.ECS.Components
                 return;
 
             _elapsed += Time.DeltaTime;
-            float t = _elapsed / GameConfig.GemRiseDurationSeconds;
+            float t = _elapsed / _duration;
             if (t >= 1f)
             {
                 Entity.Destroy();
