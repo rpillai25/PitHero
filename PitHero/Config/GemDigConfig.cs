@@ -240,8 +240,26 @@ namespace PitHero.Config
         public static string FormatLabel(string labelFormat, string name, int value)
             => string.Format(labelFormat, name, value);
 
-        /// <summary>Color of a gem's floating label: its rarity color, so rare finds stand out.</summary>
-        public static Color GetTextColor(GemType gem) => RarityUtils.GetRarityColor(Rarities[(int)gem]);
+        /// <summary>Uncommon gem label color: DB32 green (10), lighter than the item rarity green so it reads on the field.</summary>
+        public static readonly Color UncommonLabelColor = new Color(0x6a, 0xbe, 0x30);
+
+        /// <summary>Rare gem label color: DB32 sky blue (18), lighter than the item rarity blue so it reads on the field.</summary>
+        public static readonly Color RareLabelColor = new Color(0x63, 0x9b, 0xff);
+
+        /// <summary>
+        /// Color of a gem's floating label: its rarity color, so rare finds stand out. Uncommon and Rare
+        /// use lighter shades of the item rarity green and blue, which are too dark to read over the
+        /// field; the item rarity colors elsewhere are unchanged.
+        /// </summary>
+        public static Color GetTextColor(GemType gem)
+        {
+            var rarity = Rarities[(int)gem];
+            if (rarity == ItemRarity.Uncommon)
+                return UncommonLabelColor;
+            if (rarity == ItemRarity.Rare)
+                return RareLabelColor;
+            return RarityUtils.GetRarityColor(rarity);
+        }
 
         /// <summary>Maps a base-table roll in [0, TotalWeight) to its find; out-of-range rolls clamp to the ends.</summary>
         public static DigFind FromRoll(int roll)

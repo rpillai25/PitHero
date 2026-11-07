@@ -95,6 +95,22 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void LabelColors_LightenUncommonAndRare_KeepTheOthers()
+        {
+            Assert.AreEqual(GemDigConfig.UncommonLabelColor, GemDigConfig.GetTextColor(GemType.Garnet));
+            Assert.AreEqual(GemDigConfig.RareLabelColor, GemDigConfig.GetTextColor(GemType.Tanzanite));
+            Assert.AreEqual(GameConfig.RARITY_NORMAL, GemDigConfig.GetTextColor(GemType.Agate));
+            Assert.AreEqual(GameConfig.RARITY_EPIC, GemDigConfig.GetTextColor(GemType.Ruby));
+            Assert.AreEqual(GameConfig.RARITY_LEGENDARY, GemDigConfig.GetTextColor(GemType.Diamond));
+
+            // Lighter than the item rarity shades they replace (perceived brightness)
+            Assert.IsTrue(Luma(GemDigConfig.UncommonLabelColor) > Luma(GameConfig.RARITY_UNCOMMON));
+            Assert.IsTrue(Luma(GemDigConfig.RareLabelColor) > Luma(GameConfig.RARITY_RARE));
+        }
+
+        private static double Luma(Microsoft.Xna.Framework.Color c) => 0.299 * c.R + 0.587 * c.G + 0.114 * c.B;
+
+        [TestMethod]
         public void Rarities_FollowTheIssueTiers()
         {
             Assert.AreEqual(ItemRarity.Normal, GemDigConfig.GetRarity(GemType.Peridot));
