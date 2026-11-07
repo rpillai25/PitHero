@@ -2270,7 +2270,20 @@ namespace PitHero.ECS.Scenes
                 GetDigLabel(find), labelColor, sprite != null ? -sprite.SourceRect.Height / 2f : 0f));
             text.SetRenderLayer(GameConfig.RenderLayerSpeechBubble);
             entity.AddComponent(new GemDigEffectComponent(renderer, text,
-                find.IsGem ? GameConfig.GemRiseDurationSeconds : GameConfig.JunkRiseDurationSeconds));
+                GetDigRiseDuration(find)));
+        }
+
+        /// <summary>
+        /// How long a find's rise and fade lasts: junk 0.9 s, gems 1.8 s, Epic and Legendary gems 2.7 s,
+        /// so the bigger the find the longer it stays readable.
+        /// </summary>
+        private static float GetDigRiseDuration(Config.DigFind find)
+        {
+            if (!find.IsGem)
+                return GameConfig.JunkRiseDurationSeconds;
+            return Config.GemDigConfig.GetRarity(find.Gem) >= RolePlayingFramework.Equipment.ItemRarity.Epic
+                ? GameConfig.EpicGemRiseDurationSeconds
+                : GameConfig.GemRiseDurationSeconds;
         }
 
         // Sparkle burst density per gem rarity (Normal..Legendary): every gem sparkles, rarer ones more
