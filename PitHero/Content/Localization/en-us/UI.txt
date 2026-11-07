@@ -617,3 +617,10 @@ GemRuby,Ruby
 GemEmerald,Emerald
 GemAlexandrite,Alexandrite
 GemDiamond,Diamond
+DigJunkShell,Shell
+DigJunkCup,Cup
+DigJunkPlate,Plate
+DigJunkSpoon,Spoon
+DigJunkBottle,Bottle
+DigJunkYarnBall,Yarn Ball
+DigNothing,Nothing

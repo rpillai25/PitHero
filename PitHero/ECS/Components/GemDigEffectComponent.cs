@@ -18,7 +18,7 @@ namespace PitHero.ECS.Components
         private float _elapsed;
         private PauseService _pauseService;
 
-        /// <summary>Creates the driver for a gem renderer and its value text on the same entity.</summary>
+        /// <summary>Creates the driver for a find's renderer (null for an empty dig) and its label on the same entity.</summary>
         public GemDigEffectComponent(SpriteRenderer gem, GemValueTextComponent text)
         {
             _gem = gem;
@@ -57,7 +57,7 @@ namespace PitHero.ECS.Components
 
             float fadeStart = GameConfig.GemRiseFadeStartFraction;
             float alpha = t <= fadeStart ? 1f : 1f - (t - fadeStart) / (1f - fadeStart);
-            _gem.SetColor(Color.White * alpha);
+            _gem?.SetColor(Color.White * alpha); // null for an empty dig (label only)
             _text.SetAlpha(alpha);
         }
     }

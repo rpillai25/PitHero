@@ -56,30 +56,35 @@ namespace PitHero.Tests
         public void AdvancePity_ResetsFoundTierAndBelow_CountsBetterTiers()
         {
             var pity = new[] { 5, 50, 500, 5000 };
-            GemDigConfig.AdvancePity(pity, GemType.Agate);
+            GemDigConfig.AdvancePity(pity, DigFind.OfGem(GemType.Agate));
             CollectionAssert.AreEqual(new[] { 6, 51, 501, 5001 }, pity, "a Common find counts every tier");
 
-            GemDigConfig.AdvancePity(pity, GemType.Ruby); // Epic
-            CollectionAssert.AreEqual(new[] { 0, 0, 0, 5002 }, pity, "an Epic resets Uncommon..Epic");
+            GemDigConfig.AdvancePity(pity, DigFind.Nothing);
+            GemDigConfig.AdvancePity(pity, DigFind.OfJunk(DigJunkType.Spoon));
+            CollectionAssert.AreEqual(new[] { 8, 53, 503, 5003 }, pity, "empty and junk digs count as digs without a gem");
+
+            GemDigConfig.AdvancePity(pity, DigFind.OfGem(GemType.Ruby)); // Epic
+            CollectionAssert.AreEqual(new[] { 0, 0, 0, 5004 }, pity, "an Epic resets Uncommon..Epic");
 
             pity = new[] { 7, 70, 700, 7000 };
-            GemDigConfig.AdvancePity(pity, GemType.Diamond);
+            GemDigConfig.AdvancePity(pity, DigFind.OfGem(GemType.Diamond));
             CollectionAssert.AreEqual(new[] { 0, 0, 0, 0 }, pity, "a Diamond resets everything");
         }
 
         [TestMethod]
-        public void Resolve_LowestRollIsTheBestTier_HighestIsCommon()
+        public void Resolve_LowestRollIsTheBestTier_HighestIsTheBasePool()
         {
             var zero = new int[GemDigConfig.PityTierCount];
-            Assert.AreEqual(GemType.Diamond, GemDigConfig.Resolve(0, zero));
-            Assert.AreEqual(ItemRarity.Normal, GemDigConfig.GetRarity(GemDigConfig.Resolve(GemDigConfig.RollRange - 1, zero)));
+            Assert.AreEqual(GemType.Diamond, GemDigConfig.Resolve(0, zero).Gem);
+            var last = GemDigConfig.Resolve(GemDigConfig.RollRange - 1, zero);
+            Assert.IsTrue(!last.IsGem || GemDigConfig.GetRarity(last.Gem) == ItemRarity.Normal, "top roll lands in the base pool: " + last);
             // Out-of-range rolls clamp instead of throwing
-            Assert.AreEqual(GemType.Diamond, GemDigConfig.Resolve(-1, zero));
+            Assert.AreEqual(GemType.Diamond, GemDigConfig.Resolve(-1, zero).Gem);
             GemDigConfig.Resolve(long.MaxValue, zero);
         }
 
         [TestMethod]
-        public void DigGem_IsDeterministicForTheSameRolls()
+        public void Dig_IsDeterministicForTheSameRolls()
         {
             var a = new GameStateService();
             var b = new GameStateService();
@@ -87,41 +92,49 @@ namespace PitHero.Tests
             for (int i = 0; i < 50_000; i++)
             {
                 long roll = random.NextInt64(GemDigConfig.RollRange);
-                Assert.AreEqual(a.DigGem(roll), b.DigGem(roll));
+                Assert.AreEqual(a.Dig(roll).OutcomeIndex, b.Dig(roll).OutcomeIndex);
             }
             CollectionAssert.AreEqual(a.CopyGemPityArray(), b.CopyGemPityArray());
         }
 
         [TestMethod]
-        public void Pity_RaisesHighTierRates_AndKeepsDiamondRarest()
+        public void Pity_RaisesHighTierRates_KeepsDiamondRarest_AndLeavesEmptyAndJunkCommon()
         {
             const int Digs = 20_000_000;
             var state = new GameStateService();
             var random = new SeedableRandom(7);
             var gems = new long[GemDigConfig.GemCount];
             var tiers = new long[5];
-            long gold = 0;
+            long gold = 0, nothing = 0, junk = 0;
             for (int i = 0; i < Digs; i++)
             {
-                var gem = state.DigGem(random.NextInt64(GemDigConfig.RollRange));
-                gems[(int)gem]++;
-                tiers[(int)GemDigConfig.GetRarity(gem)]++;
-                gold += GemDigConfig.GetValue(gem);
+                var find = state.Dig(random.NextInt64(GemDigConfig.RollRange));
+                if (find.IsGem)
+                {
+                    gems[find.Index]++;
+                    tiers[(int)GemDigConfig.GetRarity(find.Gem)]++;
+                    gold += GemDigConfig.GetValue(find);
+                }
+                else if (find.Kind == DigFindKind.Nothing) nothing++;
+                else junk++;
             }
 
             double rareWait = (double)Digs / (tiers[2] + tiers[3] + tiers[4]);
             double epicWait = (double)Digs / (tiers[3] + tiers[4]);
             double diamondWait = (double)Digs / tiers[4];
-            Assert.IsTrue(rareWait > 9.8 && rareWait < 11.4, "Rare or better every " + rareWait + " (base 12.4)");
-            Assert.IsTrue(epicWait > 46 && epicWait < 56, "Epic or better every " + epicWait + " (base 58.5)");
+            Assert.IsTrue(rareWait > 17 && rareWait < 20, "Rare or better every " + rareWait + " (base 21.4)");
+            Assert.IsTrue(epicWait > 60 && epicWait < 73, "Epic or better every " + epicWait + " (base 78)");
             Assert.IsTrue(diamondWait > 760 && diamondWait < 920, "Diamond every " + diamondWait + " (base 1,000)");
 
             // Each gem is still rarer than the one listed before it, so Diamond stays the rarest
             for (int g = 1; g < GemDigConfig.GemCount; g++)
                 Assert.IsTrue(gems[g] < gems[g - 1], ((GemType)g) + " should be rarer than " + ((GemType)(g - 1)));
 
+            Assert.AreEqual(0.35, (double)nothing / Digs, 0.01, "empty digs stay about 35%");
+            Assert.AreEqual(0.30, (double)junk / Digs, 0.01, "junk stays about 30%");
+
             double perDig = (double)gold / Digs;
-            Assert.IsTrue(perDig > 66 && perDig < 72, "gold per dig " + perDig + " (base 60.4)");
+            Assert.IsTrue(perDig > 48 && perDig < 54, "gold per dig " + perDig + " (base 43.5)");
         }
 
         [TestMethod]

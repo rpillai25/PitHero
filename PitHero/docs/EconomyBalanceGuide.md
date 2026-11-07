@@ -183,37 +183,45 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
 The **Prospector's Map**, a Local artifact (50,000 G) in the Second Chance shop, unlocks the
 **Digging Field** in Construction → Buildings: free to place, only one per hero, movable
 (Shift+Click → Move) but never sold, 8×4 tiles on open farm ground. Clicking any of its 32 tiles
-digs up one random gem worth gold; the tile then rests for `GameConfig.DiggingFieldCooldownSeconds`
-(5 s of simulation time, shown as a dark overlay) before it can be dug again. It is the only
-active-play gold source: it pays only while the player is clicking, never while idle.
+digs it; the tile then rests for `GameConfig.DiggingFieldCooldownSeconds` (5 s of simulation time,
+shown as a dark overlay) before it can be dug again. It is the only active-play gold source: it pays
+only while the player is clicking, never while idle.
 
-Odds are exact integer weights out of 1,000,000: each gem is about **1.645× rarer** than the gem
-listed before it, which puts the **Diamond at exactly 1 in 1,000** and keeps every gem rarer than
-the one before it:
+Not every dig pays. Odds are exact integer weights out of 1,000,000:
 
-| Tier (odds of the tier) | Gem — gold — odds per dig |
+| Outcome | Share of digs | Shown as |
+|---|---|---|
+| Nothing | 35% | gray "Nothing", dig sound only |
+| Junk, worth 0 G | 30%: Shell 7%, Cup 6%, Plate 5%, Spoon 5%, Bottle 4%, Yarn Ball 3% | the item and a gray "Shell (+0)" label |
+| A gem | 35% | the gem, its "Agate (+1)" label in its rarity color, the pay-gold sound and a gold sparkle burst that grows with rarity |
+
+Misses and junk are the contrast that makes a gem feel like an event. Inside the gem share each gem
+is about **1.485× rarer** than the gem listed before it, which puts the **Diamond at exactly 1 in
+1,000 digs** and keeps it the rarest gem:
+
+| Tier (per dig) | Gem — gold — odds per dig |
 |---|---|
-| Common (77.7%) | Agate 1 g 39.3% · Amethyst 2 g 23.9% · Peridot 5 g 14.5% |
-| Uncommon (14.2%) | Garnet 10 g 1 in 11 · Aquamarine 50 g 1 in 19 |
-| Rare (6.4%) | Spinel 100 g 1 in 31 · Tourmaline 300 g 1 in 50 · Tanzanite 700 g 1 in 83 |
-| Epic (1.6%) | Sapphire 1,000 g 1 in 137 · Ruby 1,500 g 1 in 225 · Emerald 2,000 g 1 in 370 · Alexandrite 5,000 g 1 in 608 |
+| Common (24.5%) | Agate 1 g 1 in 9 · Amethyst 2 g 1 in 13 · Peridot 5 g 1 in 19 |
+| Uncommon (5.9%) | Garnet 10 g 1 in 28 · Aquamarine 50 g 1 in 42 |
+| Rare (3.4%) | Spinel 100 g 1 in 63 · Tourmaline 300 g 1 in 93 · Tanzanite 700 g 1 in 138 |
+| Epic (1.2%) | Sapphire 1,000 g 1 in 206 · Ruby 1,500 g 1 in 305 · Emerald 2,000 g 1 in 454 · Alexandrite 5,000 g 1 in 673 |
 | Legendary (0.1%) | Diamond 10,000 g 1 in 1,000 |
 
-Those are the **base odds**: expected value ≈ **60 gold per dig**, nearly all of it from the top
-tiers (Diamond alone 10 g, Epic 28 g, Rare 18 g).
+Those are the **base odds**: expected value ≈ **43.5 gold per dig**, nearly all of it from the top
+tiers (Diamond alone 10 g).
 
 ### Pity (bad-luck protection)
 
 Each tier above Common has a saved counter (`GameStateService`, save v42): digs since that tier
-or a better one came up. Past the tier's soft start, its odds multiplier climbs every dig up to a
-cap. A find resets its own tier's counter and every lower one; a Diamond resets all four. The soft
-starts sit at about each tier's average wait, so pity mostly cuts off long dry streaks. The knobs
-live in `GemDigConfig`:
+or a better one came up (empty and junk digs count). Past the tier's soft start, its odds
+multiplier climbs every dig up to a cap. A find resets its own tier's counter and every lower one;
+a Diamond resets all four. The soft starts sit at about each tier's average wait, so pity mostly
+cuts off long dry streaks. The knobs live in `GemDigConfig`:
 
 | Knob | Uncommon | Rare | Epic | Legendary |
 |---|---|---|---|---|
-| `PitySoftStartDigs` | — | 12 | 60 | 1,000 |
-| `PityGrowthPerDig` (× `PityStrength`) | 0 (off) | 0.1 | 0.02 | 0.002 |
+| `PitySoftStartDigs` | — | 20 | 75 | 1,000 |
+| `PityGrowthPerDig` (× `PityStrength`) | 0 (off) | 0.05 | 0.015 | 0.002 |
 | `PityMaxMultiplier` (odds at the cap) | 1× | 3× | 4× | 5× (Diamond 1 in 200) |
 
 `PityStrength` (default 1) scales every tier's growth; **0 turns pity off** (pure base odds).
@@ -221,10 +229,11 @@ Measured over 20M digs at strength 1:
 
 | | Base | With pity |
 |---|---|---|
-| Rare or better | every 12 digs | every ~11 |
-| Epic or better | every 58 | every ~51 |
-| Diamond | 1 in 1,000 | 1 in ~840 (Alexandrite ~1 in 530) |
-| Gold per dig | 60 | ~69 |
+| Rare or better | every 21 digs | every ~18 |
+| Epic or better | every 78 | every ~67 |
+| Diamond | 1 in 1,000 | 1 in ~840 (Alexandrite ~1 in 580) |
+| Empty / junk | 35% / 30% | ~35% / ~30% |
+| Gold per dig | 43.5 | ~51 |
 
 `GemDigPityTests` fails if any gem becomes more common than the one listed before it, so a cap that
 lets the Diamond overtake the Alexandrite is caught. Changing a knob (or the cooldown) changes what a
@@ -233,10 +242,11 @@ recorded dig pays out, so bump `GameConfig.SimulationVersion` with it.
 ### Pace
 
 The field rate-limits itself: 32 tiles that each rest 5 s cap digging at **6.4 digs per second**.
-At ~69 gold per dig that is far above every other source — a relaxed one dig per second is
-**~250,000 gold per real hour**, against ~92,000 for a full late-game farm (see Design Targets).
-The levers, in order of bluntness: `DiggingFieldCooldownSeconds` (longer rest), `PityStrength`,
-and the geometric step / Diamond weight in `GemDigConfig`; the gem values come from the issue.
+At ~51 gold per dig that is far above every other source — a relaxed one dig per second is
+**~180,000 gold per real hour**, against ~92,000 for a full late-game farm (see Design Targets).
+The levers, in order of bluntness: `DiggingFieldCooldownSeconds` (longer rest), the empty/junk share
+(`NothingWeight`, the junk weights), `PityStrength`, and the gem step in `GemDigConfig`; the gem values
+come from the issue.
 
 ---
 

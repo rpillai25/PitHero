@@ -371,14 +371,14 @@ namespace PitHero.Services
         private readonly int[] _gemPity = new int[Config.GemDigConfig.PityTierCount];
 
         /// <summary>
-        /// Resolves one dig at the gem dig site from its roll (in [0, GemDigConfig.RollRange)) under
-        /// the current pity counters, then advances the counters. Returns the gem found.
+        /// Resolves one Digging Field dig from its roll (in [0, GemDigConfig.RollRange)) under the
+        /// current pity counters, then advances the counters. Returns what was found: nothing, junk or a gem.
         /// </summary>
-        public Config.GemType DigGem(long roll)
+        public Config.DigFind Dig(long roll)
         {
-            var gem = Config.GemDigConfig.Resolve(roll, _gemPity);
-            Config.GemDigConfig.AdvancePity(_gemPity, gem);
-            return gem;
+            var find = Config.GemDigConfig.Resolve(roll, _gemPity);
+            Config.GemDigConfig.AdvancePity(_gemPity, find);
+            return find;
         }
 
         /// <summary>Digs without the given pity tier (0..3 = Uncommon..Legendary) or better.</summary>

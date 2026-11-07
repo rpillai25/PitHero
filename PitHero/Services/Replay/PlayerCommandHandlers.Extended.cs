@@ -512,9 +512,9 @@ namespace PitHero.Services.Replay
         /// <summary>
         /// Digs one Digging Field tile (issue #452). Re-validates everything the click saw: the
         /// Prospector's Map is owned, a field is placed, the tile is inside it and not resting. The
-        /// click's uniform roll (drawn on the UI stream) becomes a gem here, under the sim-side pity
+        /// click's uniform roll (drawn on the UI stream) becomes a find (nothing, junk or a gem) here, under the sim-side pity
         /// counters, so the payout depends only on sim state and the recorded roll. Pays out, starts
-        /// the tile's cooldown and shows the gem rising out of the tile.
+        /// the tile's cooldown and shows the find rising out of the tile.
         /// </summary>
         private static void ApplyDigGem(int tileX, int tileY, long roll)
         {
@@ -526,13 +526,15 @@ namespace PitHero.Services.Replay
             int index = field != null ? field.GetTileIndex(tileX, tileY) : -1;
             if (index < 0 || field.IsCooling(index))
                 return;
-            var gem = gameState.DigGem(roll);
-            gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(gem), "gem_dig");
+            // Every dig rests the tile; only a gem pays (an empty dig or junk is worth nothing)
+            var find = gameState.Dig(roll);
+            if (find.IsGem)
+                gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(find), "gem_dig");
             field.StartCooldown(index);
 
             // Cosmetic only: the effect never feeds back into the simulation
             if (Core.Instance != null && Core.Scene is PitHero.ECS.Scenes.MainGameScene scene)
-                scene.SpawnGemDigEffect(gem, tileX, tileY);
+                scene.SpawnDigEffect(find, tileX, tileY);
         }
 
         private static void ApplyAutomation(AutomationKind kind, bool enabled)

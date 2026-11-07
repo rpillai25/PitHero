@@ -2225,48 +2225,78 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Shows a dug-up gem rising out of the dug Digging Field tile with its name and gold value above
-        /// it, and plays the pay-gold sound there (issue #452). Called by the DigGem command handler, so
+        /// Shows what a dig turned up rising out of the dug Digging Field tile (issue #452), with the
+        /// dig sound there. A gem rises with its "Name (+N)" label in its rarity color, the pay-gold
+        /// sound and a sparkle burst that grows with its rarity; junk rises with a gray "Name (+0)"
+        /// label; an empty dig shows only a gray "Nothing". Called by the DigGem command handler, so
         /// replays show it too.
         /// </summary>
-        public void SpawnGemDigEffect(Config.GemType gem, int tileX, int tileY)
+        public void SpawnDigEffect(Config.DigFind find, int tileX, int tileY)
         {
             var center = new Vector2(
                 tileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
                 tileY * GameConfig.TileSize + GameConfig.TileSize / 2f);
-            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(Util.SoundEffectTypes.SoundEffectType.PayGold, center);
+            var sounds = Core.GetGlobalManager<SoundEffectManager>();
+            sounds?.PlaySoundAt(Util.SoundEffectTypes.SoundEffectType.Digging, center);
 
+            Sprite sprite = null;
+            Color labelColor = Config.GemDigConfig.NoValueTextColor;
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-            var sprite = atlas?.GetSprite(Config.GemDigConfig.GetSpriteName(gem));
-            if (sprite == null)
-                return;
+            if (find.IsGem)
+            {
+                sprite = atlas?.GetSprite(Config.GemDigConfig.GetSpriteName(find.Gem));
+                labelColor = Config.GemDigConfig.GetTextColor(find.Gem);
+                sounds?.PlaySoundAt(Util.SoundEffectTypes.SoundEffectType.PayGold, center);
+                if (!Core.CosmeticUpdatesSuspended)
+                    ParticleEffectManager.Current?.SpawnEffectAtPosition(ParticleEffectType.GemSparkle, center, this,
+                        GameConfig.RenderLayerActorPropOverlay, GemSparkleDensity[(int)Config.GemDigConfig.GetRarity(find.Gem)]);
+            }
+            else if (find.Kind == Config.DigFindKind.Junk)
+            {
+                sprite = atlas?.GetSprite(Config.GemDigConfig.GetSpriteName(find.Junk));
+            }
 
-            var entity = CreateEntity("gem-dig-effect");
+            var entity = CreateEntity("dig-find-effect");
             entity.SetPosition(center.X, center.Y + GameConfig.GemRiseStartOffsetY);
-            var gemRenderer = entity.AddComponent(new SpriteRenderer(sprite));
-            gemRenderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
+            SpriteRenderer renderer = null;
+            if (sprite != null)
+            {
+                renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                renderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
+            }
             var text = entity.AddComponent(new GemValueTextComponent(
-                GetGemDigLabel(gem), Config.GemDigConfig.GetTextColor(gem),
-                -sprite.SourceRect.Height / 2f));
+                GetDigLabel(find), labelColor, sprite != null ? -sprite.SourceRect.Height / 2f : 0f));
             text.SetRenderLayer(GameConfig.RenderLayerSpeechBubble);
-            entity.AddComponent(new GemDigEffectComponent(gemRenderer, text));
+            entity.AddComponent(new GemDigEffectComponent(renderer, text));
         }
 
-        // "Agate (+1)" per gem, built once on first dig so repeat digs allocate no strings
-        private readonly string[] _gemDigLabels = new string[Config.GemDigConfig.GemCount];
+        // Sparkle burst density per gem rarity (Normal..Legendary): every gem sparkles, rarer ones more
+        private static readonly float[] GemSparkleDensity = { 0.5f, 1f, 1.6f, 2.4f, 3.5f };
 
-        /// <summary>The localized "Name (+N)" label for a gem, cached per scene.</summary>
-        private string GetGemDigLabel(Config.GemType gem)
+        // Labels per dig outcome ("Agate (+1)", "Shell (+0)", "Nothing"), built once on first use so
+        // repeat digs allocate no strings
+        private readonly string[] _digLabels = new string[Config.GemDigConfig.OutcomeCount];
+
+        /// <summary>The localized label for a dig outcome, cached per scene.</summary>
+        private string GetDigLabel(Config.DigFind find)
         {
-            int i = (int)gem;
-            var label = _gemDigLabels[i];
+            int i = find.OutcomeIndex;
+            var label = _digLabels[i];
             if (label == null)
             {
                 var text = Core.Services.GetService<TextService>();
-                string format = text?.DisplayText(TextType.UI, UITextKey.GemDigLabelFormat) ?? "{0} (+{1})";
-                string name = text?.DisplayText(TextType.UI, Config.GemDigConfig.GetNameKey(gem)) ?? gem.ToString();
-                label = Config.GemDigConfig.FormatLabel(format, name, gem);
-                _gemDigLabels[i] = label;
+                if (find.Kind == Config.DigFindKind.Nothing)
+                {
+                    label = text?.DisplayText(TextType.UI, UITextKey.DigNothing) ?? "Nothing";
+                }
+                else
+                {
+                    string format = text?.DisplayText(TextType.UI, UITextKey.GemDigLabelFormat) ?? "{0} (+{1})";
+                    string key = find.IsGem ? Config.GemDigConfig.GetNameKey(find.Gem) : Config.GemDigConfig.GetNameKey(find.Junk);
+                    string name = text?.DisplayText(TextType.UI, key) ?? find.ToString();
+                    label = Config.GemDigConfig.FormatLabel(format, name, Config.GemDigConfig.GetValue(find));
+                }
+                _digLabels[i] = label;
             }
             return label;
         }

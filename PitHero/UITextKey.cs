@@ -609,5 +609,12 @@ namespace PitHero
         public const string GemEmerald = "GemEmerald";
         public const string GemAlexandrite = "GemAlexandrite";
         public const string GemDiamond = "GemDiamond";
+        public const string DigJunkShell = "DigJunkShell";
+        public const string DigJunkCup = "DigJunkCup";
+        public const string DigJunkPlate = "DigJunkPlate";
+        public const string DigJunkSpoon = "DigJunkSpoon";
+        public const string DigJunkBottle = "DigJunkBottle";
+        public const string DigJunkYarnBall = "DigJunkYarnBall";
+        public const string DigNothing = "DigNothing";
     }
 }

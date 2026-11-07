@@ -8,74 +8,90 @@ using System.IO;
 
 namespace PitHero.Tests
 {
-    /// <summary>The gem dig site's gem table and drop odds (issue #452).</summary>
+    /// <summary>The Digging Field's outcome table (issue #452): empty digs, junk and gems, and their odds.</summary>
     [TestClass]
     public class GemDigConfigTests
     {
         private static readonly int[] ExpectedValues = { 1, 2, 5, 10, 50, 100, 300, 700, 1000, 1500, 2000, 5000, 10000 };
 
         [TestMethod]
-        public void Values_MatchTheIssue()
+        public void Values_MatchTheIssue_AndJunkIsWorthNothing()
         {
             Assert.AreEqual(ExpectedValues.Length, GemDigConfig.GemCount);
             Assert.AreEqual(GemDigConfig.GemCount, Enum.GetValues(typeof(GemType)).Length);
+            Assert.AreEqual(GemDigConfig.JunkCount, Enum.GetValues(typeof(DigJunkType)).Length);
             for (int i = 0; i < GemDigConfig.GemCount; i++)
                 Assert.AreEqual(ExpectedValues[i], GemDigConfig.GetValue((GemType)i), ((GemType)i).ToString());
+            for (int i = 0; i < GemDigConfig.JunkCount; i++)
+                Assert.AreEqual(0, GemDigConfig.GetValue(DigFind.OfJunk((DigJunkType)i)), ((DigJunkType)i).ToString());
+            Assert.AreEqual(0, GemDigConfig.GetValue(DigFind.Nothing));
+            Assert.AreEqual(10000, GemDigConfig.GetValue(DigFind.OfGem(GemType.Diamond)));
         }
 
         [TestMethod]
-        public void GemOrdinals_ArePinned()
+        public void Ordinals_ArePinned()
         {
-            // Ordinals travel in recorded DigGem commands: never renumber
             Assert.AreEqual(0, (int)GemType.Agate);
             Assert.AreEqual(12, (int)GemType.Diamond);
+            Assert.AreEqual(5, (int)DigJunkType.YarnBall);
             Assert.AreEqual(127, (int)PlayerCommandType.DigGem);
         }
 
         [TestMethod]
-        public void Weights_SumToTotal()
+        public void OutcomeIndex_RoundTrips()
         {
-            long sum = 0;
+            Assert.AreEqual(GemDigConfig.OutcomeCount, 1 + GemDigConfig.JunkCount + GemDigConfig.GemCount);
+            for (int i = 0; i < GemDigConfig.OutcomeCount; i++)
+                Assert.AreEqual(i, DigFind.FromOutcomeIndex(i).OutcomeIndex);
+            Assert.AreEqual(0, DigFind.Nothing.OutcomeIndex);
+            Assert.AreEqual(DigFindKind.Junk, DigFind.FromOutcomeIndex(1).Kind);
+            Assert.AreEqual(GemType.Agate, DigFind.FromOutcomeIndex(1 + GemDigConfig.JunkCount).Gem);
+        }
+
+        [TestMethod]
+        public void Weights_SumToTotal_ThirtyFiveThirtyThirtyFive()
+        {
+            long gems = 0, junk = 0;
             for (int i = 0; i < GemDigConfig.GemCount; i++)
             {
                 Assert.IsTrue(GemDigConfig.GetWeight((GemType)i) > 0, ((GemType)i).ToString());
-                sum += GemDigConfig.GetWeight((GemType)i);
+                gems += GemDigConfig.GetWeight((GemType)i);
             }
-            Assert.AreEqual(GemDigConfig.TotalWeight, sum);
+            for (int i = 0; i < GemDigConfig.JunkCount; i++)
+                junk += GemDigConfig.GetWeight((DigJunkType)i);
+            Assert.AreEqual(GemDigConfig.TotalWeight, GemDigConfig.NothingWeight + junk + gems);
+            Assert.AreEqual(350_000, GemDigConfig.NothingWeight, "35% of digs turn up nothing");
+            Assert.AreEqual(300_000, junk, "30% turn up junk");
+            Assert.AreEqual(350_000, gems, "35% turn up a gem");
         }
 
         [TestMethod]
         public void Diamond_IsOneInAThousand_AndTiersFallOff()
         {
             Assert.AreEqual(1.0 / 1000, GemDigConfig.GetProbability(GemType.Diamond), 1e-12);
-            Assert.AreEqual(0.142, TierProbability(ItemRarity.Uncommon), 0.001);
-            Assert.AreEqual(0.0645, TierProbability(ItemRarity.Rare), 0.001);
-            Assert.AreEqual(0.0161, TierProbability(ItemRarity.Epic), 0.001);
-            Assert.AreEqual(0.001, TierProbability(ItemRarity.Legendary), 1e-12);
-            for (int t = 1; t < 5; t++)
-                Assert.IsTrue(TierProbability((ItemRarity)t) < TierProbability((ItemRarity)(t - 1)) / 2,
-                    ((ItemRarity)t) + " should be well under half as likely as " + ((ItemRarity)(t - 1)));
+            for (int t = 2; t < 5; t++)
+                Assert.IsTrue(GemTierProbability((ItemRarity)t) < GemTierProbability((ItemRarity)(t - 1)) / 1.5,
+                    ((ItemRarity)t) + " should be well under the chance of " + ((ItemRarity)(t - 1)));
         }
 
         [TestMethod]
-        public void Weights_AreGeometric_AboutOnePointSixFourFiveApart()
+        public void GemWeights_AreGeometric_AboutOnePointFourEightFiveApart()
         {
-            for (int i = 1; i < GemDigConfig.GemCount - 1; i++)
+            for (int i = 1; i < GemDigConfig.GemCount; i++)
             {
                 double ratio = (double)GemDigConfig.GetWeight((GemType)(i - 1)) / GemDigConfig.GetWeight((GemType)i);
-                Assert.AreEqual(1.645, ratio, 0.01, ((GemType)(i - 1)) + " vs " + ((GemType)i));
+                Assert.AreEqual(1.485, ratio, 0.01, ((GemType)(i - 1)) + " vs " + ((GemType)i));
             }
         }
 
         [TestMethod]
-        public void Odds_FallWithinEveryTierAndAcrossTiers()
+        public void EveryGemIsRarerThanTheOneBeforeIt_AndJunkFallsOffToo()
         {
-            // Each gem is strictly rarer than the one listed before it, so Agate is the most
-            // common gem and Diamond the rarest, and the last gem of a tier is its rarest
             for (int i = 1; i < GemDigConfig.GemCount; i++)
                 Assert.IsTrue(GemDigConfig.GetWeight((GemType)i) < GemDigConfig.GetWeight((GemType)(i - 1)),
                     ((GemType)i) + " should be rarer than " + ((GemType)(i - 1)));
-            Assert.IsTrue(GemDigConfig.GetProbability(GemType.Agate) > 0.35, "Agate is by far the most common gem");
+            Assert.IsTrue(GemDigConfig.GetWeight(DigJunkType.YarnBall) < GemDigConfig.GetWeight(DigJunkType.Shell),
+                "the last junk listed is rarer than the first");
         }
 
         [TestMethod]
@@ -95,47 +111,48 @@ namespace PitHero.Tests
         public void FromRoll_CoversEveryRollExactlyByWeight()
         {
             int start = 0;
-            for (int i = 0; i < GemDigConfig.GemCount; i++)
+            for (int i = 0; i < GemDigConfig.OutcomeCount; i++)
             {
-                var gem = (GemType)i;
-                int end = start + GemDigConfig.GetWeight(gem);
-                Assert.AreEqual(gem, GemDigConfig.FromRoll(start), "first roll of " + gem);
-                Assert.AreEqual(gem, GemDigConfig.FromRoll(end - 1), "last roll of " + gem);
+                var find = DigFind.FromOutcomeIndex(i);
+                int end = start + (int)Math.Round(GemDigConfig.GetProbability(find) * GemDigConfig.TotalWeight);
+                Assert.AreEqual(i, GemDigConfig.FromRoll(start).OutcomeIndex, "first roll of " + find);
+                Assert.AreEqual(i, GemDigConfig.FromRoll(end - 1).OutcomeIndex, "last roll of " + find);
                 start = end;
             }
-            Assert.AreEqual(GemType.Agate, GemDigConfig.FromRoll(-5));
-            Assert.AreEqual(GemType.Diamond, GemDigConfig.FromRoll(GemDigConfig.TotalWeight + 5));
+            Assert.AreEqual(GemDigConfig.TotalWeight, start);
+            Assert.AreEqual(DigFindKind.Nothing, GemDigConfig.FromRoll(-5).Kind);
+            Assert.AreEqual(GemType.Diamond, GemDigConfig.FromRoll(GemDigConfig.TotalWeight + 5).Gem);
         }
 
         [TestMethod]
-        public void ExpectedValue_IsAboutSixtyGoldPerDig()
+        public void ExpectedValue_IsAboutFortyThreeGoldPerDig()
         {
             double ev = 0;
             for (int i = 0; i < GemDigConfig.GemCount; i++)
                 ev += GemDigConfig.GetProbability((GemType)i) * GemDigConfig.GetValue((GemType)i);
-            Assert.AreEqual(60.4, ev, 0.1);
+            Assert.AreEqual(43.5, ev, 0.1);
         }
 
         [TestMethod]
         public void Roll_FrequenciesMatchTheTable()
         {
             const int Digs = 400_000;
-            var counts = new int[GemDigConfig.GemCount];
+            int nothing = 0, junk = 0, gems = 0;
             var random = new SeedableRandom(452);
             for (int i = 0; i < Digs; i++)
-                counts[(int)GemDigConfig.Roll(random)]++;
-
-            // The three common gems are frequent enough to check closely (within 1%)
-            for (int i = 0; i < 3; i++)
             {
-                double expected = GemDigConfig.GetProbability((GemType)i);
-                Assert.AreEqual(expected, (double)counts[i] / Digs, 0.01, ((GemType)i).ToString());
+                var find = GemDigConfig.Roll(random);
+                if (find.Kind == DigFindKind.Nothing) nothing++;
+                else if (find.Kind == DigFindKind.Junk) junk++;
+                else gems++;
             }
-            Assert.AreEqual(0.142, (double)(counts[3] + counts[4]) / Digs, 0.003, "Uncommon tier");
+            Assert.AreEqual(0.35, (double)nothing / Digs, 0.005, "nothing");
+            Assert.AreEqual(0.30, (double)junk / Digs, 0.005, "junk");
+            Assert.AreEqual(0.35, (double)gems / Digs, 0.005, "gems");
         }
 
         [TestMethod]
-        public void NameKey_AndSpriteName_MatchEachGem()
+        public void NameKeys_AndSpriteNames_MatchEachFind()
         {
             for (int i = 0; i < GemDigConfig.GemCount; i++)
             {
@@ -143,17 +160,23 @@ namespace PitHero.Tests
                 Assert.AreEqual("Gem" + gem, GemDigConfig.GetNameKey(gem));
                 Assert.AreEqual("Gem" + gem, GemDigConfig.GetSpriteName(gem));
             }
+            for (int i = 0; i < GemDigConfig.JunkCount; i++)
+            {
+                var junk = (DigJunkType)i;
+                Assert.AreEqual("DigJunk" + junk, GemDigConfig.GetNameKey(junk));
+                Assert.AreEqual("Junk" + junk, GemDigConfig.GetSpriteName(junk));
+            }
         }
 
         [TestMethod]
         public void FormatLabel_ShowsNameAndGold()
         {
-            Assert.AreEqual("Agate (+1)", GemDigConfig.FormatLabel("{0} (+{1})", "Agate", GemType.Agate));
-            Assert.AreEqual("Diamond (+10000)", GemDigConfig.FormatLabel("{0} (+{1})", "Diamond", GemType.Diamond));
+            Assert.AreEqual("Agate (+1)", GemDigConfig.FormatLabel("{0} (+{1})", "Agate", 1));
+            Assert.AreEqual("Shell (+0)", GemDigConfig.FormatLabel("{0} (+{1})", "Shell", 0));
         }
 
         [TestMethod]
-        public void UiText_HasTheLabelFormatAndEveryGemName()
+        public void UiText_HasTheLabelsAndEveryName()
         {
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
             string uiPath = null;
@@ -174,15 +197,15 @@ namespace PitHero.Tests
                     values[line.Substring(0, comma)] = line.Substring(comma + 1);
             }
             Assert.AreEqual("{0} (+{1})", values[UITextKey.GemDigLabelFormat]);
+            Assert.AreEqual("Nothing", values[UITextKey.DigNothing]);
             for (int i = 0; i < GemDigConfig.GemCount; i++)
-            {
-                var gem = (GemType)i;
-                Assert.IsTrue(values.TryGetValue(GemDigConfig.GetNameKey(gem), out var name), "missing " + gem);
-                Assert.AreEqual(gem.ToString(), name);
-            }
+                Assert.AreEqual(((GemType)i).ToString(), values[GemDigConfig.GetNameKey((GemType)i)]);
+            string[] junkNames = { "Shell", "Cup", "Plate", "Spoon", "Bottle", "Yarn Ball" };
+            for (int i = 0; i < GemDigConfig.JunkCount; i++)
+                Assert.AreEqual(junkNames[i], values[GemDigConfig.GetNameKey((DigJunkType)i)]);
         }
 
-        private static double TierProbability(ItemRarity rarity)
+        private static double GemTierProbability(ItemRarity rarity)
         {
             double p = 0;
             for (int i = 0; i < GemDigConfig.GemCount; i++)
