@@ -22,11 +22,7 @@ namespace PitHero.Util
 
         /// <summary>Wide band of large fire particles raining down; spawned above the
         /// enemy group's center for the mage Firestorm AoE.</summary>
-        Firestorm,
-
-        /// <summary>Small gold glints rising from the gem dig site while its pity is near the cap
-        /// (issue #452). Ordinals are recorded in replay frames: append only.</summary>
-        GemGlimmer
+        Firestorm
     }
 
     /// <summary>
@@ -106,8 +102,7 @@ namespace PitHero.Util
                     { ParticleEffectType.Heal, content.LoadParticleEmitterConfig("Content/Particles/heal.pex") },
                     { ParticleEffectType.HealPotion, content.LoadParticleEmitterConfig("Content/Particles/heal_potion.pex") },
                     { ParticleEffectType.Fireball, content.LoadParticleEmitterConfig("Content/Particles/fireball.pex") },
-                    { ParticleEffectType.Firestorm, content.LoadParticleEmitterConfig("Content/Particles/firestorm.pex") },
-                    { ParticleEffectType.GemGlimmer, content.LoadParticleEmitterConfig("Content/Particles/gem_glimmer.pex") }
+                    { ParticleEffectType.Firestorm, content.LoadParticleEmitterConfig("Content/Particles/firestorm.pex") }
                 };
 
                 Initialized = true;

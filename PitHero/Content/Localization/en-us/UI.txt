@@ -83,12 +83,15 @@ BuildingNameMonsterHouse,Monster House
 BuildingNameCropStorage,Crop Storage
 BuildingDescMonsterHouse,Houses 16 monsters
 BuildingDescCropStorage,Holds 32 stacks of crops
+BuildingNameDiggingField,Digging Field
+BuildingDescDiggingField,Click a tile to dig for gems worth gold. Each tile rests a few seconds after a dig. Only one can be built.
 WindowBuildings,Buildings
 WindowSeeds,Seeds
 WindowWateringPriority,Watering Priority
 WindowHarvestedCrops,Harvested Crops
 ButtonBuild,Build
 BuildingCostFormat,Cost {0} G
+BuildingCostFree,Free
 LabelTillingSoil,Tilling Soil
 LabelPlantingCrops,Planting Crops
 LabelRestoringGrass,Restoring Grass
@@ -298,7 +301,7 @@ ArtifactPlatinumWateringCanName,Platinum Watering Can
 ArtifactPlatinumWateringCanDesc,A flawless platinum can. Workers water 24 crops before refilling.
 ArtifactProspectorsMapName,Prospector's Map
 ArtifactProspectorsMapDesc,A weathered map. X marks a gem deposit buried by the road.
-ArtifactProspectorsMapEffect,Reveals the gem dig site west of the tavern. Click the mound to dig up gems worth gold.
+ArtifactProspectorsMapEffect,Unlocks the Digging Field in Construction > Buildings. Click its tiles to dig up gems worth gold.
 ArtifactScopeGlobal,Global
 ArtifactScopeLocal,Local
 ArtifactScopeGlobalTooltip,Affects all hero sessions

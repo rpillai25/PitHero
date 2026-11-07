@@ -262,6 +262,8 @@ namespace PitHero.ECS.Scenes
 
             // Register building service so farm building placement and counts are queryable.
             Core.Services.AddService(new Services.BuildingService());
+            // Digging Field tile cooldowns (issue #452): scene-scoped sim state, every tile ready at session start
+            Core.Services.AddService(new Services.DiggingFieldService(Core.Services.GetService<Services.BuildingService>()));
 
             // Register crop planting service so plan tracking and seed inventory are queryable.
             Core.Services.AddService(new Services.CropPlantingService());
@@ -317,6 +319,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(Services.LootShuffleService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
+            Core.Services.RemoveService(typeof(Services.DiggingFieldService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(Services.CropMarketService));
             Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
@@ -2222,92 +2225,15 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Keeps the gem dig site in step with the Prospector's Map (issue #452): spawned while the
-        /// hero owns it, removed while not. Runs every presentation frame, which covers a loaded save,
-        /// a new hero and a replay restart alike; a purchase reveals it at once via RevealGemDigSite.
+        /// Shows a dug-up gem rising out of the dug Digging Field tile with its name and gold value above
+        /// it, and plays the pay-gold sound there (issue #452). Called by the DigGem command handler, so
+        /// replays show it too.
         /// </summary>
-        private void SyncGemDigSite()
+        public void SpawnGemDigEffect(Config.GemType gem, int tileX, int tileY)
         {
-            bool owned = Artifacts.LocalArtifactEffects.HasGemDigSite(Core.Services.GetService<GameStateService>());
-            if (owned && _gemDigSiteEntity == null)
-                SpawnGemDigSite();
-            else if (!owned && _gemDigSiteEntity != null)
-                DespawnGemDigSite();
-        }
-
-        /// <summary>
-        /// The Prospector's Map was just bought: raise the mound now (no waiting for the next
-        /// presentation frame) with a gold glimmer puff. Called by the GrantArtifact handler.
-        /// </summary>
-        public void RevealGemDigSite()
-        {
-            if (_gemDigSiteEntity == null)
-                SpawnGemDigSite();
-            if (!Core.CosmeticUpdatesSuspended)
-                ParticleEffectManager.Current?.SpawnEffectAtPosition(ParticleEffectType.GemGlimmer,
-                    GetGemDigSiteCenter() + new Vector2(0f, -8f), this, GameConfig.RenderLayerActorPropOverlay);
-        }
-
-        private void DespawnGemDigSite()
-        {
-            _gemDigSiteEntity?.Destroy();
-            _gemDigSiteEntity = null;
-            _gemDigGlintEntity?.Destroy();
-            _gemDigGlintEntity = null;
-            _gemDigSiteHovered = false;
-            _gemDigSiteHoverOutlineEntity?.SetEnabled(false);
-        }
-
-        /// <summary>
-        /// Spawn the gem dig site (issue #452): a 96x96 dirt mound centered on
-        /// GameConfig.GemDigSiteTileX/Y (59, 9), Y-sorted at its bottom tile row and drawn through the
-        /// day/night grading material like the other terrain-attached props.
-        /// </summary>
-        private void SpawnGemDigSite()
-        {
-            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-            var sprite = atlas?.GetSprite("GemDigSite");
-            if (sprite == null)
-            {
-                Debug.Warn("[MainGameScene] GemDigSite sprite not found in CropsProps.atlas");
-                return;
-            }
-
-            _gemDigSiteEntity = CreateEntity("gem-dig-site");
-            _gemDigSiteEntity.SetPosition(GetGemDigSiteCenter());
-            var renderer = _gemDigSiteEntity.AddComponent(new YSortSpriteRenderer(sprite));
-            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
-            renderer.AnchorToBottomTile();
-            if (_colorGrading?.Material != null)
-                renderer.SetMaterial(_colorGrading.Material);
-
-            // Glints on the mound's gems show how much pity has built up (ungraded: they glow at night too)
-            var dot = atlas.GetSprite("GemGlint1");
-            var plus = atlas.GetSprite("GemGlint2");
-            var star = atlas.GetSprite("GemGlint3");
-            if (dot != null && plus != null && star != null)
-            {
-                _gemDigGlintEntity = CreateEntity("gem-dig-site-glints");
-                _gemDigGlintEntity.SetPosition(GetGemDigSiteCenter());
-                _gemDigGlintEntity.AddComponent(new GemDigSparkleComponent(dot, plus, star, GetGemDigSiteCenter() + new Vector2(0f, -8f)));
-            }
-        }
-
-        /// <summary>World-space center of the gem dig site (its anchor tile's center, nudged down by GemDigSiteOffsetY).</summary>
-        private static Vector2 GetGemDigSiteCenter()
-        {
-            return new Vector2(
-                GameConfig.GemDigSiteTileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                GameConfig.GemDigSiteTileY * GameConfig.TileSize + GameConfig.TileSize / 2f + GameConfig.GemDigSiteOffsetY);
-        }
-
-        /// <summary>
-        /// Shows a dug-up gem rising out of the dig site with its name and gold value above it, and plays the
-        /// pay-gold sound there. Called by the DigGem command handler, so replays show it too.
-        /// </summary>
-        public void SpawnGemDigEffect(Config.GemType gem)
-        {
-            var center = GetGemDigSiteCenter();
+            var center = new Vector2(
+                tileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                tileY * GameConfig.TileSize + GameConfig.TileSize / 2f);
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(Util.SoundEffectTypes.SoundEffectType.PayGold, center);
 
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
@@ -4016,12 +3942,6 @@ namespace PitHero.ECS.Scenes
             HandleFridgeHover();
             if (!replayActive)
                 HandleFridgeClicks();
-
-            // Handle gem-dig-site hover outline and click-to-dig
-            SyncGemDigSite();
-            HandleGemDigSiteHover();
-            if (!replayActive)
-                HandleGemDigSiteClicks();
             _refrigeratorDialog?.Update();
             _addMonsterDialog?.Update();
             _farmStatsDialog?.Update();
@@ -4384,10 +4304,70 @@ namespace PitHero.ECS.Scenes
             return buildingService.GetBuildingAtTile(tileX, tileY);
         }
 
-        /// <summary>Draws a white outline around the placed building under the cursor to signal it is clickable.</summary>
+        private void EnsureBuildingHoverOutline()
+        {
+            if (_buildingHoverOutlineEntity != null)
+                return;
+            _buildingHoverOutlineEntity = CreateEntity("building-hover-outline");
+            var outline = _buildingHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
+            outline.SetRenderLayer(GameConfig.RenderLayerTop);
+            outline.SetColor(Color.White);
+        }
+
+        /// <summary>
+        /// The Digging Field tile index under the cursor when that tile is ready to dig, else -1;
+        /// tileX/tileY are the world tile. Reads the sim-side cooldowns (UI never holds its own).
+        /// </summary>
+        private int GetReadyDigTileUnderCursor(out int tileX, out int tileY)
+        {
+            var worldPos = Camera.MouseToWorldPoint();
+            tileX = (int)(worldPos.X / GameConfig.TileSize);
+            tileY = (int)(worldPos.Y / GameConfig.TileSize);
+            var field = Core.Services.GetService<Services.DiggingFieldService>();
+            if (field == null)
+                return -1;
+            int index = field.GetTileIndex(tileX, tileY);
+            return index >= 0 && !field.IsCooling(index) ? index : -1;
+        }
+
+        // Digging Field tile under the cursor last frame (-1 = none or resting), so the tile outline
+        // only moves when the cursor or the tile's cooldown changes (issue #452)
+        private int _hoveredDigTile = -1;
+
+        /// <summary>
+        /// Draws a white outline to signal what is clickable: around the placed building under the
+        /// cursor, or for the Digging Field just around the tile under the cursor, and only while that
+        /// tile is ready to dig (a resting tile shows its dark overlay instead).
+        /// </summary>
         private void HandleBuildingHover()
         {
             Services.PlacedBuilding hovered = BuildingInteractionsBlocked() ? null : GetBuildingUnderCursor();
+
+            if (hovered != null && hovered.Type == Util.BuildingType.DiggingField)
+            {
+                _hoveredBuilding = hovered;
+                int tile = GetReadyDigTileUnderCursor(out int tileX, out int tileY);
+                if (tile == _hoveredDigTile)
+                    return;
+                _hoveredDigTile = tile;
+                if (tile < 0)
+                {
+                    _buildingHoverOutlineEntity?.SetEnabled(false);
+                    return;
+                }
+                EnsureBuildingHoverOutline();
+                _buildingHoverOutlineEntity.GetComponent<BuildingOutlineRenderComponent>()?.SetSize(GameConfig.TileSize, GameConfig.TileSize);
+                _buildingHoverOutlineEntity.SetPosition(tileX * GameConfig.TileSize, tileY * GameConfig.TileSize);
+                _buildingHoverOutlineEntity.SetEnabled(true);
+                return;
+            }
+            if (_hoveredDigTile >= 0)
+            {
+                // Left the field: force the footprint outline to be rebuilt for whatever is hovered now
+                _hoveredDigTile = -1;
+                _hoveredBuilding = null;
+                _buildingHoverOutlineEntity?.SetEnabled(false);
+            }
 
             if (hovered == _hoveredBuilding)
                 return;
@@ -4400,13 +4380,7 @@ namespace PitHero.ECS.Scenes
                 return;
             }
 
-            if (_buildingHoverOutlineEntity == null)
-            {
-                _buildingHoverOutlineEntity = CreateEntity("building-hover-outline");
-                var outline = _buildingHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
-                outline.SetRenderLayer(GameConfig.RenderLayerTop);
-                outline.SetColor(Color.White);
-            }
+            EnsureBuildingHoverOutline();
 
             var bounds = Util.BuildingConfig.GetFootprintBounds(hovered.Type);
             float left = (hovered.TileX + bounds.dxMin) * GameConfig.TileSize;
@@ -4593,101 +4567,6 @@ namespace PitHero.ECS.Scenes
             _refrigeratorDialog?.Show();
         }
 
-        private Entity _gemDigSiteEntity;
-        private Entity _gemDigGlintEntity;
-        private bool _gemDigSiteHovered;
-        private Entity _gemDigSiteHoverOutlineEntity;
-        private float _gemDigCooldown;
-
-        /// <summary>
-        /// True when gem-dig-site hover/click interactions should be suppressed — while the cursor is
-        /// outside the game window, during the new-game intro, while a confirmation is open, during
-        /// any farm/construction sub-mode, or when the pointer is over UI.
-        /// </summary>
-        private bool GemDigSiteInteractionsBlocked()
-        {
-            if (!Util.MouseUtils.IsMouseInsideWindow())
-                return true;
-            if (IsIntroActive)
-                return true;
-            if (UI.ConfirmationDialog.AnyVisible)
-                return true;
-            if (_settingsUI != null &&
-                (_settingsUI.IsFarmSubMenuOpen || _settingsUI.IsConstructionSubMenuOpen ||
-                 _settingsUI.IsTillModeActive || _settingsUI.IsBuildingModeActive ||
-                 _settingsUI.IsSeedModeActive || _settingsUI.IsRemoveCropsModeActive ||
-                 _settingsUI.IsHarvestedCropsModeActive || _settingsUI.IsRestoreGrassModeActive ||
-                 _settingsUI.IsFreeMoveModeActive))
-                return true;
-            if (_uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null)
-                return true;
-            return false;
-        }
-
-        /// <summary>True when the cursor is over the gem dig site's sprite bounds.</summary>
-        private bool IsMouseOverGemDigSite()
-        {
-            var renderer = _gemDigSiteEntity?.GetComponent<YSortSpriteRenderer>();
-            return renderer != null && renderer.Bounds.Contains(Camera.MouseToWorldPoint());
-        }
-
-        /// <summary>Draws a white outline around the gem dig site under the cursor to signal it is clickable.</summary>
-        private void HandleGemDigSiteHover()
-        {
-            bool isHovered = !GemDigSiteInteractionsBlocked() && IsMouseOverGemDigSite();
-
-            // The mound never moves, so only state changes need work
-            if (isHovered == _gemDigSiteHovered)
-                return;
-
-            _gemDigSiteHovered = isHovered;
-
-            if (!isHovered)
-            {
-                _gemDigSiteHoverOutlineEntity?.SetEnabled(false);
-                return;
-            }
-
-            if (_gemDigSiteHoverOutlineEntity == null)
-            {
-                var bounds = _gemDigSiteEntity.GetComponent<YSortSpriteRenderer>().Bounds;
-                _gemDigSiteHoverOutlineEntity = CreateEntity("gem-dig-site-hover-outline");
-                var outline = _gemDigSiteHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
-                outline.SetRenderLayer(GameConfig.RenderLayerTop);
-                outline.SetColor(Color.White);
-                outline.SetSize(bounds.Width, bounds.Height);
-                _gemDigSiteHoverOutlineEntity.SetPosition(bounds.X, bounds.Y);
-            }
-            _gemDigSiteHoverOutlineEntity.SetEnabled(true);
-        }
-
-        /// <summary>
-        /// Digs up a gem when the gem dig site is clicked: a uniform roll is drawn on the UI stream here
-        /// and carried in the DigGem command, whose handler picks the gem under the pity counters,
-        /// pays out and shows the rising gem. A short wall-clock
-        /// cooldown allows at most one dig per GemDigCooldownSeconds (presentation-side only: the
-        /// handler never depends on it, so replays need no record of it).
-        /// </summary>
-        private void HandleGemDigSiteClicks()
-        {
-            if (_gemDigCooldown > 0f)
-                _gemDigCooldown -= Time.UnscaledDeltaTime;
-
-            if (!Input.LeftMouseButtonPressed)
-                return;
-            if (_gemDigCooldown > 0f)
-                return;
-            if (GemDigSiteInteractionsBlocked())
-                return;
-            if (!IsMouseOverGemDigSite())
-                return;
-
-            var command = new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.DigGem);
-            command.L = GameRandom.Ui.NextInt64(Config.GemDigConfig.RollRange);
-            Services.Replay.PlayerCommandService.Dispatch(command);
-            _gemDigCooldown = GameConfig.GemDigCooldownSeconds;
-        }
-
         /// <summary>Opens the building context menu when a placed building is clicked.</summary>
         private void HandleBuildingClicks()
         {
@@ -4706,11 +4585,31 @@ namespace PitHero.ECS.Scenes
             if (building == null)
                 return;
 
+            // Digging Field (issue #452): a plain click digs the tile under the cursor; Shift+Click opens
+            // its menu (Move). A resting tile ignores the click.
+            if (building.Type == Util.BuildingType.DiggingField && !IsShiftDown())
+            {
+                int tile = GetReadyDigTileUnderCursor(out int tileX, out int tileY);
+                if (tile < 0)
+                    return;
+                var command = new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.DigGem, tileX, tileY);
+                command.L = GameRandom.Ui.NextInt64(Config.GemDigConfig.RollRange);
+                Services.Replay.PlayerCommandService.Dispatch(command);
+                return;
+            }
+
             // Clear the hover outline before the menu opens.
             _hoveredBuilding = null;
+            _hoveredDigTile = -1;
             _buildingHoverOutlineEntity?.SetEnabled(false);
 
             _buildingContextMenu?.Show(_uiStage, building, _uiStage.GetMousePosition());
+        }
+
+        private static bool IsShiftDown()
+        {
+            return Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
+                || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
         }
     }
 }

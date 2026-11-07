@@ -95,8 +95,13 @@ namespace PitHero.UI
             _content.Row();
             _content.Add(_moveButton).Width(140f).SetPadBottom(4f);
             _content.Row();
-            _content.Add(_showButton).Width(140f).SetPadBottom(4f);
-            _content.Row();
+            // The Digging Field has nothing to show and cannot be sold: Move and Cancel only (issue #452)
+            bool isDiggingField = building.Type == BuildingType.DiggingField;
+            if (!isDiggingField)
+            {
+                _content.Add(_showButton).Width(140f).SetPadBottom(4f);
+                _content.Row();
+            }
             if (showAddMonsters)
             {
                 _content.Add(_addMonstersButton).Width(140f).SetPadBottom(4f);
@@ -106,9 +111,9 @@ namespace PitHero.UI
             // Sell is offered only for an empty building, so a sale can never destroy stored crops
             // or orphan a housed monster. A Crop Storage is emptied via the Harvested Crops viewer
             // ("Show Crops"); a Monster House is emptied by rehousing its monsters ("Show Monsters").
-            bool canSell = isMonsterHouse
+            bool canSell = BuildingConfig.IsSellable(building.Type) && (isMonsterHouse
                 ? IsHouseEmpty(building.UniqueId)
-                : IsStorageEmpty(building.UniqueId);
+                : IsStorageEmpty(building.UniqueId));
             if (canSell)
             {
                 _content.Add(_sellBuildingButton).Width(140f).SetPadBottom(4f);

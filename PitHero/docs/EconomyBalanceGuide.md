@@ -178,64 +178,65 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
 
 ---
 
-## Gem Dig Site (`Config/GemDigConfig.cs`, issue #452)
+## Digging Field (`Config/GemDigConfig.cs`, issue #452)
 
-The gem dig site is revealed by the **Prospector's Map**, a Local artifact (50,000 G) in the Second Chance shop: without it there is no mound and no digging. Clicking the dirt mound at tile (59, 9) digs up one random gem worth gold. It is the only
+The **Prospector's Map**, a Local artifact (50,000 G) in the Second Chance shop, unlocks the
+**Digging Field** in Construction → Buildings: free to place, only one per hero, movable
+(Shift+Click → Move) but never sold, 8×4 tiles on open farm ground. Clicking any of its 32 tiles
+digs up one random gem worth gold; the tile then rests for `GameConfig.DiggingFieldCooldownSeconds`
+(5 s of simulation time, shown as a dark overlay) before it can be dug again. It is the only
 active-play gold source: it pays only while the player is clicking, never while idle.
 
-Odds are exact integer weights out of 16,800,000. Each rarity tier is **20× rarer** than the one
-before it, and inside a tier each gem is **half as likely** as the gem listed before it:
+Odds are exact integer weights out of 1,000,000: each gem is about **1.645× rarer** than the gem
+listed before it, which puts the **Diamond at exactly 1 in 1,000** and keeps every gem rarer than
+the one before it:
 
 | Tier (odds of the tier) | Gem — gold — odds per dig |
 |---|---|
-| Common (~94.7%) | Agate 1 g 54.1% · Amethyst 2 g 27.1% · Peridot 5 g 13.5% |
-| Uncommon (1 in 20) | Garnet 10 g 1 in 30 · Aquamarine 50 g 1 in 60 |
-| Rare (1 in 400) | Spinel 100 g 1 in 700 · Tourmaline 300 g 1 in 1,400 · Tanzanite 700 g 1 in 2,800 |
-| Epic (1 in 8,000) | Sapphire 1,000 g 1 in 15,000 · Ruby 1,500 g 1 in 30,000 · Emerald 2,000 g 1 in 60,000 · Alexandrite 5,000 g 1 in 120,000 |
-| Legendary (1 in 160,000) | Diamond 10,000 g |
+| Common (77.7%) | Agate 1 g 39.3% · Amethyst 2 g 23.9% · Peridot 5 g 14.5% |
+| Uncommon (14.2%) | Garnet 10 g 1 in 11 · Aquamarine 50 g 1 in 19 |
+| Rare (6.4%) | Spinel 100 g 1 in 31 · Tourmaline 300 g 1 in 50 · Tanzanite 700 g 1 in 83 |
+| Epic (1.6%) | Sapphire 1,000 g 1 in 137 · Ruby 1,500 g 1 in 225 · Emerald 2,000 g 1 in 370 · Alexandrite 5,000 g 1 in 608 |
+| Legendary (0.1%) | Diamond 10,000 g 1 in 1,000 |
 
-Those are the **base odds** (expected value ≈ 3.8 gold per dig: Common 1.76, Uncommon 1.17,
-Rare 0.61, Epic 0.19, Legendary 0.06).
+Those are the **base odds**: expected value ≈ **60 gold per dig**, nearly all of it from the top
+tiers (Diamond alone 10 g, Epic 28 g, Rare 18 g).
 
 ### Pity (bad-luck protection)
 
 Each tier above Common has a saved counter (`GameStateService`, save v42): digs since that tier
 or a better one came up. Past the tier's soft start, its odds multiplier climbs every dig up to a
-cap. A find resets its own tier's counter and every lower one; a Diamond resets all four. The
-knobs live in `GemDigConfig`:
+cap. A find resets its own tier's counter and every lower one; a Diamond resets all four. The soft
+starts sit at about each tier's average wait, so pity mostly cuts off long dry streaks. The knobs
+live in `GemDigConfig`:
 
 | Knob | Uncommon | Rare | Epic | Legendary |
 |---|---|---|---|---|
-| `PitySoftStartDigs` | — | 100 | 600 | 10,000 |
-| `PityGrowthPerDig` (× `PityStrength`) | 0 (off) | 0.04 | 0.006 | 0.0004 |
-| `PityMaxMultiplier` (odds at the cap) | 1× | 10× (1 in 40) | 25× (1 in 320) | 8× (1 in 20,000) |
+| `PitySoftStartDigs` | — | 12 | 60 | 1,000 |
+| `PityGrowthPerDig` (× `PityStrength`) | 0 (off) | 0.1 | 0.02 | 0.002 |
+| `PityMaxMultiplier` (odds at the cap) | 1× | 3× | 4× | 5× (Diamond 1 in 200) |
 
 `PityStrength` (default 1) scales every tier's growth; **0 turns pity off** (pure base odds).
 Measured over 20M digs at strength 1:
 
 | | Base | With pity |
 |---|---|---|
-| Rare or better | every 400 digs | every ~160 |
-| Epic or better | every 8,000 | every ~1,740 |
-| Diamond | 1 in 160,000 | 1 in ~35,000 (Alexandrite ~1 in 27,700) |
-| Gold per dig | 3.8 | ~5.4 |
+| Rare or better | every 12 digs | every ~11 |
+| Epic or better | every 58 | every ~51 |
+| Diamond | 1 in 1,000 | 1 in ~840 (Alexandrite ~1 in 530) |
+| Gold per dig | 60 | ~69 |
 
-The Legendary cap keeps Diamond the rarest gem: above ~10× it overtakes Alexandrite
-(`GemDigPityTests` fails if any gem becomes more common than the one listed before it). Changing
-a knob changes what a recorded dig pays out, so bump `GameConfig.SimulationVersion` with it.
-
-**Seeing it:** the mound shows its pity as glints on its gems (`GemDigSparkleComponent`). Heat
-(`GemDigConfig.GetPityHeat`) is how far the luckiest tier has climbed toward its cap. At heat 0 a
-lone white glint appears every ~3 s; hotter means faster glints (down to ~0.2 s apart) tinted
-cyan / pink / yellow for Rare / Epic / Legendary; at heat 0.9+ a gold glimmer puff rises every
-2.5 s. The glint knobs are the `GemGlint*` / `GemGlimmer*` constants in `GameConfig`.
+`GemDigPityTests` fails if any gem becomes more common than the one listed before it, so a cap that
+lets the Diamond overtake the Alexandrite is caught. Changing a knob (or the cooldown) changes what a
+recorded dig pays out, so bump `GameConfig.SimulationVersion` with it.
 
 ### Pace
 
-Digs are gated to one per `GemDigCooldownSeconds` (0.4 s), so non-stop clicking caps out near
-**49,000 gold per real hour** with pity (34,000 without); a relaxed one dig per second is
-~19,500 g/h. Tune `PityStrength`, the tier step (20×) or the cooldown, not the gem values, which
-come from the issue.
+The field rate-limits itself: 32 tiles that each rest 5 s cap digging at **6.4 digs per second**.
+At ~69 gold per dig that is far above every other source — a relaxed one dig per second is
+**~250,000 gold per real hour**, against ~92,000 for a full late-game farm (see Design Targets).
+The levers, in order of bluntness: `DiggingFieldCooldownSeconds` (longer rest), `PityStrength`,
+and the geometric step / Diamond weight in `GemDigConfig`; the gem values come from the issue.
 
 ---
 

@@ -45,12 +45,26 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void TierOdds_AreTwentyTimesRarerPerTier()
+        public void Diamond_IsOneInAThousand_AndTiersFallOff()
         {
-            Assert.AreEqual(1.0 / 20, TierProbability(ItemRarity.Uncommon), 1e-12);
-            Assert.AreEqual(1.0 / 400, TierProbability(ItemRarity.Rare), 1e-12);
-            Assert.AreEqual(1.0 / 8000, TierProbability(ItemRarity.Epic), 1e-12);
-            Assert.AreEqual(1.0 / 160000, TierProbability(ItemRarity.Legendary), 1e-12);
+            Assert.AreEqual(1.0 / 1000, GemDigConfig.GetProbability(GemType.Diamond), 1e-12);
+            Assert.AreEqual(0.142, TierProbability(ItemRarity.Uncommon), 0.001);
+            Assert.AreEqual(0.0645, TierProbability(ItemRarity.Rare), 0.001);
+            Assert.AreEqual(0.0161, TierProbability(ItemRarity.Epic), 0.001);
+            Assert.AreEqual(0.001, TierProbability(ItemRarity.Legendary), 1e-12);
+            for (int t = 1; t < 5; t++)
+                Assert.IsTrue(TierProbability((ItemRarity)t) < TierProbability((ItemRarity)(t - 1)) / 2,
+                    ((ItemRarity)t) + " should be well under half as likely as " + ((ItemRarity)(t - 1)));
+        }
+
+        [TestMethod]
+        public void Weights_AreGeometric_AboutOnePointSixFourFiveApart()
+        {
+            for (int i = 1; i < GemDigConfig.GemCount - 1; i++)
+            {
+                double ratio = (double)GemDigConfig.GetWeight((GemType)(i - 1)) / GemDigConfig.GetWeight((GemType)i);
+                Assert.AreEqual(1.645, ratio, 0.01, ((GemType)(i - 1)) + " vs " + ((GemType)i));
+            }
         }
 
         [TestMethod]
@@ -61,7 +75,7 @@ namespace PitHero.Tests
             for (int i = 1; i < GemDigConfig.GemCount; i++)
                 Assert.IsTrue(GemDigConfig.GetWeight((GemType)i) < GemDigConfig.GetWeight((GemType)(i - 1)),
                     ((GemType)i) + " should be rarer than " + ((GemType)(i - 1)));
-            Assert.IsTrue(GemDigConfig.GetProbability(GemType.Agate) > 0.5);
+            Assert.IsTrue(GemDigConfig.GetProbability(GemType.Agate) > 0.35, "Agate is by far the most common gem");
         }
 
         [TestMethod]
@@ -94,12 +108,12 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void ExpectedValue_IsAboutFourGoldPerDig()
+        public void ExpectedValue_IsAboutSixtyGoldPerDig()
         {
             double ev = 0;
             for (int i = 0; i < GemDigConfig.GemCount; i++)
                 ev += GemDigConfig.GetProbability((GemType)i) * GemDigConfig.GetValue((GemType)i);
-            Assert.AreEqual(3.79, ev, 0.01);
+            Assert.AreEqual(60.4, ev, 0.1);
         }
 
         [TestMethod]
@@ -117,7 +131,7 @@ namespace PitHero.Tests
                 double expected = GemDigConfig.GetProbability((GemType)i);
                 Assert.AreEqual(expected, (double)counts[i] / Digs, 0.01, ((GemType)i).ToString());
             }
-            Assert.AreEqual(1.0 / 20, (double)(counts[3] + counts[4]) / Digs, 0.003, "Uncommon tier");
+            Assert.AreEqual(0.142, (double)(counts[3] + counts[4]) / Digs, 0.003, "Uncommon tier");
         }
 
         [TestMethod]

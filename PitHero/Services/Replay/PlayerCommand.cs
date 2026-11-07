@@ -119,10 +119,10 @@ namespace PitHero.Services.Replay
         // ever exchange a crop with its visible neighbour.
         SwapWateringPriority = 126,      // A, B = CropType ordinals to exchange in the watering order
 
-        // Gem dig site (issue #452). A uniform roll is drawn on GameRandom.Ui at click time and
+        // Digging Field (issue #452). A uniform roll is drawn on GameRandom.Ui at click time and
         // carried here (the sim RNG stream is untouched); the handler turns it into a gem under the
         // sim-side pity counters, so a replay pays out the same gem.
-        DigGem = 127,                    // L = roll in [0, GemDigConfig.RollRange)
+        DigGem = 127,                    // A, B = Digging Field tile; L = roll in [0, GemDigConfig.RollRange)
 
         // Debug
         DebugQueuePitLevel = 200,    // A = level

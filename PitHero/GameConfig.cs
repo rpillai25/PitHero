@@ -574,35 +574,15 @@ namespace PitHero
         public const int HeroStatueStandTileX = 112;
         public const int HeroStatueStandTileY = 6;
 
-        // Gem dig site (issue #452): a 96x96 mound centered on this tile, 16px lower (x 58-60, world y 272-368);
-        // clicking it digs up a random gem worth gold (odds in Config/GemDigConfig.cs)
-        public const int GemDigSiteTileX = 59;
-        public const int GemDigSiteTileY = 9;
-        public const float GemDigSiteOffsetY = 16f;          // art nudge: the mound sits this many px below its tile center
-        public const float GemDigCooldownSeconds = 0.4f;     // wall-clock gap between accepted digs (presentation-side gate)
+        // Digging Field (issue #452): a player-placed 8x4 building (unlocked by the Prospector's Map);
+        // clicking a tile digs up a random gem worth gold (odds in Config/GemDigConfig.cs)
+        public const float DiggingFieldCooldownSeconds = 5f; // sim seconds a tile rests after a dig; changing it changes payouts (bump SimulationVersion)
+        public static readonly Color DiggingFieldCooldownOverlayColor = new Color(0, 0, 0, 115); // dark overlay on a resting tile (~45% black)
         public const float GemRiseDurationSeconds = 0.9f;    // gem + gold text rise, then vanish
         public const float GemRiseFadeStartFraction = 0.6f;  // fraction of the rise after which both fade out
-        public const float GemRiseStartOffsetY = -24f;       // gem appears this far above the mound's center (world px)
+        public const float GemRiseStartOffsetY = -4f;        // gem appears this far above the dug tile's center (world px)
         public const float GemRiseDistance = 40f;            // world px the gem travels upward
         public const float GemValueTextGapY = 4f;            // screen px between the gem's top edge and the gold text
-
-        // Gem dig site glints (issue #452): star glints on the gems drawn into the mound, more of them
-        // and tinted by tier as pity builds (GemDigConfig.GetPityHeat). Cosmetic only.
-        public const float GemGlintIdleIntervalSeconds = 3.0f;   // average gap between glints at heat 0
-        public const float GemGlintHotIntervalSeconds = 0.2f;    // average gap between glints at heat 1 (a tier at its cap)
-        public const float GemGlintFrameSeconds = 0.07f;         // per frame of the dot, plus, star, plus, dot twinkle
-        public const float GemGlintTintStrength = 0.6f;          // how far a warm glint leans from white toward its tier's glint tint
-        public static readonly Color GemGlintRareTint = new Color(0x5f, 0xcd, 0xe4);      // DB32 cyan (the rarity blue is too dark to read on dirt)
-        public static readonly Color GemGlintEpicTint = new Color(0xd7, 0x7b, 0xba);      // DB32 pink-violet
-        public static readonly Color GemGlintLegendaryTint = new Color(0xfb, 0xf2, 0x36); // DB32 yellow
-        public const float GemGlimmerHeatThreshold = 0.9f;       // at or above this heat a gold glimmer puff rises from the mound
-        public const float GemGlimmerIntervalSeconds = 2.5f;     // gap between glimmer puffs while that hot
-        /// <summary>Gem centers in the GemDigSite art, relative to the sprite center (world px).</summary>
-        public static readonly Point[] GemDigSiteGlintOffsets =
-        {
-            new Point(20, -18), new Point(-27, -13), new Point(-25, 0),
-            new Point(22, 7), new Point(-12, 18), new Point(7, 16),
-        };
 
         // New-game intro (issue #396): fall from the sky onto the statue tile, pray, lightning
         public const float IntroFallDurationSeconds = 1.0f; // Gravity-eased drop from above the screen to the ground
@@ -619,6 +599,8 @@ namespace PitHero
         public const int RenderLayerTop = 2;
 
         public const int RenderLayerActorPropOverlay = 41; // Actor prop overlay layer (above actors).  Useful for things like watering can, water, harvested crops that display over monster workers.
+        public const int RenderLayerGroundProp = 88; // Flat ground buildings (the Digging Field): above tilled soil (Detail 90), below fog and actors
+        public const int RenderLayerGroundPropOverlay = 87; // Overlays drawn on a ground building (the Digging Field's tile cooldowns)
         // Actors layer — heroes, mercenaries, monsters, and treasures. Y-sorted within layer via LayerDepth.
         public const int RenderLayerActors = 60;
         public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)
@@ -815,7 +797,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 11;                       // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed; v9 (#452): CropsProps atlas repacked for the gem dig site, so CropsProps rects changed; v10 (#452): CropsProps repacked again for the gem glints; v11 (#452): Items repacked for the Prospector's Map icon
+        public const int ReplayFrameFormatVersion = 12;                       // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed; v9 (#452): CropsProps atlas repacked for the gem dig site, so CropsProps rects changed; v10 (#452): CropsProps repacked again for the gem glints; v11 (#452): Items repacked for the Prospector's Map icon; v12 (#452): CropsProps repacked for the Digging Field (mound and glints removed)
         // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
         // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
         // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.

@@ -52,8 +52,8 @@ namespace PitHero.Artifacts
         }
 
         /// <summary>
-        /// True when the gem dig site exists for this hero (issue #452): the Prospector's Map reveals
-        /// it. The DigGem handler ignores digs without it; the scene spawns the mound only with it.
+        /// True when this hero owns the Prospector's Map (issue #452), which unlocks the Digging Field
+        /// building. The PlaceBuilding (Digging Field) and DigGem handlers ignore requests without it.
         /// </summary>
         public static bool HasGemDigSite(GameStateService gameState)
         {

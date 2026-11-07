@@ -381,10 +381,6 @@ namespace PitHero.Services
             return gem;
         }
 
-        /// <summary>How close the luckiest gem tier is to its pity cap (0..1), for the mound's glints.</summary>
-        public float GetGemPityHeat(out RolePlayingFramework.Equipment.ItemRarity hottestTier)
-            => Config.GemDigConfig.GetPityHeat(_gemPity, out hottestTier);
-
         /// <summary>Digs without the given pity tier (0..3 = Uncommon..Legendary) or better.</summary>
         public int GetGemPity(int pityIndex) => _gemPity[pityIndex];
 

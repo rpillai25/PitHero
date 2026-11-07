@@ -97,12 +97,15 @@ namespace PitHero
         public const string BuildingNameCropStorage = "BuildingNameCropStorage";
         public const string BuildingDescMonsterHouse = "BuildingDescMonsterHouse";
         public const string BuildingDescCropStorage = "BuildingDescCropStorage";
+        public const string BuildingNameDiggingField = "BuildingNameDiggingField";
+        public const string BuildingDescDiggingField = "BuildingDescDiggingField";
         public const string WindowBuildings = "WindowBuildings";
         public const string WindowSeeds = "WindowSeeds";
         public const string WindowWateringPriority = "WindowWateringPriority";
         public const string WindowHarvestedCrops = "WindowHarvestedCrops";
         public const string ButtonBuild = "ButtonBuild";
         public const string BuildingCostFormat = "BuildingCostFormat";
+        public const string BuildingCostFree = "BuildingCostFree";
         public const string LabelTillingSoil = "LabelTillingSoil";
         public const string LabelRestoringGrass = "LabelRestoringGrass";
         public const string LabelPlantingCrops = "LabelPlantingCrops";

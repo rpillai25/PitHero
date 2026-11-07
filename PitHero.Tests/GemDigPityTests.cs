@@ -112,49 +112,16 @@ namespace PitHero.Tests
             double rareWait = (double)Digs / (tiers[2] + tiers[3] + tiers[4]);
             double epicWait = (double)Digs / (tiers[3] + tiers[4]);
             double diamondWait = (double)Digs / tiers[4];
-            Assert.IsTrue(rareWait > 140 && rareWait < 180, "Rare or better every " + rareWait);
-            Assert.IsTrue(epicWait > 1_500 && epicWait < 2_000, "Epic or better every " + epicWait);
-            Assert.IsTrue(diamondWait > 28_000 && diamondWait < 45_000, "Diamond every " + diamondWait);
+            Assert.IsTrue(rareWait > 9.8 && rareWait < 11.4, "Rare or better every " + rareWait + " (base 12.4)");
+            Assert.IsTrue(epicWait > 46 && epicWait < 56, "Epic or better every " + epicWait + " (base 58.5)");
+            Assert.IsTrue(diamondWait > 760 && diamondWait < 920, "Diamond every " + diamondWait + " (base 1,000)");
 
             // Each gem is still rarer than the one listed before it, so Diamond stays the rarest
             for (int g = 1; g < GemDigConfig.GemCount; g++)
                 Assert.IsTrue(gems[g] < gems[g - 1], ((GemType)g) + " should be rarer than " + ((GemType)(g - 1)));
 
             double perDig = (double)gold / Digs;
-            Assert.IsTrue(perDig > 5.1 && perDig < 5.8, "gold per dig " + perDig);
-        }
-
-        [TestMethod]
-        public void Heat_IsZeroAtBaseOdds_AndFollowsTheLuckiestTier()
-        {
-            Assert.AreEqual(0f, GemDigConfig.GetPityHeat(new int[GemDigConfig.PityTierCount], out var tier));
-            Assert.AreEqual(ItemRarity.Normal, tier);
-
-            // Rare capped, Epic barely started: Rare is the hottest at full heat
-            Assert.AreEqual(1f, GemDigConfig.GetPityHeat(new[] { 0, 100_000, GemDigConfig.PitySoftStartDigs[Epic] + 1, 0 }, out tier), 1e-6f);
-            Assert.AreEqual(ItemRarity.Rare, tier);
-
-            // Both capped: the better tier wins the tie
-            GemDigConfig.GetPityHeat(new[] { 0, 100_000, 100_000, 0 }, out tier);
-            Assert.AreEqual(ItemRarity.Epic, tier);
-
-            // Uncommon has pity off: its counter never warms the mound
-            Assert.AreEqual(0f, GemDigConfig.GetPityHeat(new[] { 100_000, 0, 0, 0 }, out tier));
-
-            // Partway up the ramp: strictly between 0 and 1
-            float mid = GemDigConfig.GetPityHeat(new[] { 0, GemDigConfig.PitySoftStartDigs[Rare] + 50, 0, 0 }, out tier);
-            Assert.IsTrue(mid > 0f && mid < 1f, "heat " + mid);
-        }
-
-        [TestMethod]
-        public void GlintPoints_SitOnTheMound_AndGlimmerOrdinalIsPinned()
-        {
-            var offsets = GameConfig.GemDigSiteGlintOffsets;
-            Assert.IsTrue(offsets.Length > 0);
-            for (int i = 0; i < offsets.Length; i++)
-                Assert.IsTrue(Math.Abs(offsets[i].X) <= 48 && Math.Abs(offsets[i].Y) <= 48, "glint point " + i + " is off the 96x96 mound");
-            // Particle ordinals are recorded in replay frames: append only
-            Assert.AreEqual(4, (int)PitHero.Util.ParticleEffectType.GemGlimmer);
+            Assert.IsTrue(perDig > 66 && perDig < 72, "gold per dig " + perDig + " (base 60.4)");
         }
 
         [TestMethod]

@@ -25,21 +25,18 @@ namespace PitHero.Config
     }
 
     /// <summary>
-    /// Gem values, rarities and drop odds for the gem dig site (issue #452).
+    /// Gem values, rarities and drop odds for the Digging Field (issue #452).
     ///
-    /// Odds are exact integer weights over <see cref="TotalWeight"/>, built in two steps:
-    /// 1. Each rarity tier is 20x rarer than the one before it: Uncommon 1 in 20 digs, Rare 1 in 400,
-    ///    Epic 1 in 8,000, Legendary 1 in 160,000. Common takes the rest (~94.7%).
-    /// 2. Inside a tier, each gem is half as likely as the gem listed before it (weights 4:2:1,
-    ///    2:1, 8:4:2:1), so the last gem of a tier is always the rarest of its tier.
-    /// TotalWeight = 160,000 x 105 (105 = lcm of the in-tier denominators 7, 3 and 15) keeps every
-    /// weight a whole number, so the table is exact rather than float-rounded.
+    /// Odds are exact integer weights over <see cref="TotalWeight"/> (1,000,000): each gem is about
+    /// 1.645x rarer than the gem listed before it (weight = round(1000 x 1.645^(12 - ordinal)), Agate
+    /// takes the rounding remainder), which puts the Diamond at exactly 1 in 1,000 and keeps every gem
+    /// rarer than the one before it, so the tiers fall off steadily and the Diamond is the rarest gem.
     ///
-    /// Resulting odds: Agate 54.1%, Amethyst 27.1%, Peridot 13.5%, Garnet 1 in 30, Aquamarine 1 in 60,
-    /// Spinel 1 in 700, Tourmaline 1 in 1,400, Tanzanite 1 in 2,800, Sapphire 1 in 15,000,
-    /// Ruby 1 in 30,000, Emerald 1 in 60,000, Alexandrite 1 in 120,000, Diamond 1 in 160,000.
-    /// These are the base odds: expected value about 3.8 gold per dig. Pity (below) raises a tier's
-    /// odds the longer it has not come up, which lifts the average to about 5.4 gold per dig
+    /// Resulting odds: Agate 39.3%, Amethyst 23.9%, Peridot 14.5%, Garnet 1 in 11, Aquamarine 1 in 19,
+    /// Spinel 1 in 31, Tourmaline 1 in 50, Tanzanite 1 in 83, Sapphire 1 in 137, Ruby 1 in 225,
+    /// Emerald 1 in 370, Alexandrite 1 in 608, Diamond 1 in 1,000. Tiers: Common 77.7%, Uncommon
+    /// 14.2%, Rare 6.4%, Epic 1.6%, Legendary 0.1%. These are the base odds, worth about 60 gold per
+    /// dig; pity (below) raises a tier's odds the longer it has not come up
     /// (see PitHero/docs/EconomyBalanceGuide.md).
     /// </summary>
     public static class GemDigConfig
@@ -48,7 +45,7 @@ namespace PitHero.Config
         public const int GemCount = 13;
 
         /// <summary>Sum of <see cref="Weights"/>; a dig rolls an int in [0, TotalWeight).</summary>
-        public const int TotalWeight = 16_800_000;
+        public const int TotalWeight = 1_000_000;
 
         private static readonly int[] Values =
         {
@@ -68,15 +65,14 @@ namespace PitHero.Config
             ItemRarity.Legendary,
         };
 
-        // Common 15,915,795 (4:2:1) | Uncommon 840,000 (2:1) | Rare 42,000 (4:2:1)
-        // Epic 2,100 (8:4:2:1) | Legendary 105
+        // Geometric, ratio 1.645 between neighbours; Diamond 1,000 of 1,000,000
         private static readonly int[] Weights =
         {
-            9_094_740, 4_547_370, 2_273_685,
-            560_000, 280_000,
-            24_000, 12_000, 6_000,
-            1_120, 560, 280, 140,
-            105,
+            392_811, 238_685, 145_097,
+            88_205, 53_620,
+            32_596, 19_815, 12_046,
+            7_323, 4_451, 2_706, 1_645,
+            1_000,
         };
 
         private static readonly string[] SpriteNames =
@@ -152,11 +148,11 @@ namespace PitHero.Config
         // handler. Changing any knob below changes what a recorded dig pays out, so bump
         // GameConfig.SimulationVersion with it.
         //
-        // Tuning (PityStrength 1, measured over 20M digs; GemDigPityTests pins the ranges): a Rare or
-        // better every ~160 digs (base 400), an Epic or better every ~1,740 (base 8,000), a Diamond
-        // every ~35,000 (base 160,000), still rarer than Alexandrite (~1 in 27,700); about 5.4 gold
-        // per dig (base 3.8). The Legendary cap is what keeps Diamond the rarest gem: raising it past
-        // ~10x lets Diamond overtake Alexandrite. See PitHero/docs/EconomyBalanceGuide.md.
+        // Tuning (PityStrength 1, measured over 20M digs; GemDigPityTests pins the ranges): each tier's
+        // odds start climbing at about its average wait, so pity mostly cuts off long dry streaks. A Rare
+        // or better every ~11 digs (base 12), an Epic or better every ~51 (base 58), a Diamond every
+        // ~840 (base 1,000), still rarer than the Alexandrite (~1 in 530); about 69 gold per dig
+        // (base 60). See PitHero/docs/EconomyBalanceGuide.md.
 
         /// <summary>
         /// Global pity knob: scales every tier's growth. 0 = pure base odds (no pity), 1 = the tuned
@@ -169,15 +165,15 @@ namespace PitHero.Config
 
         /// <summary>
         /// Per tier (Uncommon, Rare, Epic, Legendary): digs without that tier before its odds start
-        /// to climb. Uncommon is already 1 in 20, so its pity is off by default (growth 0).
+        /// to climb. Uncommon is already 1 in 7, so its pity is off by default (growth 0).
         /// </summary>
-        public static readonly int[] PitySoftStartDigs = { 0, 100, 600, 10_000 };
+        public static readonly int[] PitySoftStartDigs = { 0, 12, 60, 1_000 };
 
         /// <summary>Per tier: odds multiplier added per dig past the soft start (before PityStrength).</summary>
-        public static readonly float[] PityGrowthPerDig = { 0f, 0.04f, 0.006f, 0.0004f };
+        public static readonly float[] PityGrowthPerDig = { 0f, 0.1f, 0.02f, 0.002f };
 
-        /// <summary>Per tier: the highest the odds multiplier can climb (10x on Rare = 1 in 40).</summary>
-        public static readonly float[] PityMaxMultiplier = { 1f, 10f, 25f, 8f };
+        /// <summary>Per tier: the highest the odds multiplier can climb (3x on Legendary = a Diamond 1 in 333).</summary>
+        public static readonly float[] PityMaxMultiplier = { 1f, 3f, 4f, 5f };
 
         /// <summary>Cap on the combined chance of a non-Common gem, so Common never drops below 5%.</summary>
         public const double MaxNonCommonChance = 0.95;
@@ -282,32 +278,6 @@ namespace PitHero.Config
                     return (GemType)(first + i);
             }
             return (GemType)(first + count - 1);
-        }
-
-        /// <summary>
-        /// How close the luckiest pity tier is to its cap, 0 (base odds everywhere) to 1 (capped),
-        /// for the mound's glints. hottestTier is the tier with the most progress (the better tier on
-        /// a tie), or Normal when no tier has started climbing.
-        /// </summary>
-        public static float GetPityHeat(int[] pity, out ItemRarity hottestTier)
-        {
-            float heat = 0f;
-            hottestTier = ItemRarity.Normal;
-            if (pity == null)
-                return 0f;
-            for (int i = 0; i < PityTierCount; i++)
-            {
-                double cap = PityMaxMultiplier[i];
-                if (cap <= 1.0)
-                    continue; // pity off for this tier
-                float progress = (float)((GetPityMultiplier(i, pity[i]) - 1.0) / (cap - 1.0));
-                if (progress > 0f && progress >= heat)
-                {
-                    heat = progress;
-                    hottestTier = (ItemRarity)(i + 1);
-                }
-            }
-            return heat > 1f ? 1f : heat;
         }
 
         /// <summary>

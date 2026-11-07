@@ -270,7 +270,7 @@ namespace PitHero.Services.Replay
                 }
 
                 case PlayerCommandType.DigGem:
-                    ApplyDigGem(cmd.L);
+                    ApplyDigGem(cmd.A, cmd.B, cmd.L);
                     return true;
 
                 // ── Inventory / shop ─────────────────────────────────────────────────
@@ -477,11 +477,6 @@ namespace PitHero.Services.Replay
             if (PitHero.Artifacts.ArtifactCatalog.IsLocal(type))
                 gameState.SpendFunds(price, "artifact");
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
-
-            // The Prospector's Map reveals the gem dig site right away, with a glimmer (issue #452)
-            if (type == PitHero.Artifacts.ArtifactType.ProspectorsMap && Core.Instance != null
-                && Core.Scene is PitHero.ECS.Scenes.MainGameScene scene)
-                scene.RevealGemDigSite();
         }
 
         private static void ApplyRemoveBuilding(int uniqueId)
@@ -500,6 +495,9 @@ namespace PitHero.Services.Replay
             }
             if (pb == null)
                 return;
+            // The Digging Field has no Sell option (issue #452): a recorded or stray sell is ignored
+            if (!PitHero.Util.BuildingConfig.IsSellable(pb.Type))
+                return;
 
             // Remove first and pay only if this call is what actually removed it (non-modal dialogs
             // can stack two sell confirmations for the same building).
@@ -512,24 +510,29 @@ namespace PitHero.Services.Replay
         }
 
         /// <summary>
-        /// Digs one gem at the gem dig site (issue #452): the click's uniform roll (drawn on the UI
-        /// stream) is turned into a gem here, under the sim-side pity counters, so the payout depends
-        /// only on sim state and the recorded roll. Pays out and shows the gem rising out of the mound.
+        /// Digs one Digging Field tile (issue #452). Re-validates everything the click saw: the
+        /// Prospector's Map is owned, a field is placed, the tile is inside it and not resting. The
+        /// click's uniform roll (drawn on the UI stream) becomes a gem here, under the sim-side pity
+        /// counters, so the payout depends only on sim state and the recorded roll. Pays out, starts
+        /// the tile's cooldown and shows the gem rising out of the tile.
         /// </summary>
-        private static void ApplyDigGem(long roll)
+        private static void ApplyDigGem(int tileX, int tileY, long roll)
         {
             var services = Services;
             var gameState = services?.GetService<GameStateService>();
-            // No site without the Prospector's Map: a dig the hero cannot make pays nothing and
-            // leaves the pity counters alone
             if (!PitHero.Artifacts.LocalArtifactEffects.HasGemDigSite(gameState))
+                return;
+            var field = services.GetService<DiggingFieldService>();
+            int index = field != null ? field.GetTileIndex(tileX, tileY) : -1;
+            if (index < 0 || field.IsCooling(index))
                 return;
             var gem = gameState.DigGem(roll);
             gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(gem), "gem_dig");
+            field.StartCooldown(index);
 
             // Cosmetic only: the effect never feeds back into the simulation
             if (Core.Instance != null && Core.Scene is PitHero.ECS.Scenes.MainGameScene scene)
-                scene.SpawnGemDigEffect(gem);
+                scene.SpawnGemDigEffect(gem, tileX, tileY);
         }
 
         private static void ApplyAutomation(AutomationKind kind, bool enabled)
