@@ -4340,7 +4340,12 @@ namespace PitHero.ECS.Scenes
             var worldPos = Camera.MouseToWorldPoint();
             int tileX = (int)(worldPos.X / GameConfig.TileSize);
             int tileY = (int)(worldPos.Y / GameConfig.TileSize);
-            return buildingService.GetBuildingAtTile(tileX, tileY);
+            var building = buildingService.GetBuildingAtTile(tileX, tileY);
+            // A building still growing in (the Digging Field, #452) can't be hovered, dug or opened yet.
+            // UI-only gate: it just withholds commands, so the sim never reads this cosmetic state.
+            if (building != null && BuildingGrowAnimator.IsGrowing(building.WorldEntity))
+                return null;
+            return building;
         }
 
         private void EnsureBuildingHoverOutline()

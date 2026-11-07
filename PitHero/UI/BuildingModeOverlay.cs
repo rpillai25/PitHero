@@ -679,15 +679,26 @@ namespace PitHero.UI
 
             var finalPos = BuildingConfig.GetWorldPos(tileX, tileY, type);
 
-            // Create permanent entity above screen; BuildingFallAnimator moves it into position
             var sprite = _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(type));
             var entity = _scene.CreateEntity(
                 "building-" + type.ToString().ToLower() + "-" + tileX + "-" + tileY);
-            entity.SetPosition(finalPos.X, finalPos.Y + FallStartOffset);
 
-            AddBuildingRenderers(entity, type, sprite);
-
-            entity.AddComponent(new BuildingFallAnimator(finalPos.Y));
+            if (type == BuildingType.DiggingField)
+            {
+                // The Digging Field is laid on the ground where it was placed: it grows from a tenth of
+                // its size to full size (unclickable meanwhile) instead of falling from the sky (#452)
+                entity.SetPosition(finalPos.X, finalPos.Y);
+                AddBuildingRenderers(entity, type, sprite);
+                entity.AddComponent(new BuildingGrowAnimator(
+                    GameConfig.DiggingFieldGrowStartScale, GameConfig.DiggingFieldGrowSeconds));
+            }
+            else
+            {
+                // Create permanent entity above screen; BuildingFallAnimator moves it into position
+                entity.SetPosition(finalPos.X, finalPos.Y + FallStartOffset);
+                AddBuildingRenderers(entity, type, sprite);
+                entity.AddComponent(new BuildingFallAnimator(finalPos.Y));
+            }
 
             var buildingSvc = Core.Services.GetService<BuildingService>();
             int newId = buildingSvc?.AllocateId() ?? 0;

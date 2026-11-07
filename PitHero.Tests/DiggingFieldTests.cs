@@ -96,5 +96,23 @@ namespace PitHero.Tests
             Assert.IsFalse(svc.IsCooling(-1));
             Assert.IsFalse(svc.IsCooling(DiggingFieldService.TileCount));
         }
+
+        [TestMethod]
+        public void GrowIn_StartsAtATenth_EasesSmoothlyToFullSize()
+        {
+            float start = PitHero.GameConfig.DiggingFieldGrowStartScale;
+            Assert.AreEqual(0.1f, start, 1e-6f);
+            Assert.AreEqual(start, PitHero.ECS.Components.BuildingGrowAnimator.ScaleAt(start, 0f), 1e-6f);
+            Assert.AreEqual(1f, PitHero.ECS.Components.BuildingGrowAnimator.ScaleAt(start, 1f), 1e-6f);
+
+            float previous = start;
+            for (int i = 1; i <= 20; i++)
+            {
+                float s = PitHero.ECS.Components.BuildingGrowAnimator.ScaleAt(start, i / 20f);
+                Assert.IsTrue(s >= previous, "the field never shrinks while growing in");
+                Assert.IsTrue(s <= 1f, "the field never overshoots full size");
+                previous = s;
+            }
+        }
     }
 }
