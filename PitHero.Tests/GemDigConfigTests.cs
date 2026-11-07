@@ -197,7 +197,6 @@ namespace PitHero.Tests
                     values[line.Substring(0, comma)] = line.Substring(comma + 1);
             }
             Assert.AreEqual("{0} (+{1})", values[UITextKey.GemDigLabelFormat]);
-            Assert.AreEqual("Nothing", values[UITextKey.DigNothing]);
             for (int i = 0; i < GemDigConfig.GemCount; i++)
                 Assert.AreEqual(((GemType)i).ToString(), values[GemDigConfig.GetNameKey((GemType)i)]);
             string[] junkNames = { "Shell", "Cup", "Plate", "Spoon", "Bottle", "Yarn Ball" };

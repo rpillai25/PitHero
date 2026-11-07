@@ -615,6 +615,5 @@ namespace PitHero
         public const string DigJunkSpoon = "DigJunkSpoon";
         public const string DigJunkBottle = "DigJunkBottle";
         public const string DigJunkYarnBall = "DigJunkYarnBall";
-        public const string DigNothing = "DigNothing";
     }
 }

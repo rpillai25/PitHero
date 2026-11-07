@@ -2228,8 +2228,8 @@ namespace PitHero.ECS.Scenes
         /// Shows what a dig turned up rising out of the dug Digging Field tile (issue #452), with the
         /// dig sound there. A gem rises with its "Name (+N)" label in its rarity color, the pay-gold
         /// sound and a sparkle burst that grows with its rarity; junk rises with a gray "Name (+0)"
-        /// label; an empty dig shows only a gray "Nothing". Called by the DigGem command handler, so
-        /// replays show it too.
+        /// label; an empty dig shows nothing at all (just the dig sound and the tile's cooldown
+        /// overlay). Called by the DigGem command handler, so replays show it too.
         /// </summary>
         public void SpawnDigEffect(Config.DigFind find, int tileX, int tileY)
         {
@@ -2238,6 +2238,8 @@ namespace PitHero.ECS.Scenes
                 tileY * GameConfig.TileSize + GameConfig.TileSize / 2f);
             var sounds = Core.GetGlobalManager<SoundEffectManager>();
             sounds?.PlaySoundAt(Util.SoundEffectTypes.SoundEffectType.Digging, center);
+            if (find.Kind == Config.DigFindKind.Nothing)
+                return;
 
             Sprite sprite = null;
             Color labelColor = Config.GemDigConfig.NoValueTextColor;
@@ -2273,11 +2275,11 @@ namespace PitHero.ECS.Scenes
         // Sparkle burst density per gem rarity (Normal..Legendary): every gem sparkles, rarer ones more
         private static readonly float[] GemSparkleDensity = { 0.5f, 1f, 1.6f, 2.4f, 3.5f };
 
-        // Labels per dig outcome ("Agate (+1)", "Shell (+0)", "Nothing"), built once on first use so
-        // repeat digs allocate no strings
+        // Labels per dig outcome ("Agate (+1)", "Shell (+0)"; an empty dig has none), built once on
+        // first use so repeat digs allocate no strings
         private readonly string[] _digLabels = new string[Config.GemDigConfig.OutcomeCount];
 
-        /// <summary>The localized label for a dig outcome, cached per scene.</summary>
+        /// <summary>The localized label for a junk or gem find, cached per scene.</summary>
         private string GetDigLabel(Config.DigFind find)
         {
             int i = find.OutcomeIndex;
@@ -2285,17 +2287,10 @@ namespace PitHero.ECS.Scenes
             if (label == null)
             {
                 var text = Core.Services.GetService<TextService>();
-                if (find.Kind == Config.DigFindKind.Nothing)
-                {
-                    label = text?.DisplayText(TextType.UI, UITextKey.DigNothing) ?? "Nothing";
-                }
-                else
-                {
-                    string format = text?.DisplayText(TextType.UI, UITextKey.GemDigLabelFormat) ?? "{0} (+{1})";
-                    string key = find.IsGem ? Config.GemDigConfig.GetNameKey(find.Gem) : Config.GemDigConfig.GetNameKey(find.Junk);
-                    string name = text?.DisplayText(TextType.UI, key) ?? find.ToString();
-                    label = Config.GemDigConfig.FormatLabel(format, name, Config.GemDigConfig.GetValue(find));
-                }
+                string format = text?.DisplayText(TextType.UI, UITextKey.GemDigLabelFormat) ?? "{0} (+{1})";
+                string key = find.IsGem ? Config.GemDigConfig.GetNameKey(find.Gem) : Config.GemDigConfig.GetNameKey(find.Junk);
+                string name = text?.DisplayText(TextType.UI, key) ?? find.ToString();
+                label = Config.GemDigConfig.FormatLabel(format, name, Config.GemDigConfig.GetValue(find));
                 _digLabels[i] = label;
             }
             return label;

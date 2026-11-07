@@ -191,7 +191,7 @@ Not every dig pays. Odds are exact integer weights out of 1,000,000:
 
 | Outcome | Share of digs | Shown as |
 |---|---|---|
-| Nothing | 35% | gray "Nothing", dig sound only |
+| Nothing | 35% | no text at all: just the dig sound and the tile's cooldown overlay |
 | Junk, worth 0 G | 30%: Shell 7%, Cup 6%, Plate 5%, Spoon 5%, Bottle 4%, Yarn Ball 3% | the item and a gray "Shell (+0)" label |
 | A gem | 35% | the gem, its "Agate (+1)" label in its rarity color, the pay-gold sound and a gold sparkle burst that grows with rarity |
 
