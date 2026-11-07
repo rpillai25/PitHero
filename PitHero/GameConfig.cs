@@ -578,7 +578,7 @@ namespace PitHero
         // clicking a tile digs up a random gem worth gold (odds in Config/GemDigConfig.cs)
         public const float DiggingFieldCooldownSeconds = 5f; // sim seconds a tile rests after a dig; changing it changes payouts (bump SimulationVersion)
         public static readonly Color DiggingFieldCooldownOverlayColor = new Color(0, 0, 0, 115); // dark overlay on a resting tile (~45% black)
-        public const float GemRiseDurationSeconds = 0.9f;    // gem + gold text rise, then vanish
+        public const float GemRiseDurationSeconds = 1.8f;    // find + label rise, then vanish (slowed from 0.9 s so the label is readable)
         public const float GemRiseFadeStartFraction = 0.6f;  // fraction of the rise after which both fade out
         public const float GemRiseStartOffsetY = -4f;        // gem appears this far above the dug tile's center (world px)
         public const float GemRiseDistance = 40f;            // world px the gem travels upward
