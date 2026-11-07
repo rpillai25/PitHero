@@ -565,6 +565,7 @@ artifacts rewind with the save, so charging for them is safe.
 | Silver Watering Can | Local | `ArtifactSilverWateringCanPrice` | A farm worker waters 6 crops per can-full instead of 3 (`SilverWateringCanCharges`, issue #450) | none |
 | Gold Watering Can | Local | `ArtifactGoldWateringCanPrice` | 12 crops per can-full. Supersedes Silver in the owned grid | Silver Watering Can |
 | Platinum Watering Can | Local | `ArtifactPlatinumWateringCanPrice` | 24 crops per can-full; the best owned can wins, the cans never stack (`LocalArtifactEffects.GetWateringCanCapacity`, read when the can is filled). Supersedes Gold | Gold Watering Can |
+| Prospector's Map | Local | `ArtifactProspectorsMapPrice` (50,000) | Unlocks the Digging Field building (issue #452): free, one per hero, Move only, 32 tiles that each rest `DiggingFieldCooldownSeconds` after a dig (`LocalArtifactEffects.HasGemDigSite`; the PlaceBuilding and DigGem handlers ignore requests without it). Per-tile cooldowns live in the scene-scoped `DiggingFieldService` and are never saved, so a load or seek starts with every tile ready | none |
 
 - **One query surface.** `ArtifactService` (global, Game1) answers `Owns` / `GetOwnedInOrder` /
   `IsAvailableInShop` / `Grant` for both scopes: Global from the system file, Local from the attached
@@ -800,7 +801,7 @@ grid size and `SystemSaveFileName` in the "Artifacts" block. Frame stream and vi
 | `ReplayTileKeyframeIntervalChunks` | 1 | Full mutable tile-layer snapshot every N chunks (~1 KB deflated) |
 | `ReplayFrameMemoryBudgetBytes` | 192 MB | Compressed chunks held in RAM; beyond it, spilled chunks are evicted |
 | `ReplayFrameCacheDiskBudgetBytes` | 4 GB | All `replay_*.frames` caches; oldest deleted first, `.bin` never |
-| `ReplayFrameFormatVersion` | 7 | Bump on any op / HUD record / events / codec change, when something stops being recorded, or when an atlas is repacked (sprite ids key on texture and rect, so an old cache would draw the wrong regions); orphans every cache once (v4 = Brotli payloads, v5 = hover markers live-only, v6 = battle monsters in the HUD record, on-monster HP bar ops gone, v7 = Actors atlas rebuilt, EyesBase portrait layer) |
+| `ReplayFrameFormatVersion` | 13 | Bump on any op / HUD record / events / codec change, when something stops being recorded, or when an atlas is repacked (sprite ids key on texture and rect, so an old cache would draw the wrong regions); orphans every cache once (v4 = Brotli payloads, v5 = hover markers live-only, v6 = battle monsters in the HUD record, on-monster HP bar ops gone, v7 = Actors atlas rebuilt, EyesBase portrait layer, v8 = Items atlas repacked, v9 = CropsProps atlas repacked for the gem dig site, v10 = repacked again for its glints, v11 = Items repacked for the Prospector's Map, v12 = CropsProps repacked for the Digging Field, v13 = repacked for the dig junk) |
 | `ReplayFrameBrotliQuality` / `ReplayFrameBrotliWindowBits` | 5 / 22 | Chunk payload compression; measured sweet spot (see "Chunks") |
 | `ReplayFrameViewSpeedSteps` / `Labels` | `SpeedSteps` + 16X, 32X | View-only ladder, no artifact gate |
 | `ReplayFrameViewSoundMaxSpeedIndex` | 1 (2X) | Recorded sounds play during forward play up to this rung |

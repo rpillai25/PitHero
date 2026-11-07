@@ -154,6 +154,7 @@ namespace PitHero.UI
                 gameState.ClearLocalArtifacts(); // Local artifacts belong to the previous hero (issue #411)
                 gameState.ClearProgressCounters(); // Crop unlocks and farm stats restart with the new hero (issue #413)
                 gameState.ResetWateringPriority(); // The watering order restarts at the default with the new hero (issue #450)
+                gameState.ResetGemPity(); // Gem dig pity counters belong to the previous hero (issue #452)
             }
             var heroCreationScene = new HeroCreationScene(mapPath);
             Core.Scene = heroCreationScene;

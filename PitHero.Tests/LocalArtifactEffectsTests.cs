@@ -55,6 +55,23 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void GemDigSite_NeedsTheProspectorsMap()
+        {
+            var state = new GameStateService();
+            Assert.IsFalse(LocalArtifactEffects.HasGemDigSite(state));
+            Assert.IsFalse(LocalArtifactEffects.HasGemDigSite(null));
+
+            state.GrantLocalArtifact(ArtifactType.HermesBoots);
+            Assert.IsFalse(LocalArtifactEffects.HasGemDigSite(state), "Only the map reveals the site");
+
+            state.GrantLocalArtifact(ArtifactType.ProspectorsMap);
+            Assert.IsTrue(LocalArtifactEffects.HasGemDigSite(state));
+
+            state.ClearLocalArtifacts();
+            Assert.IsFalse(LocalArtifactEffects.HasGemDigSite(state), "A new hero starts without the map");
+        }
+
+        [TestMethod]
         public void GameState_LocalArtifacts_GrantOrderVersionAndMask()
         {
             var state = new GameStateService();

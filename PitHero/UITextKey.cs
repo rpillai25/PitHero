@@ -97,12 +97,15 @@ namespace PitHero
         public const string BuildingNameCropStorage = "BuildingNameCropStorage";
         public const string BuildingDescMonsterHouse = "BuildingDescMonsterHouse";
         public const string BuildingDescCropStorage = "BuildingDescCropStorage";
+        public const string BuildingNameDiggingField = "BuildingNameDiggingField";
+        public const string BuildingDescDiggingField = "BuildingDescDiggingField";
         public const string WindowBuildings = "WindowBuildings";
         public const string WindowSeeds = "WindowSeeds";
         public const string WindowWateringPriority = "WindowWateringPriority";
         public const string WindowHarvestedCrops = "WindowHarvestedCrops";
         public const string ButtonBuild = "ButtonBuild";
         public const string BuildingCostFormat = "BuildingCostFormat";
+        public const string BuildingCostFree = "BuildingCostFree";
         public const string LabelTillingSoil = "LabelTillingSoil";
         public const string LabelRestoringGrass = "LabelRestoringGrass";
         public const string LabelPlantingCrops = "LabelPlantingCrops";
@@ -413,6 +416,9 @@ namespace PitHero
         public const string ArtifactGoldWateringCanDesc = "ArtifactGoldWateringCanDesc";
         public const string ArtifactPlatinumWateringCanName = "ArtifactPlatinumWateringCanName";
         public const string ArtifactPlatinumWateringCanDesc = "ArtifactPlatinumWateringCanDesc";
+        public const string ArtifactProspectorsMapName = "ArtifactProspectorsMapName";
+        public const string ArtifactProspectorsMapDesc = "ArtifactProspectorsMapDesc";
+        public const string ArtifactProspectorsMapEffect = "ArtifactProspectorsMapEffect";
         public const string ArtifactScopeGlobal = "ArtifactScopeGlobal";
         public const string ArtifactScopeLocal = "ArtifactScopeLocal";
         public const string ArtifactScopeGlobalTooltip = "ArtifactScopeGlobalTooltip";
@@ -587,5 +593,27 @@ namespace PitHero
         public const string SaveLoadAutoSave = "SaveLoadAutoSave";
         public const string SettingsSaveAutosaveInProgressTooltip = "SettingsSaveAutosaveInProgressTooltip";
         public const string ConfirmLoadAutoSave = "ConfirmLoadAutoSave";
+
+        // Gem dig site (issue #452)
+        public const string GemDigLabelFormat = "GemDigLabelFormat";
+        public const string GemAgate = "GemAgate";
+        public const string GemAmethyst = "GemAmethyst";
+        public const string GemPeridot = "GemPeridot";
+        public const string GemGarnet = "GemGarnet";
+        public const string GemAquamarine = "GemAquamarine";
+        public const string GemSpinel = "GemSpinel";
+        public const string GemTourmaline = "GemTourmaline";
+        public const string GemTanzanite = "GemTanzanite";
+        public const string GemSapphire = "GemSapphire";
+        public const string GemRuby = "GemRuby";
+        public const string GemEmerald = "GemEmerald";
+        public const string GemAlexandrite = "GemAlexandrite";
+        public const string GemDiamond = "GemDiamond";
+        public const string DigJunkShell = "DigJunkShell";
+        public const string DigJunkCup = "DigJunkCup";
+        public const string DigJunkPlate = "DigJunkPlate";
+        public const string DigJunkSpoon = "DigJunkSpoon";
+        public const string DigJunkBottle = "DigJunkBottle";
+        public const string DigJunkYarnBall = "DigJunkYarnBall";
     }
 }

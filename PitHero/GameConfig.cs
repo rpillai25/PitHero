@@ -574,6 +574,16 @@ namespace PitHero
         public const int HeroStatueStandTileX = 112;
         public const int HeroStatueStandTileY = 6;
 
+        // Digging Field (issue #452): a player-placed 8x4 building (unlocked by the Prospector's Map);
+        // clicking a tile digs up a random gem worth gold (odds in Config/GemDigConfig.cs)
+        public const float DiggingFieldCooldownSeconds = 5f; // sim seconds a tile rests after a dig; changing it changes payouts (bump SimulationVersion)
+        public static readonly Color DiggingFieldCooldownOverlayColor = new Color(0, 0, 0, 115); // dark overlay on a resting tile (~45% black)
+        public const float GemRiseDurationSeconds = 0.9f;    // gem + gold text rise, then vanish
+        public const float GemRiseFadeStartFraction = 0.6f;  // fraction of the rise after which both fade out
+        public const float GemRiseStartOffsetY = -4f;        // gem appears this far above the dug tile's center (world px)
+        public const float GemRiseDistance = 40f;            // world px the gem travels upward
+        public const float GemValueTextGapY = 4f;            // screen px between the gem's top edge and the gold text
+
         // New-game intro (issue #396): fall from the sky onto the statue tile, pray, lightning
         public const float IntroFallDurationSeconds = 1.0f; // Gravity-eased drop from above the screen to the ground
         public const float IntroPostLandingDelaySeconds = 0.5f; // Beat between touchdown and turning to the statue
@@ -589,6 +599,8 @@ namespace PitHero
         public const int RenderLayerTop = 2;
 
         public const int RenderLayerActorPropOverlay = 41; // Actor prop overlay layer (above actors).  Useful for things like watering can, water, harvested crops that display over monster workers.
+        public const int RenderLayerGroundProp = 88; // Flat ground buildings (the Digging Field): above tilled soil (Detail 90), below fog and actors
+        public const int RenderLayerGroundPropOverlay = 87; // Overlays drawn on a ground building (the Digging Field's tile cooldowns)
         // Actors layer — heroes, mercenaries, monsters, and treasures. Y-sorted within layer via LayerDepth.
         public const int RenderLayerActors = 60;
         public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)
@@ -785,7 +797,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 8;                        // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed
+        public const int ReplayFrameFormatVersion = 13;                       // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed; v9 (#452): CropsProps atlas repacked for the gem dig site, so CropsProps rects changed; v10 (#452): CropsProps repacked again for the gem glints; v11 (#452): Items repacked for the Prospector's Map icon; v12 (#452): CropsProps repacked for the Digging Field (mound and glints removed); v13 (#452): CropsProps repacked for the dig junk sprites
         // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
         // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
         // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
@@ -832,6 +844,7 @@ namespace PitHero
         public const int ArtifactSilverWateringCanPrice = 50000;         // Gold; cans hold SilverWateringCanCharges (issue #450)
         public const int ArtifactGoldWateringCanPrice = 200000;          // Gold; requires the silver can first
         public const int ArtifactPlatinumWateringCanPrice = 500000;      // Gold; requires the gold can first
+        public const int ArtifactProspectorsMapPrice = 50000;            // Gold; reveals the gem dig site (issue #452)
         public const int SilverWateringCanCharges = 6;                   // Tiles watered per can-full; the best owned can wins, the cans never stack
         public const int GoldWateringCanCharges = 12;
         public const int PlatinumWateringCanCharges = 24;
