@@ -182,7 +182,7 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
 
 The **Prospector's Map**, a Local artifact (50,000 G) in the Second Chance shop, unlocks the
 **Digging Field** in Construction → Buildings: free to place, only one per hero, movable
-(Shift+Click → Move) but never sold, 8×4 tiles on open farm ground. Clicking any of its 32 tiles
+(Shift+Click → Move) but never sold, 8×4 tiles on open farm ground. Clicking any of its 32 tiles (or pressing C over it)
 digs it; the tile then rests for `GameConfig.DiggingFieldCooldownSeconds` (5 s of simulation time,
 shown as a dark overlay) before it can be dug again. It is the only active-play gold source: it pays
 only while the player is clicking, never while idle.

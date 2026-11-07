@@ -4612,10 +4612,15 @@ namespace PitHero.ECS.Scenes
             // Always consume so the flag never lingers past the frame a move ended.
             bool moveJustEnded = _buildingModeOverlay != null && _buildingModeOverlay.ConsumeMoveJustEnded();
 
-            if (!Input.LeftMouseButtonPressed)
+            // The dig key (C) digs the Digging Field tile under the cursor like a click, never while a
+            // text field has keyboard focus, and never opens a menu (issue #452)
+            bool clicked = Input.LeftMouseButtonPressed;
+            bool digKey = Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.C)
+                && (_uiStage == null || _uiStage.GetKeyboardFocus() == null);
+            if (!clicked && !digKey)
                 return;
             // Ignore the same click that just confirmed a relocation.
-            if (moveJustEnded)
+            if (clicked && moveJustEnded)
                 return;
             if (BuildingInteractionsBlocked())
                 return;
@@ -4623,10 +4628,12 @@ namespace PitHero.ECS.Scenes
             var building = GetBuildingUnderCursor();
             if (building == null)
                 return;
+            if (!clicked && building.Type != Util.BuildingType.DiggingField)
+                return;
 
-            // Digging Field (issue #452): a plain click digs the tile under the cursor; Shift+Click opens
-            // its menu (Move). A resting tile ignores the click.
-            if (building.Type == Util.BuildingType.DiggingField && !IsShiftDown())
+            // Digging Field (issue #452): a plain click or the C key digs the tile under the cursor;
+            // Shift+Click opens its menu (Move). A resting tile ignores the dig.
+            if (building.Type == Util.BuildingType.DiggingField && (!clicked || !IsShiftDown()))
             {
                 int tile = GetReadyDigTileUnderCursor(out int tileX, out int tileY);
                 if (tile < 0)
