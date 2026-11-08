@@ -59,5 +59,14 @@ namespace PitHero.Artifacts
         {
             return gameState != null && gameState.OwnsLocalArtifact(ArtifactType.ProspectorsMap);
         }
+
+        /// <summary>
+        /// True when this hero owns the DigBot, which works the Digging Field on its own. Needs the
+        /// Prospector's Map too (a dig without it is refused), so both are checked.
+        /// </summary>
+        public static bool HasDigBot(GameStateService gameState)
+        {
+            return HasGemDigSite(gameState) && gameState.OwnsLocalArtifact(ArtifactType.DigBot);
+        }
     }
 }

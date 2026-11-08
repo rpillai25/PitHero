@@ -419,6 +419,9 @@ namespace PitHero
         public const string ArtifactProspectorsMapName = "ArtifactProspectorsMapName";
         public const string ArtifactProspectorsMapDesc = "ArtifactProspectorsMapDesc";
         public const string ArtifactProspectorsMapEffect = "ArtifactProspectorsMapEffect";
+        public const string ArtifactDigBotName = "ArtifactDigBotName";
+        public const string ArtifactDigBotDesc = "ArtifactDigBotDesc";
+        public const string ArtifactDigBotEffect = "ArtifactDigBotEffect";
         public const string ArtifactScopeGlobal = "ArtifactScopeGlobal";
         public const string ArtifactScopeLocal = "ArtifactScopeLocal";
         public const string ArtifactScopeGlobalTooltip = "ArtifactScopeGlobalTooltip";

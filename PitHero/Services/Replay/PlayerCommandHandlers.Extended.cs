@@ -520,17 +520,9 @@ namespace PitHero.Services.Replay
         {
             var services = Services;
             var gameState = services?.GetService<GameStateService>();
-            if (!PitHero.Artifacts.LocalArtifactEffects.HasGemDigSite(gameState))
+            var field = services?.GetService<DiggingFieldService>();
+            if (field == null || !field.TryDig(gameState, tileX, tileY, roll, "gem_dig", out var find))
                 return;
-            var field = services.GetService<DiggingFieldService>();
-            int index = field != null ? field.GetTileIndex(tileX, tileY) : -1;
-            if (index < 0 || field.IsCooling(index))
-                return;
-            // Every dig rests the tile; only a gem pays (an empty dig or junk is worth nothing)
-            var find = gameState.Dig(roll);
-            if (find.IsGem)
-                gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(find), "gem_dig");
-            field.StartCooldown(index);
 
             // Cosmetic only: the effect never feeds back into the simulation
             if (Core.Instance != null && Core.Scene is PitHero.ECS.Scenes.MainGameScene scene)

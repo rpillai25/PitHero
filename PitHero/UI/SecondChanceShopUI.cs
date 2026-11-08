@@ -406,7 +406,8 @@ namespace PitHero.UI
         {
             if (_artifactShopTable == null) return;
             var service = ArtifactService.Current;
-            int version = service != null ? service.Version : 0;
+            // A placed Digging Field unlocks the DigBot row, so it counts as a change too
+            int version = service != null ? service.Version * 2 + (service.IsDiggingFieldPlaced() ? 1 : 0) : 0;
             if (!force && version == _artifactShopVersion) return;
             _artifactShopVersion = version;
 

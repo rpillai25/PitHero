@@ -2239,53 +2239,68 @@ magmaooze_move_right_6
 magmaooze_move_right_7
 	1870,147,31,31
 	0.5,0.5
+dig_bot_move_right_1
+	1282,735,30,32
+	0.5,0.5
+dig_bot_move_right_2
+	1381,637,30,32
+	0.5,0.5
+dig_bot_slide_top_1
+	1036,983,30,32
+	0.5,0.5
+dig_bot_slide_top_2
+	1582,441,30,32
+	0.5,0.5
+dig_bot_slide_top_3
+	1681,343,30,32
+	0.5,0.5
 ghost_miner_move_right_1
-	1282,735,29,55
-	0.5,0.5
-ghost_miner_move_right_2
-	1381,637,29,55
-	0.5,0.5
-ghost_miner_move_right_3
-	1582,441,29,55
-	0.5,0.5
-ghost_miner_move_right_4
-	1681,343,29,55
-	0.5,0.5
-ghost_miner_move_right_5
 	1731,294,29,55
 	0.5,0.5
-ghost_miner_move_right_6
+ghost_miner_move_right_2
 	1783,245,29,55
 	0.5,0.5
-ghost_miner_move_right_7
+ghost_miner_move_right_3
 	1490,539,29,55
 	0.5,0.5
-ghost_miner_move_right_8
+ghost_miner_move_right_4
 	1980,49,29,55
 	0.5,0.5
-ghost_miner_move_right_9
+ghost_miner_move_right_5
 	1149,882,29,55
 	0.5,0.5
+ghost_miner_move_right_6
+	1249,784,29,55
+	0.5,0.5
+ghost_miner_move_right_7
+	1348,686,29,55
+	0.5,0.5
+ghost_miner_move_right_8
+	1447,588,29,55
+	0.5,0.5
+ghost_miner_move_right_9
+	1102,934,29,55
+	0.5,0.5
 goblin_move_right_1
-	1249,784,29,46
-	0.5,0.5
-goblin_move_right_2
-	1348,686,29,46
-	0.5,0.5
-goblin_move_right_3
-	1447,588,29,46
-	0.5,0.5
-goblin_move_right_4
-	1102,934,29,46
-	0.5,0.5
-goblin_move_right_5
 	1647,392,29,46
 	0.5,0.5
-goblin_move_right_6
+goblin_move_right_2
 	1848,196,29,46
 	0.5,0.5
-goblin_move_right_7
+goblin_move_right_3
 	1946,98,29,46
+	0.5,0.5
+goblin_move_right_4
+	1555,490,29,46
+	0.5,0.5
+goblin_move_right_5
+	1315,731,29,46
+	0.5,0.5
+goblin_move_right_6
+	1214,833,29,46
+	0.5,0.5
+goblin_move_right_7
+	1414,633,29,46
 	0.5,0.5
 slime_move_right_1
 	993,49,27,29
@@ -2294,16 +2309,16 @@ slime_move_right_2
 	730,989,27,29
 	0.5,0.5
 slime_move_right_3
-	1036,983,27,29
+	2016,32,27,29
 	0.5,0.5
 slime_move_right_4
-	1315,731,27,29
+	1069,979,27,29
 	0.5,0.5
 slime_move_right_5
-	1214,833,27,29
+	1902,147,27,29
 	0.5,0.5
 slime_move_right_6
-	1064,983,27,29
+	1282,768,27,29
 	0.5,0.5
 HeroShadow
 	535,100,27,5
@@ -2315,18 +2330,24 @@ shadowimp_move_right_2
 	996,991,25,26
 	0.5,0.5
 shadowimp_move_right_3
-	1555,490,25,26
+	1381,670,25,26
 	0.5,0.5
 shadowimp_move_right_4
-	1414,633,25,26
+	1613,441,25,26
 	0.5,0.5
 shadowimp_move_right_5
-	2016,32,25,26
+	1681,376,25,26
 	0.5,0.5
 PlaceholderMonster
 	771,100,24,24
 	0.5,0.5
 
+DigBotMoveRight
+	10
+	747,748
+DigBotSlideTop
+	10
+	749,750,751
 FemaleHeroArmorJumpRight
 	10
 	156,157,158,159,160,161
@@ -2602,10 +2623,10 @@ FireLizardMoveRight
 	107,108,109,110,111,112,113
 GhostMinerMoveRight
 	10
-	747,748,749,750,751,752,753,754,755
+	752,753,754,755,756,757,758,759,760
 GoblinMoveRight
 	10
-	756,757,758,759,760,761,762
+	761,762,763,764,765,766,767
 LavaDrakeMoveRight
 	10
 	101,102,103,104,105,106
@@ -2629,13 +2650,13 @@ ShadowBeastMoveRight
 	67,68,69,70,71,72,73
 ShadowImpMoveRight
 	10
-	770,771,772,773,774
+	775,776,777,778,779
 SkeletonMoveRight
 	10
 	735,736,737,738,739
 SlimeMoveRight
 	10
-	763,764,765,766,767,768
+	768,769,770,771,772,773
 SnakeMoveRight
 	10
 	47,48,49,50,51,52,53
@@ -2664,5 +2685,5 @@ Things
 	10
 	729,730,731,732,733,734
 LightningStrike
-	40
+	10
 	0,1,2,3,4,5,6

@@ -578,6 +578,9 @@ namespace PitHero
         // clicking a tile digs up a random gem worth gold (odds in Config/GemDigConfig.cs)
         public const float DiggingFieldCooldownSeconds = 5f; // sim seconds a tile rests after a dig; changing it changes payouts (bump SimulationVersion)
         public static readonly Color DiggingFieldCooldownOverlayColor = new Color(0, 0, 0, 115); // dark overlay on a resting tile (~45% black)
+        public const float DigBotSecondsPerTile = 2f;           // the DigBot crawls one tile per this many sim seconds
+        public const float DigBotFindPauseSeconds = 0.6f;       // it stops this long after digging up a find (slide_top plays, lid open)
+        public const float DigBotFindStartOffsetY = -10f;       // its finds rise from its lid, this far above the tile center (world px)
         public const float DiggingFieldGrowStartScale = 0.1f;   // a newly built field appears in place at this size (no fall)...
         public const float DiggingFieldGrowSeconds = 0.6f;      // ...and eases up to full size over this long; unclickable meanwhile
         public const float GemRiseDurationSeconds = 1.8f;    // a gem + its label rise, then vanish (slow enough to read)
@@ -801,7 +804,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 13;                       // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed; v9 (#452): CropsProps atlas repacked for the gem dig site, so CropsProps rects changed; v10 (#452): CropsProps repacked again for the gem glints; v11 (#452): Items repacked for the Prospector's Map icon; v12 (#452): CropsProps repacked for the Digging Field (mound and glints removed); v13 (#452): CropsProps repacked for the dig junk sprites
+        public const int ReplayFrameFormatVersion = 14;                       // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed; v9 (#452): CropsProps atlas repacked for the gem dig site, so CropsProps rects changed; v10 (#452): CropsProps repacked again for the gem glints; v11 (#452): Items repacked for the Prospector's Map icon; v12 (#452): CropsProps repacked for the Digging Field (mound and glints removed); v13 (#452): CropsProps repacked for the dig junk sprites; v14 (#452): Actors and Items repacked for the DigBot (animations and artifact icon)
         // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
         // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
         // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
@@ -848,7 +851,8 @@ namespace PitHero
         public const int ArtifactSilverWateringCanPrice = 50000;         // Gold; cans hold SilverWateringCanCharges (issue #450)
         public const int ArtifactGoldWateringCanPrice = 200000;          // Gold; requires the silver can first
         public const int ArtifactPlatinumWateringCanPrice = 500000;      // Gold; requires the gold can first
-        public const int ArtifactProspectorsMapPrice = 50000;            // Gold; reveals the gem dig site (issue #452)
+        public const int ArtifactProspectorsMapPrice = 50000;            // Gold; unlocks the Digging Field (issue #452)
+        public const int ArtifactDigBotPrice = 100000;                   // Gold; a robot that digs the Digging Field (offered once a field is placed)
         public const int SilverWateringCanCharges = 6;                   // Tiles watered per can-full; the best owned can wins, the cans never stack
         public const int GoldWateringCanCharges = 12;
         public const int PlatinumWateringCanCharges = 24;

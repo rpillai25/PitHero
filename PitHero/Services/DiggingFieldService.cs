@@ -78,6 +78,29 @@ namespace PitHero.Services
                 _readyAt[index] = _now() + GameConfig.DiggingFieldCooldownSeconds;
         }
 
+        /// <summary>
+        /// Digs a world tile of the field: resolves the find from the roll (advancing pity), pays a
+        /// gem's value as <paramref name="goldSource"/> and rests the tile. Returns false and changes
+        /// nothing when the Prospector's Map is not owned, the tile is outside the field, or it is
+        /// still resting. Shared by the DigGem command (the player) and the DigBot, so a bot dig is
+        /// exactly a player dig.
+        /// </summary>
+        public bool TryDig(GameStateService gameState, int tileX, int tileY, long roll, string goldSource, out PitHero.Config.DigFind find)
+        {
+            find = default;
+            if (!PitHero.Artifacts.LocalArtifactEffects.HasGemDigSite(gameState))
+                return false;
+            int index = GetTileIndex(tileX, tileY);
+            if (index < 0 || IsCooling(index))
+                return false;
+            // Every dig rests the tile; only a gem pays (an empty dig or junk is worth nothing)
+            find = gameState.Dig(roll);
+            if (find.IsGem)
+                gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(find), goldSource);
+            StartCooldown(index);
+            return true;
+        }
+
         /// <summary>Makes every tile ready.</summary>
         public void Reset()
         {

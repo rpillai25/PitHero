@@ -290,6 +290,8 @@ namespace PitHero.ECS.Scenes
             kitchenHatService.SetScene(this);
             Core.Services.AddService(kitchenHatService);
 
+            // The DigBot artifact's robot (issue #452): spawned and removed from sim state each step
+            AddSceneComponent<DigBotSpawner>();
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
@@ -2231,7 +2233,7 @@ namespace PitHero.ECS.Scenes
         /// label; an empty dig shows nothing at all (just the dig sound and the tile's cooldown
         /// overlay). Called by the DigGem command handler, so replays show it too.
         /// </summary>
-        public void SpawnDigEffect(Config.DigFind find, int tileX, int tileY)
+        public void SpawnDigEffect(Config.DigFind find, int tileX, int tileY, float startOffsetY = GameConfig.GemRiseStartOffsetY)
         {
             var center = new Vector2(
                 tileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
@@ -2259,7 +2261,7 @@ namespace PitHero.ECS.Scenes
             }
 
             var entity = CreateEntity("dig-find-effect");
-            entity.SetPosition(center.X, center.Y + GameConfig.GemRiseStartOffsetY);
+            entity.SetPosition(center.X, center.Y + startOffsetY);
             SpriteRenderer renderer = null;
             if (sprite != null)
             {
