@@ -240,12 +240,13 @@ Measured over 20M digs at strength 1:
 The **DigBot**, a Local artifact (`ArtifactDigBotPrice`, 100,000 G), is offered once the map is
 owned **and** a Digging Field is placed. It is a robot (`ECS/Components/DigBotComponent.cs`,
 spawned by `DigBotSpawner`) that crawls the field one tile every `DigBotSecondsPerTile` (2 s) in
-reading order: left to right, row by row from the top left. From the end of a row it heads
-straight to the start of the next one, and from the bottom right straight back to the top left, at
-the same speed. On each tile it reaches that is not resting it digs exactly like a click (shared
-pity, gold source `"digbot_dig"`) and stops `DigBotFindPauseSeconds` (0.6 s) on a find while the
-item pops out of its lid. One lap is ≈ 114 s of travel plus ≈ 12 s of pauses for 32 digs, so the
-bot alone digs ≈ 0.25 times a second: **≈ 46,000 G an hour** at ~51 g/dig, earned while idle. It
+a zigzag from the top left: the top row left to right, the next row right to left, and so on, so
+every step is to a neighboring tile and the lap ends at the bottom left. From there it climbs
+straight back up to the top left at the same speed. On each tile it reaches that is not resting it
+digs exactly like a click (shared pity, gold source `"digbot_dig"`) and stops
+`DigBotFindPauseSeconds` (0.6 s) on a find while the item pops out of its lid. One lap is 68 s of
+travel (31 steps plus the 3-tile climb) plus ≈ 12 s of pauses for 32 digs, so the bot alone digs
+≈ 0.4 times a second: **≈ 73,000 G an hour** at ~51 g/dig, earned while idle. It
 skips tiles the player has just dug, so it adds to an active player rather than doubling them.
 Its position is not saved: a load restarts it at the top left. Moving the field does too.
 

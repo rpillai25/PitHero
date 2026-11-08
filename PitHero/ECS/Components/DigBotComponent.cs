@@ -8,8 +8,8 @@ namespace PitHero.ECS.Components
 {
     /// <summary>
     /// The DigBot artifact's robot (issue #452): crawls across the Digging Field one tile every
-    /// <see cref="GameConfig.DigBotSecondsPerTile"/> seconds in reading order (left to right, row by
-    /// row from the top left; after the bottom right it heads back to the top left) and digs every
+    /// <see cref="GameConfig.DigBotSecondsPerTile"/> seconds in a zigzag (the top row left to right, the next
+    /// right to left, and so on; from the bottom left it heads back up to the top left) and digs every
     /// tile it reaches that is not resting, exactly as a player click would
     /// (<see cref="DiggingFieldService.TryDig"/>, shared pity, gems pay gold).
     ///
@@ -38,20 +38,23 @@ namespace PitHero.ECS.Components
 
         public bool ShouldPause => true;
 
-        /// <summary>The field tile (0..31, reading order) the bot is heading to or standing on.</summary>
+        /// <summary>The field tile (0..31, zigzag order) the bot is heading to or standing on.</summary>
         public int ScanIndex => _scanIndex;
 
         /// <summary>
-        /// Field-local column and row of a reading-order scan index: index 0 is the top-left tile,
-        /// <see cref="BuildingConfig.DiggingFieldWidth"/> - 1 the top-right, the last index the bottom right.
+        /// Field-local column and row of a zigzag scan index: index 0 is the top-left tile, the top row
+        /// runs left to right, the next row right to left, and so on, so with the field's four rows the
+        /// last index is the bottom-left tile and every step is to a neighboring tile.
         /// </summary>
         public static Point GetScanTile(int scanIndex)
         {
             int w = BuildingConfig.DiggingFieldWidth;
-            return new Point(scanIndex % w, scanIndex / w);
+            int row = scanIndex / w;
+            int col = scanIndex % w;
+            return new Point(row % 2 == 0 ? col : w - 1 - col, row);
         }
 
-        /// <summary>The scan index after this one, wrapping from the bottom right back to the top left.</summary>
+        /// <summary>The scan index after this one, wrapping from the bottom left back to the top left.</summary>
         public static int NextScanIndex(int scanIndex)
         {
             return (scanIndex + 1) % DiggingFieldService.TileCount;
