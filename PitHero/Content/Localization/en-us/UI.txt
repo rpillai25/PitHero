@@ -304,7 +304,7 @@ ArtifactProspectorsMapDesc,A weathered map. X marks a gem deposit buried by the 
 ArtifactProspectorsMapEffect,Unlocks the Digging Field in Construction > Buildings. Click its tiles (or press C over them) to dig up gems worth gold.
 ArtifactDigBotName,DigBot
 ArtifactDigBotDesc,A patient little robot that never tires of digging.
-ArtifactDigBotEffect,Trundles across your Digging Field row by row and digs every rested tile it reaches. Its finds pay out just like yours.
+ArtifactDigBotEffect,Trundles across your Digging Field row by row and digs every rested ground it reaches. Its finds pay out just like yours.
 ArtifactScopeGlobal,Global
 ArtifactScopeLocal,Local
 ArtifactScopeGlobalTooltip,Affects all hero sessions
