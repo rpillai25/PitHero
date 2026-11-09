@@ -21,6 +21,9 @@ Higher number = drawn first = further back.  Lower number = drawn later = in fro
 | `RenderLayerDroppedItems` | 65 | Dropped loot items |
 | `RenderLayerFogOfWar` | 70 | Tilemap fog-of-war overlay — renders **behind** actors/objects (#337) |
 | `RenderLayerTreeBand` | 80 | Decorative tree bands north/south of the map (#348) |
+| `RenderLayerGroundPropOverlay` | 87 | Overlays on a flat ground building: the Digging Field's dark tile-cooldown squares (#452) |
+| `RenderLayerGroundProp` | 88 | Flat ground buildings (the Digging Field, #452): a plain day/night-graded `SpriteRenderer`, not Y-sorted, under every actor, above tilled soil |
+| `RenderLayerDetail` | 90 | Tilemap detail layer (tilled soil) |
 | `RenderLayerBase` | 100 | Tilemap base layer |
 
 Fog of war renders behind actors so the party is never partially covered when walking next

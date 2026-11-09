@@ -33,6 +33,12 @@ namespace PitHero.Artifacts
 
         /// <summary>Local: watering cans hold 24 charges. Requires the Gold Watering Can first.</summary>
         PlatinumWateringCan = 8,
+
+        /// <summary>Local: unlocks the Digging Field building (issue #452).</summary>
+        ProspectorsMap = 9,
+
+        /// <summary>Local: a robot that digs the Digging Field on its own. Requires the Prospector's Map and a placed field.</summary>
+        DigBot = 10,
     }
 
     /// <summary>
@@ -49,7 +55,7 @@ namespace PitHero.Artifacts
     public static class ArtifactCatalog
     {
         /// <summary>Number of artifact kinds (the enum is dense from 0; retired ordinals count).</summary>
-        public const int Count = 9;
+        public const int Count = 11;
 
         /// <summary>
         /// True for an artifact that no longer exists in the game but whose ordinal is reserved because
@@ -74,6 +80,8 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return "SilverWateringCan";
                 case ArtifactType.GoldWateringCan: return "GoldWateringCan";
                 case ArtifactType.PlatinumWateringCan: return "PlatinumWateringCan";
+                case ArtifactType.ProspectorsMap: return "ProspectorsMap";
+                case ArtifactType.DigBot: return "DigBot";
                 default: return string.Empty;
             }
         }
@@ -91,6 +99,8 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return UITextKey.ArtifactSilverWateringCanName;
                 case ArtifactType.GoldWateringCan: return UITextKey.ArtifactGoldWateringCanName;
                 case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanName;
+                case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapName;
+                case ArtifactType.DigBot: return UITextKey.ArtifactDigBotName;
                 default: return string.Empty;
             }
         }
@@ -108,6 +118,8 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return UITextKey.ArtifactSilverWateringCanDesc;
                 case ArtifactType.GoldWateringCan: return UITextKey.ArtifactGoldWateringCanDesc;
                 case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanDesc;
+                case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapDesc;
+                case ArtifactType.DigBot: return UITextKey.ArtifactDigBotDesc;
                 default: return string.Empty;
             }
         }
@@ -121,6 +133,8 @@ namespace PitHero.Artifacts
             switch (type)
             {
                 case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeEffect;
+                case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapEffect;
+                case ArtifactType.DigBot: return UITextKey.ArtifactDigBotEffect;
                 default: return string.Empty;
             }
         }
@@ -138,6 +152,8 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan: return GameConfig.ArtifactSilverWateringCanPrice;
                 case ArtifactType.GoldWateringCan: return GameConfig.ArtifactGoldWateringCanPrice;
                 case ArtifactType.PlatinumWateringCan: return GameConfig.ArtifactPlatinumWateringCanPrice;
+                case ArtifactType.ProspectorsMap: return GameConfig.ArtifactProspectorsMapPrice;
+                case ArtifactType.DigBot: return GameConfig.ArtifactDigBotPrice;
                 default: return 0;
             }
         }
@@ -153,6 +169,8 @@ namespace PitHero.Artifacts
                 case ArtifactType.SilverWateringCan:
                 case ArtifactType.GoldWateringCan:
                 case ArtifactType.PlatinumWateringCan:
+                case ArtifactType.ProspectorsMap:
+                case ArtifactType.DigBot:
                     return ArtifactScope.Local;
                 default:
                     return ArtifactScope.Global;
@@ -179,6 +197,18 @@ namespace PitHero.Artifacts
         private static readonly ArtifactType[] PlatinumCanPrerequisites =
             { ArtifactType.GoldWateringCan };
 
+        private static readonly ArtifactType[] DigBotPrerequisites =
+            { ArtifactType.ProspectorsMap };
+
+        /// <summary>
+        /// True for an artifact the shop offers only once a Digging Field is placed (the DigBot works
+        /// the field, so it is pointless before one exists). On top of <see cref="GetPrerequisites"/>.
+        /// </summary>
+        public static bool RequiresPlacedDiggingField(ArtifactType type)
+        {
+            return type == ArtifactType.DigBot;
+        }
+
         /// <summary>
         /// Every artifact that must be owned before this one is offered, or an empty array. The
         /// timepiece is the capstone: hurrying time along comes before changing it. The lightning
@@ -192,6 +222,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.LightningGrowFertilizer: return LightningPrerequisites;
                 case ArtifactType.GoldWateringCan: return GoldCanPrerequisites;
                 case ArtifactType.PlatinumWateringCan: return PlatinumCanPrerequisites;
+                case ArtifactType.DigBot: return DigBotPrerequisites;
                 default: return NoPrerequisites;
             }
         }

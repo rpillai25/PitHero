@@ -22,7 +22,11 @@ namespace PitHero.Util
 
         /// <summary>Wide band of large fire particles raining down; spawned above the
         /// enemy group's center for the mage Firestorm AoE.</summary>
-        Firestorm
+        Firestorm,
+
+        /// <summary>Gold-white sparks bursting from a Digging Field tile when a gem is dug up (issue
+        /// #452); denser for rarer gems via densityScale. Ordinals are recorded in replay frames: append only.</summary>
+        GemSparkle
     }
 
     /// <summary>
@@ -102,7 +106,8 @@ namespace PitHero.Util
                     { ParticleEffectType.Heal, content.LoadParticleEmitterConfig("Content/Particles/heal.pex") },
                     { ParticleEffectType.HealPotion, content.LoadParticleEmitterConfig("Content/Particles/heal_potion.pex") },
                     { ParticleEffectType.Fireball, content.LoadParticleEmitterConfig("Content/Particles/fireball.pex") },
-                    { ParticleEffectType.Firestorm, content.LoadParticleEmitterConfig("Content/Particles/firestorm.pex") }
+                    { ParticleEffectType.Firestorm, content.LoadParticleEmitterConfig("Content/Particles/firestorm.pex") },
+                    { ParticleEffectType.GemSparkle, content.LoadParticleEmitterConfig("Content/Particles/gem_sparkle.pex") }
                 };
 
                 Initialized = true;
@@ -158,10 +163,17 @@ namespace PitHero.Util
         /// destroyed once all particles expire.
         /// </summary>
         public ParticleEmitter SpawnEffectAtPosition(ParticleEffectType type, Vector2 worldPosition,
-            Scene scene, int renderLayer = GameConfig.RenderLayerLowest)
+            Scene scene, int renderLayer = GameConfig.RenderLayerLowest, float densityScale = 1f)
         {
             if (_configs == null || scene == null || !_configs.TryGetValue(type, out var config))
                 return null;
+
+            if (densityScale != 1f)
+            {
+                config = CloneConfig(config);
+                config.MaxParticles = (uint)(config.MaxParticles * densityScale);
+                config.EmissionRate *= densityScale;
+            }
 
             var entity = scene.CreateEntity("particle-effect");
             entity.SetPosition(worldPosition);
@@ -169,7 +181,7 @@ namespace PitHero.Util
             emitter.SimulateInWorldSpace = true;
             emitter.RenderLayer = renderLayer;
             emitter.OnAllParticlesExpired += DestroyEmitterEntity;
-            Register(emitter, type, 1f);
+            Register(emitter, type, densityScale);
             return emitter;
         }
 

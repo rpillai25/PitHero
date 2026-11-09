@@ -50,5 +50,23 @@ namespace PitHero.Artifacts
                 return GameConfig.SilverWateringCanCharges;
             return GameConfig.WateringCanMaxCharges;
         }
+
+        /// <summary>
+        /// True when this hero owns the Prospector's Map (issue #452), which unlocks the Digging Field
+        /// building. The PlaceBuilding (Digging Field) and DigGem handlers ignore requests without it.
+        /// </summary>
+        public static bool HasGemDigSite(GameStateService gameState)
+        {
+            return gameState != null && gameState.OwnsLocalArtifact(ArtifactType.ProspectorsMap);
+        }
+
+        /// <summary>
+        /// True when this hero owns the DigBot, which works the Digging Field on its own. Needs the
+        /// Prospector's Map too (a dig without it is refused), so both are checked.
+        /// </summary>
+        public static bool HasDigBot(GameStateService gameState)
+        {
+            return HasGemDigSite(gameState) && gameState.OwnsLocalArtifact(ArtifactType.DigBot);
+        }
     }
 }

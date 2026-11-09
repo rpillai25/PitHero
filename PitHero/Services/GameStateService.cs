@@ -363,6 +363,43 @@ namespace PitHero.Services
         /// <summary>Restores the default watering order (a new hero).</summary>
         public void ResetWateringPriority() => SetWateringPriorityOrder(null);
 
+        // ── Gem dig pity (issue #452) ────────────────────────────────────────────
+        // Digs since each tier (Uncommon, Rare, Epic, Legendary) or a better one last came up at the
+        // gem dig site. Sim-read by the DigGem handler (they raise that tier's odds, see
+        // GemDigConfig), saved with the hero (v42), restored by ApplyLoadedState, reset for a new hero.
+
+        private readonly int[] _gemPity = new int[Config.GemDigConfig.PityTierCount];
+
+        /// <summary>
+        /// Resolves one Digging Field dig from its roll (in [0, GemDigConfig.RollRange)) under the
+        /// current pity counters, then advances the counters. Returns what was found: nothing, junk or a gem.
+        /// </summary>
+        public Config.DigFind Dig(long roll)
+        {
+            var find = Config.GemDigConfig.Resolve(roll, _gemPity);
+            Config.GemDigConfig.AdvancePity(_gemPity, find);
+            return find;
+        }
+
+        /// <summary>Digs without the given pity tier (0..3 = Uncommon..Legendary) or better.</summary>
+        public int GetGemPity(int pityIndex) => _gemPity[pityIndex];
+
+        /// <summary>The pity counters as a fresh array, for the save gather.</summary>
+        public int[] CopyGemPityArray() => (int[])_gemPity.Clone();
+
+        /// <summary>Replaces the pity counters from a save; null or missing entries read as 0, negatives clamp to 0.</summary>
+        public void SetGemPity(int[] counters)
+        {
+            for (int i = 0; i < _gemPity.Length; i++)
+            {
+                int v = counters != null && i < counters.Length ? counters[i] : 0;
+                _gemPity[i] = v < 0 ? 0 : v;
+            }
+        }
+
+        /// <summary>Clears the pity counters (a new hero).</summary>
+        public void ResetGemPity() => SetGemPity(null);
+
         /// <summary>
         /// Swaps two crops' places in the watering order — the Up/Down buttons swap a crop with its
         /// visible neighbour. Returns false (no change) for an unknown or identical pair.

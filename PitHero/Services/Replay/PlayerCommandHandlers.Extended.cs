@@ -269,6 +269,10 @@ namespace PitHero.Services.Replay
                     return true;
                 }
 
+                case PlayerCommandType.DigGem:
+                    ApplyDigGem(cmd.A, cmd.B, cmd.L);
+                    return true;
+
                 // ── Inventory / shop ─────────────────────────────────────────────────
                 case PlayerCommandType.SwapSlots:
                 {
@@ -491,6 +495,9 @@ namespace PitHero.Services.Replay
             }
             if (pb == null)
                 return;
+            // The Digging Field has no Sell option (issue #452): a recorded or stray sell is ignored
+            if (!PitHero.Util.BuildingConfig.IsSellable(pb.Type))
+                return;
 
             // Remove first and pay only if this call is what actually removed it (non-modal dialogs
             // can stack two sell confirmations for the same building).
@@ -500,6 +507,26 @@ namespace PitHero.Services.Replay
             pb.WorldEntity?.Destroy();
             services.GetService<GameStateService>()?.AddFunds(gold, "sell_building");
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemSell);
+        }
+
+        /// <summary>
+        /// Digs one Digging Field tile (issue #452). Re-validates everything the click saw: the
+        /// Prospector's Map is owned, a field is placed, the tile is inside it and not resting. The
+        /// click's uniform roll (drawn on the UI stream) becomes a find (nothing, junk or a gem) here, under the sim-side pity
+        /// counters, so the payout depends only on sim state and the recorded roll. Pays out, starts
+        /// the tile's cooldown and shows the find rising out of the tile.
+        /// </summary>
+        private static void ApplyDigGem(int tileX, int tileY, long roll)
+        {
+            var services = Services;
+            var gameState = services?.GetService<GameStateService>();
+            var field = services?.GetService<DiggingFieldService>();
+            if (field == null || !field.TryDig(gameState, tileX, tileY, roll, "gem_dig", out var find))
+                return;
+
+            // Cosmetic only: the effect never feeds back into the simulation
+            if (Core.Instance != null && Core.Scene is PitHero.ECS.Scenes.MainGameScene scene)
+                scene.SpawnDigEffect(find, tileX, tileY);
         }
 
         private static void ApplyAutomation(AutomationKind kind, bool enabled)

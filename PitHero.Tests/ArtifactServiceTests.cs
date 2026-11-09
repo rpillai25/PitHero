@@ -163,7 +163,13 @@ namespace PitHero.Tests
         [TestMethod]
         public void Catalog_ScopesAndPrices()
         {
-            Assert.AreEqual(9, ArtifactCatalog.Count, "The retired Sphere keeps its ordinal; the enum is never renumbered");
+            Assert.AreEqual(11, ArtifactCatalog.Count, "The retired Sphere keeps its ordinal; the enum is never renumbered");
+            Assert.AreEqual(9, (int)ArtifactType.ProspectorsMap);
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.ProspectorsMap));
+            Assert.AreEqual(50000, ArtifactCatalog.GetPrice(ArtifactType.ProspectorsMap));
+            Assert.AreEqual("ProspectorsMap", ArtifactCatalog.GetSpriteName(ArtifactType.ProspectorsMap));
+            Assert.AreEqual(0, ArtifactCatalog.GetPrerequisites(ArtifactType.ProspectorsMap).Length);
+            Assert.AreEqual(UITextKey.ArtifactProspectorsMapEffect, ArtifactCatalog.GetEffectKey(ArtifactType.ProspectorsMap));
             Assert.AreEqual(6, (int)ArtifactType.SilverWateringCan, "Persisted ordinals are append-only");
             Assert.AreEqual(7, (int)ArtifactType.GoldWateringCan);
             Assert.AreEqual(8, (int)ArtifactType.PlatinumWateringCan);

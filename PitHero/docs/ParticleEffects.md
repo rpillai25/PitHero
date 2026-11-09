@@ -43,6 +43,7 @@ How PitHero uses Nez's built-in particle system, and how to add a new effect. In
 | Attached, intensity-scaled | Heal potion | `SpawnPotionHealEffect` → `densityScale` 1×/2×/3× by `HPRestoreAmount` (base / ≥500 / negative=full) |
 | Projectile | Fire (`mage.fire`) | `SpawnEffectAtPosition` at caster, lerp entity to target (`SkillProjectileSpeed`, 0.15–0.6s clamp), `PauseEmission()` on impact; engine yields the coroutine so damage digits appear on landing |
 | Area rain | Firestorm (`mage.firestorm`) | Average affected enemies' positions, spawn `AreaRainSpawnHeight` above, `WaitForSecondsRespectingPause(AreaRainImpactDelay)` before damage shows |
+| Positioned burst, intensity-scaled | Gem dig (#452) | `SpawnEffectAtPosition(GemSparkle, tileCenter, scene, layer, densityScale)` from `MainGameScene.SpawnDigEffect`, density 0.5× / 1× / 1.6× / 2.4× / 3.5× by gem rarity (Common..Legendary); only gems sparkle, never junk or empty digs |
 
 Skill visuals hook `ShowSkillEffectOnMonsters(caster, skill, primaryTarget, surroundingTargets)`, which `BattleEngine.ExecuteCombatantAttackSkill` yields **before** damage digits. Caster entity resolution works for hero and mercenaries via `GetEntityForCombatant`.
 

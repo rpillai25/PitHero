@@ -44,6 +44,11 @@ namespace PitHero.UI
 
         // ── Inventory window ──────────────────────────────────────────────────────
         private Window _inventoryWindow;
+        private Table _slotsContent;
+        private BuildingSlotButton _slotMonsterHouse;
+        private BuildingSlotButton _slotCropStorage;
+        private BuildingSlotButton _slotDiggingField;
+        private TextButton _cancelSlotsButton;
 
         // ── Description panel ─────────────────────────────────────────────────────
         private Window _descWindow;
@@ -130,6 +135,13 @@ namespace PitHero.UI
 
         public void Update()
         {
+            // A placed Digging Field leaves the open Buildings window (only one can exist)
+            if (_state == PlacementState.Choosing && _inventoryWindow != null && _inventoryWindow.IsVisible()
+                && _slotDiggingField.HasParent() != IsDiggingFieldOffered())
+            {
+                RebuildSlots();
+                _inventoryWindow.Pack();
+            }
             if (_moveActive)
             {
                 UpdateMoveState();
@@ -278,37 +290,65 @@ namespace PitHero.UI
             _inventoryWindow.SetMovable(false);
             _inventoryWindow.SetResizable(false);
 
-            var content = new Table();
-            content.Pad(WinPad);
+            _slotsContent = new Table();
+            _slotsContent.Pad(WinPad);
 
-            // Building slots row
-            var slotA = new BuildingSlotButton(
-                _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(BuildingType.MonsterHouse)),
-                GetText(BuildingConfig.GetDisplayNameKey(BuildingType.MonsterHouse)));
-            slotA.OnClicked += () => OnBuildingSlotClicked(BuildingType.MonsterHouse);
-            content.Add(slotA).Size(SlotSize, SlotSize).Pad(4f);
+            _slotMonsterHouse = CreateSlot(BuildingType.MonsterHouse, false);
+            _slotCropStorage = CreateSlot(BuildingType.CropStorage, false);
+            _slotDiggingField = CreateSlot(BuildingType.DiggingField, true); // 2:1 sprite: aspect-fit, not squashed
 
-            var slotB = new BuildingSlotButton(
-                _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(BuildingType.CropStorage)),
-                GetText(BuildingConfig.GetDisplayNameKey(BuildingType.CropStorage)));
-            slotB.OnClicked += () => OnBuildingSlotClicked(BuildingType.CropStorage);
-            content.Add(slotB).Size(SlotSize, SlotSize).Pad(4f);
+            _cancelSlotsButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
+            _cancelSlotsButton.ClickSoundCategory = ButtonClickCategory.Cancel;
+            _cancelSlotsButton.OnClicked += (_) => RequestExitBuildingMode?.Invoke();
+            RebuildSlots();
 
-            // Cancel button below slots
-            content.Row();
-            var cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
-            cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
-            cancelButton.OnClicked += (_) => RequestExitBuildingMode?.Invoke();
-            content.Add(cancelButton).SetColspan(2).Width(100f).SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadTop(8f);
-
-            _inventoryWindow.Add(content).Expand().Fill();
+            _inventoryWindow.Add(_slotsContent).Expand().Fill();
             _inventoryWindow.Pack();
             _inventoryWindow.SetVisible(false);
             _stage.AddElement(_inventoryWindow);
         }
 
+        private BuildingSlotButton CreateSlot(BuildingType type, bool aspectFit)
+        {
+            var slot = new BuildingSlotButton(
+                _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(type)),
+                GetText(BuildingConfig.GetDisplayNameKey(type)), aspectFit);
+            slot.OnClicked += () => OnBuildingSlotClicked(type);
+            return slot;
+        }
+
+        /// <summary>
+        /// True when the Digging Field is offered: the Prospector's Map is owned and no field is placed
+        /// yet (issue #452; only one can exist).
+        /// </summary>
+        private static bool IsDiggingFieldOffered()
+        {
+            if (!Artifacts.LocalArtifactEffects.HasGemDigSite(Core.Services.GetService<GameStateService>()))
+                return false;
+            int placed = Core.Services.GetService<BuildingService>()?.GetCountOfType(BuildingType.DiggingField) ?? 0;
+            return placed < BuildingConfig.GetMaxCount(BuildingType.DiggingField);
+        }
+
+        /// <summary>Lays out the slot row (the Digging Field only while offered) and the Cancel button.</summary>
+        private void RebuildSlots()
+        {
+            _slotsContent.Clear();
+            int columns = 2;
+            _slotsContent.Add(_slotMonsterHouse).Size(SlotSize, SlotSize).Pad(4f);
+            _slotsContent.Add(_slotCropStorage).Size(SlotSize, SlotSize).Pad(4f);
+            if (IsDiggingFieldOffered())
+            {
+                _slotsContent.Add(_slotDiggingField).Size(SlotSize, SlotSize).Pad(4f);
+                columns++;
+            }
+            _slotsContent.Row();
+            _slotsContent.Add(_cancelSlotsButton).SetColspan(columns).Width(100f)
+                .SetMinHeight(GameConfig.DialogButtonMinHeight).SetPadTop(8f);
+        }
+
         private void ShowInventoryWindow()
         {
+            RebuildSlots();
             _inventoryWindow.Pack();
             float w = _inventoryWindow.GetWidth();
             float h = _inventoryWindow.GetHeight();
@@ -363,7 +403,9 @@ namespace PitHero.UI
 
             _descNameLabel.SetText(GetText(BuildingConfig.GetDisplayNameKey(type)));
             _descDescLabel.SetText(GetText(BuildingConfig.GetDescriptionKey(type)));
-            _descCostLabel.SetText(string.Format(GetText(UITextKey.BuildingCostFormat), _pendingCost));
+            _descCostLabel.SetText(_pendingCost == 0
+                ? GetText(UITextKey.BuildingCostFree)
+                : string.Format(GetText(UITextKey.BuildingCostFormat), _pendingCost));
             _buildButton.SetDisabled(funds < _pendingCost);
 
             _descWindow.Pack();
@@ -399,6 +441,8 @@ namespace PitHero.UI
 
         private void OnBuildingSlotClicked(BuildingType type)
         {
+            if (!CanPlaceAnother(type))
+                return;
             _selectedType = type;
             int funds = Core.Services.GetService<GameStateService>()?.Funds ?? 0;
             PopulateAndShowDescriptionWindow(type, funds);
@@ -466,6 +510,11 @@ namespace PitHero.UI
                 if (fx < TillMinTileX || fy < TillMinTileY)
                     return false;
 
+                // The Digging Field must lie wholly on the map (issue #452). Not applied to the older
+                // buildings: it would change which recorded placements replay as valid.
+                if (type == BuildingType.DiggingField && fy > MaxTileY)
+                    return false;
+
                 if (tileService != null)
                 {
                     var tile = new Point(fx, fy);
@@ -493,10 +542,7 @@ namespace PitHero.UI
                 "building-" + type.ToString().ToLower() + "-" + tileX + "-" + tileY);
             entity.SetPosition(finalPos.X, finalPos.Y);
 
-            var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
-            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
-            renderer.YSortOffset = sprite.SourceRect.Height / 2f; // sort at the sprite's bottom (walled 64px band)
-            ApplyDayNightGrading(renderer);
+            AddBuildingRenderers(entity, type, sprite);
 
             Core.Services.GetService<BuildingService>()?.AddBuilding(new PlacedBuilding
             {
@@ -509,10 +555,33 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Adds a placed building's renderers. Standing buildings Y-sort with the actors at their bottom
+        /// edge; the flat Digging Field lies on the ground layer under everyone (its sprite offset from
+        /// the top-left entity) with its tile-cooldown overlay on top (issue #452).
+        /// </summary>
+        private static void AddBuildingRenderers(Entity entity, BuildingType type, Sprite sprite)
+        {
+            if (type == BuildingType.DiggingField)
+            {
+                var ground = entity.AddComponent(new SpriteRenderer(sprite));
+                ground.SetRenderLayer(GameConfig.RenderLayerGroundProp);
+                ground.SetLocalOffset(BuildingConfig.GetSpriteOffset(type));
+                ApplyDayNightGrading(ground);
+                entity.AddComponent(new DiggingFieldOverlayComponent())
+                    .SetRenderLayer(GameConfig.RenderLayerGroundPropOverlay);
+                return;
+            }
+            var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
+            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+            renderer.YSortOffset = sprite.SourceRect.Height / 2f; // sort at the sprite's bottom (walled 64px band)
+            ApplyDayNightGrading(renderer);
+        }
+
+        /// <summary>
         /// Attaches the shared day/night grading material (if present) so placed buildings
         /// tint with the terrain. Ghost/preview sprites are intentionally left ungraded.
         /// </summary>
-        private void ApplyDayNightGrading(SpriteRenderer renderer)
+        private static void ApplyDayNightGrading(SpriteRenderer renderer)
         {
             var colorGrading = Core.Services.GetService<Rendering.ColorGradingController>();
             if (colorGrading?.Material != null)
@@ -527,6 +596,7 @@ namespace PitHero.UI
             var sprite = _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(type));
             _ghostEntity   = _scene.CreateEntity("building-ghost");
             _ghostRenderer = _ghostEntity.AddComponent(new SpriteRenderer(sprite));
+            _ghostRenderer.SetLocalOffset(BuildingConfig.GetSpriteOffset(type));
             _ghostRenderer.SetRenderLayer(GameConfig.RenderLayerTop);
             _ghostRenderer.Color = new Color(0, 255, 0, 180);
         }
@@ -546,6 +616,7 @@ namespace PitHero.UI
             _originGhostEntity = _scene.CreateEntity("building-origin-ghost");
             _originGhostEntity.SetPosition(worldPos.X, worldPos.Y);
             var renderer = _originGhostEntity.AddComponent(new SpriteRenderer(sprite));
+            renderer.SetLocalOffset(BuildingConfig.GetSpriteOffset(type));
             renderer.SetRenderLayer(GameConfig.RenderLayerTop);
             renderer.Color = new Color(255, 0, 0, 180);
         }
@@ -557,6 +628,19 @@ namespace PitHero.UI
         }
 
         // ── Placement confirmation ────────────────────────────────────────────────
+
+        /// <summary>
+        /// True when one more building of this type may be placed: under its count cap, and for the
+        /// Digging Field only with the Prospector's Map (issue #452). Re-checked by the command handler.
+        /// </summary>
+        public static bool CanPlaceAnother(BuildingType type)
+        {
+            if (type == BuildingType.DiggingField
+                && !Artifacts.LocalArtifactEffects.HasGemDigSite(Core.Services.GetService<GameStateService>()))
+                return false;
+            int placed = Core.Services.GetService<BuildingService>()?.GetCountOfType(type) ?? 0;
+            return placed < BuildingConfig.GetMaxCount(type);
+        }
 
         private void ConfirmPlacement(int tileX, int tileY, BuildingType type, Vector2 finalPos)
         {
@@ -577,6 +661,11 @@ namespace PitHero.UI
         /// </summary>
         public void ApplyPlacement(BuildingType type, int tileX, int tileY, int cost)
         {
+            if (!CanPlaceAnother(type))
+            {
+                Debug.Log("[BuildingModeOverlay] PlaceBuilding rejected: " + type + " is not available");
+                return;
+            }
             if (!IsValidPlacement(tileX, tileY, type, null))
             {
                 Debug.Log($"[BuildingModeOverlay] PlaceBuilding rejected: tile {tileX},{tileY} no longer valid");
@@ -590,18 +679,26 @@ namespace PitHero.UI
 
             var finalPos = BuildingConfig.GetWorldPos(tileX, tileY, type);
 
-            // Create permanent entity above screen; BuildingFallAnimator moves it into position
             var sprite = _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(type));
             var entity = _scene.CreateEntity(
                 "building-" + type.ToString().ToLower() + "-" + tileX + "-" + tileY);
-            entity.SetPosition(finalPos.X, finalPos.Y + FallStartOffset);
 
-            var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
-            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
-            renderer.YSortOffset = sprite.SourceRect.Height / 2f; // sort at the sprite's bottom (walled 64px band)
-            ApplyDayNightGrading(renderer);
-
-            entity.AddComponent(new BuildingFallAnimator(finalPos.Y));
+            if (type == BuildingType.DiggingField)
+            {
+                // The Digging Field is laid on the ground where it was placed: it grows from a tenth of
+                // its size to full size (unclickable meanwhile) instead of falling from the sky (#452)
+                entity.SetPosition(finalPos.X, finalPos.Y);
+                AddBuildingRenderers(entity, type, sprite);
+                entity.AddComponent(new BuildingGrowAnimator(
+                    GameConfig.DiggingFieldGrowStartScale, GameConfig.DiggingFieldGrowSeconds));
+            }
+            else
+            {
+                // Create permanent entity above screen; BuildingFallAnimator moves it into position
+                entity.SetPosition(finalPos.X, finalPos.Y + FallStartOffset);
+                AddBuildingRenderers(entity, type, sprite);
+                entity.AddComponent(new BuildingFallAnimator(finalPos.Y));
+            }
 
             var buildingSvc = Core.Services.GetService<BuildingService>();
             int newId = buildingSvc?.AllocateId() ?? 0;
@@ -623,13 +720,15 @@ namespace PitHero.UI
             private readonly Sprite     _sprite;
             private readonly string     _tooltipText;
             private readonly SpriteDrawable _draw;
+            private readonly bool _aspectFit;
             private Sprite _selectBox;
             private bool   _hovered;
 
             public event System.Action OnClicked;
 
-            public BuildingSlotButton(Sprite sprite, string tooltipText)
+            public BuildingSlotButton(Sprite sprite, string tooltipText, bool aspectFit = false)
             {
+                _aspectFit   = aspectFit;
                 _sprite      = sprite;
                 _tooltipText = tooltipText;
                 _draw        = new SpriteDrawable(sprite);
@@ -645,7 +744,18 @@ namespace PitHero.UI
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
-                _draw.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                if (_aspectFit && _sprite != null && _sprite.SourceRect.Width > 0 && _sprite.SourceRect.Height > 0)
+                {
+                    // Fit inside the slot without stretching (the 2:1 Digging Field), centered
+                    float scale = System.Math.Min(GetWidth() / _sprite.SourceRect.Width, GetHeight() / _sprite.SourceRect.Height);
+                    float w = _sprite.SourceRect.Width * scale;
+                    float h = _sprite.SourceRect.Height * scale;
+                    _draw.Draw(batcher, GetX() + (GetWidth() - w) / 2f, GetY() + (GetHeight() - h) / 2f, w, h, Color.White);
+                }
+                else
+                {
+                    _draw.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                }
 
                 if (_hovered && _selectBox != null)
                     new SpriteDrawable(_selectBox).Draw(

@@ -262,6 +262,8 @@ namespace PitHero.ECS.Scenes
 
             // Register building service so farm building placement and counts are queryable.
             Core.Services.AddService(new Services.BuildingService());
+            // Digging Field tile cooldowns (issue #452): scene-scoped sim state, every tile ready at session start
+            Core.Services.AddService(new Services.DiggingFieldService(Core.Services.GetService<Services.BuildingService>()));
 
             // Register crop planting service so plan tracking and seed inventory are queryable.
             Core.Services.AddService(new Services.CropPlantingService());
@@ -288,6 +290,8 @@ namespace PitHero.ECS.Scenes
             kitchenHatService.SetScene(this);
             Core.Services.AddService(kitchenHatService);
 
+            // The DigBot artifact's robot (issue #452): spawned and removed from sim state each step
+            AddSceneComponent<DigBotSpawner>();
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
@@ -317,6 +321,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(Services.LootShuffleService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
+            Core.Services.RemoveService(typeof(Services.DiggingFieldService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(Services.CropMarketService));
             Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
@@ -2219,6 +2224,92 @@ namespace PitHero.ECS.Scenes
             {
                 Debug.Error("[MainGameScene] Failed to load Actors.atlas for hero statue");
             }
+        }
+
+        /// <summary>
+        /// Shows what a dig turned up rising out of the dug Digging Field tile (issue #452), with the
+        /// dig sound there. A gem rises with its "Name (+N)" label in its rarity color, the pay-gold
+        /// sound and a sparkle burst that grows with its rarity; junk rises with a gray "Name (+0)"
+        /// label; an empty dig shows nothing at all (just the dig sound and the tile's cooldown
+        /// overlay). Called by the DigGem command handler, so replays show it too.
+        /// </summary>
+        public void SpawnDigEffect(Config.DigFind find, int tileX, int tileY, float startOffsetY = GameConfig.GemRiseStartOffsetY)
+        {
+            var center = new Vector2(
+                tileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                tileY * GameConfig.TileSize + GameConfig.TileSize / 2f);
+            var sounds = Core.GetGlobalManager<SoundEffectManager>();
+            sounds?.PlaySoundAt(Util.SoundEffectTypes.SoundEffectType.Digging, center);
+            if (find.Kind == Config.DigFindKind.Nothing)
+                return;
+
+            Sprite sprite = null;
+            Color labelColor = Config.GemDigConfig.NoValueTextColor;
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            if (find.IsGem)
+            {
+                sprite = atlas?.GetSprite(Config.GemDigConfig.GetSpriteName(find.Gem));
+                labelColor = Config.GemDigConfig.GetTextColor(find.Gem);
+                sounds?.PlaySoundAt(Util.SoundEffectTypes.SoundEffectType.PayGold, center);
+                if (!Core.CosmeticUpdatesSuspended)
+                    ParticleEffectManager.Current?.SpawnEffectAtPosition(ParticleEffectType.GemSparkle, center, this,
+                        GameConfig.RenderLayerActorPropOverlay, GemSparkleDensity[(int)Config.GemDigConfig.GetRarity(find.Gem)]);
+            }
+            else if (find.Kind == Config.DigFindKind.Junk)
+            {
+                sprite = atlas?.GetSprite(Config.GemDigConfig.GetSpriteName(find.Junk));
+            }
+
+            var entity = CreateEntity("dig-find-effect");
+            entity.SetPosition(center.X, center.Y + startOffsetY);
+            SpriteRenderer renderer = null;
+            if (sprite != null)
+            {
+                renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                renderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
+            }
+            var text = entity.AddComponent(new GemValueTextComponent(
+                GetDigLabel(find), labelColor, sprite != null ? -sprite.SourceRect.Height / 2f : 0f));
+            text.SetRenderLayer(GameConfig.RenderLayerSpeechBubble);
+            entity.AddComponent(new GemDigEffectComponent(renderer, text,
+                GetDigRiseDuration(find)));
+        }
+
+        /// <summary>
+        /// How long a find's rise and fade lasts: junk 0.9 s, gems 1.8 s, Epic and Legendary gems 2.7 s,
+        /// so the bigger the find the longer it stays readable.
+        /// </summary>
+        private static float GetDigRiseDuration(Config.DigFind find)
+        {
+            if (!find.IsGem)
+                return GameConfig.JunkRiseDurationSeconds;
+            return Config.GemDigConfig.GetRarity(find.Gem) >= RolePlayingFramework.Equipment.ItemRarity.Epic
+                ? GameConfig.EpicGemRiseDurationSeconds
+                : GameConfig.GemRiseDurationSeconds;
+        }
+
+        // Sparkle burst density per gem rarity (Normal..Legendary): every gem sparkles, rarer ones more
+        private static readonly float[] GemSparkleDensity = { 0.5f, 1f, 1.6f, 2.4f, 3.5f };
+
+        // Labels per dig outcome ("Agate (+1)", "Shell (+0)"; an empty dig has none), built once on
+        // first use so repeat digs allocate no strings
+        private readonly string[] _digLabels = new string[Config.GemDigConfig.OutcomeCount];
+
+        /// <summary>The localized label for a junk or gem find, cached per scene.</summary>
+        private string GetDigLabel(Config.DigFind find)
+        {
+            int i = find.OutcomeIndex;
+            var label = _digLabels[i];
+            if (label == null)
+            {
+                var text = Core.Services.GetService<TextService>();
+                string format = text?.DisplayText(TextType.UI, UITextKey.GemDigLabelFormat) ?? "{0} (+{1})";
+                string key = find.IsGem ? Config.GemDigConfig.GetNameKey(find.Gem) : Config.GemDigConfig.GetNameKey(find.Junk);
+                string name = text?.DisplayText(TextType.UI, key) ?? find.ToString();
+                label = Config.GemDigConfig.FormatLabel(format, name, Config.GemDigConfig.GetValue(find));
+                _digLabels[i] = label;
+            }
+            return label;
         }
 
         /// <summary>
@@ -4251,13 +4342,78 @@ namespace PitHero.ECS.Scenes
             var worldPos = Camera.MouseToWorldPoint();
             int tileX = (int)(worldPos.X / GameConfig.TileSize);
             int tileY = (int)(worldPos.Y / GameConfig.TileSize);
-            return buildingService.GetBuildingAtTile(tileX, tileY);
+            var building = buildingService.GetBuildingAtTile(tileX, tileY);
+            // A building still growing in (the Digging Field, #452) can't be hovered, dug or opened yet.
+            // UI-only gate: it just withholds commands, so the sim never reads this cosmetic state.
+            if (building != null && BuildingGrowAnimator.IsGrowing(building.WorldEntity))
+                return null;
+            return building;
         }
 
-        /// <summary>Draws a white outline around the placed building under the cursor to signal it is clickable.</summary>
+        private void EnsureBuildingHoverOutline()
+        {
+            if (_buildingHoverOutlineEntity != null)
+                return;
+            _buildingHoverOutlineEntity = CreateEntity("building-hover-outline");
+            var outline = _buildingHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
+            outline.SetRenderLayer(GameConfig.RenderLayerTop);
+            outline.SetColor(Color.White);
+        }
+
+        /// <summary>
+        /// The Digging Field tile index under the cursor when that tile is ready to dig, else -1;
+        /// tileX/tileY are the world tile. Reads the sim-side cooldowns (UI never holds its own).
+        /// </summary>
+        private int GetReadyDigTileUnderCursor(out int tileX, out int tileY)
+        {
+            var worldPos = Camera.MouseToWorldPoint();
+            tileX = (int)(worldPos.X / GameConfig.TileSize);
+            tileY = (int)(worldPos.Y / GameConfig.TileSize);
+            var field = Core.Services.GetService<Services.DiggingFieldService>();
+            if (field == null)
+                return -1;
+            int index = field.GetTileIndex(tileX, tileY);
+            return index >= 0 && !field.IsCooling(index) ? index : -1;
+        }
+
+        // Digging Field tile under the cursor last frame (-1 = none or resting), so the tile outline
+        // only moves when the cursor or the tile's cooldown changes (issue #452)
+        private int _hoveredDigTile = -1;
+
+        /// <summary>
+        /// Draws a white outline to signal what is clickable: around the placed building under the
+        /// cursor, or for the Digging Field just around the tile under the cursor, and only while that
+        /// tile is ready to dig (a resting tile shows its dark overlay instead).
+        /// </summary>
         private void HandleBuildingHover()
         {
             Services.PlacedBuilding hovered = BuildingInteractionsBlocked() ? null : GetBuildingUnderCursor();
+
+            if (hovered != null && hovered.Type == Util.BuildingType.DiggingField)
+            {
+                _hoveredBuilding = hovered;
+                int tile = GetReadyDigTileUnderCursor(out int tileX, out int tileY);
+                if (tile == _hoveredDigTile)
+                    return;
+                _hoveredDigTile = tile;
+                if (tile < 0)
+                {
+                    _buildingHoverOutlineEntity?.SetEnabled(false);
+                    return;
+                }
+                EnsureBuildingHoverOutline();
+                _buildingHoverOutlineEntity.GetComponent<BuildingOutlineRenderComponent>()?.SetSize(GameConfig.TileSize, GameConfig.TileSize);
+                _buildingHoverOutlineEntity.SetPosition(tileX * GameConfig.TileSize, tileY * GameConfig.TileSize);
+                _buildingHoverOutlineEntity.SetEnabled(true);
+                return;
+            }
+            if (_hoveredDigTile >= 0)
+            {
+                // Left the field: force the footprint outline to be rebuilt for whatever is hovered now
+                _hoveredDigTile = -1;
+                _hoveredBuilding = null;
+                _buildingHoverOutlineEntity?.SetEnabled(false);
+            }
 
             if (hovered == _hoveredBuilding)
                 return;
@@ -4270,13 +4426,7 @@ namespace PitHero.ECS.Scenes
                 return;
             }
 
-            if (_buildingHoverOutlineEntity == null)
-            {
-                _buildingHoverOutlineEntity = CreateEntity("building-hover-outline");
-                var outline = _buildingHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
-                outline.SetRenderLayer(GameConfig.RenderLayerTop);
-                outline.SetColor(Color.White);
-            }
+            EnsureBuildingHoverOutline();
 
             var bounds = Util.BuildingConfig.GetFootprintBounds(hovered.Type);
             float left = (hovered.TileX + bounds.dxMin) * GameConfig.TileSize;
@@ -4469,10 +4619,15 @@ namespace PitHero.ECS.Scenes
             // Always consume so the flag never lingers past the frame a move ended.
             bool moveJustEnded = _buildingModeOverlay != null && _buildingModeOverlay.ConsumeMoveJustEnded();
 
-            if (!Input.LeftMouseButtonPressed)
+            // The dig key (C) digs the Digging Field tile under the cursor like a click, never while a
+            // text field has keyboard focus, and never opens a menu (issue #452)
+            bool clicked = Input.LeftMouseButtonPressed;
+            bool digKey = Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.C)
+                && (_uiStage == null || _uiStage.GetKeyboardFocus() == null);
+            if (!clicked && !digKey)
                 return;
             // Ignore the same click that just confirmed a relocation.
-            if (moveJustEnded)
+            if (clicked && moveJustEnded)
                 return;
             if (BuildingInteractionsBlocked())
                 return;
@@ -4480,12 +4635,34 @@ namespace PitHero.ECS.Scenes
             var building = GetBuildingUnderCursor();
             if (building == null)
                 return;
+            if (!clicked && building.Type != Util.BuildingType.DiggingField)
+                return;
+
+            // Digging Field (issue #452): a plain click or the C key digs the tile under the cursor;
+            // Shift+Click opens its menu (Move). A resting tile ignores the dig.
+            if (building.Type == Util.BuildingType.DiggingField && (!clicked || !IsShiftDown()))
+            {
+                int tile = GetReadyDigTileUnderCursor(out int tileX, out int tileY);
+                if (tile < 0)
+                    return;
+                var command = new Services.Replay.PlayerCommand(Services.Replay.PlayerCommandType.DigGem, tileX, tileY);
+                command.L = GameRandom.Ui.NextInt64(Config.GemDigConfig.RollRange);
+                Services.Replay.PlayerCommandService.Dispatch(command);
+                return;
+            }
 
             // Clear the hover outline before the menu opens.
             _hoveredBuilding = null;
+            _hoveredDigTile = -1;
             _buildingHoverOutlineEntity?.SetEnabled(false);
 
             _buildingContextMenu?.Show(_uiStage, building, _uiStage.GetMousePosition());
+        }
+
+        private static bool IsShiftDown()
+        {
+            return Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
+                || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
         }
     }
 }

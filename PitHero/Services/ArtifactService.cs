@@ -153,12 +153,30 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// True when the shop should offer the artifact: not retired, not owned yet and every
-        /// prerequisite owned.
+        /// Answers whether a Digging Field is placed, for <see cref="ArtifactCatalog.RequiresPlacedDiggingField"/>.
+        /// Null reads the scene's <see cref="DiggingFieldService"/> (tests set it).
+        /// </summary>
+        public Func<bool> DiggingFieldPlacedProbe;
+
+        /// <summary>True when a Digging Field is placed (the probe in tests, else the scene service).</summary>
+        public bool IsDiggingFieldPlaced()
+        {
+            if (DiggingFieldPlacedProbe != null)
+                return DiggingFieldPlacedProbe();
+            if (Core.Instance == null)
+                return false;
+            return Core.Services.GetService<DiggingFieldService>()?.GetField() != null;
+        }
+
+        /// <summary>
+        /// True when the shop should offer the artifact: not retired, not owned yet, every
+        /// prerequisite owned, and a Digging Field placed for the DigBot.
         /// </summary>
         public bool IsAvailableInShop(ArtifactType type)
         {
             if (ArtifactCatalog.IsRetired(type) || Owns(type))
+                return false;
+            if (ArtifactCatalog.RequiresPlacedDiggingField(type) && !IsDiggingFieldPlaced())
                 return false;
             var prerequisites = ArtifactCatalog.GetPrerequisites(type);
             for (int i = 0; i < prerequisites.Length; i++)

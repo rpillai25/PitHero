@@ -74,7 +74,7 @@ namespace PitHero.Farming
 
         /// <summary>
         /// Rebuilds the wall set from static map collision plus the bottom two footprint rows of
-        /// every placed building.
+        /// every placed building (walkable ground buildings excepted).
         /// </summary>
         public void RebuildWalls(BuildingService buildings)
         {
@@ -87,6 +87,8 @@ namespace PitHero.Farming
             for (int i = 0; i < all.Count; i++)
             {
                 var b = all[i];
+                if (BuildingConfig.IsWalkable(b.Type))
+                    continue; // flat ground (the Digging Field): workers walk across it
                 var fp = BuildingConfig.GetFootprint(b.Type);
                 int maxDy = int.MinValue;
                 for (int j = 0; j < fp.Length; j++)
