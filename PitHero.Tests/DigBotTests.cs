@@ -65,33 +65,32 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Route_ZigzagsFromTheTopLeft_EndsBottomLeft_ThenWraps()
+        public void Route_ZigzagsDownThenBackUp_OneTilePerStep()
         {
+            Assert.AreEqual(48, DigBotComponent.LapLength, "Rows 0,1,2,3 down, then 2,1 back up");
             Assert.AreEqual(new Microsoft.Xna.Framework.Point(0, 0), DigBotComponent.GetScanTile(0));
             Assert.AreEqual(new Microsoft.Xna.Framework.Point(7, 0), DigBotComponent.GetScanTile(7));
             Assert.AreEqual(new Microsoft.Xna.Framework.Point(7, 1), DigBotComponent.GetScanTile(8), "Drops down, then runs right to left");
-            Assert.AreEqual(new Microsoft.Xna.Framework.Point(0, 1), DigBotComponent.GetScanTile(15));
-            Assert.AreEqual(new Microsoft.Xna.Framework.Point(0, 2), DigBotComponent.GetScanTile(16));
-            Assert.AreEqual(new Microsoft.Xna.Framework.Point(0, 3), DigBotComponent.GetScanTile(31), "Ends at the bottom left");
-            Assert.AreEqual(1, DigBotComponent.NextScanIndex(0));
-            Assert.AreEqual(0, DigBotComponent.NextScanIndex(31), "Back to the top left");
+            Assert.AreEqual(new Microsoft.Xna.Framework.Point(0, 3), DigBotComponent.GetScanTile(31), "Reaches the bottom left");
+            Assert.AreEqual(new Microsoft.Xna.Framework.Point(0, 2), DigBotComponent.GetScanTile(32), "Climbs one row");
+            Assert.AreEqual(new Microsoft.Xna.Framework.Point(7, 2), DigBotComponent.GetScanTile(39), "...and runs right");
+            Assert.AreEqual(new Microsoft.Xna.Framework.Point(0, 1), DigBotComponent.GetScanTile(47), "Ends next to the top left");
+            Assert.AreEqual(0, DigBotComponent.NextScanIndex(47), "...and steps up into it");
 
-            // Every field tile is visited exactly once a lap, and every step is to a neighboring tile
+            // Every field tile is visited each lap, and every step (the wrap included) moves one tile
             var seen = new bool[DiggingFieldService.TileCount];
-            for (int i = 0; i < DiggingFieldService.TileCount; i++)
+            for (int i = 0; i < DigBotComponent.LapLength; i++)
             {
                 var tile = DigBotComponent.GetWorldTile(130, 6, i);
                 int index = BuildingConfig.GetDiggingFieldTileIndex(130, 6, tile.X, tile.Y);
                 Assert.IsTrue(index >= 0, "Inside the field");
-                Assert.IsFalse(seen[index], "Visited once");
                 seen[index] = true;
-                if (i > 0)
-                {
-                    var prev = DigBotComponent.GetScanTile(i - 1);
-                    var here = DigBotComponent.GetScanTile(i);
-                    Assert.AreEqual(1, System.Math.Abs(here.X - prev.X) + System.Math.Abs(here.Y - prev.Y), "One tile per step");
-                }
+                var here = DigBotComponent.GetScanTile(i);
+                var next = DigBotComponent.GetScanTile(DigBotComponent.NextScanIndex(i));
+                Assert.AreEqual(1, System.Math.Abs(next.X - here.X) + System.Math.Abs(next.Y - here.Y), "One tile per step at " + i);
             }
+            for (int i = 0; i < seen.Length; i++)
+                Assert.IsTrue(seen[i], "Tile " + i + " is visited");
         }
 
         [TestMethod]

@@ -8,8 +8,8 @@ namespace PitHero.ECS.Components
 {
     /// <summary>
     /// The DigBot artifact's robot (issue #452): crawls across the Digging Field one tile every
-    /// <see cref="GameConfig.DigBotSecondsPerTile"/> seconds in a zigzag (the top row left to right, the next
-    /// right to left, and so on; from the bottom left it heads back up to the top left) and digs every
+    /// <see cref="GameConfig.DigBotSecondsPerTile"/> seconds in a zigzag, down the field and back up it, never
+    /// moving more than one tile at a time (<see cref="GetScanTile"/>), and digs every
     /// tile it reaches that is not resting, exactly as a player click would
     /// (<see cref="DiggingFieldService.TryDig"/>, shared pity, gems pay gold).
     ///
@@ -38,26 +38,36 @@ namespace PitHero.ECS.Components
 
         public bool ShouldPause => true;
 
-        /// <summary>The field tile (0..31, zigzag order) the bot is heading to or standing on.</summary>
+        /// <summary>
+        /// Steps in one full lap: down through every row and back up through the inner rows
+        /// (rows 0, 1, 2, 3, 2, 1 for the four-row field), one row's width each.
+        /// </summary>
+        public const int LapLength = BuildingConfig.DiggingFieldWidth * (2 * BuildingConfig.DiggingFieldHeight - 2);
+
+        /// <summary>The step of the lap (0..<see cref="LapLength"/>-1) the bot is heading to or standing on.</summary>
         public int ScanIndex => _scanIndex;
 
         /// <summary>
-        /// Field-local column and row of a zigzag scan index: index 0 is the top-left tile, the top row
-        /// runs left to right, the next row right to left, and so on, so with the field's four rows the
-        /// last index is the bottom-left tile and every step is to a neighboring tile.
+        /// Field-local column and row of a lap step. The bot zigzags down from the top left (even rows
+        /// left to right, odd rows right to left), and from the bottom row's end it climbs one row and
+        /// zigzags back up the same way, then down again. A row always runs the same direction, so each
+        /// row ends exactly where the next one (up or down) begins: every step, the wrap from the last
+        /// step back to step 0 included, moves to a neighboring tile.
         /// </summary>
         public static Point GetScanTile(int scanIndex)
         {
             int w = BuildingConfig.DiggingFieldWidth;
-            int row = scanIndex / w;
+            int h = BuildingConfig.DiggingFieldHeight;
+            int leg = scanIndex / w;                       // which row pass of the lap
+            int row = leg < h ? leg : 2 * h - 2 - leg;     // down 0..h-1, then back up h-2..1
             int col = scanIndex % w;
             return new Point(row % 2 == 0 ? col : w - 1 - col, row);
         }
 
-        /// <summary>The scan index after this one, wrapping from the bottom left back to the top left.</summary>
+        /// <summary>The lap step after this one, wrapping from the end of the climb back to the top left.</summary>
         public static int NextScanIndex(int scanIndex)
         {
-            return (scanIndex + 1) % DiggingFieldService.TileCount;
+            return (scanIndex + 1) % LapLength;
         }
 
         /// <summary>World tile of a scan index inside a field anchored at (anchorX, anchorY).</summary>
