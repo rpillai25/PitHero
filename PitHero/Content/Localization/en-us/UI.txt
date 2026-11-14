@@ -85,6 +85,8 @@ BuildingDescMonsterHouse,Houses 16 monsters
 BuildingDescCropStorage,Holds 32 stacks of crops
 BuildingNameDiggingField,Digging Field
 BuildingDescDiggingField,Click a tile (or press C over it) to dig for gems worth gold. Each tile rests a few seconds after a dig. Only one can be built.
+BuildingNameFishingPond,Fishing Pond
+BuildingDescFishingPond,A quiet pond stocked with fish. Only one can be built.
 WindowBuildings,Buildings
 WindowSeeds,Seeds
 WindowWateringPriority,Watering Priority

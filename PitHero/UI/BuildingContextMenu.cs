@@ -95,9 +95,9 @@ namespace PitHero.UI
             _content.Row();
             _content.Add(_moveButton).Width(140f).SetPadBottom(4f);
             _content.Row();
-            // The Digging Field has nothing to show and cannot be sold: Move and Cancel only (issue #452)
-            bool isDiggingField = building.Type == BuildingType.DiggingField;
-            if (!isDiggingField)
+            // The Digging Field and Fishing Pond have nothing to show and cannot be sold: Move and
+            // Cancel only (issue #452)
+            if (!BuildingConfig.IsGroundBuilding(building.Type))
             {
                 _content.Add(_showButton).Width(140f).SetPadBottom(4f);
                 _content.Row();

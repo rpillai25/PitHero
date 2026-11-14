@@ -99,6 +99,8 @@ namespace PitHero
         public const string BuildingDescCropStorage = "BuildingDescCropStorage";
         public const string BuildingNameDiggingField = "BuildingNameDiggingField";
         public const string BuildingDescDiggingField = "BuildingDescDiggingField";
+        public const string BuildingNameFishingPond = "BuildingNameFishingPond";
+        public const string BuildingDescFishingPond = "BuildingDescFishingPond";
         public const string WindowBuildings = "WindowBuildings";
         public const string WindowSeeds = "WindowSeeds";
         public const string WindowWateringPriority = "WindowWateringPriority";

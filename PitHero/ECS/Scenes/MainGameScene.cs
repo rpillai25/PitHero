@@ -4651,6 +4651,11 @@ namespace PitHero.ECS.Scenes
                 return;
             }
 
+            // Fishing Pond: only Shift+Click opens its menu (Move), like the Digging Field; a plain
+            // click does nothing yet
+            if (building.Type == Util.BuildingType.FishingPond && !IsShiftDown())
+                return;
+
             // Clear the hover outline before the menu opens.
             _hoveredBuilding = null;
             _hoveredDigTile = -1;

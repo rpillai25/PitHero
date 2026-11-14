@@ -90,6 +90,13 @@ namespace PitHero.Farming
                 if (BuildingConfig.IsWalkable(b.Type))
                     continue; // flat ground (the Digging Field): workers walk across it
                 var fp = BuildingConfig.GetFootprint(b.Type);
+                if (BuildingConfig.BlocksWholeFootprint(b.Type))
+                {
+                    // Water (the Fishing Pond): nobody walks across or behind any of it
+                    for (int j = 0; j < fp.Length; j++)
+                        _graph.Walls.Add(new Point(b.TileX + fp[j].dx, b.TileY + fp[j].dy));
+                    continue;
+                }
                 int maxDy = int.MinValue;
                 for (int j = 0; j < fp.Length; j++)
                     if (fp[j].dy > maxDy)

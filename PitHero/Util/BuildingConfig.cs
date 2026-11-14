@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 namespace PitHero.Util
 {
     /// <summary>Placeable building kinds. The ordinal is saved and recorded in commands: append only.</summary>
-    public enum BuildingType { MonsterHouse = 0, CropStorage = 1, DiggingField = 2 }
+    public enum BuildingType { MonsterHouse = 0, CropStorage = 1, DiggingField = 2, FishingPond = 3 }
 
     /// <summary>Static configuration for each building type: footprint, sprite, cost, and description.</summary>
     public static class BuildingConfig
@@ -13,6 +13,9 @@ namespace PitHero.Util
         private static readonly (int dx, int dy)[] DiggingFieldFootprint = BuildFootprint(
             DiggingFieldDxMin, DiggingFieldDxMin + DiggingFieldWidth - 1,
             DiggingFieldDyMin, DiggingFieldDyMin + DiggingFieldHeight - 1);
+        private static readonly (int dx, int dy)[] FishingPondFootprint = BuildFootprint(
+            FishingPondDxMin, FishingPondDxMin + FishingPondWidth - 1,
+            FishingPondDyMin, FishingPondDyMin + FishingPondHeight - 1);
 
         /// <summary>Digging Field width in tiles (issue #452): the 256x128 sprite is 8 tiles wide.</summary>
         public const int DiggingFieldWidth = 8;
@@ -23,10 +26,26 @@ namespace PitHero.Util
         /// <summary>Top footprint row relative to the anchor tile.</summary>
         public const int DiggingFieldDyMin = -2;
 
+        /// <summary>Fishing Pond width in tiles: the 233x192 sprite fits in 8 tiles (256 px).</summary>
+        public const int FishingPondWidth = 8;
+        /// <summary>Fishing Pond height in tiles: the 233x192 sprite is exactly 6 tiles high.</summary>
+        public const int FishingPondHeight = 6;
+        /// <summary>Leftmost footprint column relative to the anchor tile.</summary>
+        public const int FishingPondDxMin = -4;
+        /// <summary>Top footprint row relative to the anchor tile.</summary>
+        public const int FishingPondDyMin = -3;
+        /// <summary>Fishing Pond sprite width in pixels (every frame of the FishingPond animation).</summary>
+        public const int FishingPondSpriteWidth = 233;
+        /// <summary>Fishing Pond sprite height in pixels.</summary>
+        public const int FishingPondSpriteHeight = 192;
+        /// <summary>Atlas animation the placed Fishing Pond loops (CropsProps/FishingPond).</summary>
+        public const string FishingPondAnimation = "FishingPond";
+
         public static (int dx, int dy)[] GetFootprint(BuildingType t) => t switch
         {
             BuildingType.MonsterHouse => MonsterHouseFootprint,
             BuildingType.DiggingField => DiggingFieldFootprint,
+            BuildingType.FishingPond  => FishingPondFootprint,
             _                         => CropStorageFootprint,
         };
 
@@ -39,6 +58,8 @@ namespace PitHero.Util
             BuildingType.MonsterHouse => (-2, 2, -2, 2),
             BuildingType.DiggingField => (DiggingFieldDxMin, DiggingFieldDxMin + DiggingFieldWidth - 1,
                                           DiggingFieldDyMin, DiggingFieldDyMin + DiggingFieldHeight - 1),
+            BuildingType.FishingPond  => (FishingPondDxMin, FishingPondDxMin + FishingPondWidth - 1,
+                                          FishingPondDyMin, FishingPondDyMin + FishingPondHeight - 1),
             _                         => (-1, 1, -2, 1),
         };
 
@@ -49,11 +70,15 @@ namespace PitHero.Util
         /// 128 px sprite occupies exactly 4 rows (anchorY-2 … anchorY+1).
         /// DiggingField (8×4): pivot at the footprint's top-left corner (columns anchorX-4 … anchorX+3,
         /// rows anchorY-2 … anchorY+1); the sprite is offset by half its size (GetSpriteOffset).
+        /// FishingPond  (8×6): pivot at the footprint's top-left corner too (columns anchorX-4 … anchorX+3,
+        /// rows anchorY-3 … anchorY+2).
         /// </summary>
         public static Vector2 GetWorldPos(int anchorTileX, int anchorTileY, BuildingType t)
         {
             if (t == BuildingType.DiggingField)
                 return new Vector2((anchorTileX + DiggingFieldDxMin) * 32f, (anchorTileY + DiggingFieldDyMin) * 32f);
+            if (t == BuildingType.FishingPond)
+                return new Vector2((anchorTileX + FishingPondDxMin) * 32f, (anchorTileY + FishingPondDyMin) * 32f);
             float wx = anchorTileX * 32 + 16f;
             float wy = t == BuildingType.MonsterHouse
                 ? anchorTileY * 32 + 16f   // odd height: centre of tile
@@ -64,23 +89,46 @@ namespace PitHero.Util
         /// <summary>
         /// Offset from the entity position to the sprite's center. Building sprites are drawn centered
         /// on the entity; the Digging Field's entity sits at its top-left corner instead (so its tile
-        /// overlay can draw from there), so its sprite is shifted by half its size.
+        /// overlay can draw from there), so its sprite is shifted by half its size. The Fishing Pond's
+        /// entity sits at its top-left corner too; its 233 px wide sprite is centered in the 256 px
+        /// footprint on whole pixels (11 px in from the left edge), so it never lands on a half pixel.
         /// </summary>
-        public static Vector2 GetSpriteOffset(BuildingType t) => t == BuildingType.DiggingField
-            ? new Vector2(DiggingFieldWidth * 16f, DiggingFieldHeight * 16f)
-            : Vector2.Zero;
+        public static Vector2 GetSpriteOffset(BuildingType t) => t switch
+        {
+            BuildingType.DiggingField => new Vector2(DiggingFieldWidth * 16f, DiggingFieldHeight * 16f),
+            BuildingType.FishingPond  => new Vector2(
+                (FishingPondWidth * 32 - FishingPondSpriteWidth) / 2 + FishingPondSpriteWidth / 2f,
+                (FishingPondHeight * 32 - FishingPondSpriteHeight) / 2 + FishingPondSpriteHeight / 2f),
+            _                         => Vector2.Zero,
+        };
+
+        /// <summary>
+        /// True for buildings laid flat on the ground (Digging Field, Fishing Pond): drawn on the ground
+        /// layer under the actors, anchored at the footprint's top-left, grown in place when built
+        /// instead of falling, required to lie wholly on the map, unique, Move-only, and opened with
+        /// Shift+Click.
+        /// </summary>
+        public static bool IsGroundBuilding(BuildingType t) =>
+            t == BuildingType.DiggingField || t == BuildingType.FishingPond;
+
+        /// <summary>
+        /// True when the farm pathfinder walls off the WHOLE footprint (the Fishing Pond is water);
+        /// other non-walkable buildings wall only their bottom two rows.
+        /// </summary>
+        public static bool BlocksWholeFootprint(BuildingType t) => t == BuildingType.FishingPond;
 
         /// <summary>
         /// Tile a farm worker walks to in order to enter/deliver at the building.
         /// MonsterHouse: the doorway at the bottom-centre of the 5×5 footprint (anchorY+2).
         /// CropStorage: the passable approach tile directly below the 3×4 footprint
         /// (anchorY+2; the footprint ends at anchorY+1, so this tile is outside it).
-        /// DiggingField: nobody enters it; the anchor tile.
+        /// DiggingField, FishingPond: nobody enters them; the anchor tile.
         /// </summary>
         public static Point GetDoorTile(BuildingType t, Point anchorTile) => t switch
         {
             BuildingType.MonsterHouse => new Point(anchorTile.X, anchorTile.Y + 2),
             BuildingType.DiggingField => anchorTile,
+            BuildingType.FishingPond  => anchorTile,
             _                         => new Point(anchorTile.X, anchorTile.Y + 2),
         };
 
@@ -88,6 +136,7 @@ namespace PitHero.Util
         {
             BuildingType.MonsterHouse => "MonsterHouse",
             BuildingType.DiggingField => "DiggingField",
+            BuildingType.FishingPond  => "FishingPond_1", // first frame of the FishingPond animation
             _                         => "CropStorage",
         };
 
@@ -96,6 +145,7 @@ namespace PitHero.Util
         {
             BuildingType.MonsterHouse => GameConfig.BuildingCostMonsterHouseBase,
             BuildingType.DiggingField => 0, // the Prospector's Map is the price of entry
+            BuildingType.FishingPond  => 0,
             _                         => GameConfig.BuildingCostCropStorageBase,
         };
 
@@ -104,14 +154,15 @@ namespace PitHero.Util
         {
             BuildingType.MonsterHouse => GameConfig.BuildingCostMonsterHouseMax,
             BuildingType.DiggingField => 0,
+            BuildingType.FishingPond  => 0,
             _                         => GameConfig.BuildingCostCropStorageMax,
         };
 
-        /// <summary>Most buildings of this type that can be placed at once (the Digging Field is unique).</summary>
-        public static int GetMaxCount(BuildingType t) => t == BuildingType.DiggingField ? 1 : int.MaxValue;
+        /// <summary>Most buildings of this type that can be placed at once (the Digging Field and Fishing Pond are unique).</summary>
+        public static int GetMaxCount(BuildingType t) => IsGroundBuilding(t) ? 1 : int.MaxValue;
 
-        /// <summary>False for a building with no Sell option (the Digging Field can only be moved).</summary>
-        public static bool IsSellable(BuildingType t) => t != BuildingType.DiggingField;
+        /// <summary>False for a building with no Sell option (the Digging Field and Fishing Pond can only be moved).</summary>
+        public static bool IsSellable(BuildingType t) => !IsGroundBuilding(t);
 
         /// <summary>
         /// True for flat ground buildings farm workers walk across (the Digging Field); the others wall
@@ -125,7 +176,7 @@ namespace PitHero.Util
         /// the first one the player buys is priced at <see cref="GetBaseCost"/>.
         /// </summary>
         public static int GetFreeStarterCount(BuildingType t) =>
-            t == BuildingType.DiggingField ? 0 : GameConfig.BuildingFreeStarterCount;
+            IsGroundBuilding(t) ? 0 : GameConfig.BuildingFreeStarterCount;
 
         /// <summary>
         /// Purchase price of the NEXT building of this type, given how many of that type are already
@@ -163,6 +214,7 @@ namespace PitHero.Util
         {
             BuildingType.MonsterHouse => UITextKey.BuildingNameMonsterHouse,
             BuildingType.DiggingField => UITextKey.BuildingNameDiggingField,
+            BuildingType.FishingPond  => UITextKey.BuildingNameFishingPond,
             _                         => UITextKey.BuildingNameCropStorage,
         };
 
@@ -171,6 +223,7 @@ namespace PitHero.Util
         {
             BuildingType.MonsterHouse => UITextKey.BuildingDescMonsterHouse,
             BuildingType.DiggingField => UITextKey.BuildingDescDiggingField,
+            BuildingType.FishingPond  => UITextKey.BuildingDescFishingPond,
             _                         => UITextKey.BuildingDescCropStorage,
         };
 

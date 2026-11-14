@@ -48,6 +48,7 @@ namespace PitHero.UI
         private BuildingSlotButton _slotMonsterHouse;
         private BuildingSlotButton _slotCropStorage;
         private BuildingSlotButton _slotDiggingField;
+        private BuildingSlotButton _slotFishingPond;
         private TextButton _cancelSlotsButton;
 
         // ── Description panel ─────────────────────────────────────────────────────
@@ -135,9 +136,10 @@ namespace PitHero.UI
 
         public void Update()
         {
-            // A placed Digging Field leaves the open Buildings window (only one can exist)
+            // A placed Digging Field or Fishing Pond leaves the open Buildings window (only one can exist)
             if (_state == PlacementState.Choosing && _inventoryWindow != null && _inventoryWindow.IsVisible()
-                && _slotDiggingField.HasParent() != IsDiggingFieldOffered())
+                && (_slotDiggingField.HasParent() != IsDiggingFieldOffered()
+                    || _slotFishingPond.HasParent() != IsFishingPondOffered()))
             {
                 RebuildSlots();
                 _inventoryWindow.Pack();
@@ -296,6 +298,7 @@ namespace PitHero.UI
             _slotMonsterHouse = CreateSlot(BuildingType.MonsterHouse, false);
             _slotCropStorage = CreateSlot(BuildingType.CropStorage, false);
             _slotDiggingField = CreateSlot(BuildingType.DiggingField, true); // 2:1 sprite: aspect-fit, not squashed
+            _slotFishingPond = CreateSlot(BuildingType.FishingPond, true);   // 233x192 sprite: aspect-fit
 
             _cancelSlotsButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
             _cancelSlotsButton.ClickSoundCategory = ButtonClickCategory.Cancel;
@@ -329,17 +332,28 @@ namespace PitHero.UI
             return placed < BuildingConfig.GetMaxCount(BuildingType.DiggingField);
         }
 
-        /// <summary>Lays out the slot row (the Digging Field only while offered) and the Cancel button.</summary>
+        /// <summary>True when the Fishing Pond is offered: none is placed yet (only one can exist).</summary>
+        private static bool IsFishingPondOffered() => CanPlaceAnother(BuildingType.FishingPond);
+
+        /// <summary>
+        /// Lays out the building slots (the Digging Field and Fishing Pond only while offered) and the
+        /// Cancel button. Up to three slots share one row; four go in a 2x2 grid so the window stays
+        /// narrower than the stage.
+        /// </summary>
         private void RebuildSlots()
         {
             _slotsContent.Clear();
-            int columns = 2;
-            _slotsContent.Add(_slotMonsterHouse).Size(SlotSize, SlotSize).Pad(4f);
-            _slotsContent.Add(_slotCropStorage).Size(SlotSize, SlotSize).Pad(4f);
+            var slots = new System.Collections.Generic.List<BuildingSlotButton>(4) { _slotMonsterHouse, _slotCropStorage };
             if (IsDiggingFieldOffered())
+                slots.Add(_slotDiggingField);
+            if (IsFishingPondOffered())
+                slots.Add(_slotFishingPond);
+            int columns = slots.Count > 3 ? 2 : slots.Count;
+            for (int i = 0; i < slots.Count; i++)
             {
-                _slotsContent.Add(_slotDiggingField).Size(SlotSize, SlotSize).Pad(4f);
-                columns++;
+                if (i > 0 && i % columns == 0)
+                    _slotsContent.Row();
+                _slotsContent.Add(slots[i]).Size(SlotSize, SlotSize).Pad(4f);
             }
             _slotsContent.Row();
             _slotsContent.Add(_cancelSlotsButton).SetColspan(columns).Width(100f)
@@ -510,9 +524,9 @@ namespace PitHero.UI
                 if (fx < TillMinTileX || fy < TillMinTileY)
                     return false;
 
-                // The Digging Field must lie wholly on the map (issue #452). Not applied to the older
-                // buildings: it would change which recorded placements replay as valid.
-                if (type == BuildingType.DiggingField && fy > MaxTileY)
+                // The Digging Field and Fishing Pond must lie wholly on the map (issue #452). Not applied
+                // to the older buildings: it would change which recorded placements replay as valid.
+                if (BuildingConfig.IsGroundBuilding(type) && fy > MaxTileY)
                     return false;
 
                 if (tileService != null)
@@ -559,8 +573,28 @@ namespace PitHero.UI
         /// edge; the flat Digging Field lies on the ground layer under everyone (its sprite offset from
         /// the top-left entity) with its tile-cooldown overlay on top (issue #452).
         /// </summary>
-        private static void AddBuildingRenderers(Entity entity, BuildingType type, Sprite sprite)
+        private void AddBuildingRenderers(Entity entity, BuildingType type, Sprite sprite)
         {
+            if (type == BuildingType.FishingPond)
+            {
+                // Flat on the ground like the Digging Field, its water looping. Cosmetic only: the
+                // animation never feeds the sim, and the frame capture records it as a stock sprite.
+                var pond = entity.AddComponent(new PausableSpriteAnimator());
+                pond.SetRenderLayer(GameConfig.RenderLayerGroundProp);
+                pond.SetLocalOffset(BuildingConfig.GetSpriteOffset(type));
+                ApplyDayNightGrading(pond);
+                var animation = CreateFishingPondAnimation();
+                if (animation != null)
+                {
+                    pond.AddAnimation(BuildingConfig.FishingPondAnimation, animation);
+                    pond.Play(BuildingConfig.FishingPondAnimation, SpriteAnimator.LoopMode.Loop);
+                }
+                else
+                {
+                    pond.SetSprite(sprite);
+                }
+                return;
+            }
             if (type == BuildingType.DiggingField)
             {
                 var ground = entity.AddComponent(new SpriteRenderer(sprite));
@@ -575,6 +609,21 @@ namespace PitHero.UI
             renderer.SetRenderLayer(GameConfig.RenderLayerActors);
             renderer.YSortOffset = sprite.SourceRect.Height / 2f; // sort at the sprite's bottom (walled 64px band)
             ApplyDayNightGrading(renderer);
+        }
+
+        /// <summary>
+        /// The Fishing Pond's water loop from the CropsProps atlas at <see cref="GameConfig.FishingPondFrameRate"/>
+        /// (the packer stamps the atlas-wide 15 fps on every animation), or null when the atlas lacks it.
+        /// </summary>
+        private SpriteAnimation CreateFishingPondAnimation()
+        {
+            int index = System.Array.IndexOf(_cropsAtlas.AnimationNames, BuildingConfig.FishingPondAnimation);
+            if (index < 0)
+            {
+                Debug.Warn("[BuildingModeOverlay] Animation " + BuildingConfig.FishingPondAnimation + " not found in CropsProps.atlas");
+                return null;
+            }
+            return new SpriteAnimation(_cropsAtlas.SpriteAnimations[index].Sprites, GameConfig.FishingPondFrameRate);
         }
 
         /// <summary>
@@ -683,10 +732,11 @@ namespace PitHero.UI
             var entity = _scene.CreateEntity(
                 "building-" + type.ToString().ToLower() + "-" + tileX + "-" + tileY);
 
-            if (type == BuildingType.DiggingField)
+            if (BuildingConfig.IsGroundBuilding(type))
             {
-                // The Digging Field is laid on the ground where it was placed: it grows from a tenth of
-                // its size to full size (unclickable meanwhile) instead of falling from the sky (#452)
+                // The Digging Field and Fishing Pond are laid on the ground where they were placed: they
+                // grow from a tenth of their size to full size (unclickable meanwhile) instead of falling
+                // from the sky (#452)
                 entity.SetPosition(finalPos.X, finalPos.Y);
                 AddBuildingRenderers(entity, type, sprite);
                 entity.AddComponent(new BuildingGrowAnimator(
