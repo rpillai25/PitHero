@@ -39,6 +39,9 @@ namespace PitHero.Artifacts
 
         /// <summary>Local: a robot that digs the Digging Field on its own. Requires the Prospector's Map and a placed field.</summary>
         DigBot = 10,
+
+        /// <summary>Local: unlocks the Fishing Pond building.</summary>
+        FishingPole = 11,
     }
 
     /// <summary>
@@ -55,7 +58,7 @@ namespace PitHero.Artifacts
     public static class ArtifactCatalog
     {
         /// <summary>Number of artifact kinds (the enum is dense from 0; retired ordinals count).</summary>
-        public const int Count = 11;
+        public const int Count = 12;
 
         /// <summary>
         /// True for an artifact that no longer exists in the game but whose ordinal is reserved because
@@ -82,6 +85,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.PlatinumWateringCan: return "PlatinumWateringCan";
                 case ArtifactType.ProspectorsMap: return "ProspectorsMap";
                 case ArtifactType.DigBot: return "DigBot";
+                case ArtifactType.FishingPole: return "FishingPole";
                 default: return string.Empty;
             }
         }
@@ -101,6 +105,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanName;
                 case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapName;
                 case ArtifactType.DigBot: return UITextKey.ArtifactDigBotName;
+                case ArtifactType.FishingPole: return UITextKey.ArtifactFishingPoleName;
                 default: return string.Empty;
             }
         }
@@ -120,6 +125,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.PlatinumWateringCan: return UITextKey.ArtifactPlatinumWateringCanDesc;
                 case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapDesc;
                 case ArtifactType.DigBot: return UITextKey.ArtifactDigBotDesc;
+                case ArtifactType.FishingPole: return UITextKey.ArtifactFishingPoleDesc;
                 default: return string.Empty;
             }
         }
@@ -135,6 +141,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.KairosMetronome: return UITextKey.ArtifactKairosMetronomeEffect;
                 case ArtifactType.ProspectorsMap: return UITextKey.ArtifactProspectorsMapEffect;
                 case ArtifactType.DigBot: return UITextKey.ArtifactDigBotEffect;
+                case ArtifactType.FishingPole: return UITextKey.ArtifactFishingPoleEffect;
                 default: return string.Empty;
             }
         }
@@ -154,6 +161,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.PlatinumWateringCan: return GameConfig.ArtifactPlatinumWateringCanPrice;
                 case ArtifactType.ProspectorsMap: return GameConfig.ArtifactProspectorsMapPrice;
                 case ArtifactType.DigBot: return GameConfig.ArtifactDigBotPrice;
+                case ArtifactType.FishingPole: return GameConfig.ArtifactFishingPolePrice;
                 default: return 0;
             }
         }
@@ -171,6 +179,7 @@ namespace PitHero.Artifacts
                 case ArtifactType.PlatinumWateringCan:
                 case ArtifactType.ProspectorsMap:
                 case ArtifactType.DigBot:
+                case ArtifactType.FishingPole:
                     return ArtifactScope.Local;
                 default:
                     return ArtifactScope.Global;

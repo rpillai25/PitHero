@@ -332,7 +332,7 @@ namespace PitHero.UI
             return placed < BuildingConfig.GetMaxCount(BuildingType.DiggingField);
         }
 
-        /// <summary>True when the Fishing Pond is offered: none is placed yet (only one can exist).</summary>
+        /// <summary>True when the Fishing Pond is offered: the Fishing Pole is owned and no pond is placed yet (only one can exist).</summary>
         private static bool IsFishingPondOffered() => CanPlaceAnother(BuildingType.FishingPond);
 
         /// <summary>
@@ -680,12 +680,16 @@ namespace PitHero.UI
 
         /// <summary>
         /// True when one more building of this type may be placed: under its count cap, and for the
-        /// Digging Field only with the Prospector's Map (issue #452). Re-checked by the command handler.
+        /// Digging Field only with the Prospector's Map (issue #452), the Fishing Pond only with the
+        /// Fishing Pole. Re-checked by the command handler.
         /// </summary>
         public static bool CanPlaceAnother(BuildingType type)
         {
             if (type == BuildingType.DiggingField
                 && !Artifacts.LocalArtifactEffects.HasGemDigSite(Core.Services.GetService<GameStateService>()))
+                return false;
+            if (type == BuildingType.FishingPond
+                && !Artifacts.LocalArtifactEffects.HasFishingPond(Core.Services.GetService<GameStateService>()))
                 return false;
             int placed = Core.Services.GetService<BuildingService>()?.GetCountOfType(type) ?? 0;
             return placed < BuildingConfig.GetMaxCount(type);

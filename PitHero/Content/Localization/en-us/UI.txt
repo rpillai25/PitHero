@@ -307,6 +307,9 @@ ArtifactProspectorsMapEffect,Unlocks the Digging Field in Construction > Buildin
 ArtifactDigBotName,DigBot
 ArtifactDigBotDesc,A patient little robot that never tires of digging.
 ArtifactDigBotEffect,Trundles across your Digging Field row by row and digs every rested ground it reaches. Its finds pay out just like yours.
+ArtifactFishingPoleName,Fishing Pole
+ArtifactFishingPoleDesc,A well-worn rod with a brass reel and a lucky red bobber.
+ArtifactFishingPoleEffect,Unlocks the Fishing Pond in Construction > Buildings.
 ArtifactScopeGlobal,Global
 ArtifactScopeLocal,Local
 ArtifactScopeGlobalTooltip,Affects all hero sessions

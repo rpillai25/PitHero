@@ -424,6 +424,9 @@ namespace PitHero
         public const string ArtifactDigBotName = "ArtifactDigBotName";
         public const string ArtifactDigBotDesc = "ArtifactDigBotDesc";
         public const string ArtifactDigBotEffect = "ArtifactDigBotEffect";
+        public const string ArtifactFishingPoleName = "ArtifactFishingPoleName";
+        public const string ArtifactFishingPoleDesc = "ArtifactFishingPoleDesc";
+        public const string ArtifactFishingPoleEffect = "ArtifactFishingPoleEffect";
         public const string ArtifactScopeGlobal = "ArtifactScopeGlobal";
         public const string ArtifactScopeLocal = "ArtifactScopeLocal";
         public const string ArtifactScopeGlobalTooltip = "ArtifactScopeGlobalTooltip";

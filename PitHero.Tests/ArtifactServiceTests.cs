@@ -163,7 +163,13 @@ namespace PitHero.Tests
         [TestMethod]
         public void Catalog_ScopesAndPrices()
         {
-            Assert.AreEqual(11, ArtifactCatalog.Count, "The retired Sphere keeps its ordinal; the enum is never renumbered");
+            Assert.AreEqual(12, ArtifactCatalog.Count, "The retired Sphere keeps its ordinal; the enum is never renumbered");
+            Assert.AreEqual(11, (int)ArtifactType.FishingPole);
+            Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.FishingPole));
+            Assert.AreEqual(50000, ArtifactCatalog.GetPrice(ArtifactType.FishingPole));
+            Assert.AreEqual("FishingPole", ArtifactCatalog.GetSpriteName(ArtifactType.FishingPole));
+            Assert.AreEqual(0, ArtifactCatalog.GetPrerequisites(ArtifactType.FishingPole).Length);
+            Assert.AreEqual(UITextKey.ArtifactFishingPoleEffect, ArtifactCatalog.GetEffectKey(ArtifactType.FishingPole));
             Assert.AreEqual(9, (int)ArtifactType.ProspectorsMap);
             Assert.IsTrue(ArtifactCatalog.IsLocal(ArtifactType.ProspectorsMap));
             Assert.AreEqual(50000, ArtifactCatalog.GetPrice(ArtifactType.ProspectorsMap));

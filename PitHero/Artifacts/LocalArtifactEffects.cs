@@ -68,5 +68,14 @@ namespace PitHero.Artifacts
         {
             return HasGemDigSite(gameState) && gameState.OwnsLocalArtifact(ArtifactType.DigBot);
         }
+
+        /// <summary>
+        /// True when this hero owns the Fishing Pole, which unlocks the Fishing Pond building. The
+        /// PlaceBuilding handler ignores a Fishing Pond request without it.
+        /// </summary>
+        public static bool HasFishingPond(GameStateService gameState)
+        {
+            return gameState != null && gameState.OwnsLocalArtifact(ArtifactType.FishingPole);
+        }
     }
 }
