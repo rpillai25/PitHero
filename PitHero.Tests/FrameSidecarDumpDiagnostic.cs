@@ -60,6 +60,7 @@ namespace PitHero.Tests
                                 break;
                             case FrameOpCode.Rect: r.ReadRect(out _); break;
                             case FrameOpCode.NinePatch: r.ReadNinePatch(out _); break;
+                            case FrameOpCode.Line: r.ReadLine(out _); break;
                             case FrameOpCode.Particle:
                                 r.ReadParticle(out var p);
                                 sb.AppendLine($"tick {tick} id {e.Id} particle key {p.EffectKey} density {p.DensityScale} x {p.X} y {p.Y} elapsed {p.ElapsedTicks} emitting {p.IsEmitting}");

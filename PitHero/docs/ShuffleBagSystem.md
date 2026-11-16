@@ -188,6 +188,18 @@ guard (`Core.Instance == null`) sits before any draw, so bags never advance in u
 Selection core `SelectKey` is public and pure — tested in
 `PitHero.Tests/SpeechBubbleShuffleBagTests.cs`.
 
+## Fishing catches — `FishingService`
+
+Files: `PitHero/Services/FishingService.cs`, `PitHero/Config/FishingConfig.cs`.
+
+One 200-marble `ShuffleBag<FishCatchType>` shared by every fisher (10 fish from 40 marbles for the
+Minnow down to 2 for the Alligator Gar, plus 13 each of three junk items; table in
+`docs/FishLibrary.md`). Built once in enum order by `FishingService.BuildBag`. Drawn with
+`NextFromRoll(Nez.Random.NextFloat())` in the fixed step, by `FishingMonsterStateMachine.Reel_Enter`
+only, so the Sim stream advances only when a catch happens. Owner: the scene-scoped `FishingService`
+(registered in `MainGameScene`, removed in Unload), so pity lasts a session. Tested in
+`PitHero.Tests/FishingJobTests.cs` (exact composition of one full cycle).
+
 ## Persistence: none, by design
 
 All bags are transient in-memory state — they refill fresh each session and are **never

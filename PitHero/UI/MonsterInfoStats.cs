@@ -23,13 +23,15 @@ namespace PitHero.UI
         /// <summary>Awake monsters currently assigned to the kitchen.</summary>
         public int KitchenWorkers;
 
+        /// <summary>Awake monsters currently assigned to fishing.</summary>
+        public int FishWorkers;
+
         /// <summary>Awake monsters holding no job at all.</summary>
         public int IdleWorkers;
 
         /// <summary>
-        /// Counts the roster. Totals span the whole roster; the three worker counts only cover the
-        /// shift that is awake at <paramref name="isNighttime"/>. A monster assigned to Fishing (no
-        /// work loop yet) counts in none of the three worker lines.
+        /// Counts the roster. Totals span the whole roster; the worker counts only cover the
+        /// shift that is awake at <paramref name="isNighttime"/>.
         /// </summary>
         public static MonsterInfoStats Compute(IReadOnlyList<AlliedMonster> roster, bool isNighttime)
         {
@@ -57,6 +59,7 @@ namespace PitHero.UI
                 {
                     case MonsterJob.Farming: stats.FarmWorkers++; break;
                     case MonsterJob.Cooking: stats.KitchenWorkers++; break;
+                    case MonsterJob.Fishing: stats.FishWorkers++;    break;
                     case MonsterJob.None:    stats.IdleWorkers++;   break;
                 }
             }

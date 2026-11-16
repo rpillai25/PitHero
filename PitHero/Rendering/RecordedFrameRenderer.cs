@@ -29,7 +29,7 @@ namespace PitHero.Rendering
         /// <summary>After the DefaultRenderer (0), whose world-camera ghost of the screen-space HUD panels this pass paints over.</summary>
         public const int Order = 1;
 
-        private enum ItemKind : byte { Sprite, Composite, Overlay, Tile, Live, Particle }
+        private enum ItemKind : byte { Sprite, Composite, Overlay, Tile, Live, Particle, Line }
 
         private struct Item
         {
@@ -127,6 +127,10 @@ namespace PitHero.Rendering
                     case ItemKind.Particle:
                         SetMaterial(item.Effect.Material, cam);
                         particles.Draw(Graphics.Instance.Batcher, item.Effect);
+                        break;
+                    case ItemKind.Line:
+                        SetMaterial(null, cam);
+                        DrawLine(frame, item.Offset, item.End);
                         break;
                 }
             }
@@ -260,6 +264,22 @@ namespace PitHero.Rendering
                         case FrameOpCode.NinePatch:
                             r.ReadNinePatch(out _); // always the screen pass (speech bubbles)
                             break;
+                        case FrameOpCode.Line:
+                        {
+                            r.ReadLine(out var op);
+                            int minX = op.X1 < op.X2 ? op.X1 : op.X2, maxX = op.X1 < op.X2 ? op.X2 : op.X1;
+                            int minY = op.Y1 < op.Y2 ? op.Y1 : op.Y2, maxY = op.Y1 < op.Y2 ? op.Y2 : op.Y1;
+                            if (maxX < left || minX > right || maxY < top || minY > bottom)
+                                break;
+                            ref var item = ref NewItem();
+                            item.Layer = op.RenderLayer;
+                            item.Depth = op.LayerDepth;
+                            item.Material = 0;
+                            item.Kind = ItemKind.Line;
+                            item.Offset = at;
+                            item.End = end;
+                            break;
+                        }
                         case FrameOpCode.Particle:
                         {
                             r.ReadParticle(out var op);
@@ -341,6 +361,14 @@ namespace PitHero.Rendering
                 batcher.Draw(sprite, new Vector2(op.X + layer.DX, op.Y + layer.DY), Packed(layer.Color), 0f, sprite.Origin, Vector2.One,
                     Effects(layer.Flags), op.LayerDepth);
             }
+        }
+
+        private void DrawLine(DecodedFrame frame, int at, int end)
+        {
+            var r = new FrameReader(frame.OpsBuffer, at, end - at);
+            r.ReadOpCode();
+            r.ReadLine(out var op);
+            Graphics.Instance.Batcher.DrawLine(new Vector2(op.X1, op.Y1), new Vector2(op.X2, op.Y2), Packed(op.Color), op.Thickness);
         }
 
         private void DrawOverlay(DecodedFrame frame, int at, int end, Camera cam)
@@ -522,6 +550,9 @@ namespace PitHero.Rendering
                         }
                         case FrameOpCode.Particle:
                             r.ReadParticle(out _); // world pass only
+                            break;
+                        case FrameOpCode.Line:
+                            r.ReadLine(out _); // world pass only
                             break;
                         default:
                             goto nextEntity;

@@ -264,6 +264,8 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(new Services.BuildingService());
             // Digging Field tile cooldowns (issue #452): scene-scoped sim state, every tile ready at session start
             Core.Services.AddService(new Services.DiggingFieldService(Core.Services.GetService<Services.BuildingService>()));
+            // Fishing catch bag (200 marbles): scene-scoped sim state, a fresh bag at session start
+            Core.Services.AddService(new Services.FishingService());
 
             // Register crop planting service so plan tracking and seed inventory are queryable.
             Core.Services.AddService(new Services.CropPlantingService());
@@ -322,6 +324,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.LootShuffleService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.DiggingFieldService));
+            Core.Services.RemoveService(typeof(Services.FishingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(Services.CropMarketService));
             Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
@@ -341,6 +344,8 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.FridgeInventoryService));
             Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.KitchenTaskCoordinator));
+            Core.Services.GetService<Services.FishingTaskCoordinator>()?.Detach();
+            Core.Services.RemoveService(typeof(Services.FishingTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.PartyDiningService));
             Core.Services.RemoveService(typeof(Services.AutoJobAssignmentService));
             Core.Services.RemoveService(typeof(Services.DishEntityService));
@@ -542,8 +547,20 @@ namespace PitHero.ECS.Scenes
 
             // Peer the worker coordinators: on a job change, the monster's old-job entity must
             // walk home and despawn before the new job's entity spawns (one entity per monster).
+            // Fishing coordinator: fishers at the Fishing Pond, peered with the other two jobs
+            var fishingCoordinator = new Services.FishingTaskCoordinator(alliedMonsterManager,
+                Core.Services.GetService<Services.BuildingService>(),
+                _tmxMap.Width, _tmxMap.Height,
+                _tmxMap.GetLayer<Nez.Tiled.TmxLayer>("Collision"));
+            fishingCoordinator.Initialize(this);
+            Core.Services.AddService(fishingCoordinator);
+
             farmTaskCoordinator.AddPeer(kitchenCoordinator);
             kitchenCoordinator.AddPeer(farmTaskCoordinator);
+            farmTaskCoordinator.AddPeer(fishingCoordinator);
+            kitchenCoordinator.AddPeer(fishingCoordinator);
+            fishingCoordinator.AddPeer(farmTaskCoordinator);
+            fishingCoordinator.AddPeer(kitchenCoordinator);
 
             // Party dining service orchestrates once-a-day tavern meals for the party (issue #319)
             var partyDiningService = new Services.PartyDiningService();
@@ -559,6 +576,8 @@ namespace PitHero.ECS.Scenes
                     Core.Services.GetService<Services.CropGrowthService>(),
                     Core.Services.GetService<Services.CropPlantingService>()));
             Core.Services.AddService(autoJobAssignmentService);
+            // Fishing is the lowest-priority job: it soaks up idle monsters and yields to farm and kitchen
+            autoJobAssignmentService.AddEvaluator(new Services.AutoJob.FishingJobDemandEvaluator(fishingCoordinator));
 
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
@@ -3605,6 +3624,7 @@ namespace PitHero.ECS.Scenes
             {
                 Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
                 Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
+                Core.Services.GetService<Services.FishingTaskCoordinator>()?.Update();
             }
 
             // Tick party dining (eat timers, auto-resume, reload restart)
@@ -4650,6 +4670,11 @@ namespace PitHero.ECS.Scenes
                 Services.Replay.PlayerCommandService.Dispatch(command);
                 return;
             }
+
+            // Fishing Pond: only Shift+Click opens its menu (Move), like the Digging Field; a plain
+            // click does nothing yet
+            if (building.Type == Util.BuildingType.FishingPond && !IsShiftDown())
+                return;
 
             // Clear the hover outline before the menu opens.
             _hoveredBuilding = null;

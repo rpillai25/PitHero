@@ -204,6 +204,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/CaveBiomeBalanceReport.md`
 - `PitHero/docs/EquipmentLibrary.md`
 - `PitHero/docs/MonsterLibrary.md`
+- `PitHero/docs/FishLibrary.md` — the ten Fishing Pond fish: gold values (50–1000 G), sprite sizes, art source and DB32 snapping
 
 **Architecture / subsystems:**
 - `PitHero/docs/ReplaySystem.md` — **Deterministic replay (read before adding input, randomness, timers or player actions)**: fixed-step simulation vs presentation pass, `GameRandom` streams, `SimulationClock`, `PlayerCommand` pipeline + handler rules, recording format, playback/seek model, divergence tripwire, the invariants with their reasons, recipes for new commands / RNG / timers / cosmetic components / diagnosing "Diverged at", hero-gated time travel (the past only), and the artifact system (system save, proof-of-wealth grants)

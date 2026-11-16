@@ -763,6 +763,24 @@ namespace PitHero.Services.Analytics
 
         /// <summary>Logs a crop being harvested by a farming monster, with the yield taken.</summary>
         [Conditional("DEBUG")]
+        /// <summary>A fishing monster landed a catch at the pond: what it was, its gold (0 for junk), and who caught it.</summary>
+        [Conditional("DEBUG")]
+        public static void LogFishCaught(string catchName, int gold, int spot, string monster, string monsterType)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("fish_caught"))
+                return;
+            _json.Field("catch", catchName);
+            _json.Field("gold", gold);
+            _json.Field("spot", spot);
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            EndEvent();
+#endif
+        }
+
         public static void LogCropHarvested(string crop, int x, int y, int qty, string monster, string monsterType)
         {
 #if DEBUG

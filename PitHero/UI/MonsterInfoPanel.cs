@@ -40,6 +40,7 @@ namespace PitHero.UI
         private readonly Label _nighttimeValue;
         private readonly Label _farmValue;
         private readonly Label _kitchenValue;
+        private readonly Label _fishValue;
         private readonly Label _idleValue;
 
         private TextService _textService;
@@ -60,6 +61,7 @@ namespace PitHero.UI
             _nighttimeValue = AddStatRow(UITextKey.MonsterInfoTotalNighttime);
             _farmValue      = AddStatRow(UITextKey.MonsterInfoFarmWorkers);
             _kitchenValue   = AddStatRow(UITextKey.MonsterInfoKitchenWorkers);
+            _fishValue      = AddStatRow(UITextKey.MonsterInfoFishWorkers);
             _idleValue      = AddStatRow(UITextKey.MonsterInfoIdleWorkers);
 
             Add(_contentTable).Expand().Fill().Pad(ContentPadding);
@@ -78,6 +80,7 @@ namespace PitHero.UI
             _nighttimeValue.SetText(WidestValue);
             _farmValue.SetText(WidestValue);
             _kitchenValue.SetText(WidestValue);
+            _fishValue.SetText(WidestValue);
             _idleValue.SetText(WidestValue);
             Pack();
             PanelWidth = GetWidth();
@@ -86,6 +89,7 @@ namespace PitHero.UI
             _nighttimeValue.SetText("0");
             _farmValue.SetText("0");
             _kitchenValue.SetText("0");
+            _fishValue.SetText("0");
             _idleValue.SetText("0");
             PackFixedWidth();
         }
@@ -98,6 +102,7 @@ namespace PitHero.UI
             _nighttimeValue.SetText(stats.TotalNighttime.ToString());
             _farmValue.SetText(stats.FarmWorkers.ToString());
             _kitchenValue.SetText(stats.KitchenWorkers.ToString());
+            _fishValue.SetText(stats.FishWorkers.ToString());
             _idleValue.SetText(stats.IdleWorkers.ToString());
             PackFixedWidth();
         }

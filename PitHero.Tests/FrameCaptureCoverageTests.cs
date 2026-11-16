@@ -26,6 +26,7 @@ namespace PitHero.Tests
             ("PitHero.ECS.Components.SpeechBubbleComponent", "capturable"),
             ("PitHero.ECS.Components.GemValueTextComponent", "capturable"),
             ("PitHero.ECS.Components.DiggingFieldOverlayComponent", "capturable"),
+            ("PitHero.ECS.Components.FishingLineRenderer", "capturable"),
             ("PitHero.ECS.Components.MonsterHoverNameComponent", "live-only"),
             ("PitHero.ECS.Components.BuildingOutlineRenderComponent", "capturable"),
             ("PitHero.ECS.Components.SelectBoxRenderComponent", "capturable"),

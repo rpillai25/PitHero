@@ -72,6 +72,23 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void FishingPond_NeedsTheFishingPole()
+        {
+            var state = new GameStateService();
+            Assert.IsFalse(LocalArtifactEffects.HasFishingPond(state));
+            Assert.IsFalse(LocalArtifactEffects.HasFishingPond(null));
+
+            state.GrantLocalArtifact(ArtifactType.ProspectorsMap);
+            Assert.IsFalse(LocalArtifactEffects.HasFishingPond(state), "Only the pole unlocks the pond");
+
+            state.GrantLocalArtifact(ArtifactType.FishingPole);
+            Assert.IsTrue(LocalArtifactEffects.HasFishingPond(state));
+
+            state.ClearLocalArtifacts();
+            Assert.IsFalse(LocalArtifactEffects.HasFishingPond(state), "A new hero starts without the pole");
+        }
+
+        [TestMethod]
         public void GameState_LocalArtifacts_GrantOrderVersionAndMask()
         {
             var state = new GameStateService();

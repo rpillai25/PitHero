@@ -85,6 +85,25 @@ BuildingDescMonsterHouse,Houses 16 monsters
 BuildingDescCropStorage,Holds 32 stacks of crops
 BuildingNameDiggingField,Digging Field
 BuildingDescDiggingField,Click a tile (or press C over it) to dig for gems worth gold. Each tile rests a few seconds after a dig. Only one can be built.
+BuildingNameFishingPond,Fishing Pond
+BuildingDescFishingPond,A quiet pond stocked with fish. Only one can be built.
+FishMinnow,Minnow
+FishBluegill,Bluegill
+FishPerch,Perch
+FishRainbowTrout,Rainbow Trout
+FishLargemouthBass,Largemouth Bass
+FishGoldenKoi,Golden Koi
+FishChannelCatfish,Channel Catfish
+FishNorthernPike,Northern Pike
+FishLakeSturgeon,Lake Sturgeon
+FishAlligatorGar,Alligator Gar
+FishJunkCan,Old Can
+FishJunkBottle,Old Bottle
+FishJunkShoe,Old Boot
+FishCatchValueFormat,{0} (+{1}G)
+JobFishingNeedsPond,Requires a Fishing Pond
+JobFishingCrewFull,Fishing crew full (4 per shift)
+MonsterInfoFishWorkers,Current Fishers:
 WindowBuildings,Buildings
 WindowSeeds,Seeds
 WindowWateringPriority,Watering Priority
@@ -305,6 +324,9 @@ ArtifactProspectorsMapEffect,Unlocks the Digging Field in Construction > Buildin
 ArtifactDigBotName,DigBot
 ArtifactDigBotDesc,A patient little robot that never tires of digging.
 ArtifactDigBotEffect,Trundles across your Digging Field row by row and digs every rested ground it reaches. Its finds pay out just like yours.
+ArtifactFishingPoleName,Fishing Pole
+ArtifactFishingPoleDesc,A well-worn rod with a brass reel and a lucky red bobber.
+ArtifactFishingPoleEffect,Unlocks the Fishing Pond in Construction > Buildings.
 ArtifactScopeGlobal,Global
 ArtifactScopeLocal,Local
 ArtifactScopeGlobalTooltip,Affects all hero sessions
