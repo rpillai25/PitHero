@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Utils;
 
 namespace PitHero.Config
 {
@@ -90,17 +91,17 @@ namespace PitHero.Config
     /// <summary>
     /// What a Digging Field dig turns up (issue #452): nothing, worthless junk, or a gem.
     ///
-    /// Odds are exact integer weights over <see cref="TotalWeight"/> (1,000,000):
-    /// - 35% of digs turn up nothing, 30% a piece of junk worth 0 gold (Shell 7% down to Yarn Ball 3%),
-    ///   and 35% a gem, so a gem is a real event between misses.
-    /// - Inside the gem share each gem is about 1.485x rarer than the one listed before it
-    ///   (weight = round(1000 x 1.485^(12 - ordinal)), Agate takes the rounding remainder), which puts
-    ///   the Diamond at exactly 1 in 1,000 digs and keeps it the rarest gem.
+    /// Every dig draws one marble from a 500-marble shuffle bag (<see cref="BagSize"/>) without
+    /// replacement, so every 500 digs hold exactly the composition below: half empty digs and junk
+    /// worth 0 gold, half gems, with exactly one Diamond. The bag lives on
+    /// <see cref="PitHero.Services.DiggingFieldService"/>.
     ///
-    /// Per dig: Agate 1 in 9, Amethyst 1 in 13, Peridot 1 in 19, Garnet 1 in 28, Aquamarine 1 in 42,
-    /// Spinel 1 in 63, Tourmaline 1 in 93, Tanzanite 1 in 138, Sapphire 1 in 206, Ruby 1 in 305,
-    /// Emerald 1 in 454, Alexandrite 1 in 673, Diamond 1 in 1,000; about 43.5 gold per dig before
-    /// pity (see PitHero/docs/EconomyBalanceGuide.md).
+    /// No gold (250): nothing 135; junk 115 = Shell 27, Cup 23, Plate 19, Spoon 19, Bottle 15, Yarn Ball 12.
+    /// Gems (250): Agate 100, Amethyst 60, Peridot 36 (Common 196); Garnet 18, Aquamarine 12
+    /// (Uncommon 30); Spinel 8, Tourmaline 5, Tanzanite 4 (Rare 17); Sapphire 2, Ruby 2, Emerald 1,
+    /// Alexandrite 1 (Epic 6); Diamond 1 (Legendary). 28,280 gold per bag: about 56.6 gold per dig
+    /// (see PitHero/docs/EconomyBalanceGuide.md). Changing a marble count changes what a recorded dig
+    /// pays out, so bump GameConfig.SimulationVersion with it.
     /// </summary>
     public static class GemDigConfig
     {
@@ -113,14 +114,14 @@ namespace PitHero.Config
         /// <summary>Outcome table size: nothing, the junk, then the gems.</summary>
         public const int OutcomeCount = 1 + JunkCount + GemCount;
 
-        /// <summary>Sum of every outcome weight; a dig's base roll is an int in [0, TotalWeight).</summary>
-        public const int TotalWeight = 1_000_000;
+        /// <summary>Marbles in one full dig bag; every 500 digs contain exactly the composition below.</summary>
+        public const int BagSize = 500;
 
-        /// <summary>Weight of an empty dig (35%).</summary>
-        public const int NothingWeight = 350_000;
+        /// <summary>Marbles for an empty dig: 135 of the 250 non-gem marbles (the old 35:30 nothing-to-junk split).</summary>
+        public const int NothingMarbles = 135;
 
-        // 30% junk in all, the last listed rarest: Shell 7%, Cup 6%, Plate 5%, Spoon 5%, Bottle 4%, Yarn Ball 3%
-        private static readonly int[] JunkWeights = { 70_000, 60_000, 50_000, 50_000, 40_000, 30_000 };
+        // 115 junk, the last listed rarest (the old 7:6:5:5:4:3 split)
+        private static readonly int[] JunkMarbles = { 27, 23, 19, 19, 15, 12 };
 
         private static readonly int[] Values =
         {
@@ -140,14 +141,14 @@ namespace PitHero.Config
             ItemRarity.Legendary,
         };
 
-        // 35% gems, geometric with ratio 1.485 between neighbours; Diamond 1,000 of 1,000,000
-        private static readonly int[] GemWeights =
+        // 250 gems, none more common than the gem listed before it; exactly one Diamond
+        private static readonly int[] GemMarbles =
         {
-            114_937, 77_445, 52_151,
-            35_119, 23_649,
-            15_925, 10_724, 7_222,
-            4_863, 3_275, 2_205, 1_485,
-            1_000,
+            100, 60, 36,
+            18, 12,
+            8, 5, 4,
+            2, 2, 1, 1,
+            1,
         };
 
         private static readonly string[] SpriteNames =
@@ -179,25 +180,16 @@ namespace PitHero.Config
         /// <summary>Label color for junk and empty digs: a dull DB32 gray, so gems stand out.</summary>
         public static readonly Color NoValueTextColor = new Color(0x84, 0x7e, 0x87);
 
-        // Outcome table (0 nothing, 1..6 junk, 7..19 gems): weight and pity tier. Nothing and junk sit in
-        // the base tier with the common gems, so pity on the better tiers draws its share from them.
-        private static readonly int[] OutcomeWeights = BuildOutcomeWeights();
-        private static readonly int[] OutcomeTiers = BuildOutcomeTiers();
+        // Outcome table (0 nothing, 1..6 junk, 7..19 gems): marbles per outcome
+        private static readonly int[] OutcomeMarbles = BuildOutcomeMarbles();
 
-        private static int[] BuildOutcomeWeights()
+        private static int[] BuildOutcomeMarbles()
         {
-            var w = new int[OutcomeCount];
-            w[0] = NothingWeight;
-            for (int i = 0; i < JunkCount; i++) w[1 + i] = JunkWeights[i];
-            for (int i = 0; i < GemCount; i++) w[1 + JunkCount + i] = GemWeights[i];
-            return w;
-        }
-
-        private static int[] BuildOutcomeTiers()
-        {
-            var t = new int[OutcomeCount];
-            for (int i = 0; i < GemCount; i++) t[1 + JunkCount + i] = (int)Rarities[i];
-            return t;
+            var m = new int[OutcomeCount];
+            m[0] = NothingMarbles;
+            for (int i = 0; i < JunkCount; i++) m[1 + i] = JunkMarbles[i];
+            for (int i = 0; i < GemCount; i++) m[1 + JunkCount + i] = GemMarbles[i];
+            return m;
         }
 
         /// <summary>Gold the gem is worth.</summary>
@@ -209,17 +201,20 @@ namespace PitHero.Config
         /// <summary>Rarity tier of the gem (Normal is the issue's COMMON).</summary>
         public static ItemRarity GetRarity(GemType gem) => Rarities[(int)gem];
 
-        /// <summary>Integer drop weight of the gem out of <see cref="TotalWeight"/>.</summary>
-        public static int GetWeight(GemType gem) => GemWeights[(int)gem];
+        /// <summary>Marbles the gem has in the 500-marble dig bag.</summary>
+        public static int GetMarbles(GemType gem) => GemMarbles[(int)gem];
 
-        /// <summary>Integer drop weight of the junk item out of <see cref="TotalWeight"/>.</summary>
-        public static int GetWeight(DigJunkType junk) => JunkWeights[(int)junk];
+        /// <summary>Marbles the junk item has in the 500-marble dig bag.</summary>
+        public static int GetMarbles(DigJunkType junk) => JunkMarbles[(int)junk];
 
-        /// <summary>Exact per-dig probability of the gem.</summary>
-        public static double GetProbability(GemType gem) => (double)GemWeights[(int)gem] / TotalWeight;
+        /// <summary>Marbles a find (any kind) has in the 500-marble dig bag.</summary>
+        public static int GetMarbles(DigFind find) => OutcomeMarbles[find.OutcomeIndex];
 
-        /// <summary>Exact per-dig probability of a find (any kind), from the base table.</summary>
-        public static double GetProbability(DigFind find) => (double)OutcomeWeights[find.OutcomeIndex] / TotalWeight;
+        /// <summary>Long-run share of digs that turn up the gem (marbles / bag size).</summary>
+        public static double GetProbability(GemType gem) => (double)GemMarbles[(int)gem] / BagSize;
+
+        /// <summary>Long-run share of digs that turn up a find (any kind).</summary>
+        public static double GetProbability(DigFind find) => (double)OutcomeMarbles[find.OutcomeIndex] / BagSize;
 
         /// <summary>Sprite name of the gem in the CropsProps atlas.</summary>
         public static string GetSpriteName(GemType gem) => SpriteNames[(int)gem];
@@ -261,186 +256,34 @@ namespace PitHero.Config
             return RarityUtils.GetRarityColor(rarity);
         }
 
-        /// <summary>Maps a base-table roll in [0, TotalWeight) to its find; out-of-range rolls clamp to the ends.</summary>
-        public static DigFind FromRoll(int roll)
+        /// <summary>
+        /// Builds a full dig bag of outcome indices (see <see cref="DigFind.OutcomeIndex"/>) in outcome
+        /// order. The order is part of the draw contract: a recorded dig replays to the same find.
+        /// </summary>
+        public static ShuffleBag<int> BuildBag()
         {
-            if (roll < 0)
-                return DigFind.Nothing;
+            var bag = new ShuffleBag<int>(BagSize);
             for (int i = 0; i < OutcomeCount; i++)
-            {
-                roll -= OutcomeWeights[i];
-                if (roll < 0)
-                    return DigFind.FromOutcomeIndex(i);
-            }
-            return DigFind.OfGem(GemType.Diamond);
+                if (OutcomeMarbles[i] > 0)
+                    bag.Add(i, OutcomeMarbles[i]);
+            return bag;
         }
-
-        /// <summary>Rolls a find on the base table, ignoring pity (tests and tools).</summary>
-        public static DigFind Roll(System.Random random) => FromRoll(random.Next(TotalWeight));
-
-        // ── Pity (bad-luck protection) ──────────────────────────────────────────────
-        //
-        // Each tier above Common keeps a counter: digs since that tier or a better one last came up
-        // (empty and junk digs count as digs without it). Until the counter passes the tier's soft start
-        // the tier keeps its base odds; after that its odds multiplier climbs by PityGrowthPerDig x
-        // PityStrength every dig, up to PityMaxMultiplier. A find resets the counter of its own tier and
-        // of every tier below it (a Diamond resets all four). The counters are simulation state: saved
-        // with the hero, read by the DigGem handler. Changing any knob below changes what a recorded dig
-        // pays out, so bump GameConfig.SimulationVersion with it.
-        //
-        // Tuning (PityStrength 1, measured over 20M digs; GemDigPityTests pins the ranges): each tier's
-        // odds start climbing at about its average wait, so pity mostly cuts off long dry streaks. A Rare
-        // or better every ~18 digs (base 21), an Epic or better every ~67 (base 78), a Diamond every ~840
-        // (base 1,000), still rarer than the Alexandrite (~1 in 580); about 51 gold per dig (base 43.5).
-        // Empty digs stay ~35% and junk ~30%: pity only moves odds between the gem tiers and that pool.
-
-        /// <summary>
-        /// Global pity knob: scales every tier's growth. 0 = pure base odds (no pity), 1 = the tuned
-        /// default, 2 = the odds climb twice as fast. The per-tier caps still apply.
-        /// </summary>
-        public const float PityStrength = 1f;
-
-        /// <summary>Number of pity counters (Uncommon, Rare, Epic, Legendary).</summary>
-        public const int PityTierCount = 4;
-
-        /// <summary>
-        /// Per tier (Uncommon, Rare, Epic, Legendary): digs without that tier before its odds start
-        /// to climb. Uncommon is already 1 in 17, so its pity is off by default (growth 0).
-        /// </summary>
-        public static readonly int[] PitySoftStartDigs = { 0, 20, 75, 1_000 };
-
-        /// <summary>Per tier: odds multiplier added per dig past the soft start (before PityStrength).</summary>
-        public static readonly float[] PityGrowthPerDig = { 0f, 0.05f, 0.015f, 0.002f };
-
-        /// <summary>Per tier: the highest the odds multiplier can climb (5x on Legendary = a Diamond 1 in 200).</summary>
-        public static readonly float[] PityMaxMultiplier = { 1f, 3f, 4f, 5f };
-
-        /// <summary>Cap on the combined chance of the better tiers, so the base tier never drops below 5%.</summary>
-        public const double MaxNonCommonChance = 0.95;
 
         /// <summary>A dig's roll is a uniform integer in [0, 2^53), carried in the command's L.</summary>
         public const long RollRange = 1L << 53;
 
-        // Base (no pity) chance of each tier, indexed by ItemRarity ordinal (tier 0 includes nothing and junk)
-        private static readonly double[] BaseTierChance = BuildBaseTierChance();
-        // Each tier's total base weight
-        private static readonly long[] TierWeight = BuildTierWeight();
-
-        private static double[] BuildBaseTierChance()
+        /// <summary>Maps a dig roll in [0, RollRange) to the bag's [0, 1) draw roll; out-of-range rolls clamp.</summary>
+        public static float RollToUnit(long roll)
         {
-            var chance = new double[5];
-            for (int i = 0; i < OutcomeCount; i++)
-                chance[OutcomeTiers[i]] += (double)OutcomeWeights[i] / TotalWeight;
-            return chance;
+            if (roll <= 0)
+                return 0f;
+            if (roll >= RollRange)
+                roll = RollRange - 1;
+            return (float)(roll / (double)RollRange);
         }
 
-        private static long[] BuildTierWeight()
-        {
-            var w = new long[5];
-            for (int i = 0; i < OutcomeCount; i++)
-                w[OutcomeTiers[i]] += OutcomeWeights[i];
-            return w;
-        }
-
-        /// <summary>Base (no pity) chance of a tier, by ItemRarity (Normal includes empty and junk digs).</summary>
-        public static double GetBaseTierChance(ItemRarity tier) => BaseTierChance[(int)tier];
-
-        /// <summary>Odds multiplier a tier (pity index 0..3 = Uncommon..Legendary) has after `digs` digs without it.</summary>
-        public static double GetPityMultiplier(int pityIndex, int digs)
-        {
-            int past = digs - PitySoftStartDigs[pityIndex];
-            if (past <= 0)
-                return 1.0;
-            double m = 1.0 + (double)PityStrength * PityGrowthPerDig[pityIndex] * past;
-            double cap = PityMaxMultiplier[pityIndex];
-            return m < cap ? m : cap;
-        }
-
-        /// <summary>
-        /// Fills tierChance (5 entries, by ItemRarity) with this dig's tier odds under the given pity
-        /// counters (Uncommon..Legendary). The better tiers are scaled down together if they would
-        /// exceed <see cref="MaxNonCommonChance"/>; the base tier (common gems, junk, nothing) takes the rest.
-        /// </summary>
-        public static void GetTierChances(int[] pity, double[] tierChance)
-        {
-            double nonCommon = 0;
-            for (int t = 1; t < 5; t++)
-            {
-                double c = BaseTierChance[t] * GetPityMultiplier(t - 1, pity != null ? pity[t - 1] : 0);
-                tierChance[t] = c;
-                nonCommon += c;
-            }
-            if (nonCommon > MaxNonCommonChance)
-            {
-                double scale = MaxNonCommonChance / nonCommon;
-                for (int t = 1; t < 5; t++)
-                    tierChance[t] *= scale;
-                nonCommon = MaxNonCommonChance;
-            }
-            tierChance[0] = 1.0 - nonCommon;
-        }
-
-        [System.ThreadStatic] private static double[] _scratchChance;
-
-        /// <summary>
-        /// Maps a roll in [0, RollRange) to a find under the given pity counters. The roll picks the
-        /// tier (best tier first) and its remainder picks the outcome inside the tier by the base
-        /// weights, so one uniform number decides the whole dig.
-        /// </summary>
-        public static DigFind Resolve(long roll, int[] pity)
-        {
-            var chance = _scratchChance ??= new double[5];
-            GetTierChances(pity, chance);
-
-            if (roll < 0) roll = 0;
-            if (roll >= RollRange) roll = RollRange - 1;
-            double u = roll / (double)RollRange;
-
-            double lo = 0;
-            for (int t = 4; t >= 0; t--)
-            {
-                double c = chance[t];
-                if (u < lo + c || t == 0)
-                {
-                    double v = c > 0 ? (u - lo) / c : 0; // position inside the tier, [0, 1)
-                    return PickInTier(t, v);
-                }
-                lo += c;
-            }
-            return DigFind.Nothing;
-        }
-
-        private static DigFind PickInTier(int tier, double v)
-        {
-            long w = (long)(v * TierWeight[tier]);
-            int last = 0;
-            for (int i = 0; i < OutcomeCount; i++)
-            {
-                if (OutcomeTiers[i] != tier)
-                    continue;
-                last = i;
-                w -= OutcomeWeights[i];
-                if (w < 0)
-                    return DigFind.FromOutcomeIndex(i);
-            }
-            return DigFind.FromOutcomeIndex(last);
-        }
-
-        /// <summary>
-        /// Advances the pity counters after a dig: tiers at or below the find's tier reset to 0 (an
-        /// empty or junk dig is in the base tier, so it resets none), better tiers count one more dig.
-        /// </summary>
-        public static void AdvancePity(int[] pity, DigFind found)
-        {
-            int foundTier = found.IsGem ? (int)Rarities[found.Index] : 0;
-            for (int i = 0; i < PityTierCount; i++)
-            {
-                int tier = i + 1;
-                if (tier <= foundTier)
-                    pity[i] = 0;
-                else if (pity[i] < int.MaxValue)
-                    pity[i]++;
-            }
-        }
+        /// <summary>Draws one dig's find from the bag with a dig roll in [0, RollRange).</summary>
+        public static DigFind Draw(ShuffleBag<int> bag, long roll)
+            => DigFind.FromOutcomeIndex(bag.NextFromRoll(RollToUnit(roll)));
     }
 }

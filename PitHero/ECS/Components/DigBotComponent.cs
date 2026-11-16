@@ -11,7 +11,7 @@ namespace PitHero.ECS.Components
     /// <see cref="GameConfig.DigBotSecondsPerTile"/> seconds in a zigzag, down the field and back up it, never
     /// moving more than one tile at a time (<see cref="GetScanTile"/>), and digs every
     /// tile it reaches that is not resting, exactly as a player click would
-    /// (<see cref="DiggingFieldService.TryDig"/>, shared pity, gems pay gold).
+    /// (<see cref="DiggingFieldService.TryDig"/>, shared dig bag, gems pay gold).
     ///
     /// Simulation: it runs in the fixed step, times itself with the step's Time.DeltaTime, rolls
     /// the session's sim stream (Nez.Random) only for a dig that happens, and reads nothing but sim

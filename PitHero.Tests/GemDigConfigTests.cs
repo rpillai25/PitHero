@@ -8,7 +8,7 @@ using System.IO;
 
 namespace PitHero.Tests
 {
-    /// <summary>The Digging Field's outcome table (issue #452): empty digs, junk and gems, and their odds.</summary>
+    /// <summary>The Digging Field's outcome table (issue #452): the 500-marble bag of junk and gems.</summary>
     [TestClass]
     public class GemDigConfigTests
     {
@@ -49,48 +49,47 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Weights_SumToTotal_ThirtyFiveThirtyThirtyFive()
+        public void Marbles_FiveHundred_HalfEmptyOrJunk_HalfGems()
         {
-            long gems = 0, junk = 0;
+            int gems = 0, junk = 0;
             for (int i = 0; i < GemDigConfig.GemCount; i++)
             {
-                Assert.IsTrue(GemDigConfig.GetWeight((GemType)i) > 0, ((GemType)i).ToString());
-                gems += GemDigConfig.GetWeight((GemType)i);
+                Assert.IsTrue(GemDigConfig.GetMarbles((GemType)i) > 0, ((GemType)i).ToString());
+                gems += GemDigConfig.GetMarbles((GemType)i);
             }
             for (int i = 0; i < GemDigConfig.JunkCount; i++)
-                junk += GemDigConfig.GetWeight((DigJunkType)i);
-            Assert.AreEqual(GemDigConfig.TotalWeight, GemDigConfig.NothingWeight + junk + gems);
-            Assert.AreEqual(350_000, GemDigConfig.NothingWeight, "35% of digs turn up nothing");
-            Assert.AreEqual(300_000, junk, "30% turn up junk");
-            Assert.AreEqual(350_000, gems, "35% turn up a gem");
+            {
+                Assert.IsTrue(GemDigConfig.GetMarbles((DigJunkType)i) > 0, ((DigJunkType)i).ToString());
+                junk += GemDigConfig.GetMarbles((DigJunkType)i);
+            }
+            Assert.AreEqual(500, GemDigConfig.BagSize);
+            Assert.AreEqual(GemDigConfig.BagSize, GemDigConfig.NothingMarbles + junk + gems);
+            Assert.AreEqual(135, GemDigConfig.NothingMarbles, "empty digs");
+            Assert.AreEqual(115, junk, "junk");
+            Assert.AreEqual(250, GemDigConfig.NothingMarbles + junk, "half the bag pays nothing");
+            Assert.AreEqual(250, gems, "half the bag is gems");
         }
 
         [TestMethod]
-        public void Diamond_IsOneInAThousand_AndTiersFallOff()
+        public void Diamond_IsOneMarbleInFiveHundred_AndTiersFallOff()
         {
-            Assert.AreEqual(1.0 / 1000, GemDigConfig.GetProbability(GemType.Diamond), 1e-12);
+            Assert.AreEqual(1, GemDigConfig.GetMarbles(GemType.Diamond));
+            Assert.AreEqual(1.0 / 500, GemDigConfig.GetProbability(GemType.Diamond), 1e-12);
             for (int t = 2; t < 5; t++)
                 Assert.IsTrue(GemTierProbability((ItemRarity)t) < GemTierProbability((ItemRarity)(t - 1)) / 1.5,
                     ((ItemRarity)t) + " should be well under the chance of " + ((ItemRarity)(t - 1)));
         }
 
         [TestMethod]
-        public void GemWeights_AreGeometric_AboutOnePointFourEightFiveApart()
+        public void NoGemIsMoreCommonThanTheOneBeforeIt_AndJunkFallsOffToo()
         {
             for (int i = 1; i < GemDigConfig.GemCount; i++)
-            {
-                double ratio = (double)GemDigConfig.GetWeight((GemType)(i - 1)) / GemDigConfig.GetWeight((GemType)i);
-                Assert.AreEqual(1.485, ratio, 0.01, ((GemType)(i - 1)) + " vs " + ((GemType)i));
-            }
-        }
-
-        [TestMethod]
-        public void EveryGemIsRarerThanTheOneBeforeIt_AndJunkFallsOffToo()
-        {
-            for (int i = 1; i < GemDigConfig.GemCount; i++)
-                Assert.IsTrue(GemDigConfig.GetWeight((GemType)i) < GemDigConfig.GetWeight((GemType)(i - 1)),
-                    ((GemType)i) + " should be rarer than " + ((GemType)(i - 1)));
-            Assert.IsTrue(GemDigConfig.GetWeight(DigJunkType.YarnBall) < GemDigConfig.GetWeight(DigJunkType.Shell),
+                Assert.IsTrue(GemDigConfig.GetMarbles((GemType)i) <= GemDigConfig.GetMarbles((GemType)(i - 1)),
+                    ((GemType)i) + " should not be more common than " + ((GemType)(i - 1)));
+            for (int i = 1; i < GemDigConfig.JunkCount; i++)
+                Assert.IsTrue(GemDigConfig.GetMarbles((DigJunkType)i) <= GemDigConfig.GetMarbles((DigJunkType)(i - 1)),
+                    ((DigJunkType)i) + " should not be more common than " + ((DigJunkType)(i - 1)));
+            Assert.IsTrue(GemDigConfig.GetMarbles(DigJunkType.YarnBall) < GemDigConfig.GetMarbles(DigJunkType.Shell),
                 "the last junk listed is rarer than the first");
         }
 
@@ -124,47 +123,57 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void FromRoll_CoversEveryRollExactlyByWeight()
+        public void ExpectedValue_Is28280GoldPerBag()
         {
-            int start = 0;
-            for (int i = 0; i < GemDigConfig.OutcomeCount; i++)
-            {
-                var find = DigFind.FromOutcomeIndex(i);
-                int end = start + (int)Math.Round(GemDigConfig.GetProbability(find) * GemDigConfig.TotalWeight);
-                Assert.AreEqual(i, GemDigConfig.FromRoll(start).OutcomeIndex, "first roll of " + find);
-                Assert.AreEqual(i, GemDigConfig.FromRoll(end - 1).OutcomeIndex, "last roll of " + find);
-                start = end;
-            }
-            Assert.AreEqual(GemDigConfig.TotalWeight, start);
-            Assert.AreEqual(DigFindKind.Nothing, GemDigConfig.FromRoll(-5).Kind);
-            Assert.AreEqual(GemType.Diamond, GemDigConfig.FromRoll(GemDigConfig.TotalWeight + 5).Gem);
-        }
-
-        [TestMethod]
-        public void ExpectedValue_IsAboutFortyThreeGoldPerDig()
-        {
-            double ev = 0;
+            int perBag = 0;
             for (int i = 0; i < GemDigConfig.GemCount; i++)
-                ev += GemDigConfig.GetProbability((GemType)i) * GemDigConfig.GetValue((GemType)i);
-            Assert.AreEqual(43.5, ev, 0.1);
+                perBag += GemDigConfig.GetMarbles((GemType)i) * GemDigConfig.GetValue((GemType)i);
+            Assert.AreEqual(28_280, perBag);
+            Assert.AreEqual(56.56, (double)perBag / GemDigConfig.BagSize, 1e-9);
         }
 
         [TestMethod]
-        public void Roll_FrequenciesMatchTheTable()
+        public void Bag_EveryCycleOfFiveHundredDigsHoldsTheExactComposition()
         {
-            const int Digs = 400_000;
-            int nothing = 0, junk = 0, gems = 0;
+            var bag = GemDigConfig.BuildBag();
+            Assert.AreEqual(GemDigConfig.BagSize, bag.Count);
             var random = new SeedableRandom(452);
-            for (int i = 0; i < Digs; i++)
+            for (int cycle = 0; cycle < 4; cycle++)
             {
-                var find = GemDigConfig.Roll(random);
-                if (find.Kind == DigFindKind.Nothing) nothing++;
-                else if (find.Kind == DigFindKind.Junk) junk++;
-                else gems++;
+                var counts = new int[GemDigConfig.OutcomeCount];
+                for (int d = 0; d < GemDigConfig.BagSize; d++)
+                    counts[GemDigConfig.Draw(bag, random.NextInt64(GemDigConfig.RollRange)).OutcomeIndex]++;
+                for (int i = 0; i < GemDigConfig.OutcomeCount; i++)
+                {
+                    var find = DigFind.FromOutcomeIndex(i);
+                    Assert.AreEqual(GemDigConfig.GetMarbles(find), counts[i], "cycle " + cycle + ": " + find);
+                }
             }
-            Assert.AreEqual(0.35, (double)nothing / Digs, 0.005, "nothing");
-            Assert.AreEqual(0.30, (double)junk / Digs, 0.005, "junk");
-            Assert.AreEqual(0.35, (double)gems / Digs, 0.005, "gems");
+        }
+
+        [TestMethod]
+        public void Bag_SameRollsDrawTheSameFinds()
+        {
+            var a = GemDigConfig.BuildBag();
+            var b = GemDigConfig.BuildBag();
+            var random = new SeedableRandom(7);
+            for (int i = 0; i < 3_000; i++)
+            {
+                long roll = random.NextInt64(GemDigConfig.RollRange);
+                Assert.AreEqual(GemDigConfig.Draw(a, roll).OutcomeIndex, GemDigConfig.Draw(b, roll).OutcomeIndex);
+            }
+        }
+
+        [TestMethod]
+        public void RollToUnit_ClampsIntoZeroToOne()
+        {
+            Assert.AreEqual(0f, GemDigConfig.RollToUnit(-5));
+            Assert.AreEqual(0f, GemDigConfig.RollToUnit(0));
+            Assert.AreEqual(0.5f, GemDigConfig.RollToUnit(GemDigConfig.RollRange / 2));
+            Assert.IsTrue(GemDigConfig.RollToUnit(long.MaxValue) <= 1f);
+            // A full bag drawn with the extreme rolls still returns a marble from the bag
+            Assert.AreEqual(DigFindKind.Nothing, GemDigConfig.Draw(GemDigConfig.BuildBag(), -1).Kind, "first marble in outcome order");
+            Assert.AreEqual(GemType.Diamond, GemDigConfig.Draw(GemDigConfig.BuildBag(), long.MaxValue).Gem, "last marble in outcome order");
         }
 
         [TestMethod]

@@ -200,6 +200,20 @@ only, so the Sim stream advances only when a catch happens. Owner: the scene-sco
 (registered in `MainGameScene`, removed in Unload), so pity lasts a session. Tested in
 `PitHero.Tests/FishingJobTests.cs` (exact composition of one full cycle).
 
+## Digging Field finds — `DiggingFieldService`
+
+Files: `PitHero/Services/DiggingFieldService.cs`, `PitHero/Config/GemDigConfig.cs`.
+
+One 500-marble `ShuffleBag<int>` of outcome indices (`DigFind.OutcomeIndex`) shared by the player's
+clicks and the DigBot: 135 empty digs, 115 junk and 250 gems, exactly one Diamond (table in
+`docs/EconomyBalanceGuide.md`). Built in outcome order by `GemDigConfig.BuildBag`. The roll is not
+drawn from the Sim stream at dig time: a click draws a long on `GameRandom.Ui` and records it in the
+`DigGem` command's L; the DigBot draws it from `Nez.Random` in the fixed step. Either way
+`GemDigConfig.Draw` maps it to `[0, 1)` for `NextFromRoll`. It replaced the v42 pity counters
+(dropped in save v43). Owner: the scene-scoped `DiggingFieldService`, so the bag lasts a session.
+Tested in `PitHero.Tests/GemDigConfigTests.cs` and `GemDigBagTests.cs` (exact composition of every
+cycle, one Diamond per 500 service digs, v42 saves still load).
+
 ## Persistence: none, by design
 
 All bags are transient in-memory state — they refill fresh each session and are **never

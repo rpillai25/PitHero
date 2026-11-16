@@ -512,8 +512,8 @@ namespace PitHero.Services.Replay
         /// <summary>
         /// Digs one Digging Field tile (issue #452). Re-validates everything the click saw: the
         /// Prospector's Map is owned, a field is placed, the tile is inside it and not resting. The
-        /// click's uniform roll (drawn on the UI stream) becomes a find (nothing, junk or a gem) here, under the sim-side pity
-        /// counters, so the payout depends only on sim state and the recorded roll. Pays out, starts
+        /// click's uniform roll (drawn on the UI stream) draws a find (junk or a gem) from the sim-side dig bag
+        /// here, so the payout depends only on sim state and the recorded roll. Pays out, starts
         /// the tile's cooldown and shows the find rising out of the tile.
         /// </summary>
         private static void ApplyDigGem(int tileX, int tileY, long roll)
