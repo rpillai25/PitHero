@@ -18,6 +18,9 @@ namespace PitHero.Services.Replay.Frames
     ///   NinePatch  patchId u16, x i16, y i16, dx i16, dy i16, w i16, h i16, color u32, flags u8                (19)
     ///   Particle   effectKey u8, density u8 (tenths), x i16, y i16, elapsedTicks u16, renderLayer i16,
     ///              layerDepth f32, flags u8 (Emitting)                                                          (15)
+    ///   Line       x1 i16, y1 i16, x2 i16, y2 i16, thickness u8, color u32, layerDepth f32, renderLayer i16   (19)
+    /// A Line op (format v16, the fishing pole and line) is a world-space segment drawn with Batcher.DrawLine,
+    /// depth-sorted with the sprites on its render layer.
     /// x/y are the anchor. With <see cref="FrameOpFlags.ConstantScreenSize"/> the anchor is a world point and
     /// dx/dy/w/h are screen pixels applied after the world-to-screen transform (constant on-screen size at
     /// any zoom: damage numbers, HP bars, speech bubbles); otherwise dx/dy/w/h share the anchor's space.
@@ -33,6 +36,7 @@ namespace PitHero.Services.Replay.Frames
         public const byte Rect = 4;
         public const byte NinePatch = 5;
         public const byte Particle = 6;
+        public const byte Line = 7;
 
         /// <summary>Payload bytes after the code byte for the fixed-size ops; Composite is variable.</summary>
         public const int SpritePayload = 17;
@@ -42,6 +46,7 @@ namespace PitHero.Services.Replay.Frames
         public const int RectPayload = 17;
         public const int NinePatchPayload = 19;
         public const int ParticlePayload = 15;
+        public const int LinePayload = 19;
 
         /// <summary>Text charCount meaning "every character from charStart".</summary>
         public const ushort AllChars = 0xFFFF;
@@ -137,6 +142,17 @@ namespace PitHero.Services.Replay.Frames
         public short X, Y, DX, DY, Width, Height;
         public uint Color;
         public byte Flags;
+    }
+
+    /// <summary>A world-space line segment (the fishing pole and line).</summary>
+    public struct LineOp
+    {
+        public short X1, Y1, X2, Y2;
+        /// <summary>Thickness in world pixels.</summary>
+        public byte Thickness;
+        public uint Color;
+        public float LayerDepth;
+        public short RenderLayer;
     }
 
     /// <summary>A live particle emitter at one tick: which effect, where its root is, how long it has run.</summary>
@@ -427,6 +443,35 @@ namespace PitHero.Services.Replay.Frames
             WriteU8(flags);
         }
 
+        /// <summary>Line op from live world values (ends snapped to pixels, thickness clamped to 1..255).</summary>
+        public void WriteLine(float x1, float y1, float x2, float y2, float thickness, uint color, float layerDepth, int renderLayer)
+        {
+            float t = MathF.Round(thickness);
+            WriteU8(FrameOpCode.Line);
+            WriteI16(ToPixel(x1));
+            WriteI16(ToPixel(y1));
+            WriteI16(ToPixel(x2));
+            WriteI16(ToPixel(y2));
+            WriteU8(t <= 1f ? (byte)1 : t >= byte.MaxValue ? byte.MaxValue : (byte)t);
+            WriteU32(color);
+            WriteF32(layerDepth);
+            WriteI16((short)renderLayer);
+        }
+
+        /// <summary>Line op from a decoded record.</summary>
+        public void WriteLine(in LineOp op)
+        {
+            WriteU8(FrameOpCode.Line);
+            WriteI16(op.X1);
+            WriteI16(op.Y1);
+            WriteI16(op.X2);
+            WriteI16(op.Y2);
+            WriteU8(op.Thickness);
+            WriteU32(op.Color);
+            WriteF32(op.LayerDepth);
+            WriteI16(op.RenderLayer);
+        }
+
         /// <summary>Particle op from a decoded record.</summary>
         public void WriteParticle(in ParticleOp op)
         {
@@ -653,6 +698,19 @@ namespace PitHero.Services.Replay.Frames
             op.Flags = ReadU8();
         }
 
+        /// <summary>Line payload (after its op code).</summary>
+        public void ReadLine(out LineOp op)
+        {
+            op.X1 = ReadI16();
+            op.Y1 = ReadI16();
+            op.X2 = ReadI16();
+            op.Y2 = ReadI16();
+            op.Thickness = ReadU8();
+            op.Color = ReadU32();
+            op.LayerDepth = ReadF32();
+            op.RenderLayer = ReadI16();
+        }
+
         /// <summary>Skips one whole op (code + payload) at the cursor; throws on an unknown code.</summary>
         public void SkipOp()
         {
@@ -669,6 +727,7 @@ namespace PitHero.Services.Replay.Frames
                 case FrameOpCode.Rect: Skip(FrameOpCode.RectPayload); break;
                 case FrameOpCode.NinePatch: Skip(FrameOpCode.NinePatchPayload); break;
                 case FrameOpCode.Particle: Skip(FrameOpCode.ParticlePayload); break;
+                case FrameOpCode.Line: Skip(FrameOpCode.LinePayload); break;
                 default: throw new InvalidDataException("Unknown frame op code " + code);
             }
         }

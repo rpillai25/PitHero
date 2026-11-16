@@ -335,6 +335,9 @@ namespace PitHero.UI
             // One-shot: the monster window pauses the game so the clock can't cross 10 PM while open.
             var timeService = Core.Services?.GetService<InGameTimeService>();
             bool kitchenClosed = TavernScheduleConfig.IsKitchenClosed(timeService?.Hour ?? 12);
+            // Fishing needs a placed pond and has room for 4 fishers per shift (the same rule the
+            // SetMonsterJob handler enforces)
+            bool pondPlaced = FishingTaskCoordinator.FindPond(Core.Services.GetService<BuildingService>()) != null;
 
             // The workforce summary belongs to the aggregate view only; the per-house view lists a
             // subset that the roster-wide totals would not describe.
@@ -539,6 +542,11 @@ namespace PitHero.UI
                         // it refields at 6 AM). Show the current selection at full brightness so
                         // the player can see the active job, but don't allow clicking.
                         bool disabledByClosure = kitchenClosed && jobValue == MonsterJob.Cooking && !jobsAutomated;
+                        var fishingVerdict = jobValue == MonsterJob.Fishing && !jobsAutomated
+                            ? FishingJobRules.CanAssign(manager?.AlliedMonsters, capturedMonster, pondPlaced)
+                            : FishingAssignResult.Allowed;
+                        if (fishingVerdict != FishingAssignResult.Allowed)
+                            disabledByClosure = true;
 
                         // With automation on, the system owns assignments: buttons stay visible
                         // (active job bright, others dimmed harder) but never accept clicks.
@@ -561,7 +569,11 @@ namespace PitHero.UI
                             };
                         }
 
-                        if (disabledByClosure)
+                        if (fishingVerdict == FishingAssignResult.NeedsPond)
+                            jobBtn.SetHoverText(GetText(TextType.UI, UITextKey.JobFishingNeedsPond));
+                        else if (fishingVerdict == FishingAssignResult.CrewFull)
+                            jobBtn.SetHoverText(GetText(TextType.UI, UITextKey.JobFishingCrewFull));
+                        else if (disabledByClosure)
                             jobBtn.SetHoverText(GetText(TextType.UI, UITextKey.JobKitchenClosed));
 
                         buttonsTable.Add(jobBtn).Size(JobButtonSize, JobButtonSize).Pad(JobButtonPad);

@@ -150,8 +150,8 @@ The swap pass keeps its level-only gains (`GetProficiency`) so its "every swap s
 proficiency" no-oscillation argument is unchanged. Ties still break to the lowest roster index.
 
 A monster holding a job with **no demand entry** is non-sticky by definition and gets pooled and
-reassigned — this is the extensibility guarantee (a Fishing-assigned monster before a fishing
-evaluator exists just returns to the pool).
+reassigned — this is the extensibility guarantee (a monster holding a job that has no evaluator
+just returns to the pool).
 
 ## Current demand models
 
@@ -194,6 +194,17 @@ so a lower-priority job only claims workers its betters don't need.
 
   The demand model's granularity is `MonsterJob`, not `KitchenRole` — it asks for *N kitchen
   workers* and the coordinator decides the cook/server/runner split (`FillRoleMix`, below).
+- **Fishing** (`Sticky = true`, registered **last** via `AddEvaluator` in `MainGameScene`):
+  `FishingJobDemandEvaluator`. With a Fishing Pond placed, desired = one fisher per reachable pond
+  spot (`FishingTaskCoordinator.UsableSpotCount`, at most 4), capped at
+  `GameConfig.FishingMaxWorkersPerShift` = 4 and clamped to available workers; no pond → 0. Fishing
+  runs around the clock, so both shifts ask for the same crew (4 day + 4 night). `MinWorkers` = 0
+  and lowest priority: fishers soak up monsters farming and the kitchen don't need, and the
+  starvation release pulls them back whenever a better job needs hands. No backpressure (the pond
+  never runs out). The same 4-per-shift cap and pond requirement gate manual assignment
+  (`FishingJobRules`, checked by MonsterUI and the `SetMonsterJob` handler). Work loop:
+  `FishingTaskCoordinator` + `FishingMonsterStateMachine`; catches come from `FishingService`'s
+  200-marble bag (see `docs/FishLibrary.md`).
 
 Worked examples (farm plans present, no outstanding tasks): 2 monsters → 1 caretaker farms, 1
 home (kitchen can't field a functional crew of 2). Exactly 4 → 1 farmer + 3 kitchen. 12 with a
@@ -313,15 +324,17 @@ how the role-retention and pressure-smoothing fixes were validated.
   whole day crew drains right before the 6AM shift-change reassess re-staffs it. Harmless — the
   monsters are asleep/home anyway.
 
-## Adding a new job (e.g. Fishing)
+## Adding a new job
 
-The solver never changes. Steps:
+The solver never changes. Fishing was added this way; `FishingTaskCoordinator`,
+`FishingMonsterStateMachine` and `FishingJobDemandEvaluator` are the smallest complete example.
+Steps:
 
 1. The job must already exist in `MonsterJob` and have a coordinator/FSM work loop that
-   spawns/despawns workers off `AlliedMonster.Job` (fishing has the enum value but no work loop
-   yet — build that first, mirroring `FarmTaskCoordinator`).
-2. Create `PitHero/Services/AutoJob/FishingJobDemandEvaluator.cs` implementing
-   `IJobDemandEvaluator`: report `Job = MonsterJob.Fishing` and a `JobDemandEntry` computed from
+   spawns/despawns workers off `AlliedMonster.Job`, peered both ways with every other coordinator
+   (`AddPeer`) so a monster never has two worker entities.
+2. Create `PitHero/Services/AutoJob/<Job>JobDemandEvaluator.cs` implementing
+   `IJobDemandEvaluator`: report its `Job` and a `JobDemandEntry` computed from
    whatever workload signal fits (keep the arithmetic in a `public static ComputeDemand(...)` so
    it's unit-testable headless, like the existing evaluators; take service dependencies as
    nullable constructor params). `EvaluateDemand(rosterSize, availableWorkers)` — clamp to
@@ -336,8 +349,8 @@ The solver never changes. Steps:
    the min/desired fill passes, the `availableWorkers` reservation, and the starvation release
    pass (which only raids lower-priority jobs).
 5. Add `GameConfig` constants for its tunables (`AutoJob*` prefix).
-6. Proficiency: `JobAssignmentSolver.GetProficiency` already maps `MonsterJob.Fishing` →
-   `FishingProficiency`. A brand-new job beyond the existing three needs a case added there.
+6. Proficiency: `JobAssignmentSolver.GetProficiency` maps each of the three existing jobs to its
+   proficiency (Fishing → `FishingProficiency`). A brand-new job beyond the existing three needs a case added there.
 7. Tests: evaluator math cases in `AutoJobAssignmentServiceTests` (pattern:
    `FarmingDemand_*` / `KitchenDemand_*`), plus a solver staffing case if the job introduces a
    new demand shape.

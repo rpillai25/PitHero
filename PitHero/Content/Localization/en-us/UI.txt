@@ -87,6 +87,23 @@ BuildingNameDiggingField,Digging Field
 BuildingDescDiggingField,Click a tile (or press C over it) to dig for gems worth gold. Each tile rests a few seconds after a dig. Only one can be built.
 BuildingNameFishingPond,Fishing Pond
 BuildingDescFishingPond,A quiet pond stocked with fish. Only one can be built.
+FishMinnow,Minnow
+FishBluegill,Bluegill
+FishPerch,Perch
+FishRainbowTrout,Rainbow Trout
+FishLargemouthBass,Largemouth Bass
+FishGoldenKoi,Golden Koi
+FishChannelCatfish,Channel Catfish
+FishNorthernPike,Northern Pike
+FishLakeSturgeon,Lake Sturgeon
+FishAlligatorGar,Alligator Gar
+FishJunkCan,Old Can
+FishJunkBottle,Old Bottle
+FishJunkShoe,Old Boot
+FishCatchValueFormat,{0} (+{1}G)
+JobFishingNeedsPond,Requires a Fishing Pond
+JobFishingCrewFull,Fishing crew full (4 per shift)
+MonsterInfoFishWorkers,Current Fishers:
 WindowBuildings,Buildings
 WindowSeeds,Seeds
 WindowWateringPriority,Watering Priority

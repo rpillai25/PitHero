@@ -674,6 +674,19 @@ namespace PitHero.Services.Replay
             }
 
             var job = (MonsterJob)cmd.B;
+            if (job == MonsterJob.Fishing)
+            {
+                // Fishing needs a placed pond and has room for 4 fishers per shift (the UI greys the
+                // button out; this is the authoritative gate, reading only simulation state)
+                bool pondPlaced = FishingTaskCoordinator.FindPond(Services?.GetService<BuildingService>()) != null;
+                var verdict = FishingJobRules.CanAssign(mgr.AlliedMonsters, monster, pondPlaced);
+                if (verdict != FishingAssignResult.Allowed)
+                {
+                    Debug.Log($"[PlayerCommandHandlers] SetMonsterJob Fishing rejected for {monster.Name}: {verdict}");
+                    GetSettingsUI()?.MonsterUI?.RefreshMonsterList();
+                    return;
+                }
+            }
             if (monster.Job != job)
             {
                 AnalyticsService.LogMonsterJobChanged(monster.Name, monster.MonsterTypeName,

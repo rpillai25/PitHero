@@ -26,7 +26,10 @@ namespace PitHero.Util
 
         /// <summary>Gold-white sparks bursting from a Digging Field tile when a gem is dug up (issue
         /// #452); denser for rarer gems via densityScale. Ordinals are recorded in replay frames: append only.</summary>
-        GemSparkle
+        GemSparkle,
+
+        /// <summary>Blue-white droplets thrown up and falling back where a fishing catch leaves the water.</summary>
+        Splash
     }
 
     /// <summary>
@@ -107,7 +110,8 @@ namespace PitHero.Util
                     { ParticleEffectType.HealPotion, content.LoadParticleEmitterConfig("Content/Particles/heal_potion.pex") },
                     { ParticleEffectType.Fireball, content.LoadParticleEmitterConfig("Content/Particles/fireball.pex") },
                     { ParticleEffectType.Firestorm, content.LoadParticleEmitterConfig("Content/Particles/firestorm.pex") },
-                    { ParticleEffectType.GemSparkle, content.LoadParticleEmitterConfig("Content/Particles/gem_sparkle.pex") }
+                    { ParticleEffectType.GemSparkle, content.LoadParticleEmitterConfig("Content/Particles/gem_sparkle.pex") },
+                    { ParticleEffectType.Splash, content.LoadParticleEmitterConfig("Content/Particles/splash.pex") }
                 };
 
                 Initialized = true;
