@@ -184,6 +184,7 @@ namespace PitHero.UI
         private ReplenishUI _replenishUI;
         private FarmUI _farmUI;
         private ConstructionUI _constructionUI;
+        private StatsUI _statsUI; // last button on the bar (issue #456)
 
         // Keyboard shortcut state
         private Microsoft.Xna.Framework.Input.KeyboardState _prevKeyboardState;
@@ -324,19 +325,15 @@ namespace PitHero.UI
             set { if (_farmUI != null) _farmUI.IsRefrigeratorDialogOpen = value; }
         }
 
-        /// <summary>Fired when the Farm Stats sub-button is clicked (issue #413); set by MainGameScene.</summary>
-        public System.Action FarmStatsRequested
+        /// <summary>Fired when the Stats top-bar button is clicked (issue #456); set by MainGameScene.</summary>
+        public System.Action StatsRequested
         {
-            get => _farmUI != null ? _farmUI.FarmStatsRequested : null;
-            set { if (_farmUI != null) _farmUI.FarmStatsRequested = value; }
+            get => _statsUI != null ? _statsUI.StatsRequested : null;
+            set { if (_statsUI != null) _statsUI.StatsRequested = value; }
         }
 
-        /// <summary>Reports whether the Farm Stats window is open; set by MainGameScene.</summary>
-        public System.Func<bool> FarmStatsDialogOpen
-        {
-            get => _farmUI?.IsFarmStatsDialogOpen;
-            set { if (_farmUI != null) _farmUI.IsFarmStatsDialogOpen = value; }
-        }
+        /// <summary>The Stats top-bar button, exempted from the Stats window's outside-click dismissal.</summary>
+        public Element StatsButton => _statsUI?.Button;
 
         /// <summary>Opens the monster roster filtered to a single Monster House (by UniqueId).</summary>
         public void ShowMonstersForHouse(int houseId) => _monsterUI?.ShowForHouse(houseId);
@@ -485,6 +482,9 @@ namespace PitHero.UI
 
             _constructionUI = new ConstructionUI();
             _constructionUI.InitializeUI(_stage);
+
+            _statsUI = new StatsUI();
+            _statsUI.InitializeUI(_stage);
 
             // Wire cross-UI references for single-window policy (all UIs must exist before wiring)
             _heroUI.SetFarmUI(_farmUI);
@@ -2016,9 +2016,10 @@ namespace PitHero.UI
             float secondChanceW = _secondChanceShopUI.GetWidth();
             float farmW    = _farmUI.GetWidth();
             float constructionW = _constructionUI?.GetWidth() ?? 0f;
+            float statsW = _statsUI?.GetWidth() ?? 0f;
 
-            // Calculate total width needed for all nine buttons with padding
-            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + farmW + constructionW + (8 * GameConfig.UIButtonPadding);
+            // Calculate total width needed for all ten buttons with padding
+            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + farmW + constructionW + statsW + (9 * GameConfig.UIButtonPadding);
 
             // Center all buttons as a group, shifted left by one button slot
             float startX = (stageW - totalWidth) * 0.5f - (gearW + GameConfig.UIButtonPadding);
@@ -2059,6 +2060,10 @@ namespace PitHero.UI
             // Position Construction button to the right of Farm
             float constructionX = farmX + farmW + GameConfig.UIButtonPadding;
             _constructionUI?.SetPosition(constructionX, buttonY);
+
+            // Position Stats button last, to the right of Construction (issue #456)
+            float statsX = constructionX + constructionW + GameConfig.UIButtonPadding;
+            _statsUI?.SetPosition(statsX, buttonY);
 
             // Position Farm sub-buttons starting below the Settings (gear) button
             float subButtonY = buttonY + _stopAdventuringUI.GetHeight() + 2f;
@@ -2483,6 +2488,7 @@ namespace PitHero.UI
             _replenishUI?.Update();
             _farmUI?.Update();
             _constructionUI?.Update();
+            _statsUI?.Update();
 
             // Exit till mode when any UI element is clicked. Skip on the frame till mode was just
             // entered — that LeftMouseButtonReleased is the same click that activated it.
@@ -2531,6 +2537,7 @@ namespace PitHero.UI
             if (_farmUI != null && _farmUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_farmUI != null && _farmUI.ConsumeSubButtonsToggleFlag()) needsReposition = true;
             if (_constructionUI != null && _constructionUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_statsUI != null && _statsUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_constructionUI != null && _constructionUI.ConsumeSubButtonsToggleFlag()) needsReposition = true;
 
             if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
@@ -3080,6 +3087,7 @@ namespace PitHero.UI
             _secondChanceShopUI?.SetTouchable(t);
             _farmUI?.SetTouchable(t);
             _constructionUI?.SetTouchable(t);
+            _statsUI?.SetTouchable(t);
         }
 
         /// <summary>

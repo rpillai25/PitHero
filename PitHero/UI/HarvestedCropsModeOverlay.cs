@@ -272,6 +272,7 @@ namespace PitHero.UI
                     int stackGold = CropSellPricing.GetStackSellPrice(_displaySlots[s].Type, sold);
                     realized += stackGold;
                     CropSellPricing.RecordSale(_displaySlots[s].Type, sold);
+                    LifetimeStats.Live?.RecordCropSale(_displaySlots[s].Type, sold, stackGold);
                     AnalyticsService.LogCropSold(_displaySlots[s].Type.ToString(), sold, stackGold, "manual");
                 }
             }
@@ -585,6 +586,7 @@ namespace PitHero.UI
                     gameState?.AddFunds(liveGold, "sell_crops");
                     CropSellPricing.RecordSale(liveSlot.Type, sold);
                     Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                    gameState?.Stats.RecordCropSale(liveSlot.Type, sold, liveGold);
                     AnalyticsService.LogCropSold(liveSlot.Type.ToString(), sold, liveGold, "manual");
                 }
             }

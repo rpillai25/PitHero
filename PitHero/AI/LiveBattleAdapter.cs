@@ -719,6 +719,7 @@ namespace PitHero.AI
             if (gameState != null)
             {
                 gameState.AddFunds(enemy.GoldYield, "battle");
+                gameState.Stats.MonstersDefeated++;
                 // Only hero kills reset InnExhausted (preserves original: rewardHeroComponent!=null guard)
                 if (heroKill && enemy.GoldYield > 0)
                     _heroComponent.InnExhausted = false;
@@ -819,11 +820,15 @@ namespace PitHero.AI
             {
                 PitHero.Services.Analytics.AnalyticsService.LogCharacterKilled(
                     (Hero)ally.Combatant, killer);
+                var heroStats = PitHero.Services.LifetimeStats.Live;
+                if (heroStats != null) heroStats.HeroDefeats++;
                 Debug.Log($"[LiveBattleAdapter] Hero killed by {killer.Name}.");
             }
             else
             {
                 var merc = (Mercenary)ally.Combatant;
+                var mercStats = PitHero.Services.LifetimeStats.Live;
+                if (mercStats != null) mercStats.MercenaryDeaths++;
                 PitHero.Services.Analytics.AnalyticsService.LogCharacterKilled(merc, killer);
                 Debug.Log($"[LiveBattleAdapter] {merc.Name} killed by {killer.Name}.");
 

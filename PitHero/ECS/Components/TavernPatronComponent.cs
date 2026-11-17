@@ -178,6 +178,7 @@ namespace PitHero.ECS.Components
                 {
                     int price = DishConfig.GetPrice(ActiveTicket.Dish);
                     _gameState.AddFunds(price, "dish_sale");
+                    _gameState.Stats.RecordDishGold(ActiveTicket.Dish, price);
 
                     // Guarded: this component also runs headless in tests (no Core, no Entity)
                     if (Core.Instance != null && Entity != null)
@@ -190,7 +191,10 @@ namespace PitHero.ECS.Components
                         float tipPct = Nez.Random.Range(GameConfig.DishTipMinPercent, GameConfig.DishTipMaxPercent);
                         tip = (int)Math.Ceiling(price * tipPct);
                         if (tip > 0)
+                        {
                             _gameState.AddFunds(tip, "dish_tip");
+                            _gameState.Stats.RecordDishGold(ActiveTicket.Dish, tip);
+                        }
                     }
 
                     PitHero.Services.Analytics.AnalyticsService.LogDishServed(

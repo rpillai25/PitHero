@@ -595,6 +595,7 @@ namespace PitHero.Services
                 gameState.CopyLocalArtifactOrdinals(data.LocalArtifacts);
                 data.CropHarvestedTotals = (int[])gameState.CropHarvestedTotals.Clone();
                 data.DishesServedTotals = (int[])gameState.DishesServedTotals.Clone();
+                data.Stats = gameState.Stats.CloneForSave();
                 data.WateringPriorityOrder = gameState.CopyWateringPriorityOrderArray();
                 var market = Core.Services.GetService<CropMarketService>();
                 data.CropDemand = market != null ? market.CopyDemand() : SaveData.FullDemand();
@@ -1226,6 +1227,8 @@ namespace PitHero.Services
                 gameState.SetLocalArtifacts(data.LocalArtifacts);
                 // Lifetime counters gate crop unlocks (sim-read), so they ride with the session too
                 gameState.SetProgressCounters(data.CropHarvestedTotals, data.DishesServedTotals);
+                // Stats window totals (issue #456): the session clock restarts at 0 in the new scene
+                gameState.Stats.CopyFrom(data.Stats);
                 // The watering order is sim-read by the water claim (issue #450): it rides with the session too
                 gameState.SetWateringPriorityOrder(data.WateringPriorityOrder);
                 // Crop market demand is sim state (issue #417): restore it with the wallet

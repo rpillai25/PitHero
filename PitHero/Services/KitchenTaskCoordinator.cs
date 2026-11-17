@@ -1165,6 +1165,7 @@ namespace PitHero.Services
                 // the ingredients are spent, the dish is made — payment is still collected (no tip)
                 EnsureServices();
                 _gameState?.AddFunds(DishConfig.GetPrice(t.Dish), "dish_sale");
+                _gameState?.Stats.RecordDishGold(t.Dish, DishConfig.GetPrice(t.Dish));
             }
 
             // Dish sitting on a serving table → orphan for the servers to sink (the entity may

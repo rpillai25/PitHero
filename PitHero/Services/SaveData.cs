@@ -281,7 +281,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 43; // v43: gem dig pity counters dropped (the Digging Field draws from a 500-marble shuffle bag); v42: gem dig site pity counters (issue #452); v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
+        public const int CurrentVersion = 45; // v45: Stats window digging totals (issue #456); v44: Stats window lifetime totals (issue #456); v43: gem dig pity counters dropped (the Digging Field draws from a 500-marble shuffle bag); v42: gem dig site pity counters (issue #452); v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -692,6 +692,10 @@ namespace PitHero.Services
         // Crop market (v37, issue #417)
         /// <summary>Per-crop market demand multiplier in [MarketDemandFloor, 1], indexed by (int)CropType. Pre-v37 files read as full demand.</summary>
         public float[] CropDemand;
+
+        // Stats window (v44, issue #456)
+        /// <summary>Lifetime game/farm/fishing totals; PlayedTicksBase already includes the saving session. Pre-v44 files read as zero.</summary>
+        public LifetimeStats Stats = new LifetimeStats();
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -1244,6 +1248,12 @@ namespace PitHero.Services
 
             // 56. Gem dig pity counters (v42 only, issue #452): retired in v43, when the Digging Field's
             // odds moved to a scene-scoped shuffle bag. Nothing is written.
+
+            // 57. Stats window lifetime totals (v44, issue #456)
+            (Stats ?? new LifetimeStats()).Write(writer);
+
+            // 58. Stats window digging totals (v45, issue #456): gems found and gem gold per GemType
+            (Stats ?? new LifetimeStats()).WriteDigging(writer);
         }
 
         /// <summary>
@@ -2011,6 +2021,16 @@ namespace PitHero.Services
             // draws from a shuffle bag (v43), so read past them and drop them.
             if (fileVersion == 42)
                 ReadIntArray(reader, 4);
+
+            // 57. Stats window lifetime totals (section added in v44, issue #456). Older files start
+            // every total at zero; nothing earlier was tracked.
+            Stats = new LifetimeStats();
+            if (fileVersion >= 44)
+                Stats.Read(reader);
+
+            // 58. Stats window digging totals (section added in v45). Older files have dug up nothing on record.
+            if (fileVersion >= 45)
+                Stats.ReadDigging(reader);
 
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
             // value. Older files carried two; reproduce the old EFFECTIVE sell floor (raised to the

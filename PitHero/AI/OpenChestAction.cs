@@ -72,6 +72,8 @@ namespace PitHero.AI
                             soundEffectManager?.PlaySoundAt(SoundEffectType.ChestOpen, _chestEntity.Transform.Position);
 
                             _treasureComponent.State = TreasureComponent.TreasureState.OPEN;
+                            var chestStats = Services.LifetimeStats.Live;
+                            if (chestStats != null) chestStats.TreasuresFound++;
                             Debug.Log("[OpenChest] Chest state changed to OPEN");
 
                             // Handle item pickup if there's a contained item

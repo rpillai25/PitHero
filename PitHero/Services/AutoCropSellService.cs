@@ -105,6 +105,7 @@ namespace PitHero.Services
                     int gold = CropSellPricing.GetStackSellPrice(_market, crop, units);
                     _gameState.AddFunds(gold, SellSource);
                     _market?.RecordSale(crop, units);
+                    _gameState.Stats.RecordCropSale(crop, units, gold);
                     Analytics.AnalyticsService.LogCropSold(crop.ToString(), units, gold, "auto");
                     _storage.ClearSlot(buildingId, s);
                 }
