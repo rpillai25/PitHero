@@ -446,6 +446,7 @@ namespace PitHero.Services.Replay
             gameState.SpendFunds(totalPrice, "seeds");
             cropPlantingService.AddSeeds(crop, qty);
             Core.GetGlobalManager<PitHero.Util.SoundEffectManager>()?.PlaySound(PitHero.Util.SoundEffectTypes.SoundEffectType.ItemPurchase);
+            gameState.Stats.RecordSeedPurchase(crop, totalPrice);
             AnalyticsService.LogSeedPurchased(crop.ToString(), qty, totalPrice, "manual", gameState.Funds);
             services.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
         }

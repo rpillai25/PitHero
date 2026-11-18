@@ -1013,6 +1013,7 @@ namespace PitHero.Services
                 return false;
             }
             gameState.SpendFunds(hireCost, "merc_hire");
+            gameState.Stats.MercenariesHired++;
 
             // Cancel any outstanding dining ticket and remove patron status before joining the party
             Core.Services.GetService<KitchenTaskCoordinator>()?.CancelTicketForPatron(mercEntity);

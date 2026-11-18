@@ -375,6 +375,7 @@ namespace PitHero.UI
                 gameState?.AddFunds(liveGold, "sell_crops");
                 CropSellPricing.RecordSale(liveSlot.Type, liveSlot.Count);
                 Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
+                gameState?.Stats.RecordCropSale(liveSlot.Type, liveSlot.Count, liveGold);
                 AnalyticsService.LogCropSold(liveSlot.Type.ToString(), liveSlot.Count, liveGold, "manual");
                 liveFridge.ClearSlot(slotIndex);
             }

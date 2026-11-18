@@ -47,6 +47,7 @@ namespace PitHero.Services
             int gold = FishingConfig.GetGold(type);
             if (gold > 0)
                 gameState?.AddFunds(gold, "fish_catch");
+            gameState?.Stats.RecordFishCatch(type, gold);
             MonsterJobTaskRecorder.Record(monster, MonsterJob.Fishing);
             AnalyticsService.LogFishCaught(type.ToString(), gold, spot,
                 monster?.Name, monster?.MonsterTypeName);

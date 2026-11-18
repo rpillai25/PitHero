@@ -101,10 +101,10 @@ namespace PitHero.ECS.Scenes
         private UI.RestoreGrassModeOverlay _restoreGrassModeOverlay;
         private bool _wasInRestoreGrassMode;
         private RefrigeratorDialog _refrigeratorDialog; // Fridge inventory window (issue #386)
-        private FarmStatsDialog _farmStatsDialog; // Lifetime harvest / dishes-served window (issue #413)
+        private StatsDialog _statsDialog; // Tabbed lifetime Stats window from the top bar (issue #456)
 
-        /// <summary>True while a Farm sub-bar dialog (Refrigerator or Farm Stats) is open; both share one pause/zoom gate.</summary>
-        private bool FarmDialogVisible => (_refrigeratorDialog?.IsVisible() ?? false) || (_farmStatsDialog?.IsVisible() ?? false);
+        /// <summary>True while the Refrigerator or Stats window is open; both share one pause/zoom gate.</summary>
+        private bool FarmDialogVisible => (_refrigeratorDialog?.IsVisible() ?? false) || (_statsDialog?.IsVisible() ?? false);
         private bool _wasFridgeDialogVisible;
         private bool _fridgeRestoreHalfZoom;
         private bool _wasInHarvestedCropsMode;
@@ -1583,12 +1583,12 @@ namespace PitHero.ECS.Scenes
                 _settingsUI.RefrigeratorDialogOpen = () => _refrigeratorDialog != null && _refrigeratorDialog.IsVisible();
             }
 
-            // Farm Stats window (issue #413) — opened from the Farm sub-bar, shares the fridge gate.
-            _farmStatsDialog = new FarmStatsDialog(_uiStage);
+            // Stats window (issue #456) — toggled by the last top-bar button, shares the fridge gate.
+            _statsDialog = new StatsDialog(_uiStage);
             if (_settingsUI != null)
             {
-                _settingsUI.FarmStatsRequested = () => _farmStatsDialog?.Show();
-                _settingsUI.FarmStatsDialogOpen = () => _farmStatsDialog != null && _farmStatsDialog.IsVisible();
+                _statsDialog.ToggleButton = _settingsUI.StatsButton;
+                _settingsUI.StatsRequested = () => _statsDialog?.Toggle();
             }
 
             // Building context menu — shown when a placed building is clicked (Move / Show ...).
@@ -4005,7 +4005,7 @@ namespace PitHero.ECS.Scenes
                 HandleFridgeClicks();
             _refrigeratorDialog?.Update();
             _addMonsterDialog?.Update();
-            _farmStatsDialog?.Update();
+            _statsDialog?.Update();
             UpdateFridgeDialogGate();
             UpdateBuildingMenuGate();
             UpdateStatueDialogGate();

@@ -100,7 +100,11 @@ namespace PitHero.Services
             // Every dig rests the tile; only a gem pays (an empty dig or junk is worth nothing)
             find = PitHero.Config.GemDigConfig.Draw(_bag, roll);
             if (find.IsGem)
-                gameState.AddFunds(PitHero.Config.GemDigConfig.GetValue(find), goldSource);
+            {
+                int value = PitHero.Config.GemDigConfig.GetValue(find);
+                gameState.AddFunds(value, goldSource);
+                gameState.Stats.RecordGemFind(find.Gem, value);
+            }
             StartCooldown(index);
             return true;
         }

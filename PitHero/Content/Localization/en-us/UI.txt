@@ -39,7 +39,7 @@ ButtonConstruction,Construction
 ButtonFarmIrrigation,Irrigation
 ButtonFarmRestoreGrass,Restore Grass
 ButtonFarmRefrigerator,Refrigerator
-ButtonFarmStats,Farm Stats
+ButtonStats,Stats
 HarvestCropApple,Apple
 HarvestCropCorn,Corn
 HarvestCropEggplant,Eggplant
@@ -537,9 +537,33 @@ LabelCropDemand,Market demand: {0}%
 LabelUnlockRequirementsHint,Harvest these crops to unlock:
 LabelDishUnlockRequirementsHint,Serve these dishes to unlock {0}:
 LabelFarmStatsLocked,{0} (locked)
-WindowFarmStats,Farm Stats
-HeadingFarmStatsField,Field
-HeadingFarmStatsKitchen,Kitchen
+HeadingFarmStatsField,Crops
+HeadingFarmStatsKitchen,Dishes
+TabStatsGame,Game
+TabStatsFarm,Farming
+TabStatsCooking,Cooking
+TabStatsFishing,Fishing
+TabStatsDigging,Digging
+HeadingStatsGems,Gems
+LabelStatsColFound,Found
+LabelStatsTotalEarned,Total Earned
+LabelStatsGoldRate,Gold earn rate
+LabelStatsGoldRateFormat,{0} G/hr
+LabelStatsMonstersDefeated,Monsters defeated
+LabelStatsTreasuresFound,Treasures found
+LabelStatsMercenariesHired,Mercenaries hired
+LabelStatsHeroDefeats,Hero defeats
+LabelStatsMercenaryDeaths,Mercenary deaths
+LabelStatsPitLevelsCleared,Pit levels cleared
+LabelStatsColHarvested,Harvested
+LabelStatsColSold,Sold
+LabelStatsColSeedCost,Seed Cost
+LabelStatsColProfit,Profit
+LabelStatsColCooked,Cooked
+LabelStatsColCaught,Caught
+LabelStatsColGold,Gold
+LabelStatsGoldFormat,{0}G
+HeadingStatsFish,Fish
 LabelJobLevelsHeading,Job Levels
 LabelJobLevelFormat,Lv {0}
 LabelJobProgressFormat,{0}/{1}

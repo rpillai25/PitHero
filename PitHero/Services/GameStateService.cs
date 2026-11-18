@@ -37,6 +37,7 @@ namespace PitHero.Services
         public void AddFunds(int amount, string source)
         {
             Funds += amount;
+            Stats.RecordGold(amount, source);
             Analytics.AnalyticsService.LogGoldGained(amount, source, Funds);
         }
 
@@ -253,12 +254,19 @@ namespace PitHero.Services
             CopyCounters(dishesServed, DishesServedTotals);
         }
 
-        /// <summary>Zeroes both counter arrays (a new hero starts from nothing).</summary>
+        /// <summary>Zeroes both counter arrays and the Stats window totals (a new hero starts from nothing).</summary>
         public void ClearProgressCounters()
         {
             CopyCounters(null, CropHarvestedTotals);
             CopyCounters(null, DishesServedTotals);
+            Stats.Clear();
         }
+
+        /// <summary>
+        /// Lifetime totals for the Stats window (issue #456). Write-only for the simulation; saved
+        /// with the hero (v44), restored by ApplyLoadedState, cleared with the progress counters.
+        /// </summary>
+        public LifetimeStats Stats { get; } = new LifetimeStats();
 
         private static void CopyCounters(int[] source, int[] target)
         {

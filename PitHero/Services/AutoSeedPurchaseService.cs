@@ -94,6 +94,7 @@ namespace PitHero.Services
                     owned++;
                     boughtAnything = true;
                 }
+                _gameState.Stats.RecordSeedPurchase(crop, (owned - ownedBefore) * price);
                 if (owned > ownedBefore)
                     AnalyticsService.LogSeedPurchased(crop.ToString(), owned - ownedBefore,
                         (owned - ownedBefore) * price, "auto", _gameState.Funds);

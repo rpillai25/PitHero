@@ -101,6 +101,9 @@ namespace PitHero.AI
             Debug.Log($"[ActivateWizardOrb] BossDefeated set to {hero.BossDefeated} for new pit level {newPitLevel}");
             Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit regenerated and hero repositioned");
 
+            var orbStats = Services.LifetimeStats.Live;
+            if (orbStats != null) orbStats.PitLevelsCleared++;
+
             Services.Analytics.AnalyticsService.LogOrbActivated(pitLevelBeforeOrb, newPitLevel, hero.LinkedHero?.Level ?? 0);
             Services.Analytics.AnalyticsService.LogPartySnapshot("orb", hero.LinkedHero);
 

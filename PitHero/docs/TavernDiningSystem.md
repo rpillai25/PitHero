@@ -503,7 +503,7 @@ default favorite is Buttered Bread. `Services/DishUnlockTracker.cs` is the one p
 records servings (`OnTicketDelivered` → `RecordDishServed`) and announces new unlocks
 (`dish_unlocked` analytics + a console line); it reads `GameStateService.DishesServedTotals`
 (save v35), so no new save data was needed — pre-v35 saves simply re-lock dishes above tier 0.
-Farm Stats marks not-yet-orderable dishes "(locked)".
+The Stats window (Farm tab) marks not-yet-orderable dishes "(locked)".
 
 ## Persistence (section 33)
 
