@@ -174,14 +174,41 @@ Composites any `ICompositeLayer` stack into a single 32×48 RT. Generic — work
 paperdolls, innkeeper, mercenaries, and any future multi-part animated actor (e.g. a dragon
 built from independently-animated body-part components). Extends `SpriteCompositorBase`.
 
-**How it works:**
+**How it works (baked frames, issue #459):**
 1. Constructor receives any `ICompositeLayer[]` in back-to-front draw order.
-2. `OnAddedToEntity` sets `OwnedByComposite = true` on each layer (suppresses direct render),
-   then calls `InitCompositor` with a draw callback that iterates layers via the interface.
-3. Each frame in `Render()` (base class): ends the outer batcher, switches to a 32×48
-   `RenderTarget2D`, draws layers with a translation matrix that maps entity world-position →
-   RT pixel (16, 39), restores the scene RT, and blits the composited sprite.
-4. Y-sort is applied each frame by `YSortManager` (SceneComponent).
+2. `OnAddedToEntity` sets `OwnedByComposite = true` on each layer (suppresses direct render)
+   and creates the character's `CharacterPoseCache` (`Rendering/CharacterPoseCache.cs`).
+3. Each frame `Render()` reads the current **pose** from the layers — every layer's sprite,
+   `LocalOffset`, `FlipX` and `LayerColor` — and asks the cache for it. A pose seen before
+   returns its cell in the shared `CharacterFrameAtlas` (`Rendering/CharacterFrameAtlas.cs`:
+   1024×1024 render-target pages cut into 32×48 cells); a new pose is baked into a fresh cell
+   first (one render-target round trip, clipped to the cell by scissor). The character is then
+   one quad from the shared page drawn with the composite's `Color`, `LocalOffset`, Y-sort depth
+   and bounds, so characters batch with each other. Left-facing poses are baked as their own
+   cells (the layers' flips and offsets are part of the pose).
+4. Nothing has to announce a look change: a recolor, a new hairstyle or the Armor layer
+   appearing simply produce new poses. Stale poses are dropped when the cache reaches
+   `GameConfig.CharacterFrameMaxPosesPerCharacter`; cells return to the atlas in
+   `OnRemovedFromEntity` (also on scene teardown). FNA never loses render-target contents, so
+   pages need no copy to a `Texture2D`.
+5. **Whole-body tints go on the composite `Color`, never on every layer** (death fades,
+   `HeroJumpComponent.SetColor`, Vanish). A per-frame change to layer colors makes a new pose
+   every frame and bakes every frame.
+6. Fallback: a pose that can't be baked (more than `CharacterPoseCache.MaxLayers` layers, atlas
+   full at `GameConfig.CharacterFrameMaxPages`, no graphics device) uses the base class's
+   per-frame 32×48 render target, created on first use.
+7. Y-sort is applied each frame by `YSortManager` (SceneComponent).
+8. Replays are unchanged: `FrameCaptureAdapters.CaptureMultiSprite` still records per-layer
+   Composite ops from the live layers (baked pages have no atlas name), so the layer animators
+   keep ticking even though they no longer draw.
+
+`AfterimageTrailComponent` draws each trail copy as one flat baked image from the body's cache
+(layers in white, tinted by the trail color) and still records per-layer ops for replays.
+
+**Measuring:** set `GameConfig.LogRenderStats = true` (Debug build) for a `[RenderStats]` line
+every `RenderStatsWindowFrames` frames: draw calls, compositor render-target switches, baked vs
+fallback characters, bakes, pages and cells in use. Draw calls come from `Batcher.DrawCallCount`
+in the Nez fork.
 
 **Key constants:**
 - `RT_WIDTH = 32`, `RT_HEIGHT = 48`
@@ -306,7 +333,7 @@ order relative to heroes and monsters.
 
 ### Render-target compositing pattern
 
-`SpriteCompositorBase.Render()` (shared by `MultiSpriteAnimator` and `StaticSpriteCompositor`) follows this sequence:
+`SpriteCompositorBase.Render()` (used by `StaticSpriteCompositor`, and by `MultiSpriteAnimator` only as its fallback) follows this sequence:
 
 ```
 1. prevRTs = GraphicsDevice.GetRenderTargets()

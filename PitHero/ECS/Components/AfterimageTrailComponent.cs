@@ -8,12 +8,18 @@ namespace PitHero.ECS.Components
 {
     /// <summary>
     /// A fading, tinted afterimage trail behind a character during a choreographed move (Iaido Slash, Heavy
-    /// Strike). Nez's SpriteTrail copies a single SpriteRenderer; characters are layered composites
-    /// (<see cref="MultiSpriteAnimator"/>), so this snapshots every layer's sprite, offset and flip each time
-    /// the body moves <see cref="GameConfig.AfterimageSpacing"/> px and draws the copies fading out, tinted
+    /// Strike). Each time the body moves <see cref="GameConfig.AfterimageSpacing"/> px it snapshots every
+    /// layer's sprite, offset and flip, and draws the copies fading out, tinted
     /// <see cref="GameConfig.AfterimageColor"/>, just behind the character (a small negative Y-sort offset).
+    ///
+    /// Live, each copy is one flat image: the snapshot is baked (untinted, layers in white) into the body's
+    /// <see cref="MultiSpriteAnimator"/> pose cache, so layers never show through each other and the whole
+    /// trail batches from the shared character frame atlas (issue #459). Nez's SpriteTrail is not used: it
+    /// keeps only one sprite per copy, so it cannot record per-layer ops for replays, hold while paused or
+    /// carry a Y-sort offset. A copy that can't be baked falls back to drawing its layers one by one.
+    ///
     /// Render-only; it runs on the fixed step, holds while paused and removes itself once the last copy fades.
-    /// Each copy is recorded as a Composite frame op, so replays show the trail.
+    /// Each copy is recorded as a Composite frame op (per layer, as before), so replays show the trail.
     /// </summary>
     public class AfterimageTrailComponent : RenderableComponent, IUpdatable, IFrameCapturable, IYSortOffset
     {
@@ -31,6 +37,7 @@ namespace PitHero.ECS.Components
         private readonly Sprite[] _sprites = new Sprite[MaxGhosts * MaxLayers];
         private readonly Vector2[] _offsets = new Vector2[MaxGhosts * MaxLayers];
         private readonly bool[] _flips = new bool[MaxGhosts * MaxLayers];
+        private readonly Color[] _whites = new Color[MaxGhosts * MaxLayers];
         private int _next;
         private MultiSpriteAnimator _body;
         private bool _emitting;
@@ -65,13 +72,13 @@ namespace PitHero.ECS.Components
         public float YSortOffset => -0.5f; // just behind the character on its own Y-sorted layer
 
         /// <summary>Where the body is drawn now (the compositor rounds the entity position).</summary>
-        private Vector2 BodyPosition
+        private Vector2 BodyPosition => _body.DrawPosition;
+
+        /// <summary>Creates an idle trail; <see cref="Begin"/> attaches and starts it.</summary>
+        public AfterimageTrailComponent()
         {
-            get
-            {
-                var p = Entity.Transform.Position;
-                return new Vector2(System.MathF.Round(p.X), System.MathF.Round(p.Y)) + _body.LocalOffset;
-            }
+            for (int i = 0; i < _whites.Length; i++)
+                _whites[i] = Color.White;
         }
 
         /// <inheritdoc/>
@@ -178,6 +185,15 @@ namespace PitHero.ECS.Components
                 if (ghost.LayerCount == 0)
                     continue;
                 var color = GhostColor(ghost.Age);
+                int start = g * MaxLayers;
+                var flat = _body != null && camera != null
+                    ? _body.ResolvePose(batcher, camera, _sprites, _offsets, _flips, _whites, start, ghost.LayerCount)
+                    : null;
+                if (flat != null)
+                {
+                    batcher.Draw(flat, ghost.Position, color, 0f, flat.Origin, Vector2.One, SpriteEffects.None, LayerDepth);
+                    continue;
+                }
                 for (int l = 0; l < ghost.LayerCount; l++)
                 {
                     int k = g * MaxLayers + l;

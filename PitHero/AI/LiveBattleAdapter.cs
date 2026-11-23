@@ -2070,6 +2070,9 @@ namespace PitHero.AI
             var origColors = new Color[layers.Length];
             for (int i = 0; i < layers.Length; i++)
                 origColors[i] = layers[i] != null ? layers[i].Color : Color.White;
+            // Fade the composite as a whole so its baked pose is reused (issue #459)
+            var composite = mercenaryEntity.GetComponent<MultiSpriteAnimator>();
+            var origComposite = composite != null ? composite.Color : Color.White;
 
             const float fadeDuration = 0.5f;
             float elapsed = 0f;
@@ -2080,7 +2083,9 @@ namespace PitHero.AI
                 elapsed += Time.DeltaTime;
                 float progress = elapsed < 0f ? 0f : (elapsed > fadeDuration ? 1f : elapsed / fadeDuration);
                 byte alpha = (byte)(255 * (1f - progress));
-                for (int i = 0; i < layers.Length; i++)
+                if (composite != null)
+                    composite.Color = new Color(origComposite.R, origComposite.G, origComposite.B, alpha);
+                else for (int i = 0; i < layers.Length; i++)
                 {
                     if (layers[i] != null)
                         layers[i].Color = new Color(origColors[i].R, origColors[i].G, origColors[i].B, alpha);

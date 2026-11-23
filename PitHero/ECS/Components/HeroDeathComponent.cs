@@ -98,6 +98,7 @@ namespace PitHero.ECS.Components
                 Entity.GetComponent<HeroEyesAnimationComponent>(),
                 Entity.GetComponent<HeroHairAnimationComponent>()
             };
+            var composite = Entity.GetComponent<MultiSpriteAnimator>();
 
             // Animate rise and fade
             float elapsed = 0f;
@@ -121,8 +122,14 @@ namespace PitHero.ECS.Components
                 // Fade out alpha
                 byte alpha = (byte)(255 * (1f - progress));
 
-                // Apply alpha to all renderers
-                for (int i = 0; i < renderers.Length; i++)
+                // Fade the composite as a whole so its baked pose is reused (issue #459); only an
+                // uncomposited stack fades layer by layer
+                if (composite != null)
+                {
+                    var color = composite.Color;
+                    composite.Color = new Color(color.R, color.G, color.B, alpha);
+                }
+                else for (int i = 0; i < renderers.Length; i++)
                 {
                     var renderer = renderers[i];
                     if (renderer != null)
