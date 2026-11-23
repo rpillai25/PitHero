@@ -24,6 +24,7 @@ namespace PitHero.ECS.Components
         private float _jumpStartTime;
         private float _jumpDuration;
         private float _initialYOffset;
+        private float _initialXOffset;
         private Direction _jumpDirection;
 
         public override void OnAddedToEntity()
@@ -138,7 +139,14 @@ namespace PitHero.ECS.Components
         /// <see cref="SetAirborneHeight"/> lifts from. Returns false when graphics are unavailable
         /// (headless tests). Used by StartJump and by scripted drops such as the new-game intro.
         /// </summary>
-        public bool BeginAirbornePose(Direction direction)
+        public bool BeginAirbornePose(Direction direction) => BeginAirbornePose(direction, keepRestOffset: false);
+
+        /// <summary>
+        /// As <see cref="BeginAirbornePose(Direction)"/>; with <paramref name="keepRestOffset"/> the rest offset
+        /// recorded by an earlier jump is kept, so a sprite that is still displaced (a mercenary standing beside
+        /// the hero after its attack jump, issue #458) jumps home relative to its real rest position.
+        /// </summary>
+        public bool BeginAirbornePose(Direction direction, bool keepRestOffset)
         {
             _jumpDirection = direction;
 
@@ -159,9 +167,13 @@ namespace PitHero.ECS.Components
             }
 
             // Arc offset lives on the composite's LocalOffset when present; otherwise per-layer.
-            _initialYOffset = _multiSpriteAnimator != null
-                ? _multiSpriteAnimator.LocalOffset.Y
-                : (_heroAnimators.Count > 0 ? _heroAnimators[0].LocalOffset.Y : 0f);
+            if (!keepRestOffset)
+            {
+                _initialYOffset = _multiSpriteAnimator != null
+                    ? _multiSpriteAnimator.LocalOffset.Y
+                    : (_heroAnimators.Count > 0 ? _heroAnimators[0].LocalOffset.Y : 0f);
+                _initialXOffset = _multiSpriteAnimator != null ? _multiSpriteAnimator.LocalOffset.X : 0f;
+            }
 
             for (int i = 0; i < _heroAnimators.Count; i++)
                 _heroAnimators[i]?.PlayJumpAnimation(direction);
@@ -176,17 +188,27 @@ namespace PitHero.ECS.Components
         /// Lifts the hero sprite heightPx above its rest offset. Render-only: the entity (collider,
         /// pathfinding, bubble anchor) does not move.
         /// </summary>
-        public void SetAirborneHeight(float heightPx)
+        public void SetAirborneHeight(float heightPx) => SetAirborneOffset(0f, 0f, heightPx);
+
+        /// <summary>
+        /// Moves the sprite (dx, dy) from its rest offset and lifts it heightPx above that point; the ground
+        /// shadow follows (dx, dy). Render-only, like <see cref="SetAirborneHeight"/>. The sideways part
+        /// applies to the composite (MultiSpriteAnimator) only.
+        /// </summary>
+        public void SetAirborneOffset(float dx, float dy, float heightPx)
         {
             if (_heroAnimators == null)
                 InitializeAnimators();
 
             if (heightPx < 0f) heightPx = 0f;
-            var yOffset = _initialYOffset - heightPx;
+            var yOffset = _initialYOffset + dy - heightPx;
+
+            if (_shadowRenderer != null)
+                _shadowRenderer.SetLocalOffset(new Vector2(dx, dy + GameConfig.TileSize / 4));
 
             if (_multiSpriteAnimator != null)
             {
-                _multiSpriteAnimator.LocalOffset = new Vector2(0f, yOffset);
+                _multiSpriteAnimator.LocalOffset = new Vector2(_initialXOffset + dx, yOffset);
             }
             else
             {
@@ -203,7 +225,13 @@ namespace PitHero.ECS.Components
         /// Restores the grounded look: rest offset, walking animation for the airborne direction,
         /// shadow hidden.
         /// </summary>
-        public void EndAirbornePose()
+        public void EndAirbornePose() => EndAirbornePose(0f, 0f);
+
+        /// <summary>
+        /// Lands the sprite (dx, dy) from its rest offset (0, 0 = home) with the grounded look: walking
+        /// animation for the airborne direction, shadow hidden.
+        /// </summary>
+        public void EndAirbornePose(float dx, float dy)
         {
             // Initialize _heroAnimators if null (may happen in tests)
             if (_heroAnimators == null)
@@ -214,7 +242,7 @@ namespace PitHero.ECS.Components
             // Reset the arc offset — on the composite when present, per-layer in legacy path.
             if (_multiSpriteAnimator != null)
             {
-                _multiSpriteAnimator.LocalOffset = new Vector2(0f, _initialYOffset);
+                _multiSpriteAnimator.LocalOffset = new Vector2(_initialXOffset + dx, _initialYOffset + dy);
             }
             else
             {
@@ -237,7 +265,10 @@ namespace PitHero.ECS.Components
             }
 
             if (_shadowRenderer != null)
+            {
                 _shadowRenderer.SetEnabled(false);
+                _shadowRenderer.SetLocalOffset(new Vector2(0, GameConfig.TileSize / 4));
+            }
         }
 
         /// <summary>Ends current jump</summary>

@@ -22,7 +22,7 @@ namespace RolePlayingFramework.Equipment.Axes
                 200,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,
-                elementalProps: new ElementalProperties(ElementType.Earth));
+                elementalProps: new ElementalProperties(ElementType.Earth)).WithAttackVisual(AttackVisual.AxeSwing);
         }
     }
 }

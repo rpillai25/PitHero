@@ -350,7 +350,8 @@ namespace PitHero.AI
 
             if (healed)
             {
-                Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffect(ParticleEffectType.Heal, targetEntity);
+                if (targetEntity != null)
+                    AttackEffects.PlaySkillOn(targetEntity, SkillEffect.Heal, GameConfig.SkillHealEffectDuration);
 
                 int casterMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).CurrentMP;
                 int casterMaxMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).MaxMP;

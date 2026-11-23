@@ -22,7 +22,7 @@ namespace RolePlayingFramework.Equipment.Spears
                 500,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,
-                elementalProps: new ElementalProperties(ElementType.Fire));
+                elementalProps: new ElementalProperties(ElementType.Fire)).WithAttackVisual(AttackVisual.Thrust);
         }
     }
 }

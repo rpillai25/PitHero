@@ -110,6 +110,20 @@ namespace RolePlayingFramework.Equipment
         public int Tier => _tier;
 
         /// <summary>
+        /// Attack animation override (issue #458); None derives it from <see cref="Kind"/> via
+        /// <see cref="AttackVisuals.For"/>. Spears and axes are tagged as swords, so their factories set it.
+        /// Presentation-only and not saved.
+        /// </summary>
+        public AttackVisual AttackVisual { get; private set; }
+
+        /// <summary>Sets the attack animation override and returns this gear (factory helper).</summary>
+        public Gear WithAttackVisual(AttackVisual visual)
+        {
+            AttackVisual = visual;
+            return this;
+        }
+
+        /// <summary>
         /// Creates a new Gear item with specified properties.
         /// </summary>
         /// <param name="name">Display name of the gear item</param>
@@ -196,7 +210,7 @@ namespace RolePlayingFramework.Equipment
                 mp:           source.MPBonus  * tier,
                 elementalProps: source.ElementalProps,
                 allowedJobs:  source.AllowedJobs,
-                tier:         tier);
+                tier:         tier).WithAttackVisual(source.AttackVisual);
         }
 
         /// <summary>The single stat a +N tier-scaled copy receives a minimal bonus to, chosen by gear kind.</summary>
