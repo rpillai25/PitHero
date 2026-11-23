@@ -87,6 +87,32 @@ namespace PitHero.Combat
         IEnumerator ShowSkillEffectOnMonsters(RolePlayingFramework.Combat.ICombatant caster,
             RolePlayingFramework.Skills.ISkill skill, IEnemy primaryTarget, List<IEnemy> surroundingTargets);
 
+        /// <summary>
+        /// Plays a physical attack's visual (issue #458): a melee ally (anything but a bow) that stands away
+        /// from the front line jumps beside the hero first, then the weapon's effect plays toward the target
+        /// (<see cref="RolePlayingFramework.Combat.AttackVisuals.For"/>; null weapon = unarmed). Yielded after
+        /// the attack is resolved and before its digits. Return null when there is nothing to show.
+        /// </summary>
+        IEnumerator ShowPhysicalAttack(IBattleAlly attacker, IEnemy target, RolePlayingFramework.Equipment.IItem weapon);
+
+        /// <summary>
+        /// Called after a physical attack's digits (and any death): a mercenary that jumped in for
+        /// <see cref="ShowPhysicalAttack"/> jumps back to its spot. Return null when nothing moved.
+        /// </summary>
+        IEnumerator EndPhysicalAttack(IBattleAlly attacker);
+
+        /// <summary>
+        /// Called after an attack skill's digits (and any deaths): a mercenary that jumped beside the hero for
+        /// a melee skill in <see cref="ShowSkillEffectOnMonsters"/> jumps back. Return null when nothing moved.
+        /// </summary>
+        IEnumerator EndSkillEffect(RolePlayingFramework.Combat.ICombatant caster);
+
+        /// <summary>
+        /// Called once when a support skill (heal, buff, self-buff) is cast, before its effects are shown.
+        /// Starts a cast visual that plays by itself (Defense Up's shield, Vanish's smoke); nothing waits on it.
+        /// </summary>
+        void ShowSkillCast(RolePlayingFramework.Combat.ICombatant caster, RolePlayingFramework.Skills.ISkill skill, IBattleAlly target);
+
         /// <summary>Shows a "Crit" label over a monster.</summary>
         IEnumerator ShowCritOnMonster(IEnemy enemy);
 

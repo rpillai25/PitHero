@@ -801,6 +801,10 @@ namespace PitHero.Combat
                 heroCritRoll, heroQdRoll);
             battleContext.MarkActed(hero);
 
+            // Attack visual (#458): presentation only, after every roll so RNG order is unchanged
+            var rpa = _sink.ShowPhysicalAttack(_hero, targetEnemy, hero.WeaponShield1);
+            if (rpa != null) yield return rpa;
+
             if (queuedAction.WeaponItem == null)
                 _sink.PlaySound(BattleSound.Punch, hero);
 
@@ -1025,6 +1029,11 @@ namespace PitHero.Combat
                 mercCritRoll, mercQdRoll);
             battleContext.MarkActed(mercenary);
 
+            // Attack visual (#458): a melee merc jumps beside the hero, then swings. Presentation only,
+            // after every roll so RNG order is unchanged; EndPhysicalAttack below jumps it back.
+            var rpa = _sink.ShowPhysicalAttack(mercAlly, paTarget, mercenary.WeaponShield1);
+            if (rpa != null) yield return rpa;
+
             _sink.PlaySound(BattleSound.Punch, mercenary);
 
             if (mercAttackResult.Hit)
@@ -1070,6 +1079,9 @@ namespace PitHero.Combat
                 var rm = _sink.ShowMissOnMonster(paTarget);
                 if (rm != null) yield return rm;
             }
+
+            var rback = _sink.EndPhysicalAttack(mercAlly);
+            if (rback != null) yield return rback;
         }
 
         // ── Shared combatant attack skill ─────────────────────────────────────────
@@ -1206,6 +1218,10 @@ namespace PitHero.Combat
                 var rf = _sink.ShowMonsterDeath(deadEnemy);
                 if (rf != null) yield return rf;
             }
+
+            // A mercenary that jumped beside the hero for a melee skill jumps back (#458; presentation only)
+            var rback = _sink.EndSkillEffect(caster);
+            if (rback != null) yield return rback;
         }
 
         // ── Monster turn ──────────────────────────────────────────────────────────
@@ -1440,6 +1456,9 @@ namespace PitHero.Combat
         private IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, ICombatant caster,
             object healTarget, IBattleAlly targetAlly, string casterName, BattleContext battleContext)
         {
+            // Cast visual (#458): detached, presentation only, before any effect is applied or shown
+            _sink.ShowSkillCast(caster, skill, targetAlly);
+
             // Threat: flat skill value plus percent-of-max-HP actually restored (computed below)
             float healThreat = ThreatTable.SkillFlatThreat(skill);
 

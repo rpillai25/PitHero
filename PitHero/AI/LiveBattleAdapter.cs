@@ -193,6 +193,10 @@ namespace PitHero.AI
                 }
             }
 
+            // The whole party squares up to the monster the hero engaged (the hero faced the first one)
+            _heroFocus = _monsterEntities.Count > 0 ? _monsterEntities[0] : null;
+            FacePartyTowardHeroFocus();
+
             // Create turn indicator entity
             _turnIndicatorEntity = Core.Scene?.CreateEntity("battle-turn-indicator");
             if (_turnIndicatorEntity != null)
@@ -247,6 +251,7 @@ namespace PitHero.AI
 
                 AddMercenaryBattleUIComponents(mercEntity);
                 mc.LinkedMercenary.ClearBattleState();
+                FaceEntityFrom(mercEntity, mercEntity.Transform.Position, FocusPosition(mercEntity));
                 Debug.Log($"[LiveBattleAdapter] {mc.LinkedMercenary.Name} joins the battle (late arrival)!");
             }
         }
@@ -254,6 +259,8 @@ namespace PitHero.AI
         /// <inheritdoc/>
         public IEnumerator OnTurnStarted(IBattleAlly ally)
         {
+            // Anyone who turned for their own action squares back up to the hero's target
+            FacePartyTowardHeroFocus();
             if (_turnIndicator == null) return null;
             var entity = GetEntityForAlly(ally);
             if (entity != null)
@@ -264,6 +271,7 @@ namespace PitHero.AI
         /// <inheritdoc/>
         public IEnumerator OnMonsterTurnStarted(IEnemy enemy)
         {
+            FacePartyTowardHeroFocus();
             if (_turnIndicator == null) return null;
             var entity = GetEntityForEnemy(enemy);
             if (entity != null)
@@ -341,44 +349,432 @@ namespace PitHero.AI
             return entity != null ? ShowTextOnEntity(entity, "Crit", Color.Yellow) : null;
         }
 
-        /// <summary>World-space pixels per second a skill projectile travels.</summary>
-        private const float SkillProjectileSpeed = 340f;
+        // ── Physical attack visuals (issue #458) ─────────────────────────────────────
 
-        /// <summary>How far above the enemy group's center an area rain effect spawns.</summary>
-        private const float AreaRainSpawnHeight = 70f;
-
-        /// <summary>How long the engine waits on an area rain effect before damage shows.</summary>
-        private const float AreaRainImpactDelay = 0.5f;
+        /// <summary>The mercenary entity currently standing beside the hero after an attack jump, or null.</summary>
+        private Entity _jumpedEntity;
+        /// <summary>Its sprite offset from home while it stands there.</summary>
+        private Vector2 _jumpedOffset;
+        /// <summary>Which way it faced before jumping; restored once it lands back home.</summary>
+        private Direction? _jumpedFacing;
 
         /// <inheritdoc/>
-        /// <remarks>Adding a skill visual = pex file + enum member + Init load line in
-        /// ParticleEffectManager + a case here.</remarks>
+        public IEnumerator ShowPhysicalAttack(IBattleAlly attacker, IEnemy target, IItem weapon)
+        {
+            var attackerEntity = GetEntityForAlly(attacker);
+            var targetEntity = GetEntityForEnemy(target);
+            if (attackerEntity == null || targetEntity == null)
+                return null;
+            if (attacker.IsHero)
+                SetHeroFocus(targetEntity);
+            return PhysicalAttackRoutine(attacker, attackerEntity, targetEntity.Transform.Position, AttackVisuals.For(weapon));
+        }
+
+        /// <inheritdoc/>
+        public IEnumerator EndPhysicalAttack(IBattleAlly attacker)
+            => JumpHomeIfJumped(GetEntityForAlly(attacker));
+
+        /// <inheritdoc/>
+        public IEnumerator EndSkillEffect(ICombatant caster)
+            => JumpHomeIfJumped(GetEntityForCombatant(caster));
+
+        /// <summary>Jumps <paramref name="entity"/> home if it is the mercenary standing beside the hero.</summary>
+        private IEnumerator JumpHomeIfJumped(Entity entity)
+        {
+            if (_jumpedEntity == null || entity != _jumpedEntity)
+                return null;
+            if (entity.IsDestroyed)
+            {
+                _jumpedEntity = null;
+                return null;
+            }
+            return JumpHomeRoutine(entity);
+        }
+
+        /// <summary>
+        /// Where a melee mercenary lands to attack: half a tile beside the hero, on its own side. False (no
+        /// jump) for the hero, a missing hero entity, or a mercenary already standing there.
+        /// </summary>
+        private bool TryPlanFrontLineJump(Entity attackerEntity, bool isMercenary, out Vector2 landing, out Vector2 offset)
+        {
+            landing = attackerEntity.Transform.Position;
+            offset = Vector2.Zero;
+            if (!isMercenary || _heroComponent?.Entity == null)
+                return false;
+            var from = attackerEntity.Transform.Position;
+            var heroPos = _heroComponent.Entity.Transform.Position;
+            float side = from.X < heroPos.X ? -1f : 1f;
+            landing = new Vector2(heroPos.X + side * GameConfig.MercAttackSideOffset, heroPos.Y);
+            offset = landing - from;
+            return offset.LengthSquared() >= 4f;
+        }
+
+        private IEnumerator PhysicalAttackRoutine(IBattleAlly attacker, Entity attackerEntity, Vector2 targetPos, AttackVisual visual)
+        {
+            var from = attackerEntity.Transform.Position;
+
+            // A melee mercenary jumps to the front line first
+            if (!AttackVisuals.IsRanged(visual)
+                && TryPlanFrontLineJump(attackerEntity, attacker is LiveMercenaryAlly, out var landing, out var offset))
+            {
+                _jumpedEntity = attackerEntity;
+                _jumpedOffset = offset;
+                _jumpedFacing = attackerEntity.GetComponent<ActorFacingComponent>()?.Facing;
+                yield return JumpArc(attackerEntity, Vector2.Zero, offset, returning: false);
+                from = landing;
+            }
+
+            FaceEntityFrom(attackerEntity, from, targetPos);
+
+            IEnumerator visualRoutine;
+            if (visual == AttackVisual.Arrow)
+                visualRoutine = AttackEffects.FlyArrow(Core.Scene, from, targetPos);
+            else if (visual == AttackVisual.Rod)
+                visualRoutine = AttackEffects.PlayRod(Core.Scene, from, targetPos);
+            else
+                visualRoutine = AttackEffects.PlayMelee(Core.Scene, visual, from, targetPos);
+            if (visualRoutine != null)
+                yield return visualRoutine;
+        }
+
+        private IEnumerator JumpHomeRoutine(Entity entity)
+        {
+            var offset = _jumpedOffset;
+            yield return JumpArc(entity, offset, Vector2.Zero, returning: true);
+            RestoreJumpedFacing(entity);
+            _jumpedEntity = null;
+            _jumpedOffset = Vector2.Zero;
+        }
+
+        /// <summary>
+        /// Render-only parabolic jump of an ally's sprite from one offset to another (relative to home). The
+        /// entity, its tile and its AI never move. Its length depends only on the distance and holds while the
+        /// game is paused, so the battle's tick count is the same live and in replays.
+        /// </summary>
+        private static IEnumerator JumpArc(Entity entity, Vector2 fromOffset, Vector2 toOffset, bool returning)
+        {
+            var delta = toOffset - fromOffset;
+            float duration = Mathf.Clamp(delta.Length() / GameConfig.MercAttackJumpSpeed,
+                GameConfig.MercAttackJumpMinDuration, GameConfig.MercAttackJumpMaxDuration);
+
+            var jump = entity.GetComponent<HeroJumpComponent>();
+            bool posed = jump != null && jump.BeginAirbornePose(DirectionOf(delta), keepRestOffset: returning);
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                yield return null;
+                elapsed += UnpausedDelta();
+                if (!posed || entity.IsDestroyed)
+                    continue;
+                float t = Mathf.Clamp01(elapsed / duration);
+                var at = Vector2.Lerp(fromOffset, toOffset, t);
+                jump.SetAirborneOffset(at.X, at.Y, GameConfig.MercAttackJumpHeight * 4f * t * (1f - t));
+            }
+
+            if (posed && !entity.IsDestroyed)
+                jump.EndAirbornePose(toOffset.X, toOffset.Y);
+        }
+
+        /// <summary>Turns a mercenary back to the way it faced before its attack jump.</summary>
+        private void RestoreJumpedFacing(Entity entity)
+        {
+            if (_jumpedFacing.HasValue && !entity.IsDestroyed)
+                entity.GetComponent<ActorFacingComponent>()?.SetFacing(_jumpedFacing.Value);
+            _jumpedFacing = null;
+        }
+
+        /// <summary>Puts a still-displaced mercenary back home at once (battle torn down mid-attack).</summary>
+        private void ResetJumpedAlly()
+        {
+            if (_jumpedEntity == null)
+                return;
+            if (!_jumpedEntity.IsDestroyed)
+            {
+                _jumpedEntity.GetComponent<HeroJumpComponent>()?.EndAirbornePose(0f, 0f);
+                RestoreJumpedFacing(_jumpedEntity);
+            }
+            _jumpedFacing = null;
+            _jumpedEntity = null;
+            _jumpedOffset = Vector2.Zero;
+        }
+
+        private static Direction DirectionOf(Vector2 delta)
+        {
+            if (System.Math.Abs(delta.X) >= System.Math.Abs(delta.Y))
+                return delta.X < 0 ? Direction.Left : Direction.Right;
+            return delta.Y < 0 ? Direction.Up : Direction.Down;
+        }
+
+        /// <summary>The fixed step's delta, or zero while the game is paused.</summary>
+        private static float UnpausedDelta()
+        {
+            var pauseService = Core.Services.GetService<PauseService>();
+            return pauseService?.IsPaused == true ? 0f : Time.DeltaTime;
+        }
+
+        /// <summary>Reused list of the hit enemies' positions, primary first (no allocation per skill).</summary>
+        private readonly List<Vector2> _targetPositions = new List<Vector2>(8);
+
+        /// <summary>Where a skill's main effect plays.</summary>
+        private enum EffectPlace : byte
+        {
+            /// <summary>On the primary target.</summary>
+            Target,
+            /// <summary>In front of the caster toward the target (<see cref="GameConfig.AttackEffectReach"/>), like a weapon swing.</summary>
+            Reach,
+            /// <summary>At the center of every hit enemy.</summary>
+            GroupCenter,
+            /// <summary>On the caster (where its sprite stands, after any jump).</summary>
+            Self,
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Adding a skill visual = an animation in SkillsStencils.atlas ("Skill" + name, cropped with its anchor
+        /// as the origin), a <see cref="SkillEffect"/> member, and a case here (see docs/ParticleEffects.md).
+        /// Melee skills make a mercenary jump beside the hero first; <see cref="EndSkillEffect"/> jumps it back.
+        /// Area skills strike each hit enemy with a detached hit effect partway through the area effect.
+        /// </remarks>
         public IEnumerator ShowSkillEffectOnMonsters(ICombatant caster, ISkill skill,
             IEnemy primaryTarget, List<IEnemy> surroundingTargets)
         {
+            var casterEntity = GetEntityForCombatant(caster);
+            var targetEntity = GetEntityForEnemy(primaryTarget);
+            if (casterEntity == null || targetEntity == null)
+                return null;
+            if (caster is Hero)
+                SetHeroFocus(targetEntity);
+            var scene = Core.Scene;
+            var from = casterEntity.Transform.Position;
+            var targetPos = targetEntity.Transform.Position;
+            CollectTargetPositions(targetPos, surroundingTargets);
+            var center = GetCenterOfEnemyGroup(primaryTarget, surroundingTargets) ?? targetPos;
+
             switch (skill.Id)
             {
+                // ── Mage ──
                 case "mage.fire":
-                {
-                    var casterEntity = GetEntityForCombatant(caster);
-                    var targetEntity = GetEntityForEnemy(primaryTarget);
-                    if (casterEntity == null || targetEntity == null)
-                        return null;
-                    return FlyProjectileEffect(ParticleEffectType.Fireball,
-                        casterEntity.Position, targetEntity.Position);
-                }
-
+                case "synergy.dragon_bolt":
+                    return BoltRoutine(scene, SkillEffect.Fireball, from, targetPos, SkillEffect.FireBlast);
                 case "mage.firestorm":
-                {
-                    var center = GetCenterOfEnemyGroup(primaryTarget, surroundingTargets);
-                    if (center == null)
-                        return null;
-                    return RainEffectOverPosition(ParticleEffectType.Firestorm, center.Value);
-                }
+                    return Magic(SkillEffect.MeteorShower, center, GameConfig.SkillMeteorShowerDuration,
+                        SkillEffect.Burn, GameConfig.SkillBurnDuration);
+
+                // ── Archer ──
+                case "archer.power_shot":
+                case "synergy.piercing_arrow":
+                    return ArrowRoutine(scene, from, targetPos, SkillEffect.ShotImpact);
+                case "synergy.poison_arrow":
+                    return ArrowRoutine(scene, from, targetPos, SkillEffect.PoisonHit);
+                case "synergy.lightshot":
+                    return ArrowRoutine(scene, from, targetPos, SkillEffect.HolyBurst);
+                case "synergy.ki_arrow":
+                    return ArrowRoutine(scene, from, targetPos, SkillEffect.KiBurst);
+                case "archer.volley":
+                    FaceEntity(casterEntity, targetPos);
+                    return AttackEffects.FlyVolley(scene, from, _targetPositions,
+                        SkillEffect.ShotImpact, GameConfig.SkillTargetHitDuration);
+                case "synergy.arrow_flurry":
+                    FaceEntity(casterEntity, targetPos);
+                    return FlurryRoutine(scene, from);
+                case "synergy.elemental_volley":
+                    FaceEntity(casterEntity, targetPos);
+                    return AttackEffects.FlyVolley(scene, from, _targetPositions,
+                        SkillEffect.FireBlast, GameConfig.SkillTargetHitDuration);
+
+                // ── Knight ──
+                case "knight.spin_slash":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.SpinSlash, EffectPlace.Self,
+                        GameConfig.SkillAreaEffectDuration, false, SkillEffect.FlashStrike, spin: true);
+                case "knight.heavy_strike":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.HeavyStrike, EffectPlace.Target,
+                        GameConfig.SkillHitEffectDuration, false);
+
+                // ── Monk ──
+                case "monk.roundhouse":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.Roundhouse, EffectPlace.GroupCenter,
+                        GameConfig.SkillAreaEffectDuration, false, SkillEffect.ShotImpact);
+                case "monk.flaming_fist":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.FlamingFist, EffectPlace.Target,
+                        GameConfig.SkillHitEffectDuration, false);
+
+                // ── Thief ──
+                case "thief.sneak_attack":
+                case "synergy.sneak_punch":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.SneakAttack, EffectPlace.Target,
+                        GameConfig.SkillHitEffectDuration, false);
+
+                // ── Synergy melee ──
+                case "synergy.holy_strike":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.HolyStrike, EffectPlace.Reach,
+                        GameConfig.SkillHitEffectDuration, true);
+                case "synergy.iaido_slash":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.Iaido, EffectPlace.Reach,
+                        GameConfig.SkillHitEffectDuration, true);
+                case "synergy.flash_strike":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.FlashStrike, EffectPlace.Reach,
+                        GameConfig.SkillHitEffectDuration, true);
+                case "synergy.shadow_slash":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.ShadowSlash, EffectPlace.Reach,
+                        GameConfig.SkillHitEffectDuration, true);
+                case "synergy.sacred_blade":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.SacredBlade, EffectPlace.Reach,
+                        GameConfig.SkillHitEffectDuration, true);
+                case "synergy.spellblade":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.Spellblade, EffectPlace.Reach,
+                        GameConfig.SkillHitEffectDuration, true);
+                case "synergy.dragon_claw":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.DragonClaw, EffectPlace.Target,
+                        GameConfig.SkillHitEffectDuration, false);
+                case "synergy.sacred_strike":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.HolyBurst, EffectPlace.Target,
+                        GameConfig.SkillHitEffectDuration, false);
+                case "synergy.dragon_kick":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.Roundhouse, EffectPlace.Target,
+                        GameConfig.SkillAreaEffectDuration, false, spin: true);
+                case "synergy.energy_burst":
+                    return Melee(caster, casterEntity, targetPos, SkillEffect.KiBurst, EffectPlace.GroupCenter,
+                        GameConfig.SkillAreaEffectDuration, false, SkillEffect.KiBurst);
+
+                // ── Synergy magic ──
+                case "synergy.meteor":
+                    return Magic(SkillEffect.Meteor, center, GameConfig.SkillMeteorShowerDuration,
+                        SkillEffect.Burn, GameConfig.SkillBurnDuration);
+                case "synergy.elemental_storm":
+                    return Magic(SkillEffect.ElementalStorm, center, GameConfig.SkillMeteorShowerDuration,
+                        SkillEffect.Burn, GameConfig.SkillBurnDuration);
+                case "synergy.shadow_bolt":
+                    return BoltRoutine(scene, SkillEffect.ShadowBolt, from, targetPos, SkillEffect.SneakAttack);
+                case "synergy.blitz":
+                    return AttackEffects.PlaySkill(scene, SkillEffect.Blitz, targetPos, GameConfig.SkillAreaEffectDuration);
+                case "synergy.life_leech":
+                    return AttackEffects.PlaySkill(scene, SkillEffect.LifeLeech, targetPos, GameConfig.SkillAreaEffectDuration);
 
                 default:
                     return null;
             }
+        }
+
+        /// <summary>Fills <see cref="_targetPositions"/> with the primary target's position, then each surrounding target's.</summary>
+        private void CollectTargetPositions(Vector2 primaryPos, List<IEnemy> surroundingTargets)
+        {
+            _targetPositions.Clear();
+            _targetPositions.Add(primaryPos);
+            if (surroundingTargets == null)
+                return;
+            for (int i = 0; i < surroundingTargets.Count; i++)
+            {
+                var e = GetEntityForEnemy(surroundingTargets[i]);
+                if (e != null) _targetPositions.Add(e.Transform.Position);
+            }
+        }
+
+        /// <summary>A magic area skill: the area effect over the group, then a hit on each target partway through.</summary>
+        private IEnumerator Magic(SkillEffect area, Vector2 center, float duration, SkillEffect hit, float hitDuration)
+            => AttackEffects.PlayAreaWithHits(Core.Scene, area, center, duration, hit, _targetPositions, hitDuration);
+
+        /// <summary>
+        /// A melee skill: a mercenary jumps beside the hero first, faces the target, then the effect plays at
+        /// <paramref name="place"/> (rotated toward the target when <paramref name="directional"/>). An area melee
+        /// skill strikes each target with <paramref name="hit"/> partway through (pointing away from the caster).
+        /// With <paramref name="spin"/> the caster turns through the four directions while the effect plays,
+        /// then faces the target again.
+        /// </summary>
+        private IEnumerator Melee(ICombatant caster, Entity casterEntity, Vector2 targetPos, SkillEffect effect,
+            EffectPlace place, float duration, bool directional, SkillEffect hit = SkillEffect.None, bool spin = false)
+        {
+            var from = casterEntity.Transform.Position;
+            if (TryPlanFrontLineJump(casterEntity, caster is Mercenary, out var landing, out var offset))
+            {
+                _jumpedEntity = casterEntity;
+                _jumpedOffset = offset;
+                _jumpedFacing = casterEntity.GetComponent<ActorFacingComponent>()?.Facing;
+                yield return JumpArc(casterEntity, Vector2.Zero, offset, returning: false);
+                from = landing;
+            }
+            FaceEntityFrom(casterEntity, from, targetPos);
+
+            var delta = targetPos - from;
+            var dir = delta.LengthSquared() > 0.0001f ? Vector2.Normalize(delta) : Vector2.UnitX;
+            Vector2 effectPos;
+            switch (place)
+            {
+                case EffectPlace.Reach: effectPos = from + dir * GameConfig.AttackEffectReach; break;
+                case EffectPlace.GroupCenter: effectPos = GroupCenterOfTargets(); break;
+                case EffectPlace.Self: effectPos = from; break;
+                default: effectPos = targetPos; break;
+            }
+            float rotation = directional ? System.MathF.Atan2(delta.Y, delta.X) : 0f;
+
+            IEnumerator play = hit != SkillEffect.None
+                ? AttackEffects.PlayAreaWithHits(Core.Scene, effect, effectPos, duration, hit, _targetPositions,
+                    GameConfig.SkillTargetHitDuration, from)
+                : AttackEffects.PlaySkill(Core.Scene, effect, effectPos, duration, rotation);
+            if (play == null)
+                yield break;
+
+            if (!spin)
+            {
+                yield return play;
+                yield break;
+            }
+
+            // Spin in place: step the effect by hand and turn the caster through the four directions
+            var facing = casterEntity.GetComponent<ActorFacingComponent>();
+            float elapsed = 0f;
+            int lastStep = -1;
+            while (play.MoveNext())
+            {
+                int step = (int)(elapsed / GameConfig.SpinSlashFacingStep);
+                if (step != lastStep && facing != null && !casterEntity.IsDestroyed)
+                {
+                    facing.SetFacing(SpinOrder[step % SpinOrder.Length]);
+                    lastStep = step;
+                }
+                yield return play.Current;
+                elapsed += UnpausedDelta();
+            }
+            if (!casterEntity.IsDestroyed)
+                FaceEntityFrom(casterEntity, from, targetPos);
+        }
+
+        /// <summary>Average of <see cref="_targetPositions"/> (the primary target when there are no others).</summary>
+        private Vector2 GroupCenterOfTargets()
+        {
+            if (_targetPositions.Count == 0)
+                return Vector2.Zero;
+            var sum = Vector2.Zero;
+            for (int i = 0; i < _targetPositions.Count; i++)
+                sum += _targetPositions[i];
+            return sum / _targetPositions.Count;
+        }
+
+        /// <summary>Clockwise turn order for a spinning attack (screen view: down, left, up, right).</summary>
+        private static readonly Direction[] SpinOrder = { Direction.Down, Direction.Left, Direction.Up, Direction.Right };
+
+        /// <summary>A bolt (fireball, shadow bolt) flies to the target, then <paramref name="impact"/> bursts there.</summary>
+        private static IEnumerator BoltRoutine(Scene scene, SkillEffect bolt, Vector2 from, Vector2 to, SkillEffect impact)
+        {
+            yield return AttackEffects.FlySkill(scene, bolt, from, to,
+                GameConfig.SkillFireballSpeed, GameConfig.SkillFireballMinFlight, GameConfig.SkillFireballMaxFlight);
+            yield return AttackEffects.PlaySkill(scene, impact, to, GameConfig.SkillFireBlastDuration);
+        }
+
+        /// <summary>An arrow flies to the target, then <paramref name="impact"/> plays there.</summary>
+        private static IEnumerator ArrowRoutine(Scene scene, Vector2 from, Vector2 to, SkillEffect impact)
+        {
+            yield return AttackEffects.FlyArrow(scene, from, to);
+            var d = to - from;
+            yield return AttackEffects.PlaySkill(scene, impact, to, GameConfig.SkillShotImpactDuration,
+                impact == SkillEffect.ShotImpact ? System.MathF.Atan2(d.Y, d.X) : 0f);
+        }
+
+        /// <summary>Arrow Flurry: two volleys back to back, an impact on each target as each arrow lands.</summary>
+        private IEnumerator FlurryRoutine(Scene scene, Vector2 from)
+        {
+            yield return AttackEffects.FlyVolley(scene, from, _targetPositions, SkillEffect.ShotImpact, GameConfig.SkillTargetHitDuration);
+            yield return AttackEffects.FlyVolley(scene, from, _targetPositions, SkillEffect.ShotImpact, GameConfig.SkillTargetHitDuration);
         }
 
         /// <summary>Averages the entity positions of the primary and surrounding targets;
@@ -403,16 +799,6 @@ namespace PitHero.AI
             return count > 0 ? sum / count : (Vector2?)null;
         }
 
-        private IEnumerator RainEffectOverPosition(ParticleEffectType type, Vector2 groundCenter)
-        {
-            var spawnPos = groundCenter - new Vector2(0f, AreaRainSpawnHeight);
-            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffectAtPosition(type, spawnPos, Core.Scene);
-
-            // Let the rain visibly fall onto the group before damage digits appear;
-            // the emitter finishes and cleans itself up on its own after this returns.
-            yield return WaitForSecondsRespectingPause(AreaRainImpactDelay);
-        }
-
         private Entity GetEntityForCombatant(ICombatant combatant)
         {
             if (combatant is Hero)
@@ -422,36 +808,50 @@ namespace PitHero.AI
             return null;
         }
 
-        private IEnumerator FlyProjectileEffect(ParticleEffectType type, Vector2 from, Vector2 to)
-        {
-            var emitter = Core.GetGlobalManager<ParticleEffectManager>()
-                ?.SpawnEffectAtPosition(type, from, Core.Scene);
-            if (emitter == null)
-                yield break;
-
-            var projectile = emitter.Entity;
-            float duration = Mathf.Clamp(Vector2.Distance(from, to) / SkillProjectileSpeed, 0.15f, 0.6f);
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.DeltaTime;
-                projectile.SetPosition(Vector2.Lerp(from, to, Mathf.Clamp01(elapsed / duration)));
-                yield return null;
-            }
-
-            // Impact: stop emitting and let the trail fade; the entity destroys itself via
-            // the OnAllParticlesExpired handler subscribed at spawn. The config's finite
-            // duration is the leak-safe fallback if this coroutine is torn down mid-flight.
-            emitter.PauseEmission();
-        }
-
         /// <inheritdoc/>
         public IEnumerator ShowHealOnAlly(IBattleAlly ally, int amount)
         {
             var entity = GetEntityForAlly(ally);
             if (entity == null) return null;
-            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffect(ParticleEffectType.Heal, entity);
+            // The heal swirl already played at the cast (ShowSkillCast), healed or not
             return ShowDamageDigitOnEntity(entity, amount, Color.Green);
+        }
+
+        /// <inheritdoc/>
+        public void ShowSkillCast(ICombatant caster, ISkill skill, IBattleAlly target)
+        {
+            // Every healing or cleansing skill shows the heal swirl on its target at the cast, even when the
+            // target is already at full HP (Purify still clears debuffs then)
+            if (skill.HPRestoreAmount > 0 || skill.CleansesDebuffs)
+                PlayCastOn(GetEntityForAlly(target), SkillEffect.Heal, GameConfig.SkillHealEffectDuration);
+
+            switch (skill.Id)
+            {
+                // Defense buffs on the target ally (Aura Heal and Soul Ward also get the heal swirl above)
+                case "priest.defup":
+                case "synergy.aura_heal":
+                case "synergy.soul_ward":
+                    PlayCastOn(GetEntityForAlly(target) ?? GetEntityForCombatant(caster), SkillEffect.DefenseUp,
+                        GameConfig.SkillBuffEffectDuration);
+                    break;
+                // Self-buffs on the caster
+                case "thief.vanish":
+                case "synergy.smoke_bomb":
+                    PlayCastOn(GetEntityForCombatant(caster), SkillEffect.Vanish, GameConfig.SkillVanishEffectDuration);
+                    break;
+                case "synergy.fade":
+                    PlayCastOn(GetEntityForCombatant(caster), SkillEffect.Fade, GameConfig.SkillVanishEffectDuration);
+                    break;
+                case "synergy.ki_cloak":
+                    PlayCastOn(GetEntityForCombatant(caster), SkillEffect.KiCloak, GameConfig.SkillBuffEffectDuration);
+                    break;
+            }
+        }
+
+        private static void PlayCastOn(Entity entity, SkillEffect effect, float duration)
+        {
+            if (entity != null)
+                AttackEffects.PlaySkillOn(entity, effect, duration);
         }
 
         /// <inheritdoc/>
@@ -661,6 +1061,7 @@ namespace PitHero.AI
             var entity = GetEntityForAlly(tank);
             if (entity == null) return null;
             SpeechBubbleDialogue.SayProvoke(entity);
+            AttackEffects.PlaySkillOn(entity, SkillEffect.Provoke, GameConfig.SkillProvokeEffectDuration);
             return ShowTextOnEntity(entity, "Provoke!", GameConfig.ThreatTargetHudTint);
         }
 
@@ -885,6 +1286,8 @@ namespace PitHero.AI
             HeroStateMachine.BattleMonsterEntities = null;
             HeroStateMachine.CurrentThreatTarget = null;
 
+            ResetJumpedAlly();
+
             if (_turnIndicatorEntity != null)
                 _turnIndicatorEntity.Destroy();
 
@@ -942,14 +1345,94 @@ namespace PitHero.AI
         }
 
         private static void FaceEntity(Entity entity, Vector2 targetPosition)
+            => FaceEntityFrom(entity, entity.Transform.Position, targetPosition);
+
+        /// <summary>Faces an entity toward a target as seen from <paramref name="from"/> (where its sprite stands).</summary>
+        private static void FaceEntityFrom(Entity entity, Vector2 from, Vector2 targetPosition)
         {
-            var delta = targetPosition - entity.Transform.Position;
-            Direction faceDir;
-            if (System.Math.Abs(delta.X) >= System.Math.Abs(delta.Y))
-                faceDir = delta.X < 0 ? Direction.Left : Direction.Right;
-            else
-                faceDir = delta.Y < 0 ? Direction.Up : Direction.Down;
-            entity.GetComponent<ActorFacingComponent>()?.SetFacing(faceDir);
+            entity.GetComponent<ActorFacingComponent>()?.SetFacing(DirectionOf(targetPosition - from));
+        }
+
+        /// <summary>The monster the hero is fighting; the whole party faces it between actions.</summary>
+        private Entity _heroFocus;
+
+        /// <summary>Makes <paramref name="monsterEntity"/> the hero's focus (the hero just targeted it).</summary>
+        private void SetHeroFocus(Entity monsterEntity)
+        {
+            _heroFocus = monsterEntity;
+        }
+
+        /// <summary>True while <paramref name="monsterEntity"/> is a living monster of this battle.</summary>
+        private static bool IsLivingMonster(Entity monsterEntity)
+        {
+            if (monsterEntity == null || monsterEntity.IsDestroyed)
+                return false;
+            var enemy = monsterEntity.GetComponent<EnemyComponent>()?.Enemy;
+            return enemy != null && enemy.CurrentHP > 0;
+        }
+
+        /// <summary>
+        /// The hero's focus: the monster the hero last targeted, else (before the hero's first action or
+        /// once that monster dies) the living monster nearest the hero. Null when none is left.
+        /// </summary>
+        private Entity CurrentHeroFocus()
+        {
+            if (IsLivingMonster(_heroFocus))
+                return _heroFocus;
+            _heroFocus = null;
+            var heroEntity = _heroComponent?.Entity;
+            if (heroEntity == null)
+                return null;
+            var heroPos = heroEntity.Transform.Position;
+            float best = float.MaxValue;
+            for (int i = 0; i < _monsterEntities.Count; i++)
+            {
+                var m = _monsterEntities[i];
+                if (!IsLivingMonster(m))
+                    continue;
+                float d = Vector2.DistanceSquared(heroPos, m.Transform.Position);
+                if (d < best)
+                {
+                    best = d;
+                    _heroFocus = m;
+                }
+            }
+            return _heroFocus;
+        }
+
+        /// <summary>Where <paramref name="allyEntity"/> should look: the hero's focus, or straight ahead when there is none.</summary>
+        private Vector2 FocusPosition(Entity allyEntity)
+        {
+            var focus = CurrentHeroFocus();
+            return focus != null ? focus.Transform.Position : allyEntity.Transform.Position;
+        }
+
+        /// <summary>
+        /// Turns the hero and every mercenary in the battle toward the hero's focus. Called at battle start
+        /// and at the start of every turn, so anyone who turned for their own action (a mercenary striking
+        /// another monster, a healer facing an ally) squares back up. A mercenary standing beside the hero
+        /// after a jump faces from where its sprite is.
+        /// </summary>
+        private void FacePartyTowardHeroFocus()
+        {
+            var focus = CurrentHeroFocus();
+            if (focus == null)
+                return;
+            var focusPos = focus.Transform.Position;
+            var heroEntity = _heroComponent?.Entity;
+            if (heroEntity != null && !heroEntity.IsDestroyed)
+                FaceEntity(heroEntity, focusPos);
+            foreach (var kv in _mercMap)
+            {
+                var e = kv.Value.e;
+                var mc = kv.Value.c;
+                if (e == null || e.IsDestroyed || mc == null || !mc.IsHired || !mc.InsidePit)
+                    continue;
+                if (kv.Key.CurrentHP <= 0)
+                    continue;
+                var from = e == _jumpedEntity ? e.Transform.Position + _jumpedOffset : e.Transform.Position;
+                FaceEntityFrom(e, from, focusPos);
+            }
         }
 
         /// <summary>

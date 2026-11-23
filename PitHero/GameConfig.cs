@@ -125,6 +125,75 @@ namespace PitHero
         // Action Configuration
         public const float BattleDigitBounceWait = 0.5f;
         public const float BattleTurnWait = 0.7f;
+
+        // Physical attack visuals (issue #458). Sim-time durations: they fix how long an attack takes
+        // whatever art is loaded, so the battle's timing never depends on the atlas.
+        /// <summary>How long a melee attack effect (slash, stab, thrust, axe, hammer, punch) plays.</summary>
+        public const float AttackEffectDuration = 0.3f;
+        /// <summary>Arrow flight speed in world pixels per second; the flight is clamped to the min/max below.</summary>
+        public const float AttackArrowSpeed = 360f;
+        public const float AttackArrowMinFlight = 0.12f;
+        public const float AttackArrowMaxFlight = 0.5f;
+        /// <summary>How far in front of the attacker (toward the target) a melee effect is centered, in pixels.</summary>
+        public const float AttackEffectReach = 16f;
+        /// <summary>Rod attack: time to raise the rod and charge the glow at its tip before the bolt leaves.</summary>
+        public const float AttackRodRaiseDuration = 0.35f;
+        /// <summary>Rod energy bolt speed in world pixels per second; the flight is clamped to the min/max below.</summary>
+        public const float AttackRodBoltSpeed = 300f;
+        public const float AttackRodBoltMinFlight = 0.12f;
+        public const float AttackRodBoltMaxFlight = 0.45f;
+        /// <summary>How long the small energy burst plays where the rod bolt lands (detached: adds no time).</summary>
+        public const float AttackRodBurstDuration = 0.3f;
+        /// <summary>
+        /// Where the rod is held, from the attacker's position (pixels, X toward the target): the hand beside the
+        /// raised head. The orb at the rod's tip is <see cref="AttackRodTipX"/>/<see cref="AttackRodTipY"/> from the
+        /// hand (matches the AttackRod art's anchor and orb).
+        /// </summary>
+        public const float AttackRodHandX = 9f;
+        public const float AttackRodHandY = -4f;
+        public const float AttackRodTipX = 8.5f;
+        public const float AttackRodTipY = -14.5f;
+        /// <summary>A melee mercenary lands this far beside the hero (half a tile) before attacking.</summary>
+        public const float MercAttackSideOffset = 16f;
+        /// <summary>Peak height of a mercenary's jump to and from the hero, in pixels.</summary>
+        public const float MercAttackJumpHeight = 14f;
+        /// <summary>Mercenary jump speed in pixels per second; the jump is clamped to the min/max below.</summary>
+        public const float MercAttackJumpSpeed = 220f;
+        public const float MercAttackJumpMinDuration = 0.2f;
+        public const float MercAttackJumpMaxDuration = 0.45f;
+
+        // Battle-skill visuals (issue #458). Blocking effects hold the battle for these sim times before
+        // the damage digits show; detached ones (heal, buffs, Provoke) play alongside and hold nothing.
+        /// <summary>Single-target melee skill effects (Heavy Strike, Flaming Fist, Sneak Attack).</summary>
+        public const float SkillHitEffectDuration = 0.4f;
+        /// <summary>Area melee skill effects over the enemy group (Spin Slash, Roundhouse).</summary>
+        public const float SkillAreaEffectDuration = 0.55f;
+        /// <summary>Knight Spin Slash: seconds the spinning knight holds each facing (down, left, up, right, ...).</summary>
+        public const float SpinSlashFacingStep = 0.07f;
+        /// <summary>Mage Firestorm's meteor shower over the enemy group.</summary>
+        public const float SkillMeteorShowerDuration = 0.8f;
+        /// <summary>The blast where Mage Fire's fireball lands.</summary>
+        public const float SkillFireBlastDuration = 0.3f;
+        /// <summary>The impact streak after Archer Power Shot's arrow lands.</summary>
+        public const float SkillShotImpactDuration = 0.2f;
+        /// <summary>Fireball flight speed (px/s) and flight-time clamps.</summary>
+        public const float SkillFireballSpeed = 340f;
+        public const float SkillFireballMinFlight = 0.15f;
+        public const float SkillFireballMaxFlight = 0.6f;
+        /// <summary>
+        /// Area skills strike each target this far through their area effect (0..1): a detached hit effect
+        /// (flames, slash, impact, ki burst) starts on every monster then. Hits add no battle time.
+        /// </summary>
+        public const float SkillAreaHitDelayFraction = 0.4f;
+        /// <summary>How long a detached per-target hit plays (slash, impact, ki burst, fire blast).</summary>
+        public const float SkillTargetHitDuration = 0.35f;
+        /// <summary>How long the flames on a monster hit by a fire area skill play.</summary>
+        public const float SkillBurnDuration = 0.7f;
+        /// <summary>Detached effects: skill heal, Defense Up, Vanish, Provoke.</summary>
+        public const float SkillHealEffectDuration = 0.9f;
+        public const float SkillBuffEffectDuration = 0.8f;
+        public const float SkillVanishEffectDuration = 0.7f;
+        public const float SkillProvokeEffectDuration = 0.8f;
         public const float TreasureOpenWait = 0.5f;
 
         // Monster animation
@@ -811,7 +880,7 @@ namespace PitHero
         public const int ReplayTileKeyframeIntervalChunks = 1;                 // Full mutable tile-layer snapshot every N chunks (~1 KB compressed, so every chunk)
         public const long ReplayFrameMemoryBudgetBytes = 192L * 1024 * 1024;   // Compressed chunks held in RAM; beyond it, chunks already spilled to the sidecar are evicted
         public const long ReplayFrameCacheDiskBudgetBytes = 4L * 1024 * 1024 * 1024; // All .frames sidecars under replays/; oldest deleted first, .bin recordings never touched
-        public const int ReplayFrameFormatVersion = 16;                       // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed; v9 (#452): CropsProps atlas repacked for the gem dig site, so CropsProps rects changed; v10 (#452): CropsProps repacked again for the gem glints; v11 (#452): Items repacked for the Prospector's Map icon; v12 (#452): CropsProps repacked for the Digging Field (mound and glints removed); v13 (#452): CropsProps repacked for the dig junk sprites; v14 (#452): Actors and Items repacked for the DigBot (animations and artifact icon); v15: CropsProps repacked (now 1024x1024) for the Fishing Pond animation, Items repacked for the Fishing Pole icon; v16: Line op (fishing pole and line), Actors repacked for the fish and fishing junk sprites
+        public const int ReplayFrameFormatVersion = 17;                       // Sidecar cache format; bumping orphans old .frames (re-simulated, then self-cached), never a .bin. v2 (#431): Particle op, sound events; v3 (#431): HUD record carries the static hero portrait (walk-down frame 0 sprite ids + tints); v4 (#432): chunk payloads are Brotli, not deflate; v5: the UI hover markers are live-only (a v4 cache would draw its recorded markers over the live ones); v6: HUD record carries the battle monsters (portrait, HP, position), the on-monster HP bar ops are gone; v7: hero art moved to the Move set, so Actors atlas rects changed and the HUD record carries the EyesBase portrait layer; v8 (#450): Items atlas repacked for the watering-can artifacts, so Items rects changed; v9 (#452): CropsProps atlas repacked for the gem dig site, so CropsProps rects changed; v10 (#452): CropsProps repacked again for the gem glints; v11 (#452): Items repacked for the Prospector's Map icon; v12 (#452): CropsProps repacked for the Digging Field (mound and glints removed); v13 (#452): CropsProps repacked for the dig junk sprites; v14 (#452): Actors and Items repacked for the DigBot (animations and artifact icon); v15: CropsProps repacked (now 1024x1024) for the Fishing Pond animation, Items repacked for the Fishing Pole icon; v16: Line op (fishing pole and line), Actors repacked for the fish and fishing junk sprites; v17 (#458): RotSprite op (rotated attack effects), SkillsStencils repacked (1024x1024) for the Attack* and Skill* effect animations (class and synergy skills)
         // Brotli settings for the chunk payload (issue #432). Measured on an 8.4-hour, ~950-renderable session: deflate Optimal kept
         // 18.5% of the raw bytes (51 MB/h); Brotli q5/w22 13.3% (37 MB/h) in 1.8 ms per chunk on the sidecar worker; q9 the same size
         // for 10 ms; q11 12.0% for 106 ms. The window (2^22 = 4 MB) covers a whole chunk, which deflate's 32 KB window never did.
@@ -832,7 +901,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, and Time Travel Here asks for confirmation.
-        public const int SimulationVersion = 13; // v13: Digging Field finds come from a 500-marble shuffle bag (no pity); v12: monster fishing (fishers at the Fishing Pond earn gold from a 200-marble catch bag; SetMonsterJob rejects Fishing without a pond or past 4 per shift; auto-assign staffs fishers); v11: #450 watering-can artifacts raise can capacity, water claims follow the crop watering priority; v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll; v10: mercenary eye color roll
+        public const int SimulationVersion = 14; // v14: physical attacks and class skills play visuals (#458) — melee mercs jump beside the hero and back (attacks and melee skills), weapon and skill effects hold the battle for fixed sim times; v13: Digging Field finds come from a 500-marble shuffle bag (no pity); v12: monster fishing (fishers at the Fishing Pond earn gold from a 200-marble catch bag; SetMonsterJob rejects Fishing without a pond or past 4 per shift; auto-assign staffs fishers); v11: #450 watering-can artifacts raise can capacity, water claims follow the crop watering priority; v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll; v10: mercenary eye color roll
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

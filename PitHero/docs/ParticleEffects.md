@@ -17,7 +17,7 @@ How PitHero uses Nez's built-in particle system, and how to add a new effect. In
 4. Call it at the trigger site:
    - `SpawnEffect(type, entity)` — attach to an actor (heals, buffs).
    - `SpawnEffectAtPosition(type, worldPos, scene)` — free-standing (dust, impacts, projectiles).
-   - For battle skills, add a `case` in `LiveBattleAdapter.ShowSkillEffectOnMonsters` (see patterns below).
+   - Battle skills no longer use particles: they play SkillsStencils sprite animations (see "Battle skill visuals" below). Particles remain for potions and out-of-battle effects.
 
 ## Rules (violating these caused real bugs)
 
@@ -39,10 +39,10 @@ How PitHero uses Nez's built-in particle system, and how to add a new effect. In
 
 | Pattern | Example | How |
 |---|---|---|
-| Attached burst | Heal spell | `SpawnEffect(Heal, targetEntity)` fire-and-forget alongside the digit coroutine |
+| ~~Attached burst~~ | ~~Heal spell~~ | Replaced (#458) by the `SkillHeal` sprite effect; `heal.pex` stays registered so old replay frames still resolve |
 | Attached, intensity-scaled | Heal potion | `SpawnPotionHealEffect` → `densityScale` 1×/2×/3× by `HPRestoreAmount` (base / ≥500 / negative=full) |
-| Projectile | Fire (`mage.fire`) | `SpawnEffectAtPosition` at caster, lerp entity to target (`SkillProjectileSpeed`, 0.15–0.6s clamp), `PauseEmission()` on impact; engine yields the coroutine so damage digits appear on landing |
-| Area rain | Firestorm (`mage.firestorm`) | Average affected enemies' positions, spawn `AreaRainSpawnHeight` above, `WaitForSecondsRespectingPause(AreaRainImpactDelay)` before damage shows |
+| ~~Projectile~~ | ~~Fire (`mage.fire`)~~ | Replaced (#458) by `SkillFireball` + `SkillFireBlast`; `fireball.pex` stays registered for old replays |
+| ~~Area rain~~ | ~~Firestorm (`mage.firestorm`)~~ | Replaced (#458) by `SkillMeteorShower`; `firestorm.pex` stays registered for old replays |
 | Positioned burst, intensity-scaled | Gem dig (#452) | `SpawnEffectAtPosition(GemSparkle, tileCenter, scene, layer, densityScale)` from `MainGameScene.SpawnDigEffect`, density 0.5× / 1× / 1.6× / 2.4× / 3.5× by gem rarity (Common..Legendary); only gems sparkle, never junk or empty digs |
 | Positioned burst | Fishing catch | `SpawnEffectAtPosition(Splash, bobber, scene, RenderLayerActorPropOverlay)` from `FishingTaskCoordinator.SpawnCatchEffect` when a fisher reels in a catch (skipped while `CosmeticUpdatesSuspended`); `splash.pex` is derived from `gem_sparkle.pex`: angle 270±40 with positive gravity so droplets jump up and fall back, blue-white, alpha blend (770/771), 0.12 s duration |
 
@@ -54,9 +54,9 @@ Heals and item use have paths that bypass `BattleEngine` entirely. If an effect 
 
 | Trigger | In battle | Out of battle |
 |---|---|---|
-| Skill heal | `LiveBattleAdapter.ShowHealOnAlly` | `UseHealingSkillAction.UseHealingSkillOnTarget` (GOAP) |
+| Skill heal | `LiveBattleAdapter.ShowSkillCast` (`SkillHeal` sprite, at the cast, healed or not) | `UseHealingSkillAction.UseHealingSkillOnTarget` (GOAP, same sprite) |
 | Potion heal | `LiveBattleAdapter.ShowItemHealOnAlly` | `InventoryGrid.UseConsumable`, `ShortcutBar.UseConsumable`, `UseHealingItemAction.UseHealingItemFromBag` |
-| Attack skill | `LiveBattleAdapter.ShowSkillEffectOnMonsters` | n/a (skills can't be cast outside battle) |
+| Attack skill | `LiveBattleAdapter.ShowSkillEffectOnMonsters` (sprite effects) | n/a (skills can't be cast outside battle) |
 
 Out-of-battle potion/heal paths guard on "HP actually restored" so MP-only potions and full-HP sips show nothing.
 
@@ -65,3 +65,63 @@ Out-of-battle potion/heal paths guard on "HP actually restored" so MP-only potio
 - The embedded-texture decode path uses `System.Drawing` — **Windows-only** under .NET 7+. If cross-platform ever ships, delete the `data` attribute and place a `texture.png` next to the `.pex` (the loader falls back to `Texture2D.FromStream`).
 - Multiple emitters on one entity are fine; each cleans up independently.
 - Headless tests can construct `ParticleEffectManager` and exercise the null-safe pre-`Init` paths (`PitHero.Tests/ParticleEffectManagerTests.cs`), but `Init` needs a GraphicsDevice — don't call it in tests.
+
+## Physical attack visuals (issue #458)
+
+Physical attacks are not particles: they are SkillsStencils.atlas animations drawn by `AttackEffectRenderer` (an `IFrameCapturable` that records the `RotSprite` frame op, so rotated effects replay).
+
+- **Which visual:** `AttackVisuals.For(weapon)` in `RolePlayingFramework/Combat/AttackVisual.cs`. Sword → `AttackSlash`, knife → `AttackStab`, hammer → `AttackHammer`, bow → `AttackArrow` (flies), unarmed/knuckle → `AttackPunch` (fist + gust), staff → `AttackStaff` (a wooden swing smear), rod → `AttackRod` (see below). Spears and axes are tagged `WeaponSword`, so their factories set `Gear.WithAttackVisual(Thrust / AxeSwing)`; tier-scaled copies keep it.
+- **Wiring:** `BattleEngine` yields `IBattleEventSink.ShowPhysicalAttack` after every roll and before the digits, and mercenaries yield `EndPhysicalAttack` after them. `LiveBattleAdapter` makes a melee mercenary (anything but a bow or a rod) jump half a tile beside the hero first and back afterwards. This is render-only: `HeroJumpComponent.SetAirborneOffset` moves the `MultiSpriteAnimator` offset, and the entity never moves. `CleanupBattleUI` resets a mercenary left displaced.
+- **Rod:** `AttackEffects.PlayRod` (ranged, so mercenaries stay put). The attacker holds `AttackRod` up beside its head (hand at `AttackRodHandX/Y`), and a glow charges at the orb over `AttackRodRaiseDuration`. Then `AttackRodBolt` flies from the tip (`AttackRodTipX/Y` from the hand) to the target, and a detached `AttackRodBurst` plays there. The rod art is upright, not rotated; toward a target on the left, `AttackEffectRenderer.SetupMirrored` flips it left-right about its anchor. `AttackEffectRenderer.DrawOrigin` mirrors the origin live, and the replay renderer does the same for a RotSprite op with FlipX.
+- **Timing is sim time from `GameConfig`** (`AttackEffectDuration`, arrow speed/clamps, jump speed/clamps) and holds while paused, never from the art. A missing animation logs once and draws nothing, but waits just as long, and a replay seek skips spawning but not the wait.
+- **Art** is drawn pointing right. The renderer rotates it with `Atan2(target - attacker)` and flips it vertically when pointing left. It's centered `AttackEffectReach` px in front of the attacker and drawn at `RenderLayerLowest`.
+- **Art source:** `C:\Users\rpill\Devroot\Art\PitHero\AttackEffects\<Tag>.aseprite`, one file per animation. Each is cropped to its frames' content, and an `anchor` slice's pivot marks where the game places the effect. Attack effects are anchored `AttackEffectReach` (16 px) in front of the attacker, with the target one tile (32 px) out. The arrow's anchor is its tip, which flies to the target. In the atlas, each `Attack*_N` sprite's **origin is that anchor** (pivot ÷ size), not 0.5,0.5. The art came from hun0fx Pixel Studio in DB32: Slash_normal (mirrored), Slash_Hit_thin (60%, rotated), Pierce_normal, spr_arrow_bolt, spr_slash_heavy (mirrored, gray gradient), spr_impact_ring (gray gradient), and spr_smoke_gust (every other frame) under spr_hit_streak.
+- **Repacking SkillsStencils keeps origins only with `-originsMap`.** Export each file's frames to `Content/Textures/SkillsStencils/<Tag>/<Tag>_N.png`. Copy `Content/Atlases/SkillsStencils.atlas` into `Content/Textures` as `SkillsStencils.origins.atlas`, and from there run `SpriteAtlasPacker.exe -image:SkillsStencils.png -map:SkillsStencils.atlas -originsMap:SkillsStencils.origins.atlas -fps:8 SkillsStencils -pow2`. Then move both outputs to `Content/Atlases` and delete the copy. Without `-originsMap` every origin resets to the center and the effects shift, and `AttackVisualTests.SkillsStencilsAtlas_AttackEffects_ExistWithAnchorOrigins` fails. A new or changed anchor (pivot of the file's `anchor` slice) is written into the map's origin lines with `ArtPitHeroworkttack_fxset_origins.awk`. The effects live in SkillsStencils, not Actors, because Actors is for entities (heroes, mercenaries, monsters).
+
+## Battle skill visuals (issue #458)
+
+Every class active skill plays a SkillsStencils sprite animation (`Skill<Name>`, a `SkillEffect` member, `AttackEffects.AnimationName`). They come from hun0fx and are cropped with anchor origins, the same way as the attack effects. All timings are `GameConfig.Skill*` sim times.
+
+| Skill | Effect | How |
+|---|---|---|
+| `mage.fire` | SkillFireball, then SkillFireBlast | Projectile flies from the caster to the target (rotated), then the blast plays there; blocking |
+| `mage.firestorm` | SkillMeteorShower | At the enemy group's center; blocking |
+| `archer.power_shot` | AttackArrow, then SkillShotImpact | Arrow flight, then the impact streak at the target; blocking |
+| `archer.volley` | AttackArrow ×N | One arrow per hit enemy, all at once (`AttackEffects.FlyVolley`); blocking |
+| `knight.spin_slash` | SkillSpinSlash | Melee: a merc jumps beside the hero, then the arcs play centered on the knight while the knight turns through down, left, up and right every `SpinSlashFacingStep`, then faces the target again; blocking |
+| `monk.roundhouse` | SkillRoundhouse | Melee: the merc jumps in, then the effect plays at the enemy group's center; blocking |
+| `knight.heavy_strike`, `monk.flaming_fist`, `thief.sneak_attack` | SkillHeavyStrike, SkillFlamingFist, SkillSneakAttack | Melee: the merc jumps in, then the effect plays on the target; blocking |
+| Skill heals (Priest Heal, synergy heals) | SkillHeal | Detached on the healed ally (`ShowSkillCast` at the cast, even at full HP; and out of battle in `UseHealingSkillAction`) |
+| `priest.defup`, `thief.vanish` | SkillDefenseUp, SkillVanish | Detached, from `IBattleEventSink.ShowSkillCast` (called at the top of `ApplyHealingSkillEffectsAndDisplay`) |
+| `knight.provoke` | SkillProvoke | Detached on the knight, from `OnProvoke` |
+
+- **Blocking** effects are yielded by `ShowSkillEffectOnMonsters` before the digits. They hold the battle for a fixed sim time and are skipped (but still waited) during seeks.
+- **Detached** effects use `AttackEffectRenderer.AutoPlay`. The renderer advances itself on the fixed step, holds while paused and destroys itself when done. Nothing waits on it, so battle timing is unchanged.
+- A mercenary that jumped for a melee skill jumps back in `IBattleEventSink.EndSkillEffect`, at the end of `BattleEngine.ExecuteCombatantAttackSkill`.
+- Adding a skill visual takes an animation, a `SkillEffect` member, a name in `AttackEffects.SkillNames` and a case in `ShowSkillEffectOnMonsters` (most are one `Melee(...)`, `Magic(...)`, `ArrowRoutine` or `BoltRoutine` line). `AttackVisualTests` fails if a `SkillEffect` has no packed animation.
+
+### Synergy skills and per-target hits
+
+Every active synergy skill has a visual. Melee synergy skills make a mercenary jump in like the class melee skills.
+
+| Skill | Effect |
+|---|---|
+| Holy Strike, Iaido Slash, Flash Strike, Shadow Slash, Sacred Blade, Spellblade | SkillHolyStrike / Iaido / FlashStrike / ShadowSlash / SacredBlade / Spellblade, played in front of the caster (`EffectPlace.Reach`) and rotated toward the target |
+| Dragon Claw, Sacred Strike, Sneak Punch | SkillDragonClaw / SkillHolyBurst / SkillSneakAttack on the target |
+| Dragon Kick | SkillRoundhouse on the target, with the Spin Slash facing spin |
+| Energy Burst (area) | SkillKiBurst at the group center, plus a ki burst on each target |
+| Meteor, Elemental Storm (area) | SkillMeteor / SkillElementalStorm at the group center, plus SkillBurn flames on each target |
+| Shadow Bolt, Dragon Bolt | SkillShadowBolt / SkillFireball flight, then SkillSneakAttack / SkillFireBlast at the target |
+| Blitz, Life Leech | SkillBlitz / SkillLifeLeech on the target |
+| Poison Arrow, Piercing Arrow, Lightshot, Ki Arrow | Arrow flight, then SkillPoisonHit / SkillShotImpact / SkillHolyBurst / SkillKiBurst |
+| Arrow Flurry, Elemental Volley | Volleys (two for Arrow Flurry) with SkillShotImpact / SkillFireBlast as each arrow lands |
+| Smoke Bomb, Fade, Ki Cloak | SkillVanish / SkillFade / SkillKiCloak on the caster (detached, `ShowSkillCast`) |
+| Aura Heal, Soul Ward, Purify | The heal swirl (`ShowSkillCast`, played even at full HP so a Purify that only cleanses still shows); Aura Heal and Soul Ward add the SkillDefenseUp shield (`ShowSkillCast`) |
+
+**Per-target hits on area skills.** Area skills strike every hit monster with a detached hit at `SkillAreaHitDelayFraction` (0.4) of the area effect, so it looks like the area effect lands on each one. This is `AttackEffects.PlayAreaWithHits`, and the hits add no battle time.
+- Firestorm, Meteor and Elemental Storm put SkillBurn flames on each monster (`SkillBurnDuration`).
+- Spin Slash puts a FlashStrike slash on each monster, pointing out from the knight.
+- Roundhouse puts a ShotImpact streak on each monster, and Energy Burst a KiBurst.
+- Volley, Arrow Flurry and Elemental Volley play their impact on each monster as its arrow lands (`FlyVolley`'s impact argument).
+
+**Effects on a character follow them.** The heal swirl (in and out of battle), the Defense Up shield, Vanish, Smoke Bomb, Fade, Ki Cloak and Provoke use `AttackEffects.PlaySkillOn(target, …)`. That sets `AttackEffectRenderer.Follow`, so the effect stays anchored to the character while it plays, even if they walk away mid-effect. Draw and capture read the target's position directly, so it never lags a step behind. If the target is destroyed, the effect stays where it last was.

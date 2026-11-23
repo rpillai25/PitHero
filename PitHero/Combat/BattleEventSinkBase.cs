@@ -57,6 +57,20 @@ namespace PitHero.Combat
         public virtual IEnumerator ShowDeflectOnAlly(IBattleAlly ally) { return null; }
 
         /// <inheritdoc/>
+        public virtual IEnumerator ShowPhysicalAttack(IBattleAlly attacker, IEnemy target,
+            RolePlayingFramework.Equipment.IItem weapon) { return null; }
+
+        /// <inheritdoc/>
+        public virtual IEnumerator EndPhysicalAttack(IBattleAlly attacker) { return null; }
+
+        /// <inheritdoc/>
+        public virtual IEnumerator EndSkillEffect(RolePlayingFramework.Combat.ICombatant caster) { return null; }
+
+        /// <inheritdoc/>
+        public virtual void ShowSkillCast(RolePlayingFramework.Combat.ICombatant caster,
+            RolePlayingFramework.Skills.ISkill skill, IBattleAlly target) { }
+
+        /// <inheritdoc/>
         public virtual IEnumerator ShowSkillEffectOnMonsters(RolePlayingFramework.Combat.ICombatant caster,
             RolePlayingFramework.Skills.ISkill skill, IEnemy primaryTarget, List<IEnemy> surroundingTargets) { return null; }
 

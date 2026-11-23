@@ -19,8 +19,11 @@ namespace PitHero.Services.Replay.Frames
     ///   Particle   effectKey u8, density u8 (tenths), x i16, y i16, elapsedTicks u16, renderLayer i16,
     ///              layerDepth f32, flags u8 (Emitting)                                                          (15)
     ///   Line       x1 i16, y1 i16, x2 i16, y2 i16, thickness u8, color u32, layerDepth f32, renderLayer i16   (19)
+    ///   RotSprite  spriteId u16, x i16, y i16, rotation u16, layerDepth f32, renderLayer i16, color u32, flags u8 (19)
     /// A Line op (format v16, the fishing pole and line) is a world-space segment drawn with Batcher.DrawLine,
     /// depth-sorted with the sprites on its render layer.
+    /// A RotSprite op (format v17, issue #458 attack effects) is a world-space Sprite drawn rotated about its
+    /// origin; rotation is quantized to u16 (0..65535 = one full turn).
     /// x/y are the anchor. With <see cref="FrameOpFlags.ConstantScreenSize"/> the anchor is a world point and
     /// dx/dy/w/h are screen pixels applied after the world-to-screen transform (constant on-screen size at
     /// any zoom: damage numbers, HP bars, speech bubbles); otherwise dx/dy/w/h share the anchor's space.
@@ -37,6 +40,7 @@ namespace PitHero.Services.Replay.Frames
         public const byte NinePatch = 5;
         public const byte Particle = 6;
         public const byte Line = 7;
+        public const byte RotSprite = 8;
 
         /// <summary>Payload bytes after the code byte for the fixed-size ops; Composite is variable.</summary>
         public const int SpritePayload = 17;
@@ -47,6 +51,7 @@ namespace PitHero.Services.Replay.Frames
         public const int NinePatchPayload = 19;
         public const int ParticlePayload = 15;
         public const int LinePayload = 19;
+        public const int RotSpritePayload = 19;
 
         /// <summary>Text charCount meaning "every character from charStart".</summary>
         public const ushort AllChars = 0xFFFF;
@@ -153,6 +158,22 @@ namespace PitHero.Services.Replay.Frames
         public uint Color;
         public float LayerDepth;
         public short RenderLayer;
+    }
+
+    /// <summary>A world-space sprite drawn rotated about its origin (attack effects, issue #458).</summary>
+    public struct RotSpriteOp
+    {
+        public ushort SpriteId;
+        public short X, Y;
+        /// <summary>Quantized rotation: 0..65535 maps to 0..2 pi radians.</summary>
+        public ushort Rotation;
+        public float LayerDepth;
+        public short RenderLayer;
+        public uint Color;
+        public byte Flags;
+
+        /// <summary>The rotation in radians.</summary>
+        public float Radians => Rotation * (MathF.PI * 2f / 65536f);
     }
 
     /// <summary>A live particle emitter at one tick: which effect, where its root is, how long it has run.</summary>
@@ -458,6 +479,43 @@ namespace PitHero.Services.Replay.Frames
             WriteI16((short)renderLayer);
         }
 
+        /// <summary>Quantizes radians to the RotSprite op's u16 (one full turn = 65536).</summary>
+        public static ushort QuantizeRotation(float radians)
+        {
+            float turns = radians / (MathF.PI * 2f);
+            turns -= MathF.Floor(turns);
+            int q = (int)MathF.Round(turns * 65536f);
+            return (ushort)(q & 0xFFFF);
+        }
+
+        /// <summary>RotSprite op from live values (position snapped to pixels, rotation quantized).</summary>
+        public void WriteRotSprite(ushort spriteId, float x, float y, float radians, float layerDepth, int renderLayer, uint color, byte flags)
+        {
+            WriteU8(FrameOpCode.RotSprite);
+            WriteU16(spriteId);
+            WriteI16(ToPixel(x));
+            WriteI16(ToPixel(y));
+            WriteU16(QuantizeRotation(radians));
+            WriteF32(layerDepth);
+            WriteI16((short)renderLayer);
+            WriteU32(color);
+            WriteU8(flags);
+        }
+
+        /// <summary>RotSprite op from a decoded record.</summary>
+        public void WriteRotSprite(in RotSpriteOp op)
+        {
+            WriteU8(FrameOpCode.RotSprite);
+            WriteU16(op.SpriteId);
+            WriteI16(op.X);
+            WriteI16(op.Y);
+            WriteU16(op.Rotation);
+            WriteF32(op.LayerDepth);
+            WriteI16(op.RenderLayer);
+            WriteU32(op.Color);
+            WriteU8(op.Flags);
+        }
+
         /// <summary>Line op from a decoded record.</summary>
         public void WriteLine(in LineOp op)
         {
@@ -711,6 +769,19 @@ namespace PitHero.Services.Replay.Frames
             op.RenderLayer = ReadI16();
         }
 
+        /// <summary>RotSprite payload (after its op code).</summary>
+        public void ReadRotSprite(out RotSpriteOp op)
+        {
+            op.SpriteId = ReadU16();
+            op.X = ReadI16();
+            op.Y = ReadI16();
+            op.Rotation = ReadU16();
+            op.LayerDepth = ReadF32();
+            op.RenderLayer = ReadI16();
+            op.Color = ReadU32();
+            op.Flags = ReadU8();
+        }
+
         /// <summary>Skips one whole op (code + payload) at the cursor; throws on an unknown code.</summary>
         public void SkipOp()
         {
@@ -728,6 +799,7 @@ namespace PitHero.Services.Replay.Frames
                 case FrameOpCode.NinePatch: Skip(FrameOpCode.NinePatchPayload); break;
                 case FrameOpCode.Particle: Skip(FrameOpCode.ParticlePayload); break;
                 case FrameOpCode.Line: Skip(FrameOpCode.LinePayload); break;
+                case FrameOpCode.RotSprite: Skip(FrameOpCode.RotSpritePayload); break;
                 default: throw new InvalidDataException("Unknown frame op code " + code);
             }
         }

@@ -29,7 +29,7 @@ namespace PitHero.Rendering
         /// <summary>After the DefaultRenderer (0), whose world-camera ghost of the screen-space HUD panels this pass paints over.</summary>
         public const int Order = 1;
 
-        private enum ItemKind : byte { Sprite, Composite, Overlay, Tile, Live, Particle, Line }
+        private enum ItemKind : byte { Sprite, Composite, Overlay, Tile, Live, Particle, Line, RotSprite }
 
         private struct Item
         {
@@ -131,6 +131,10 @@ namespace PitHero.Rendering
                     case ItemKind.Line:
                         SetMaterial(null, cam);
                         DrawLine(frame, item.Offset, item.End);
+                        break;
+                    case ItemKind.RotSprite:
+                        SetMaterial(null, cam);
+                        DrawRotSprite(frame, item.Offset, item.End);
                         break;
                 }
             }
@@ -280,6 +284,20 @@ namespace PitHero.Rendering
                             item.End = end;
                             break;
                         }
+                        case FrameOpCode.RotSprite:
+                        {
+                            r.ReadRotSprite(out var op);
+                            if (op.X < left || op.X > right || op.Y < top || op.Y > bottom)
+                                break;
+                            ref var item = ref NewItem();
+                            item.Layer = op.RenderLayer;
+                            item.Depth = op.LayerDepth;
+                            item.Material = 0;
+                            item.Kind = ItemKind.RotSprite;
+                            item.Offset = at;
+                            item.End = end;
+                            break;
+                        }
                         case FrameOpCode.Particle:
                         {
                             r.ReadParticle(out var op);
@@ -361,6 +379,19 @@ namespace PitHero.Rendering
                 batcher.Draw(sprite, new Vector2(op.X + layer.DX, op.Y + layer.DY), Packed(layer.Color), 0f, sprite.Origin, Vector2.One,
                     Effects(layer.Flags), op.LayerDepth);
             }
+        }
+
+        private void DrawRotSprite(DecodedFrame frame, int at, int end)
+        {
+            var r = new FrameReader(frame.OpsBuffer, at, end - at);
+            r.ReadOpCode();
+            r.ReadRotSprite(out var op);
+            var sprite = _viewer.Sprites.Get(op.SpriteId);
+            if (sprite == null)
+                return;
+            var effects = Effects(op.Flags);
+            Graphics.Instance.Batcher.Draw(sprite, new Vector2(op.X, op.Y), Packed(op.Color), op.Radians,
+                PitHero.ECS.Components.AttackEffectRenderer.DrawOrigin(sprite, effects), Vector2.One, effects, op.LayerDepth);
         }
 
         private void DrawLine(DecodedFrame frame, int at, int end)
@@ -553,6 +584,9 @@ namespace PitHero.Rendering
                             break;
                         case FrameOpCode.Line:
                             r.ReadLine(out _); // world pass only
+                            break;
+                        case FrameOpCode.RotSprite:
+                            r.ReadRotSprite(out _); // world pass only
                             break;
                         default:
                             goto nextEntity;
