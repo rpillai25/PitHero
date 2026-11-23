@@ -1311,6 +1311,10 @@ namespace PitHero.Combat
             if (r != null) yield return r;
 
             yield return ExecuteMonsterAttackAlly(enemy, targetAlly, battleContext);
+
+            // A monster that leapt in front of its target leaps back (presentation only; consumes no RNG)
+            var rback = _sink.EndMonsterAttack(enemy);
+            if (rback != null) yield return rback;
         }
 
         /// <summary>
@@ -1342,6 +1346,7 @@ namespace PitHero.Combat
             if (enemyAttackResult.Hit)
             {
                 _sink.PlaySound(BattleSound.TakeDamage, target);
+                _sink.ShowMonsterHitOnAlly(enemy, targetAlly);
 
                 int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
                 int targetHpBefore = target.CurrentHP;

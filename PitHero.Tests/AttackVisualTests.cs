@@ -104,6 +104,7 @@ namespace PitHero.Tests
                 anims.Add(PitHero.Util.AttackEffects.AnimationName((AttackVisual)v));
             anims.Add(PitHero.Util.AttackEffects.RodBoltAnimation);
             anims.Add(PitHero.Util.AttackEffects.RodBurstAnimation);
+            anims.Add(PitHero.Util.AttackEffects.MonsterHitAnimation);
             int attackCount = anims.Count;
             foreach (PitHero.Util.SkillEffect e in System.Enum.GetValues(typeof(PitHero.Util.SkillEffect)))
             {

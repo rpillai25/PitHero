@@ -37,6 +37,10 @@ namespace PitHero.Combat
 
         /// <inheritdoc/>
         public virtual IEnumerator OnMonsterWindup(IEnemy enemy, IBattleAlly target) { return null; }
+        /// <inheritdoc/>
+        public virtual IEnumerator EndMonsterAttack(IEnemy enemy) { return null; }
+        /// <inheritdoc/>
+        public virtual void ShowMonsterHitOnAlly(IEnemy enemy, IBattleAlly target) { }
 
         /// <inheritdoc/>
         public virtual IEnumerator ShowDamageOnMonster(IEnemy enemy, int damage) { return null; }

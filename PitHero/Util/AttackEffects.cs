@@ -48,6 +48,9 @@ namespace PitHero.Util
         public const string RodBoltAnimation = "AttackRodBolt";
         public const string RodBurstAnimation = "AttackRodBurst";
 
+        /// <summary>The impact a monster's physical hit plays on a party member (art sprays right).</summary>
+        public const string MonsterHitAnimation = "AttackMonsterHit";
+
         /// <summary>Atlas animation names, indexed by <see cref="SkillEffect"/>.</summary>
         private static readonly string[] SkillNames =
         {
@@ -166,9 +169,21 @@ namespace PitHero.Util
         /// </summary>
         public static void PlaySkillOn(Entity target, SkillEffect effect, float duration)
         {
-            if (target == null || target.IsDestroyed || effect == SkillEffect.None)
+            if (effect == SkillEffect.None)
                 return;
-            var renderer = Spawn(target.Scene, SkillNames[(int)effect], target.Transform.Position, 0f);
+            PlayAnimationOn(target, SkillNames[(int)effect], duration, false);
+        }
+
+        /// <summary>
+        /// Starts the SkillsStencils animation <paramref name="anim"/> anchored to <paramref name="target"/>
+        /// (following it) for <paramref name="duration"/>, mirrored left-right about its anchor when
+        /// <paramref name="mirror"/>; it cleans itself up and nothing waits on it.
+        /// </summary>
+        public static void PlayAnimationOn(Entity target, string anim, float duration, bool mirror)
+        {
+            if (target == null || target.IsDestroyed)
+                return;
+            var renderer = SpawnMirrored(target.Scene, anim, target.Transform.Position, mirror);
             if (renderer == null)
                 return;
             renderer.Follow = target;
@@ -207,6 +222,11 @@ namespace PitHero.Util
         /// Flies a skill projectile (art pointing right, rotated toward the target) from <paramref name="from"/>
         /// to <paramref name="to"/> at <paramref name="speed"/> px/s, clamped to the flight-time bounds.
         /// </summary>
+        public static IEnumerator FlyAnimation(Scene scene, string anim, Vector2 from, Vector2 to,
+            float speed, float minFlight, float maxFlight)
+            => FlyRoutine(scene, anim, from, to, speed, minFlight, maxFlight);
+
+        /// <summary>Flies a skill projectile; see <see cref="FlyAnimation"/>.</summary>
         public static IEnumerator FlySkill(Scene scene, SkillEffect effect, Vector2 from, Vector2 to,
             float speed, float minFlight, float maxFlight)
             => FlyRoutine(scene, SkillNames[(int)effect], from, to, speed, minFlight, maxFlight);

@@ -55,6 +55,18 @@ namespace PitHero.Combat
         /// </summary>
         IEnumerator OnMonsterWindup(IEnemy enemy, IBattleAlly target);
 
+        /// <summary>
+        /// Called at the end of a monster's turn, after its attack resolved (digits, deaths, counters): a monster
+        /// that leapt in front of its target in <see cref="OnMonsterWindup"/> leaps back. Null when nothing moved.
+        /// </summary>
+        IEnumerator EndMonsterAttack(IEnemy enemy);
+
+        /// <summary>
+        /// Called when a monster's attack hits a party member, before the damage digits: the impact effect on
+        /// the target. Presentation only; nothing waits on it.
+        /// </summary>
+        void ShowMonsterHitOnAlly(IEnemy enemy, IBattleAlly target);
+
         // ── Visual feedback ───────────────────────────────────────────────────────
 
         /// <summary>Shows a damage number over a monster and waits for the animation.</summary>

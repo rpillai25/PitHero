@@ -211,7 +211,12 @@ namespace PitHero.AI
         }
 
         /// <inheritdoc/>
-        public IEnumerator OnRoundStarted() => null;
+        public IEnumerator OnRoundStarted()
+        {
+            // Untargetable ticks down at the end of the round: un-fade anyone it just ran out on
+            RefreshSeeThrough();
+            return null;
+        }
 
         /// <inheritdoc/>
         public void RecruitLateArrivingAllies(List<IBattleAlly> currentAllies)
@@ -261,6 +266,7 @@ namespace PitHero.AI
         {
             // Anyone who turned for their own action squares back up to the hero's target
             FacePartyTowardHeroFocus();
+            RefreshSeeThrough();
             if (_turnIndicator == null) return null;
             var entity = GetEntityForAlly(ally);
             if (entity != null)
@@ -272,6 +278,7 @@ namespace PitHero.AI
         public IEnumerator OnMonsterTurnStarted(IEnemy enemy)
         {
             FacePartyTowardHeroFocus();
+            RefreshSeeThrough();
             if (_turnIndicator == null) return null;
             var entity = GetEntityForEnemy(enemy);
             if (entity != null)
@@ -284,13 +291,294 @@ namespace PitHero.AI
         {
             var monsterEntity = GetEntityForEnemy(enemy);
             if (monsterEntity == null) return null;
-
-            // A battling monster keeps facing the hero, whoever it is attacking
-            FaceMonsterTowardHero(monsterEntity);
-
             var monsterAnim = monsterEntity.GetComponent<EnemyAnimationComponent>();
+
+            // A physical attacker not already beside its target leaps in front of it first
+            var targetEntity = GetEntityForAlly(target);
+            if (enemy.AttackKind == DamageKind.Physical && monsterAnim != null && targetEntity != null
+                && TryPlanMonsterLeap(monsterEntity, targetEntity, out var offset))
+                return MonsterLeapAttackRoutine(monsterEntity, monsterAnim, targetEntity, offset);
+
+            // A magic attacker stays put and casts a bolt of its element at the target
+            if (enemy.AttackKind == DamageKind.Magical && monsterAnim != null && targetEntity != null)
+                return MonsterMagicAttackRoutine(enemy, monsterEntity, monsterAnim, targetEntity);
+
+            // Otherwise a battling monster keeps facing the hero, whoever it is attacking
+            FaceMonsterTowardHero(monsterEntity);
             if (monsterAnim == null) return null;
             return monsterAnim.PlayAttackAnimation();
+        }
+
+        /// <inheritdoc/>
+        public IEnumerator EndMonsterAttack(IEnemy enemy)
+        {
+            var monsterEntity = GetEntityForEnemy(enemy);
+            if (_magicCaster != null && monsterEntity == _magicCaster)
+            {
+                // A caster turned to its target; it squares back up to the hero
+                _magicCaster = null;
+                if (!monsterEntity.IsDestroyed && enemy.CurrentHP > 0)
+                    FaceMonsterTowardHero(monsterEntity);
+                return null;
+            }
+            if (_leaptMonster == null || monsterEntity != _leaptMonster)
+                return null;
+            if (monsterEntity.IsDestroyed || enemy.CurrentHP <= 0)
+            {
+                // Killed by a counter where it stood: it fades out there
+                _leaptMonster = null;
+                return null;
+            }
+            return MonsterLeapHomeRoutine(monsterEntity);
+        }
+
+        /// <inheritdoc/>
+        public void ShowMonsterHitOnAlly(IEnemy enemy, IBattleAlly target)
+        {
+            var targetEntity = GetEntityForAlly(target);
+            if (targetEntity == null)
+                return;
+            if (enemy.AttackKind == DamageKind.Magical)
+            {
+                // The bolt bursts on the target in its element
+                MonsterMagicLook(enemy.Element, out _, out var impact);
+                AttackEffects.PlayAnimationOn(targetEntity, impact, GameConfig.MonsterHitEffectDuration, false);
+                return;
+            }
+            // The spray points away from the attacker: the art sprays right, so mirror it when the monster is right
+            bool fromRight = false;
+            var monsterEntity = GetEntityForEnemy(enemy);
+            if (monsterEntity != null)
+            {
+                float monsterX = monsterEntity.Transform.Position.X
+                    + (monsterEntity == _leaptMonster ? _leaptOffset.X : 0f);
+                fromRight = monsterX > targetEntity.Transform.Position.X;
+            }
+            AttackEffects.PlayAnimationOn(targetEntity, AttackEffects.MonsterHitAnimation,
+                GameConfig.MonsterHitEffectDuration, fromRight);
+        }
+
+        // ── Monster magic attacks ────────────────────────────────────────────────────
+
+        /// <summary>The magic-attacking monster turned toward its target this turn, or null.</summary>
+        private Entity _magicCaster;
+
+        /// <summary>
+        /// The bolt a magic-attacking monster casts and the burst it makes on the target, by the monster's
+        /// element: fire → fireball + fire blast, dark → shadow bolt + dark hit, light → arcane bolt + holy
+        /// burst, anything else → the rod's arcane bolt + burst.
+        /// </summary>
+        private static void MonsterMagicLook(ElementType element, out string bolt, out string impact)
+        {
+            switch (element)
+            {
+                case ElementType.Fire:
+                    bolt = AttackEffects.AnimationName(SkillEffect.Fireball);
+                    impact = AttackEffects.AnimationName(SkillEffect.FireBlast);
+                    break;
+                case ElementType.Dark:
+                    bolt = AttackEffects.AnimationName(SkillEffect.ShadowBolt);
+                    impact = AttackEffects.AnimationName(SkillEffect.SneakAttack);
+                    break;
+                case ElementType.Light:
+                    bolt = AttackEffects.RodBoltAnimation;
+                    impact = AttackEffects.AnimationName(SkillEffect.HolyBurst);
+                    break;
+                default:
+                    bolt = AttackEffects.RodBoltAnimation;
+                    impact = AttackEffects.RodBurstAnimation;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// A magic attacker turns to its target, plays its attack animation, then a bolt of its element flies
+        /// to the target (blocking, timed like the Fire skill's fireball). The burst comes on a hit, from
+        /// <see cref="ShowMonsterHitOnAlly"/>; <see cref="EndMonsterAttack"/> turns it back to the hero.
+        /// </summary>
+        private IEnumerator MonsterMagicAttackRoutine(IEnemy enemy, Entity monsterEntity, EnemyAnimationComponent anim,
+            Entity targetEntity)
+        {
+            var from = monsterEntity.Transform.Position;
+            var targetPos = targetEntity.Transform.Position;
+            FaceMonsterTowardX(monsterEntity, anim, from.X, targetPos.X);
+            _magicCaster = monsterEntity;
+            yield return anim.PlayAttackAnimation();
+
+            MonsterMagicLook(enemy.Element, out var bolt, out _);
+            yield return AttackEffects.FlyAnimation(Core.Scene, bolt, from, targetPos,
+                GameConfig.SkillFireballSpeed, GameConfig.SkillFireballMinFlight, GameConfig.SkillFireballMaxFlight);
+        }
+
+        // ── Monster leap-in (render-only) ────────────────────────────────────────────
+
+        /// <summary>The monster standing in front of its target after a leap, or null.</summary>
+        private Entity _leaptMonster;
+        /// <summary>Its sprite offset from home while it stands there.</summary>
+        private Vector2 _leaptOffset;
+        /// <summary>Its resting sprite offset (the tile anchor of a tall monster), restored when it is home.</summary>
+        private Vector2 _leaptRest;
+
+        /// <summary>The eight tiles around a target, as unit tile steps.</summary>
+        private static readonly Vector2[] NeighborSteps =
+        {
+            new Vector2(1, 0), new Vector2(-1, 0), new Vector2(0, 1), new Vector2(0, -1),
+            new Vector2(1, 1), new Vector2(-1, 1), new Vector2(1, -1), new Vector2(-1, -1),
+        };
+
+        /// <summary>
+        /// Where a monster lands to attack <paramref name="targetEntity"/>: the free tile beside the target
+        /// nearest the monster (not under another party member or monster; the nearest tile when none is free).
+        /// False (no leap) when the monster already stands beside the target.
+        /// </summary>
+        private bool TryPlanMonsterLeap(Entity monsterEntity, Entity targetEntity, out Vector2 offset)
+        {
+            offset = Vector2.Zero;
+            var from = monsterEntity.Transform.Position;
+            var targetPos = targetEntity.Transform.Position;
+            var d = from - targetPos;
+            if (System.MathF.Abs(d.X) <= GameConfig.MonsterAttackAdjacentRange
+                && System.MathF.Abs(d.Y) <= GameConfig.MonsterAttackAdjacentRange)
+                return false;
+
+            float tile = GameConfig.TileSize;
+            Vector2 nearest = Vector2.Zero, nearestFree = Vector2.Zero;
+            float nearestScore = float.MaxValue, nearestFreeScore = float.MaxValue;
+            for (int i = 0; i < NeighborSteps.Length; i++)
+            {
+                var spot = targetPos + NeighborSteps[i] * tile;
+                float score = Vector2.DistanceSquared(spot, from);
+                if (score < nearestScore)
+                {
+                    nearestScore = score;
+                    nearest = spot;
+                }
+                if (score < nearestFreeScore && !IsSpotTaken(spot, monsterEntity))
+                {
+                    nearestFreeScore = score;
+                    nearestFree = spot;
+                }
+            }
+            var landing = nearestFreeScore < float.MaxValue ? nearestFree : nearest;
+            offset = landing - from;
+            return offset.LengthSquared() >= 4f;
+        }
+
+        /// <summary>True when the hero, a mercenary or another living monster stands on <paramref name="spot"/>.</summary>
+        private bool IsSpotTaken(Vector2 spot, Entity self)
+        {
+            float r = GameConfig.TileSize * 0.5f;
+            float r2 = r * r;
+            var heroEntity = _heroComponent?.Entity;
+            if (heroEntity != null && Vector2.DistanceSquared(heroEntity.Transform.Position, spot) < r2)
+                return true;
+            foreach (var kv in _mercMap)
+            {
+                var e = kv.Value.e;
+                if (e != null && !e.IsDestroyed && kv.Key.CurrentHP > 0
+                    && Vector2.DistanceSquared(e.Transform.Position, spot) < r2)
+                    return true;
+            }
+            for (int i = 0; i < _monsterEntities.Count; i++)
+            {
+                var m = _monsterEntities[i];
+                if (m != self && IsLivingMonster(m) && Vector2.DistanceSquared(m.Transform.Position, spot) < r2)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>Turns a monster left or right toward <paramref name="x"/> and applies the flip at once.</summary>
+        private static void FaceMonsterTowardX(Entity monsterEntity, EnemyAnimationComponent anim, float fromX, float x)
+        {
+            float dx = x - fromX;
+            if (dx == 0f)
+                return;
+            var dir = dx < 0f ? Direction.Left : Direction.Right;
+            monsterEntity.GetComponent<ActorFacingComponent>()?.SetFacing(dir);
+            // Apply the flip now: a flip negates LocalOffset.X, so it must land before a leap offset is written
+            anim.UpdateAnimationForDirection(dir);
+        }
+
+        private IEnumerator MonsterLeapAttackRoutine(Entity monsterEntity, EnemyAnimationComponent anim,
+            Entity targetEntity, Vector2 offset)
+        {
+            var from = monsterEntity.Transform.Position;
+            var targetX = targetEntity.Transform.Position.X;
+            FaceMonsterTowardX(monsterEntity, anim, from.X, targetX);
+            _leaptMonster = monsterEntity;
+            _leaptRest = anim.LocalOffset;
+            _leaptOffset = offset;
+            yield return MonsterLeapArc(monsterEntity, anim, _leaptRest, Vector2.Zero, offset);
+
+            // Face the target from where it landed (it may have hopped past it), then strike
+            if (!monsterEntity.IsDestroyed)
+            {
+                anim.LocalOffset = _leaptRest;
+                FaceMonsterTowardX(monsterEntity, anim, from.X + offset.X, targetX);
+                anim.LocalOffset = _leaptRest + offset;
+            }
+            yield return anim.PlayAttackAnimation();
+        }
+
+        private IEnumerator MonsterLeapHomeRoutine(Entity monsterEntity)
+        {
+            var anim = monsterEntity.GetComponent<EnemyAnimationComponent>();
+            if (anim != null)
+            {
+                var from = monsterEntity.Transform.Position;
+                anim.LocalOffset = _leaptRest;
+                FaceMonsterTowardX(monsterEntity, anim, from.X + _leaptOffset.X, from.X);
+                anim.LocalOffset = _leaptRest + _leaptOffset;
+                yield return MonsterLeapArc(monsterEntity, anim, _leaptRest, _leaptOffset, Vector2.Zero);
+            }
+            _leaptMonster = null;
+            _leaptOffset = Vector2.Zero;
+            // Home again: back to facing the hero
+            if (anim != null && !monsterEntity.IsDestroyed)
+                anim.LocalOffset = _leaptRest;
+            FaceMonsterTowardHero(monsterEntity);
+        }
+
+        /// <summary>
+        /// Render-only parabolic leap of a monster's sprite between two offsets from home (the entity, its tile
+        /// and its AI never move). Timed like the mercenary jump in sim time and held while paused.
+        /// </summary>
+        private static IEnumerator MonsterLeapArc(Entity entity, EnemyAnimationComponent anim, Vector2 rest,
+            Vector2 fromOffset, Vector2 toOffset)
+        {
+            var delta = toOffset - fromOffset;
+            float duration = Mathf.Clamp(delta.Length() / GameConfig.MercAttackJumpSpeed,
+                GameConfig.MercAttackJumpMinDuration, GameConfig.MercAttackJumpMaxDuration);
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                yield return null;
+                elapsed += UnpausedDelta();
+                if (entity.IsDestroyed)
+                    continue;
+                float t = Mathf.Clamp01(elapsed / duration);
+                var at = Vector2.Lerp(fromOffset, toOffset, t);
+                at.Y -= GameConfig.MonsterAttackLeapHeight * 4f * t * (1f - t);
+                anim.LocalOffset = rest + at;
+            }
+            if (!entity.IsDestroyed)
+                anim.LocalOffset = rest + toOffset;
+        }
+
+        /// <summary>Puts a monster still standing in front of its target back home at once (battle torn down).</summary>
+        private void ResetLeaptMonster()
+        {
+            if (_leaptMonster == null)
+                return;
+            if (!_leaptMonster.IsDestroyed)
+            {
+                var anim = _leaptMonster.GetComponent<EnemyAnimationComponent>();
+                if (anim != null)
+                    anim.LocalOffset = _leaptRest;
+            }
+            _leaptMonster = null;
+            _leaptOffset = Vector2.Zero;
         }
 
         // ── IBattleEventSink — visual feedback ───────────────────────────────────────
@@ -426,6 +714,10 @@ namespace PitHero.AI
 
             FaceEntityFrom(attackerEntity, from, targetPos);
 
+            // Melee effort: a quick push toward the target and a snap back while the effect plays
+            if (!AttackVisuals.IsRanged(visual))
+                LungeToward(attackerEntity, from, targetPos);
+
             IEnumerator visualRoutine;
             if (visual == AttackVisual.Arrow)
                 visualRoutine = AttackEffects.FlyArrow(Core.Scene, from, targetPos);
@@ -457,6 +749,7 @@ namespace PitHero.AI
             float duration = Mathf.Clamp(delta.Length() / GameConfig.MercAttackJumpSpeed,
                 GameConfig.MercAttackJumpMinDuration, GameConfig.MercAttackJumpMaxDuration);
 
+            AttackGestureComponent.Cancel(entity); // a jump owns the sprite offset from here
             var jump = entity.GetComponent<HeroJumpComponent>();
             bool posed = jump != null && jump.BeginAirbornePose(DirectionOf(delta), keepRestOffset: returning);
 
@@ -589,12 +882,12 @@ namespace PitHero.AI
                         GameConfig.SkillAreaEffectDuration, false, SkillEffect.FlashStrike, spin: true);
                 case "knight.heavy_strike":
                     return Melee(caster, casterEntity, targetPos, SkillEffect.HeavyStrike, EffectPlace.Target,
-                        GameConfig.SkillHitEffectDuration, false);
+                        GameConfig.SkillHitEffectDuration, false, gesture: MeleeGesture.LeapStrike);
 
                 // ── Monk ──
                 case "monk.roundhouse":
                     return Melee(caster, casterEntity, targetPos, SkillEffect.Roundhouse, EffectPlace.GroupCenter,
-                        GameConfig.SkillAreaEffectDuration, false, SkillEffect.ShotImpact);
+                        GameConfig.SkillAreaEffectDuration, false, SkillEffect.ShotImpact, gesture: MeleeGesture.HalfTurn);
                 case "monk.flaming_fist":
                     return Melee(caster, casterEntity, targetPos, SkillEffect.FlamingFist, EffectPlace.Target,
                         GameConfig.SkillHitEffectDuration, false);
@@ -611,7 +904,7 @@ namespace PitHero.AI
                         GameConfig.SkillHitEffectDuration, true);
                 case "synergy.iaido_slash":
                     return Melee(caster, casterEntity, targetPos, SkillEffect.Iaido, EffectPlace.Reach,
-                        GameConfig.SkillHitEffectDuration, true);
+                        GameConfig.SkillHitEffectDuration, true, gesture: MeleeGesture.SlideDash);
                 case "synergy.flash_strike":
                     return Melee(caster, casterEntity, targetPos, SkillEffect.FlashStrike, EffectPlace.Reach,
                         GameConfig.SkillHitEffectDuration, true);
@@ -682,7 +975,8 @@ namespace PitHero.AI
         /// then faces the target again.
         /// </summary>
         private IEnumerator Melee(ICombatant caster, Entity casterEntity, Vector2 targetPos, SkillEffect effect,
-            EffectPlace place, float duration, bool directional, SkillEffect hit = SkillEffect.None, bool spin = false)
+            EffectPlace place, float duration, bool directional, SkillEffect hit = SkillEffect.None, bool spin = false,
+            MeleeGesture gesture = MeleeGesture.Lunge)
         {
             var from = casterEntity.Transform.Position;
             if (TryPlanFrontLineJump(casterEntity, caster is Mercenary, out var landing, out var offset))
@@ -716,7 +1010,23 @@ namespace PitHero.AI
 
             if (!spin)
             {
-                yield return play;
+                switch (gesture)
+                {
+                    case MeleeGesture.SlideDash:
+                        yield return SlideDashThen(casterEntity, dir, play);
+                        break;
+                    case MeleeGesture.LeapStrike:
+                        yield return LeapStrikeThen(casterEntity, dir, play);
+                        break;
+                    case MeleeGesture.HalfTurn:
+                        LungeToward(casterEntity, from, targetPos);
+                        yield return HalfTurnThen(casterEntity, from, targetPos, play);
+                        break;
+                    default:
+                        LungeToward(casterEntity, from, targetPos);
+                        yield return play;
+                        break;
+                }
                 yield break;
             }
 
@@ -737,6 +1047,188 @@ namespace PitHero.AI
             }
             if (!casterEntity.IsDestroyed)
                 FaceEntityFrom(casterEntity, from, targetPos);
+        }
+
+        /// <summary>How a melee attacker's body moves with the attack (render-only).</summary>
+        private enum MeleeGesture : byte
+        {
+            /// <summary>A quick push toward the target and a snap back, while the effect plays.</summary>
+            Lunge,
+            /// <summary>Iaido: slide back, hold, dash past where it stood; the slice plays from the dash.</summary>
+            SlideDash,
+            /// <summary>Heavy Strike: leap toward the target and slam down; the effect starts near impact.</summary>
+            LeapStrike,
+            /// <summary>Roundhouse: a half-circle turn into the kick (one side, the target, the other side).</summary>
+            HalfTurn,
+        }
+
+        /// <summary>
+        /// Steps <paramref name="play"/> by hand while <paramref name="entity"/> turns a half circle through the
+        /// target: the side a quarter turn counter-clockwise of it, the target, the side a quarter turn clockwise
+        /// (facing north: left, up, right), one every <see cref="GameConfig.RoundhouseFacingStep"/>. It then faces
+        /// the target for the rest of the effect. Takes exactly as long as <paramref name="play"/>.
+        /// </summary>
+        private static IEnumerator HalfTurnThen(Entity entity, Vector2 from, Vector2 targetPos, IEnumerator play)
+        {
+            var facing = entity.GetComponent<ActorFacingComponent>();
+            var toward = DirectionOf(targetPos - from);
+            HalfTurnSweep[0] = QuarterTurnCounterClockwise(toward);
+            HalfTurnSweep[1] = toward;
+            HalfTurnSweep[2] = QuarterTurnClockwise(toward);
+            float elapsed = 0f;
+            int lastStep = -1;
+            while (play.MoveNext())
+            {
+                int step = (int)(elapsed / GameConfig.RoundhouseFacingStep);
+                if (step != lastStep && facing != null && !entity.IsDestroyed)
+                {
+                    facing.SetFacing(step < HalfTurnSweep.Length ? HalfTurnSweep[step] : toward);
+                    lastStep = step;
+                }
+                yield return play.Current;
+                elapsed += UnpausedDelta();
+            }
+            if (facing != null && !entity.IsDestroyed)
+                facing.SetFacing(toward);
+        }
+
+        /// <summary>Reused facing sequence for <see cref="HalfTurnThen"/>.</summary>
+        private static readonly Direction[] HalfTurnSweep = new Direction[3];
+
+        /// <summary>The cardinal direction a quarter turn counter-clockwise on screen (Up → Left).</summary>
+        private static Direction QuarterTurnCounterClockwise(Direction d)
+        {
+            switch (d)
+            {
+                case Direction.Up: return Direction.Left;
+                case Direction.Left: return Direction.Down;
+                case Direction.Down: return Direction.Right;
+                default: return Direction.Up;
+            }
+        }
+
+        /// <summary>The cardinal direction a quarter turn clockwise on screen (Up → Right).</summary>
+        private static Direction QuarterTurnClockwise(Direction d)
+        {
+            switch (d)
+            {
+                case Direction.Up: return Direction.Right;
+                case Direction.Right: return Direction.Down;
+                case Direction.Down: return Direction.Left;
+                default: return Direction.Up;
+            }
+        }
+
+        /// <summary>Starts the melee lunge on <paramref name="entity"/> toward <paramref name="targetPos"/> (detached).</summary>
+        private static void LungeToward(Entity entity, Vector2 from, Vector2 targetPos)
+        {
+            var d = targetPos - from;
+            if (d.LengthSquared() < 0.0001f)
+                return;
+            AttackGestureComponent.Lunge(entity, Vector2.Normalize(d), GameConfig.AttackLungeDistance,
+                GameConfig.AttackLungeDuration);
+        }
+
+        /// <summary>
+        /// Iaido: the caster's sprite slides back along <paramref name="dir"/>, holds, then dashes past where it
+        /// stood, still facing the target; the slice (<paramref name="play"/>) plays from the dash while the
+        /// sprite eases home. Adds the slide, hold and dash to the skill's time.
+        /// </summary>
+        private static IEnumerator SlideDashThen(Entity entity, Vector2 dir, IEnumerator play)
+        {
+            var body = entity.GetComponent<MultiSpriteAnimator>();
+            AttackGestureComponent.Cancel(entity);
+            var rest = body != null ? body.LocalOffset : Vector2.Zero;
+            var back = -dir * GameConfig.IaidoSlideDistance;
+            var past = dir * GameConfig.IaidoDashDistance;
+            AfterimageTrailComponent.Begin(entity);
+
+            float elapsed = 0f;
+            while (elapsed < GameConfig.IaidoSlideDuration)
+            {
+                yield return null;
+                elapsed += UnpausedDelta();
+                float t = Mathf.Clamp01(elapsed / GameConfig.IaidoSlideDuration);
+                if (body != null && !entity.IsDestroyed)
+                    body.LocalOffset = rest + back * (t * (2f - t));
+            }
+            elapsed = 0f;
+            while (elapsed < GameConfig.IaidoHoldDuration)
+            {
+                yield return null;
+                elapsed += UnpausedDelta();
+            }
+            elapsed = 0f;
+            while (elapsed < GameConfig.IaidoDashDuration)
+            {
+                yield return null;
+                elapsed += UnpausedDelta();
+                float t = Mathf.Clamp01(elapsed / GameConfig.IaidoDashDuration);
+                if (body != null && !entity.IsDestroyed)
+                    body.LocalOffset = rest + Vector2.Lerp(back, past, t);
+            }
+
+            if (body != null && !entity.IsDestroyed)
+            {
+                body.LocalOffset = rest + past;
+                AttackGestureComponent.Return(entity, past, GameConfig.AttackGestureReturnDuration);
+            }
+            AfterimageTrailComponent.End(entity);
+            yield return play;
+        }
+
+        /// <summary>
+        /// Heavy Strike: the caster leaps along <paramref name="dir"/> (jump pose and shadow), rising slowly and
+        /// slamming down; the effect (<paramref name="play"/>) starts at <see cref="GameConfig.HeavyStrikeEffectAt"/>
+        /// of the leap so it lands with the blow, then the sprite eases home while the effect finishes. A
+        /// mercenary standing beside the hero leaps from there.
+        /// </summary>
+        private IEnumerator LeapStrikeThen(Entity entity, Vector2 dir, IEnumerator play)
+        {
+            AttackGestureComponent.Cancel(entity);
+            var jump = entity.GetComponent<HeroJumpComponent>();
+            bool fromJumpSpot = entity == _jumpedEntity;
+            var baseOffset = fromJumpSpot ? _jumpedOffset : Vector2.Zero;
+            var facing = entity.GetComponent<ActorFacingComponent>()?.Facing ?? DirectionOf(dir);
+            bool posed = jump != null && jump.BeginAirbornePose(facing, keepRestOffset: fromJumpSpot);
+            var forward = dir * GameConfig.HeavyStrikeLeapForward;
+            AfterimageTrailComponent.Begin(entity);
+
+            bool effectRunning = false, effectDone = false;
+            float elapsed = 0f;
+            while (elapsed < GameConfig.HeavyStrikeLeapDuration)
+            {
+                yield return null;
+                elapsed += UnpausedDelta();
+                float t = Mathf.Clamp01(elapsed / GameConfig.HeavyStrikeLeapDuration);
+                if (posed && !entity.IsDestroyed)
+                {
+                    float peak = GameConfig.HeavyStrikeLeapPeak;
+                    float u = t < peak ? (peak - t) / peak : (t - peak) / (1f - peak);
+                    float height = GameConfig.HeavyStrikeLeapHeight * (1f - u * u);
+                    var at = baseOffset + forward * t;
+                    jump.SetAirborneOffset(at.X, at.Y, height);
+                }
+                if (!effectRunning && t >= GameConfig.HeavyStrikeEffectAt)
+                    effectRunning = true;
+                if (effectRunning && !effectDone)
+                    effectDone = !play.MoveNext();
+            }
+
+            if (posed && !entity.IsDestroyed)
+            {
+                var landed = baseOffset + forward;
+                jump.EndAirbornePose(landed.X, landed.Y);
+                AttackGestureComponent.Return(entity, forward, GameConfig.AttackGestureReturnDuration);
+            }
+            AfterimageTrailComponent.End(entity);
+            if (!effectRunning)
+                effectDone = !play.MoveNext();
+            while (!effectDone)
+            {
+                yield return play.Current;
+                effectDone = !play.MoveNext();
+            }
         }
 
         /// <summary>Average of <see cref="_targetPositions"/> (the primary target when there are no others).</summary>
@@ -836,6 +1328,9 @@ namespace PitHero.AI
                     break;
                 // Self-buffs on the caster
                 case "thief.vanish":
+                    PlayCastOn(GetEntityForCombatant(caster), SkillEffect.Vanish, GameConfig.SkillVanishEffectDuration);
+                    MakeSeeThrough(caster, GetEntityForCombatant(caster));
+                    break;
                 case "synergy.smoke_bomb":
                     PlayCastOn(GetEntityForCombatant(caster), SkillEffect.Vanish, GameConfig.SkillVanishEffectDuration);
                     break;
@@ -846,6 +1341,55 @@ namespace PitHero.AI
                     PlayCastOn(GetEntityForCombatant(caster), SkillEffect.KiCloak, GameConfig.SkillBuffEffectDuration);
                     break;
             }
+        }
+
+        /// <summary>Characters drawn see-through after Vanish, with the composite tint to restore.</summary>
+        private readonly List<(ICombatant Combatant, MultiSpriteAnimator Body, Color Tint)> _seeThrough =
+            new List<(ICombatant, MultiSpriteAnimator, Color)>();
+
+        /// <summary>
+        /// Draws <paramref name="entity"/>'s body at <see cref="GameConfig.VanishAlpha"/> while
+        /// <paramref name="combatant"/>'s Untargetable buff lasts (<see cref="RefreshSeeThrough"/> un-fades it).
+        /// Render-only; the composite tint is recorded, so replays show it.
+        /// </summary>
+        private void MakeSeeThrough(ICombatant combatant, Entity entity)
+        {
+            var body = entity?.GetComponent<MultiSpriteAnimator>();
+            if (combatant == null || body == null || entity.IsDestroyed)
+                return;
+            for (int i = 0; i < _seeThrough.Count; i++)
+            {
+                if (_seeThrough[i].Body == body)
+                    return;
+            }
+            _seeThrough.Add((combatant, body, body.Color));
+            body.Color = body.Color * GameConfig.VanishAlpha; // premultiplied: scales colour and alpha together
+        }
+
+        /// <summary>Un-fades every see-through character whose Untargetable buff has run out.</summary>
+        private void RefreshSeeThrough()
+        {
+            for (int i = _seeThrough.Count - 1; i >= 0; i--)
+            {
+                if (_seeThrough[i].Combatant.GetBuffTotal(BuffType.Untargetable) > 0)
+                    continue;
+                RestoreSeeThroughAt(i);
+            }
+        }
+
+        /// <summary>Restores every see-through character's tint (battle over).</summary>
+        private void RestoreSeeThrough()
+        {
+            for (int i = _seeThrough.Count - 1; i >= 0; i--)
+                RestoreSeeThroughAt(i);
+        }
+
+        private void RestoreSeeThroughAt(int i)
+        {
+            var body = _seeThrough[i].Body;
+            if (body?.Entity != null && !body.Entity.IsDestroyed)
+                body.Color = _seeThrough[i].Tint;
+            _seeThrough.RemoveAt(i);
         }
 
         private static void PlayCastOn(Entity entity, SkillEffect effect, float duration)
@@ -1287,6 +1831,9 @@ namespace PitHero.AI
             HeroStateMachine.CurrentThreatTarget = null;
 
             ResetJumpedAlly();
+            ResetLeaptMonster();
+            RestoreSeeThrough();
+            _magicCaster = null;
 
             if (_turnIndicatorEntity != null)
                 _turnIndicatorEntity.Destroy();

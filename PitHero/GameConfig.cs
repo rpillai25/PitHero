@@ -153,6 +153,38 @@ namespace PitHero
         public const float AttackRodHandY = -4f;
         public const float AttackRodTipX = 8.5f;
         public const float AttackRodTipY = -14.5f;
+
+        // Attack gestures: render-only body motion (AttackGestureComponent / LiveBattleAdapter.Melee).
+        /// <summary>A melee attacker's sprite pushes this many px toward the target and snaps back.</summary>
+        public const float AttackLungeDistance = 6f;
+        /// <summary>Length of the lunge (it overlaps the effect, so it adds no time).</summary>
+        public const float AttackLungeDuration = 0.18f;
+        /// <summary>Share of the lunge spent pushing forward; the rest snaps back.</summary>
+        public const float AttackLungePeak = 0.35f;
+        /// <summary>How long a sprite takes to ease home after a dash or a leap (overlaps the effect).</summary>
+        public const float AttackGestureReturnDuration = 0.15f;
+        /// <summary>Iaido Slash: slide back this far, hold, then dash this far past where the caster stood.</summary>
+        public const float IaidoSlideDistance = 10f;
+        public const float IaidoSlideDuration = 0.16f;
+        public const float IaidoHoldDuration = 0.06f;
+        public const float IaidoDashDistance = 14f;
+        public const float IaidoDashDuration = 0.06f;
+        /// <summary>Heavy Strike: a leap toward the target that slams down; the effect starts near impact.</summary>
+        public const float HeavyStrikeLeapDuration = 0.42f;
+        public const float HeavyStrikeLeapHeight = 22f;
+        public const float HeavyStrikeLeapForward = 14f;
+        /// <summary>Share of the leap spent rising; the fall after it is quicker (a slam).</summary>
+        public const float HeavyStrikeLeapPeak = 0.6f;
+        /// <summary>Share of the leap at which the Heavy Strike effect starts (just before landing).</summary>
+        public const float HeavyStrikeEffectAt = 0.8f;
+        /// <summary>Afterimage trail (Iaido, Heavy Strike): a copy every this many px the body moves.</summary>
+        public const float AfterimageSpacing = 3f;
+        /// <summary>How long each afterimage takes to fade out.</summary>
+        public const float AfterimageFadeDuration = 0.25f;
+        /// <summary>Opacity of a fresh afterimage.</summary>
+        public const float AfterimageStartAlpha = 0.6f;
+        /// <summary>Afterimage tint (blue).</summary>
+        public static readonly Microsoft.Xna.Framework.Color AfterimageColor = new Microsoft.Xna.Framework.Color(90, 150, 255);
         /// <summary>A melee mercenary lands this far beside the hero (half a tile) before attacking.</summary>
         public const float MercAttackSideOffset = 16f;
         /// <summary>Peak height of a mercenary's jump to and from the hero, in pixels.</summary>
@@ -161,6 +193,16 @@ namespace PitHero
         public const float MercAttackJumpSpeed = 220f;
         public const float MercAttackJumpMinDuration = 0.2f;
         public const float MercAttackJumpMaxDuration = 0.45f;
+        /// <summary>
+        /// A monster attacking physically leaps in front of its target first unless it already stands within
+        /// this many pixels on both axes (adjacent, diagonals included). It lands one tile from the target, on a
+        /// free side, and leaps back after its turn; speed and clamps are the mercenary jump's.
+        /// </summary>
+        public const float MonsterAttackAdjacentRange = 36f;
+        /// <summary>Peak height of a monster's leap to and from its target, in pixels.</summary>
+        public const float MonsterAttackLeapHeight = 12f;
+        /// <summary>How long the impact effect plays on a party member a monster hits (detached: adds no time).</summary>
+        public const float MonsterHitEffectDuration = 0.45f;
 
         // Battle-skill visuals (issue #458). Blocking effects hold the battle for these sim times before
         // the damage digits show; detached ones (heal, buffs, Provoke) play alongside and hold nothing.
@@ -170,6 +212,8 @@ namespace PitHero
         public const float SkillAreaEffectDuration = 0.55f;
         /// <summary>Knight Spin Slash: seconds the spinning knight holds each facing (down, left, up, right, ...).</summary>
         public const float SpinSlashFacingStep = 0.07f;
+        /// <summary>Roundhouse turns a half circle into the kick (one side, the target, the other side), one facing per step (seconds).</summary>
+        public const float RoundhouseFacingStep = 0.08f;
         /// <summary>Mage Firestorm's meteor shower over the enemy group.</summary>
         public const float SkillMeteorShowerDuration = 0.8f;
         /// <summary>The blast where Mage Fire's fireball lands.</summary>
@@ -193,6 +237,8 @@ namespace PitHero
         public const float SkillHealEffectDuration = 0.9f;
         public const float SkillBuffEffectDuration = 0.8f;
         public const float SkillVanishEffectDuration = 0.7f;
+        /// <summary>After Vanish the thief is drawn at this alpha (see-through) while the Untargetable buff lasts.</summary>
+        public const float VanishAlpha = 0.5f;
         public const float SkillProvokeEffectDuration = 0.8f;
         public const float TreasureOpenWait = 0.5f;
 
@@ -901,7 +947,7 @@ namespace PitHero
         // Stamped into every recording. BUMP IT whenever a change alters what the simulation does from the same
         // seed and commands (balance numbers, AI actions, RNG calls added/removed, command handlers, load path).
         // A recording whose stamp differs still plays, with a warning, and Time Travel Here asks for confirmation.
-        public const int SimulationVersion = 14; // v14: physical attacks and class skills play visuals (#458) — melee mercs jump beside the hero and back (attacks and melee skills), weapon and skill effects hold the battle for fixed sim times; v13: Digging Field finds come from a 500-marble shuffle bag (no pity); v12: monster fishing (fishers at the Fishing Pond earn gold from a 200-marble catch bag; SetMonsterJob rejects Fishing without a pond or past 4 per shift; auto-assign staffs fishers); v11: #450 watering-can artifacts raise can capacity, water claims follow the crop watering priority; v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll; v10: mercenary eye color roll
+        public const int SimulationVersion = 15; // v15: monsters leap in front of a party target to strike physically and cast element bolts for magic attacks, rods raise and fire a bolt instead of a merc jumping in, Iaido Slash slides back and dashes, Heavy Strike leaps and slams (#458 follow-ups); v14: physical attacks and class skills play visuals (#458) — melee mercs jump beside the hero and back (attacks and melee skills), weapon and skill effects hold the battle for fixed sim times; v13: Digging Field finds come from a 500-marble shuffle bag (no pity); v12: monster fishing (fishers at the Fishing Pond earn gold from a 200-marble catch bag; SetMonsterJob rejects Fishing without a pond or past 4 per shift; auto-assign staffs fishers); v11: #450 watering-can artifacts raise can capacity, water claims follow the crop watering priority; v2: economy overhaul (issue #417) — chest gold rolls, dish gating, crop prices; v3: chest gold keyed on tier; v4: #420 farm water duty, meal HP/MP restore, closing serving-table drain, new-game defaults, replenish item targeting; v5: Food tab, fridge pre-stock and sell/purchase priority settings became commands; v6: NewGame replays restore the recorded hero design (job drives HP/MP and starting weapon); v7: farm task priority is player-configurable (claim order restructured, carried by the load path); v8: #422 till/harvest durations scale with farming level, tilling earns fractional farm XP, pit monster counts keyed on effective depth, hero runs to the pit edge when exiting, seat-keyed bus jobs; v9: four hairstyles (one fewer hair-queue shuffle draw), mercenary gender roll; v10: mercenary eye color roll
         public const float ReplayScrubberWidth = 752f;           // Stage pixels; clamped to the stage width minus margins
         public const float ReplayScrubberHeight = 28f;           // Stage pixels
         public const float ReplayScrubberBottomMargin = 8f;      // Stage pixels above the bottom edge

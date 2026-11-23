@@ -28,6 +28,7 @@ namespace PitHero.Tests
             ("PitHero.ECS.Components.DiggingFieldOverlayComponent", "capturable"),
             ("PitHero.ECS.Components.FishingLineRenderer", "capturable"),
             ("PitHero.ECS.Components.AttackEffectRenderer", "capturable"),
+            ("PitHero.ECS.Components.AfterimageTrailComponent", "capturable"),
             ("PitHero.ECS.Components.MonsterHoverNameComponent", "live-only"),
             ("PitHero.ECS.Components.BuildingOutlineRenderComponent", "capturable"),
             ("PitHero.ECS.Components.SelectBoxRenderComponent", "capturable"),
