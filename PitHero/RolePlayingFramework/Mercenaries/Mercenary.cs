@@ -136,11 +136,14 @@ namespace RolePlayingFramework.Mercenaries
                 case ItemKind.WeaponStaff:
                 case ItemKind.WeaponRod:
                 case ItemKind.WeaponHammer:
+                case ItemKind.WeaponBow:
                     if (WeaponShield1 != null) return false;
+                    if (!GearCategoryUtils.IsHandsPairValid(item, WeaponShield2)) return false; // two-handed: shield first
                     WeaponShield1 = item;
                     break;
                 case ItemKind.Shield:
                     if (WeaponShield2 != null) return false;
+                    if (!GearCategoryUtils.IsHandsPairValid(WeaponShield1, item)) return false; // two-handed weapon held
                     WeaponShield2 = item;
                     break;
                 case ItemKind.ArmorMail:
@@ -236,8 +239,10 @@ namespace RolePlayingFramework.Mercenaries
                 case EquipmentSlot.WeaponShield1:
                     if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnife
                         || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff
-                        || gear.Kind == ItemKind.WeaponRod || gear.Kind == ItemKind.WeaponHammer)
+                        || gear.Kind == ItemKind.WeaponRod || gear.Kind == ItemKind.WeaponHammer
+                        || gear.Kind == ItemKind.WeaponBow)
                     {
+                        if (!GearCategoryUtils.IsHandsPairValid(gear, WeaponShield2)) return false; // two-handed: shield first
                         WeaponShield1 = gear; RecalculateDerived(); return true;
                     }
                     return false;
@@ -257,6 +262,7 @@ namespace RolePlayingFramework.Mercenaries
                 case EquipmentSlot.WeaponShield2:
                     if (gear.Kind == ItemKind.Shield)
                     {
+                        if (!GearCategoryUtils.IsHandsPairValid(WeaponShield1, gear)) return false; // two-handed weapon held
                         WeaponShield2 = gear; RecalculateDerived(); return true;
                     }
                     return false;

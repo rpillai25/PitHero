@@ -60,6 +60,9 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Formats a JobType bitflag into a comma-separated list of job names.</summary>
         public static string FormatAllowedJobs(JobType jobs)
         {
+            // Everyone but one job (shields: all but Archer) reads shorter as an exclusion.
+            if (jobs == (JobType.All & ~JobType.Archer)) return "All but Archer";
+
             var parts = new List<string>(6);
             if ((jobs & JobType.Knight) != 0) parts.Add("Knight");
             if ((jobs & JobType.Monk) != 0) parts.Add("Monk");

@@ -123,6 +123,44 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Create Silent Fang.</summary>
         public static Gear SilentFang() => Daggers.SilentFang.Create();
 
+        // WEAPONS - Knuckles (issue #317)
+        /// <summary>Create Leather Wraps.</summary>
+        public static Gear LeatherWraps() => Knuckles.LeatherWraps.Create();
+
+        /// <summary>Create Stone Knuckles.</summary>
+        public static Gear StoneKnuckles() => Knuckles.StoneKnuckles.Create();
+
+        /// <summary>Create Ember Fists.</summary>
+        public static Gear EmberFists() => Knuckles.EmberFists.Create();
+
+        /// <summary>Create Quartz Knuckles.</summary>
+        public static Gear QuartzKnuckles() => Knuckles.QuartzKnuckles.Create();
+
+        /// <summary>Create Shadow Claws.</summary>
+        public static Gear ShadowClaws() => Knuckles.ShadowClaws.Create();
+
+        /// <summary>Create Magma Knuckles.</summary>
+        public static Gear MagmaKnuckles() => Knuckles.MagmaKnuckles.Create();
+
+        // WEAPONS - Bows (issue #317)
+        /// <summary>Create Twig Bow.</summary>
+        public static Gear TwigBow() => Bows.TwigBow.Create();
+
+        /// <summary>Create Bone Bow.</summary>
+        public static Gear BoneBow() => Bows.BoneBow.Create();
+
+        /// <summary>Create Flint Bow.</summary>
+        public static Gear FlintBow() => Bows.FlintBow.Create();
+
+        /// <summary>Create Crystal Bow.</summary>
+        public static Gear CrystalBow() => Bows.CrystalBow.Create();
+
+        /// <summary>Create Shadow Longbow.</summary>
+        public static Gear ShadowLongbow() => Bows.ShadowLongbow.Create();
+
+        /// <summary>Create Inferno Bow.</summary>
+        public static Gear InfernoBow() => Bows.InfernoBow.Create();
+
         // WEAPONS - Spears
         /// <summary>Create Cave Pike.</summary>
         public static Gear CavePike() => Spears.CavePike.Create();

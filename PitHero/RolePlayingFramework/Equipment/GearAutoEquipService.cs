@@ -53,6 +53,8 @@ namespace RolePlayingFramework.Equipment
         {
             if (hero == null || gear == null || !hero.CanEquipItem(gear))
                 return false;
+            if (gear.Kind == ItemKind.Shield && GearCategoryUtils.IsTwoHanded(hero.WeaponShield1))
+                return false; // no free hand beside a two-handed weapon (#317)
             if (!GearCategoryUtils.TryGetCategory(gear.Kind, out GearCategory category))
                 return false;
             return IsNewGearBetter(gear, GetEquippedBaseline(hero, category));
@@ -63,6 +65,8 @@ namespace RolePlayingFramework.Equipment
         {
             if (merc == null || gear == null || !merc.CanEquipItem(gear))
                 return false;
+            if (gear.Kind == ItemKind.Shield && GearCategoryUtils.IsTwoHanded(merc.WeaponShield1))
+                return false; // no free hand beside a two-handed weapon (#317)
             if (!GearCategoryUtils.TryGetCategory(gear.Kind, out GearCategory category))
                 return false;
             return IsNewGearBetter(gear, GetEquippedBaseline(merc, category));
@@ -220,34 +224,63 @@ namespace RolePlayingFramework.Equipment
                 return false;
             }
 
+            // A shield never goes on beside a two-handed weapon (#317).
+            if (gear.Kind == ItemKind.Shield && GearCategoryUtils.IsTwoHanded(hero.WeaponShield1))
+                return false;
+
             IGear currentGear = GetHeroItemInSlot(hero, slot);
-            
-            if (currentGear == null)
+            if (currentGear != null && !IsNewGearBetter(gear, currentGear))
+                return false;
+
+            // A two-handed weapon takes the shield hand too: the shield comes off into the bag.
+            IGear shield = GearCategoryUtils.IsTwoHanded(gear) ? hero.WeaponShield2 as IGear : null;
+            if (shield != null)
             {
-                if (hero.SetEquipmentSlot(slot, gear))
-                {
-                    bag.Remove(gear);
-                    Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to hero's {slot} slot (empty)");
-                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(hero, slot, gear);
-                    return true;
-                }
+                if (!BagCanTakeHandsSwap(bag, gear, currentGear, shield))
+                    return false;
+                hero.SetEquipmentSlot(EquipmentSlot.WeaponShield2, null);
+            }
+
+            if (!hero.SetEquipmentSlot(slot, gear))
+            {
+                if (shield != null)
+                    hero.SetEquipmentSlot(EquipmentSlot.WeaponShield2, shield);
                 return false;
             }
 
-            if (IsNewGearBetter(gear, currentGear))
+            bag.Remove(gear);
+            if (currentGear != null)
+                bag.TryAdd(currentGear);
+            if (shield != null)
+                bag.TryAdd(shield);
+            displacedGear = currentGear ?? shield;
+            Debug.Log(currentGear == null
+                ? $"[GearAutoEquip] Equipped {gear.Name} to hero's {slot} slot (empty)"
+                : $"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in hero's {slot} slot");
+            if (shield != null)
+                Debug.Log($"[GearAutoEquip] {gear.Name} is two-handed; {shield.Name} moved to the bag");
+            PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(hero, slot, gear);
+            return true;
+        }
+
+        /// <summary>
+        /// Two-handed weapons (#317): true when the bag can take everything equipping
+        /// <paramref name="gear"/> sends to it — the old weapon (if any) and the shield — counting the
+        /// slot the new weapon frees when it leaves the bag.
+        /// </summary>
+        private static bool BagCanTakeHandsSwap(ItemBag bag, IGear gear, IGear currentWeapon, IGear shield)
+        {
+            int needed = (currentWeapon != null ? 1 : 0) + (shield != null ? 1 : 0);
+            int free = bag.Capacity - bag.Count;
+            for (int i = 0; i < bag.Capacity; i++)
             {
-                if (hero.SetEquipmentSlot(slot, gear))
+                if (ReferenceEquals(bag.GetSlotItem(i), gear))
                 {
-                    bag.Remove(gear);
-                    bag.TryAdd(currentGear);
-                    displacedGear = currentGear;
-                    Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in hero's {slot} slot");
-                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(hero, slot, gear);
-                    return true;
+                    free++;
+                    break;
                 }
             }
-
-            return false;
+            return free >= needed;
         }
 
         /// <summary>
@@ -293,34 +326,43 @@ namespace RolePlayingFramework.Equipment
                 return false;
             }
 
+            // A shield never goes on beside a two-handed weapon (#317).
+            if (gear.Kind == ItemKind.Shield && GearCategoryUtils.IsTwoHanded(merc.WeaponShield1))
+                return false;
+
             IGear currentGear = GetMercItemInSlot(merc, slot);
-            
-            if (currentGear == null)
+            if (currentGear != null && !IsNewGearBetter(gear, currentGear))
+                return false;
+
+            // A two-handed weapon takes the shield hand too: the shield comes off into the hero's bag.
+            IGear shield = GearCategoryUtils.IsTwoHanded(gear) ? merc.WeaponShield2 : null;
+            if (shield != null)
             {
-                if (merc.SetEquipmentSlot(slot, gear))
-                {
-                    heroBag.Remove(gear);
-                    Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to {merc.Name}'s {slot} slot (empty)");
-                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(merc, slot, gear);
-                    return true;
-                }
+                if (!BagCanTakeHandsSwap(heroBag, gear, currentGear, shield))
+                    return false;
+                merc.SetEquipmentSlot(EquipmentSlot.WeaponShield2, null);
+            }
+
+            if (!merc.SetEquipmentSlot(slot, gear))
+            {
+                if (shield != null)
+                    merc.SetEquipmentSlot(EquipmentSlot.WeaponShield2, shield);
                 return false;
             }
 
-            if (IsNewGearBetter(gear, currentGear))
-            {
-                if (merc.SetEquipmentSlot(slot, gear))
-                {
-                    heroBag.Remove(gear);
-                    heroBag.TryAdd(currentGear);
-                    displacedGear = currentGear;
-                    Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in {merc.Name}'s {slot} slot");
-                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(merc, slot, gear);
-                    return true;
-                }
-            }
-
-            return false;
+            heroBag.Remove(gear);
+            if (currentGear != null)
+                heroBag.TryAdd(currentGear);
+            if (shield != null)
+                heroBag.TryAdd(shield);
+            displacedGear = currentGear ?? shield;
+            Debug.Log(currentGear == null
+                ? $"[GearAutoEquip] Equipped {gear.Name} to {merc.Name}'s {slot} slot (empty)"
+                : $"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in {merc.Name}'s {slot} slot");
+            if (shield != null)
+                Debug.Log($"[GearAutoEquip] {gear.Name} is two-handed; {merc.Name}'s {shield.Name} moved to the bag");
+            PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(merc, slot, gear);
+            return true;
         }
 
         /// <summary>Gets the gear item in the specified slot for a hero.</summary>

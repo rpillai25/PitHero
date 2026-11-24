@@ -238,6 +238,12 @@ namespace RolePlayingFramework.Equipment
             }
         }
 
+        /// <summary>
+        /// Jobs that can carry a shield: everyone but the Archer, whose bow takes both hands (#317).
+        /// Loot weighting treats this set like <see cref="JobType.All"/> for any other hero.
+        /// </summary>
+        public const JobType ShieldJobs = JobType.All & ~JobType.Archer;
+
         /// <summary>Returns the default allowed jobs for a given ItemKind.</summary>
         public static JobType GetDefaultAllowedJobs(ItemKind kind)
         {
@@ -257,7 +263,7 @@ namespace RolePlayingFramework.Equipment
                 case ItemKind.HatHeadband: return JobType.Monk;
                 case ItemKind.HatWizard: return JobType.Mage;
                 case ItemKind.HatPriest: return JobType.Priest;
-                case ItemKind.Shield: return JobType.All;
+                case ItemKind.Shield: return ShieldJobs;
                 case ItemKind.Accessory: return JobType.All;
                 default: return JobType.All;
             }

@@ -609,6 +609,28 @@ namespace PitHero.ECS.Components
         /// </summary>
         public System.Collections.Generic.List<SavedItem> PendingInventoryItems { get; set; }
 
+        /// <summary>Loaded gear waiting for the bag to exist (see <see cref="StashUnwearableLoadedGear"/>).</summary>
+        private System.Collections.Generic.List<IItem> _pendingUnwearableGear;
+
+        /// <summary>
+        /// Gear a loaded hero or mercenary can no longer wear — an archer's shield from a save made
+        /// before archers lost shields (#317). It goes into the bag (after the saved bag contents are
+        /// restored, if the bag does not exist yet); with the bag full it goes to the Second Chance
+        /// vault, so nothing from the save is lost.
+        /// </summary>
+        public void StashUnwearableLoadedGear(IItem item)
+        {
+            if (item == null) return;
+            if (Bag == null)
+            {
+                (_pendingUnwearableGear ??= new System.Collections.Generic.List<IItem>(2)).Add(item);
+                return;
+            }
+            if (!Bag.TryAdd(item) && Core.Instance != null)
+                Core.Services?.GetService<SecondChanceMerchantVault>()?.AddItem(item);
+            Debug.Log($"[HeroComponent] {item.Name} can no longer be worn; moved to the bag");
+        }
+
         /// <summary>
         /// When true, the hero receives new-game starting items after Bag initialization.
         /// Set by the scene only for a brand-new game (never on load or death-respawn).
@@ -690,6 +712,15 @@ namespace PitHero.ECS.Components
                     }
                 }
                 PendingInventoryItems = null;
+            }
+
+            // Loaded gear nobody could wear lands after the saved bag, so it never takes a saved cell.
+            if (_pendingUnwearableGear != null)
+            {
+                var pending = _pendingUnwearableGear;
+                _pendingUnwearableGear = null;
+                for (int i = 0; i < pending.Count; i++)
+                    StashUnwearableLoadedGear(pending[i]);
             }
 
             // Grant new-game starting items (stacked automatically by ItemBag.TryAdd)

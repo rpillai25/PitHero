@@ -284,3 +284,27 @@ Inv_WoodenShield_Desc,No adventurer should be without one.
 Inv_WoodenShield_Name,Wooden Shield
 Inv_WoodenSpear_Desc,Simple wooden shaft with sharpened tip.
 Inv_WoodenSpear_Name,Wooden Spear
+Inv_LeatherWraps_Desc,Worn leather strips wound tight around the fists.
+Inv_LeatherWraps_Name,Leather Wraps
+Inv_StoneKnuckles_Desc,Knuckles chipped from dense cave stone.
+Inv_StoneKnuckles_Name,Stone Knuckles
+Inv_EmberFists_Desc,Iron fist plates that glow with trapped embers.
+Inv_EmberFists_Name,Ember Fists
+Inv_QuartzKnuckles_Desc,Brass knuckles studded with sharp quartz points.
+Inv_QuartzKnuckles_Name,Quartz Knuckles
+Inv_ShadowClaws_Desc,Black hooked claws that strike from the dark.
+Inv_ShadowClaws_Name,Shadow Claws
+Inv_MagmaKnuckles_Desc,Obsidian knuckles cracked with molten veins.
+Inv_MagmaKnuckles_Name,Magma Knuckles
+Inv_TwigBow_Desc,A bent green branch strung with twine.
+Inv_TwigBow_Name,Twig Bow
+Inv_BoneBow_Desc,Bow carved from the rib of a cave beast.
+Inv_BoneBow_Name,Bone Bow
+Inv_FlintBow_Desc,Its flint-tipped arrows spark as they fly.
+Inv_FlintBow_Name,Flint Bow
+Inv_CrystalBow_Desc,Recurve bow inlaid with humming crystals.
+Inv_CrystalBow_Name,Crystal Bow
+Inv_ShadowLongbow_Desc,Tall black longbow that shoots without a sound.
+Inv_ShadowLongbow_Name,Shadow Longbow
+Inv_InfernoBow_Desc,Bow of volcanic glass with a burning string.
+Inv_InfernoBow_Name,Inferno Bow

@@ -1,5 +1,7 @@
+using RolePlayingFramework.Equipment.Bows;
 using RolePlayingFramework.Equipment.Daggers;
 using RolePlayingFramework.Equipment.Hammers;
+using RolePlayingFramework.Equipment.Knuckles;
 using RolePlayingFramework.Equipment.Swords;
 using RolePlayingFramework.Jobs;
 
@@ -20,8 +22,10 @@ namespace RolePlayingFramework.Equipment
                     return RustyDagger.Create();
                 case JobType.Priest:
                     return Mallet.Create();
-                // TODO(issue #317): Monk (WeaponKnuckle) and Archer (WeaponBow) have no
-                // equippable weapon items yet — map their weakest weapon here once one exists.
+                case JobType.Monk:
+                    return LeatherWraps.Create();
+                case JobType.Archer:
+                    return TwigBow.Create();
                 default:
                     return null;
             }

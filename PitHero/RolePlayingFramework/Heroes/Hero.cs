@@ -327,6 +327,8 @@ namespace RolePlayingFramework.Heroes
                 case ItemKind.WeaponStaff:
                 case ItemKind.WeaponRod:
                 case ItemKind.WeaponHammer:
+                case ItemKind.WeaponBow:
+                    if (!GearCategoryUtils.IsHandsPairValid(item, WeaponShield2)) return false; // two-handed: shield first
                     WeaponShield1 = item; RecalculateDerived(); return true;
                 case ItemKind.ArmorMail:
                 case ItemKind.ArmorGi:
@@ -338,6 +340,7 @@ namespace RolePlayingFramework.Heroes
                 case ItemKind.HatPriest:
                     Hat = item; RecalculateDerived(); return true;
                 case ItemKind.Shield:
+                    if (!GearCategoryUtils.IsHandsPairValid(WeaponShield1, item)) return false; // two-handed weapon held
                     WeaponShield2 = item; RecalculateDerived(); return true;
                 case ItemKind.Accessory:
                     if (Accessory1 == null) { Accessory1 = item; RecalculateDerived(); return true; }
@@ -376,8 +379,10 @@ namespace RolePlayingFramework.Heroes
                 case EquipmentSlot.WeaponShield1:
                     if (item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnife
                         || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff
-                        || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.WeaponHammer)
+                        || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.WeaponHammer
+                        || item.Kind == ItemKind.WeaponBow)
                     {
+                        if (!GearCategoryUtils.IsHandsPairValid(item, WeaponShield2)) return false; // two-handed: shield first
                         WeaponShield1 = item; RecalculateDerived(); return true;
                     }
                     return false;
@@ -397,6 +402,7 @@ namespace RolePlayingFramework.Heroes
                 case EquipmentSlot.WeaponShield2:
                     if (item.Kind == ItemKind.Shield)
                     {
+                        if (!GearCategoryUtils.IsHandsPairValid(WeaponShield1, item)) return false; // two-handed weapon held
                         WeaponShield2 = item; RecalculateDerived(); return true;
                     }
                     return false;

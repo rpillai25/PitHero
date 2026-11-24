@@ -287,7 +287,7 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Generate cave common equipment from all Normal-rarity cave gear items (78 items).
+        /// Generate cave common equipment from all Normal-rarity cave gear items (84 items).
         /// </summary>
         private static readonly ItemKind[] _commonPoolKinds = new ItemKind[]
         {
@@ -373,10 +373,18 @@ namespace PitHero.ECS.Components
             ItemKind.HatHeadband,    // 75: ShadowCowl
             ItemKind.HatHelm,        // 76: GreatHelm
             ItemKind.HatHeadband,    // 77: CrystalCirclet
+            // Knuckles (Normal) — 78..80 (issue #317)
+            ItemKind.WeaponKnuckle,  // 78: LeatherWraps
+            ItemKind.WeaponKnuckle,  // 79: StoneKnuckles
+            ItemKind.WeaponKnuckle,  // 80: EmberFists
+            // Bows (Normal) — 81..83 (issue #317)
+            ItemKind.WeaponBow,      // 81: TwigBow
+            ItemKind.WeaponBow,      // 82: BoneBow
+            ItemKind.WeaponBow,      // 83: FlintBow
         };
 
         /// <summary>
-        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (39 items).
+        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (45 items).
         /// </summary>
         private static readonly ItemKind[] _uncommonPoolKinds = new ItemKind[]
         {
@@ -429,6 +437,14 @@ namespace PitHero.ECS.Components
             // Accessories (Uncommon) — 37..38
             ItemKind.Accessory,      // 37: MagicChain
             ItemKind.Accessory,      // 38: RingOfPower
+            // Knuckles (Uncommon) — 39..41 (issue #317)
+            ItemKind.WeaponKnuckle,  // 39: QuartzKnuckles
+            ItemKind.WeaponKnuckle,  // 40: ShadowClaws
+            ItemKind.WeaponKnuckle,  // 41: MagmaKnuckles
+            // Bows (Uncommon) — 42..44 (issue #317)
+            ItemKind.WeaponBow,      // 42: CrystalBow
+            ItemKind.WeaponBow,      // 43: ShadowLongbow
+            ItemKind.WeaponBow,      // 44: InfernoBow
         };
 
         /// <summary>Generate cave rare equipment from all Rare-rarity cave gear items (13 items).</summary>
@@ -488,6 +504,28 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// The party-job bias for one pool entry: all-jobs gear, then the hero's job, then a
+        /// mercenary's job, then gear nobody in the party can use. 1 with an empty job context.
+        /// </summary>
+        public static int GetLootWeight(ItemKind kind, in LootJobContext ctx)
+        {
+            if (ctx.IsEmpty)
+                return 1;
+
+            JobType allowed = Gear.GetDefaultAllowedJobs(kind);
+
+            // Shields fit every job but the Archer (#317); for any hero who can carry one they keep
+            // the all-jobs weight, so only archer-led parties see shield odds change.
+            if (allowed == JobType.All || (allowed == Gear.ShieldJobs && (allowed & ctx.HeroJob) != 0))
+                return BalanceConfig.LootWeightAllJobs;
+            if ((allowed & ctx.HeroJob) != 0)
+                return BalanceConfig.LootWeightHeroJob;
+            if ((allowed & ctx.MercJobs) != 0)
+                return BalanceConfig.LootWeightMercJob;
+            return BalanceConfig.LootWeightNoPartyJob;
+        }
+
+        /// <summary>
         /// Fills <paramref name="weights"/> with the party-job bias per pool entry; returns the total.
         /// With <paramref name="excludeAccessories"/> (bag-driven path, #382) accessory entries get
         /// weight 0 — the accessory-share shuffle bag decides accessories separately, so they must
@@ -505,25 +543,7 @@ namespace PitHero.ECS.Components
                     continue;
                 }
 
-                int weight;
-                if (ctx.IsEmpty)
-                {
-                    weight = 1;
-                }
-                else
-                {
-                    JobType allowed = Gear.GetDefaultAllowedJobs(poolKinds[i]);
-
-                    if (allowed == JobType.All)
-                        weight = BalanceConfig.LootWeightAllJobs;
-                    else if ((allowed & ctx.HeroJob) != 0)
-                        weight = BalanceConfig.LootWeightHeroJob;
-                    else if ((allowed & ctx.MercJobs) != 0)
-                        weight = BalanceConfig.LootWeightMercJob;
-                    else
-                        weight = BalanceConfig.LootWeightNoPartyJob;
-                }
-
+                int weight = GetLootWeight(poolKinds[i], in ctx);
                 weights[i] = weight;
                 totalWeight += weight;
             }
@@ -544,14 +564,14 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Generate cave common equipment from all Normal-rarity cave gear items (78 items).
+        /// Generate cave common equipment from all Normal-rarity cave gear items (84 items).
         /// </summary>
         private static IItem GenerateCaveCommonEquipment(LootJobContext ctx = default, LootBagSet bags = null)
         {
             if (bags != null)
             {
                 // Accessory share (#382): the bag guarantees 1 accessory per 10 equipment rolls
-                // instead of ProtectRing being 1 of 78 weighted entries.
+                // instead of ProtectRing being 1 of 84 weighted entries.
                 if (bags.DrawAccessoryShare(1, Nez.Random.NextFloat()))
                     return GetCaveCommonItemAtIndex(55); // ProtectRing — the pool's only accessory
                 return GetCaveCommonItemAtIndex(SelectWeightedPoolIndex(_commonPoolKinds, ctx, excludeAccessories: true));
@@ -560,7 +580,7 @@ namespace PitHero.ECS.Components
             return GetCaveCommonItemAtIndex(index);
         }
 
-        /// <summary>Returns the cave common (Normal-rarity) item at the given pool index (0–77).</summary>
+        /// <summary>Returns the cave common (Normal-rarity) item at the given pool index (0–83).</summary>
         private static IItem GetCaveCommonItemAtIndex(int index)
         {
             switch (index)
@@ -656,12 +676,20 @@ namespace PitHero.ECS.Components
                 case 74: return GearItems.EmberHelm();
                 case 75: return GearItems.ShadowCowl();
                 case 76: return GearItems.GreatHelm();
-                default: return GearItems.CrystalCirclet();
+                case 77: return GearItems.CrystalCirclet();
+                // Knuckles (Normal) — 78..80
+                case 78: return GearItems.LeatherWraps();
+                case 79: return GearItems.StoneKnuckles();
+                case 80: return GearItems.EmberFists();
+                // Bows (Normal) — 81..83
+                case 81: return GearItems.TwigBow();
+                case 82: return GearItems.BoneBow();
+                default: return GearItems.FlintBow();
             }
         }
 
         /// <summary>
-        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (39 items).
+        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (45 items).
         /// </summary>
         private static IItem GenerateCaveUncommonEquipment(LootJobContext ctx = default, LootBagSet bags = null)
         {
@@ -678,7 +706,7 @@ namespace PitHero.ECS.Components
             return GetCaveUncommonItemAtIndex(index);
         }
 
-        /// <summary>Returns the cave uncommon (Uncommon-rarity) item at the given pool index (0–38).</summary>
+        /// <summary>Returns the cave uncommon (Uncommon-rarity) item at the given pool index (0–44).</summary>
         private static IItem GetCaveUncommonItemAtIndex(int index)
         {
             switch (index)
@@ -731,7 +759,15 @@ namespace PitHero.ECS.Components
                 case 36: return GearItems.InfernoCrown();
                 // Accessories (Uncommon) — 37..38
                 case 37: return GearItems.MagicChain();
-                default: return GearItems.RingOfPower();
+                case 38: return GearItems.RingOfPower();
+                // Knuckles (Uncommon) — 39..41
+                case 39: return GearItems.QuartzKnuckles();
+                case 40: return GearItems.ShadowClaws();
+                case 41: return GearItems.MagmaKnuckles();
+                // Bows (Uncommon) — 42..44
+                case 42: return GearItems.CrystalBow();
+                case 43: return GearItems.ShadowLongbow();
+                default: return GearItems.InfernoBow();
             }
         }
 

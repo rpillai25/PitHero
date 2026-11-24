@@ -54,6 +54,22 @@ namespace RolePlayingFramework.Equipment
             }
         }
 
+        /// <summary>
+        /// True for weapons that take both hands (bows, issue #317): the holder cannot also carry a
+        /// shield, so the WeaponShield2 slot must stay empty while one is equipped.
+        /// </summary>
+        public static bool IsTwoHanded(ItemKind kind) => kind == ItemKind.WeaponBow;
+
+        /// <summary>True when the item is a two-handed weapon (null-safe).</summary>
+        public static bool IsTwoHanded(IItem item) => item != null && IsTwoHanded(item.Kind);
+
+        /// <summary>
+        /// True when the pair can be worn together: a two-handed weapon in WeaponShield1 leaves
+        /// WeaponShield2 empty. Every equip path checks this before writing either slot.
+        /// </summary>
+        public static bool IsHandsPairValid(IItem weaponSlotItem, IItem shieldSlotItem)
+            => shieldSlotItem == null || !IsTwoHanded(weaponSlotItem);
+
         /// <summary>Localization key for a category's display name.</summary>
         public static string GetDisplayNameKey(GearCategory category)
         {

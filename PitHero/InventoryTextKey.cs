@@ -289,5 +289,30 @@ namespace PitHero
         public const string Inv_WoodenShield_Desc = "Inv_WoodenShield_Desc";
         public const string Inv_WoodenSpear_Name = "Inv_WoodenSpear_Name";
         public const string Inv_WoodenSpear_Desc = "Inv_WoodenSpear_Desc";
+        // Knuckles and bows (issue #317)
+        public const string Inv_LeatherWraps_Name = "Inv_LeatherWraps_Name";
+        public const string Inv_LeatherWraps_Desc = "Inv_LeatherWraps_Desc";
+        public const string Inv_StoneKnuckles_Name = "Inv_StoneKnuckles_Name";
+        public const string Inv_StoneKnuckles_Desc = "Inv_StoneKnuckles_Desc";
+        public const string Inv_EmberFists_Name = "Inv_EmberFists_Name";
+        public const string Inv_EmberFists_Desc = "Inv_EmberFists_Desc";
+        public const string Inv_QuartzKnuckles_Name = "Inv_QuartzKnuckles_Name";
+        public const string Inv_QuartzKnuckles_Desc = "Inv_QuartzKnuckles_Desc";
+        public const string Inv_ShadowClaws_Name = "Inv_ShadowClaws_Name";
+        public const string Inv_ShadowClaws_Desc = "Inv_ShadowClaws_Desc";
+        public const string Inv_MagmaKnuckles_Name = "Inv_MagmaKnuckles_Name";
+        public const string Inv_MagmaKnuckles_Desc = "Inv_MagmaKnuckles_Desc";
+        public const string Inv_TwigBow_Name = "Inv_TwigBow_Name";
+        public const string Inv_TwigBow_Desc = "Inv_TwigBow_Desc";
+        public const string Inv_BoneBow_Name = "Inv_BoneBow_Name";
+        public const string Inv_BoneBow_Desc = "Inv_BoneBow_Desc";
+        public const string Inv_FlintBow_Name = "Inv_FlintBow_Name";
+        public const string Inv_FlintBow_Desc = "Inv_FlintBow_Desc";
+        public const string Inv_CrystalBow_Name = "Inv_CrystalBow_Name";
+        public const string Inv_CrystalBow_Desc = "Inv_CrystalBow_Desc";
+        public const string Inv_ShadowLongbow_Name = "Inv_ShadowLongbow_Name";
+        public const string Inv_ShadowLongbow_Desc = "Inv_ShadowLongbow_Desc";
+        public const string Inv_InfernoBow_Name = "Inv_InfernoBow_Name";
+        public const string Inv_InfernoBow_Desc = "Inv_InfernoBow_Desc";
     }
 }

@@ -428,13 +428,15 @@ namespace PitHero.UI
                     case RolePlayingFramework.Equipment.ItemKind.WeaponKnife:
                         return "ShortSword";
                     case RolePlayingFramework.Equipment.ItemKind.WeaponKnuckle:
-                        return "IronKnuckle";
+                        return "LeatherWraps";
+                    case RolePlayingFramework.Equipment.ItemKind.WeaponBow:
+                        return "TwigBow";
                     case RolePlayingFramework.Equipment.ItemKind.WeaponStaff:
                         return "OakStaff";
                     case RolePlayingFramework.Equipment.ItemKind.WeaponRod:
                         return "FireRod";
                     case RolePlayingFramework.Equipment.ItemKind.WeaponHammer:
-                        return "IronKnuckle";
+                        return "Mallet";
                     case RolePlayingFramework.Equipment.ItemKind.Shield:
                         return "WoodenShield";
                     case RolePlayingFramework.Equipment.ItemKind.ArmorMail:
