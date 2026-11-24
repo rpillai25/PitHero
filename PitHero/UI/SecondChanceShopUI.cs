@@ -1382,9 +1382,23 @@ namespace PitHero.UI
             if (!IsGearKindCompatibleWithSlot(gear, slot)) return false;
 
             // Also check job-class restriction: the hero's job must allow this piece of gear
-            if (heroComp?.LinkedHero != null)
-                return heroComp.LinkedHero.CanEquipItem(gear);
+            var hero = heroComp?.LinkedHero;
+            if (hero != null)
+                return hero.CanEquipItem(gear) && HandsAllow(gear, slot, hero.WeaponShield1, hero.WeaponShield2);
 
+            return true;
+        }
+
+        /// <summary>
+        /// Two-handed weapons (#317): a purchase cannot land beside one (or put one beside a shield) —
+        /// the equip would be refused after the gold was spent. The player unequips the shield first.
+        /// </summary>
+        private static bool HandsAllow(Gear gear, EquipmentSlot slot, IItem equippedWeapon, IItem equippedShield)
+        {
+            if (slot == EquipmentSlot.WeaponShield1)
+                return GearCategoryUtils.IsHandsPairValid(gear, equippedShield);
+            if (slot == EquipmentSlot.WeaponShield2)
+                return !GearCategoryUtils.IsTwoHanded(gear) && GearCategoryUtils.IsHandsPairValid(equippedWeapon, gear);
             return true;
         }
 
@@ -1398,7 +1412,7 @@ namespace PitHero.UI
             if (!IsGearKindCompatibleWithSlot(gear, slot)) return false;
 
             // Check job-class restriction: the mercenary's job must allow this piece of gear
-            return merc.CanEquipItem(gear);
+            return merc.CanEquipItem(gear) && HandsAllow(gear, slot, merc.WeaponShield1, merc.WeaponShield2);
         }
 
         /// <summary>Returns true if the gear's ItemKind is compatible with the given equipment slot.</summary>

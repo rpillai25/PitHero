@@ -242,6 +242,12 @@ grouping in two switches.** Keep them in lockstep when adding an `ItemKind` — 
 once missed `WeaponBow`, which is exactly what drift looks like. `ItemDisplayHelper.GetItemTypeString`
 now delegates to `GearCategoryUtils` for that reason.
 
+**Two-handed weapons (#317).** `GearCategoryUtils.IsTwoHanded` marks bows; a holder never wears one
+beside a shield (`Hero`/`Mercenary` refuse the pair). Auto-equip skips shields for a bow holder, and
+equipping a bow moves the holder's shield to the bag first (`BagCanTakeHandsSwap` checks for room,
+counting the cell the bow frees); the shield is then offered as the hand-me-down. Archers cannot
+carry shields at all (`Gear.ShieldJobs`), so in normal play the rule only guards future jobs.
+
 Gear/consumable purchase notes: buy price is `IItem.Price` (sell price is `GetSellPrice()`, a
 rarity-scaled fraction). The Second Chance vault has **no generated stock** — everything in it was
 sold or lost by the player. Consumables must be instantiated with `Consumable.CreateFreshInstance()`

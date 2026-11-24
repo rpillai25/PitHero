@@ -687,6 +687,158 @@ Equipment spawns using a sliding window system:
 - **Price:** 750 gold
 - **Spawn Pool:** Window 5 (Pit 21-25)
 
+### Knuckles
+
+Monk weapons (`WeaponKnuckle`), added in issue #317. Leather Wraps is the Monk starting weapon.
+
+#### Leather Wraps
+- **Biome:** Cave
+- **Pit Level:** 1
+- **Type:** Weapon
+- **Subtype:** WeaponKnuckle
+- **Rarity:** Normal
+- **Attack Bonus:** +1
+- **Element:** Neutral
+- **Visual Theme:** Worn leather strips wound tight around the fists
+- **Price:** 40 gold
+- **Spawn Pool:** Window 1 (Pit 1-5)
+
+#### Stone Knuckles
+- **Biome:** Cave
+- **Pit Level:** 5
+- **Type:** Weapon
+- **Subtype:** WeaponKnuckle
+- **Rarity:** Normal
+- **Attack Bonus:** +3
+- **Element:** Earth
+- **Visual Theme:** Knuckles chipped from dense cave stone
+- **Price:** 150 gold
+- **Spawn Pool:** Window 1 (Pit 1-5)
+
+#### Ember Fists
+- **Biome:** Cave
+- **Pit Level:** 9
+- **Type:** Weapon
+- **Subtype:** WeaponKnuckle
+- **Rarity:** Normal
+- **Attack Bonus:** +5
+- **Element:** Fire
+- **Visual Theme:** Iron fist plates that glow with trapped embers
+- **Price:** 250 gold
+- **Spawn Pool:** Window 2 (Pit 6-10)
+
+#### Quartz Knuckles
+- **Biome:** Cave
+- **Pit Level:** 13
+- **Type:** Weapon
+- **Subtype:** WeaponKnuckle
+- **Rarity:** Uncommon
+- **Attack Bonus:** +11
+- **Element:** Earth
+- **Visual Theme:** Brass knuckles studded with sharp quartz points
+- **Price:** 450 gold
+- **Spawn Pool:** Window 3 (Pit 11-15)
+
+#### Shadow Claws
+- **Biome:** Cave
+- **Pit Level:** 18
+- **Type:** Weapon
+- **Subtype:** WeaponKnuckle
+- **Rarity:** Uncommon
+- **Attack Bonus:** +15
+- **Element:** Darkness
+- **Visual Theme:** Black hooked claws that strike from the dark
+- **Price:** 575 gold
+- **Spawn Pool:** Window 4 (Pit 16-20)
+
+#### Magma Knuckles
+- **Biome:** Cave
+- **Pit Level:** 23
+- **Type:** Weapon
+- **Subtype:** WeaponKnuckle
+- **Rarity:** Uncommon
+- **Attack Bonus:** +18
+- **Element:** Fire
+- **Visual Theme:** Obsidian knuckles cracked with molten veins
+- **Price:** 700 gold
+- **Spawn Pool:** Window 5 (Pit 21-25)
+
+### Bows
+
+Archer weapons (`WeaponBow`), added in issue #317. Twig Bow is the Archer starting weapon. **Bows are two-handed, and Archers never carry shields** (shields allow `Gear.ShieldJobs`, every job but Archer; `GearCategoryUtils.IsTwoHanded` also keeps any shield off a bow holder). Equipping a bow moves an equipped shield to the bag, and the inventory shows the bow faded in the empty shield slot.
+
+#### Twig Bow
+- **Biome:** Cave
+- **Pit Level:** 1
+- **Type:** Weapon
+- **Subtype:** WeaponBow
+- **Rarity:** Normal
+- **Attack Bonus:** +1
+- **Element:** Neutral
+- **Visual Theme:** A bent green branch strung with twine
+- **Price:** 40 gold
+- **Spawn Pool:** Window 1 (Pit 1-5)
+
+#### Bone Bow
+- **Biome:** Cave
+- **Pit Level:** 5
+- **Type:** Weapon
+- **Subtype:** WeaponBow
+- **Rarity:** Normal
+- **Attack Bonus:** +3
+- **Element:** Darkness
+- **Visual Theme:** Bow carved from the rib of a cave beast
+- **Price:** 150 gold
+- **Spawn Pool:** Window 1 (Pit 1-5)
+
+#### Flint Bow
+- **Biome:** Cave
+- **Pit Level:** 9
+- **Type:** Weapon
+- **Subtype:** WeaponBow
+- **Rarity:** Normal
+- **Attack Bonus:** +5
+- **Element:** Fire
+- **Visual Theme:** Its flint-tipped arrows spark as they fly
+- **Price:** 250 gold
+- **Spawn Pool:** Window 2 (Pit 6-10)
+
+#### Crystal Bow
+- **Biome:** Cave
+- **Pit Level:** 13
+- **Type:** Weapon
+- **Subtype:** WeaponBow
+- **Rarity:** Uncommon
+- **Attack Bonus:** +11
+- **Element:** Earth
+- **Visual Theme:** Recurve bow inlaid with humming crystals
+- **Price:** 450 gold
+- **Spawn Pool:** Window 3 (Pit 11-15)
+
+#### Shadow Longbow
+- **Biome:** Cave
+- **Pit Level:** 18
+- **Type:** Weapon
+- **Subtype:** WeaponBow
+- **Rarity:** Uncommon
+- **Attack Bonus:** +15
+- **Element:** Darkness
+- **Visual Theme:** Tall black longbow that shoots without a sound
+- **Price:** 575 gold
+- **Spawn Pool:** Window 4 (Pit 16-20)
+
+#### Inferno Bow
+- **Biome:** Cave
+- **Pit Level:** 23
+- **Type:** Weapon
+- **Subtype:** WeaponBow
+- **Rarity:** Uncommon
+- **Attack Bonus:** +18
+- **Element:** Fire
+- **Visual Theme:** Bow of volcanic glass with a burning string
+- **Price:** 700 gold
+- **Spawn Pool:** Window 5 (Pit 21-25)
+
 ### Staves
 
 #### Walking Stick
@@ -1056,6 +1208,8 @@ Equipment spawns using a sliding window system:
 ---
 
 ## SHIELDS - Cave Biome
+
+Every shield can be carried by every job except the Archer, whose bow takes both hands (issue #317).
 
 #### Wooden Plank
 - **Biome:** Cave
@@ -1666,34 +1820,36 @@ Equipment spawns using a sliding window system:
 ## Summary Statistics - Cave Biome
 
 ### Equipment Count by Type
-- **Weapons:** 60 pieces
+- **Weapons:** 72 pieces
   - Swords: 25
   - Axes: 8
   - Daggers: 6
   - Spears: 6
   - Hammers: 5
+  - Knuckles: 6
+  - Bows: 6
   - Staves: 5
 - **Armor:** 25 pieces
 - **Shields:** 25 pieces
 - **Helms:** 25 pieces
-- **Total:** 135 pieces
+- **Total:** 147 pieces
 
 ### Rarity Distribution
-- **Normal:** 50 pieces (Pit 1-10)
-- **Uncommon:** 85 pieces (Pit 11-25)
+- **Normal:** 56 pieces (Pit 1-10)
+- **Uncommon:** 91 pieces (Pit 11-25)
 
 ### Elemental Distribution
-- **Neutral:** 40 pieces
-- **Earth:** 35 pieces  
-- **Fire:** 30 pieces
-- **Darkness:** 30 pieces
+- **Neutral:** 42 pieces
+- **Earth:** 38 pieces  
+- **Fire:** 34 pieces
+- **Darkness:** 33 pieces
 
 ### Spawn Windows
-- **Window 1 (Pit 1-5):** 20 pieces
-- **Window 2 (Pit 6-10):** 40 pieces
-- **Window 3 (Pit 11-15):** 40 pieces
-- **Window 4 (Pit 16-20):** 40 pieces
-- **Window 5 (Pit 21-25):** 50 pieces
+- **Window 1 (Pit 1-5):** 24 pieces
+- **Window 2 (Pit 6-10):** 42 pieces
+- **Window 3 (Pit 11-15):** 42 pieces
+- **Window 4 (Pit 16-20):** 42 pieces
+- **Window 5 (Pit 21-25):** 52 pieces
 
 ### Balance Verification
 All equipment follows `BalanceConfig` formulas:

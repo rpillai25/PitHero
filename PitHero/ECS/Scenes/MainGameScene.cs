@@ -1150,7 +1150,10 @@ namespace PitHero.ECS.Scenes
                     if (RolePlayingFramework.Equipment.ItemRegistry.TryCreateItem(itemName, out var item))
                     {
                         var slot = (RolePlayingFramework.Equipment.EquipmentSlot)i;
-                        hero.SetEquipmentSlot(slot, item);
+                        // Gear the hero can no longer wear (an archer's shield from an older save, #317)
+                        // goes to the bag instead of being dropped.
+                        if (!hero.SetEquipmentSlot(slot, item))
+                            heroComp.StashUnwearableLoadedGear(item);
                     }
                     else
                     {

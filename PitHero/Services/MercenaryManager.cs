@@ -1134,7 +1134,10 @@ namespace PitHero.Services
                     {
                         if (ItemRegistry.TryCreateItem(saved.EquipmentNames[i], out var item) && item is IGear gear)
                         {
-                            mercenary.Equip(gear);
+                            // Gear the mercenary can no longer wear (an archer's shield from an older
+                            // save, #317) goes to the hero's bag instead of being dropped.
+                            if (!mercenary.CanEquipItem(gear) || !mercenary.Equip(gear))
+                                heroEntity?.GetComponent<HeroComponent>()?.StashUnwearableLoadedGear(gear);
                         }
                     }
                 }

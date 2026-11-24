@@ -125,7 +125,7 @@ namespace PitHero.Tests
             Assert.AreEqual(JobType.Knight, Gear.GetDefaultAllowedJobs(ItemKind.ArmorMail));
             Assert.AreEqual(JobType.Monk, Gear.GetDefaultAllowedJobs(ItemKind.ArmorGi));
             Assert.AreEqual(JobType.Mage | JobType.Priest, Gear.GetDefaultAllowedJobs(ItemKind.ArmorRobe));
-            Assert.AreEqual(JobType.All, Gear.GetDefaultAllowedJobs(ItemKind.Shield));
+            Assert.AreEqual(JobType.All & ~JobType.Archer, Gear.GetDefaultAllowedJobs(ItemKind.Shield)); // #317: bows take both hands
             Assert.AreEqual(JobType.All, Gear.GetDefaultAllowedJobs(ItemKind.Accessory));
         }
 

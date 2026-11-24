@@ -50,11 +50,23 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void MonkAndArcher_HaveNoStartingWeaponYet()
+        public void Monk_StartsWithLeatherWraps()
         {
-            // TODO(issue #317): remove once WeaponKnuckle/WeaponBow items exist
-            Assert.IsNull(JobStartingWeapons.CreateStartingWeapon(JobType.Monk));
-            Assert.IsNull(JobStartingWeapons.CreateStartingWeapon(JobType.Archer));
+            var weapon = JobStartingWeapons.CreateStartingWeapon(JobType.Monk);
+
+            Assert.IsNotNull(weapon);
+            Assert.AreEqual("LeatherWraps", weapon.Name);
+            Assert.AreEqual(ItemKind.WeaponKnuckle, weapon.Kind);
+        }
+
+        [TestMethod]
+        public void Archer_StartsWithTwigBow()
+        {
+            var weapon = JobStartingWeapons.CreateStartingWeapon(JobType.Archer);
+
+            Assert.IsNotNull(weapon);
+            Assert.AreEqual("TwigBow", weapon.Name);
+            Assert.AreEqual(ItemKind.WeaponBow, weapon.Kind);
         }
 
         [TestMethod]
@@ -66,7 +78,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void StartingWeapons_AreEquippableByTheirJob()
         {
-            var jobFlags = new[] { JobType.Knight, JobType.Thief, JobType.Mage, JobType.Priest };
+            var jobFlags = new[] { JobType.Knight, JobType.Thief, JobType.Mage, JobType.Priest, JobType.Monk, JobType.Archer };
             for (int i = 0; i < jobFlags.Length; i++)
             {
                 var weapon = JobStartingWeapons.CreateStartingWeapon(jobFlags[i]);
@@ -79,7 +91,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void Hero_TryEquip_StartingWeapon_Succeeds()
         {
-            var jobNames = new[] { "Knight", "Thief", "Mage", "Priest" };
+            var jobNames = new[] { "Knight", "Thief", "Mage", "Priest", "Monk", "Archer" };
             for (int i = 0; i < jobNames.Length; i++)
             {
                 var job = JobFactory.CreateJob(jobNames[i]);

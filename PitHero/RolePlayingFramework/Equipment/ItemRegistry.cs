@@ -104,6 +104,22 @@ namespace RolePlayingFramework.Equipment
             Register(() => GearItems.QuakeHammer());
             Register(() => GearItems.StoneCrusher());
 
+            // Gear items - Knuckles (issue #317)
+            Register(() => GearItems.LeatherWraps());
+            Register(() => GearItems.StoneKnuckles());
+            Register(() => GearItems.EmberFists());
+            Register(() => GearItems.QuartzKnuckles());
+            Register(() => GearItems.ShadowClaws());
+            Register(() => GearItems.MagmaKnuckles());
+
+            // Gear items - Bows (issue #317)
+            Register(() => GearItems.TwigBow());
+            Register(() => GearItems.BoneBow());
+            Register(() => GearItems.FlintBow());
+            Register(() => GearItems.CrystalBow());
+            Register(() => GearItems.ShadowLongbow());
+            Register(() => GearItems.InfernoBow());
+
             // Gear items - Staves
             Register(() => GearItems.EarthenStaff());
             Register(() => GearItems.EmberRod());

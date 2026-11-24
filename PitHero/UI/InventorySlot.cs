@@ -24,6 +24,9 @@ namespace PitHero.UI
         private float _itemSpriteOffsetY = 0f;
         private bool _hideItemSprite = false;
 
+        /// <summary>Tint for the faded two-handed weapon drawn in the empty shield cell.</summary>
+        private static readonly Color TwoHandedGhostColor = new Color(255, 255, 255, 110);
+
         // Placeholder sprites for empty equipment slots
         private SpriteDrawable _placeholderDrawable;
         private Tooltip _placeholderTooltip;
@@ -157,6 +160,23 @@ namespace PitHero.UI
             };
         }
 
+        /// <summary>
+        /// For a WeaponShield2 cell: the same holder's WeaponShield1 cell. While that cell holds a
+        /// two-handed weapon (#317) this empty cell draws a faded copy of it, showing the weapon fills
+        /// both hands. Display only — the item stays in the weapon cell.
+        /// </summary>
+        public InventorySlot HandsPartner { get; set; }
+
+        /// <summary>The two-handed weapon this empty shield cell should show faded, or null.</summary>
+        public IItem GetTwoHandedGhost()
+        {
+            // Hidden while the weapon itself is lifted (being dragged), so the ghost follows it.
+            if (_slotData.Item != null || HandsPartner == null || HandsPartner._hideItemSprite)
+                return null;
+            var weapon = HandsPartner.SlotData.Item;
+            return GearCategoryUtils.IsTwoHanded(weapon) ? weapon : null;
+        }
+
         /// <summary>Sets the item sprite Y offset for visual effects (like hover).</summary>
         public void SetItemSpriteOffsetY(float offsetY)
         {
@@ -221,6 +241,13 @@ namespace PitHero.UI
                         StackCountText.Draw(batcher, _font, stackText, textPosition, Color.White, Scale);
                     }
                 }
+            }
+            else if (GetTwoHandedGhost() is IItem ghost && Core.Content != null)
+            {
+                // Two-handed weapon in the partner weapon cell: show it faded here, in place of the shield placeholder.
+                var ghostSprite = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas").GetSprite(ghost.SpriteName);
+                if (ghostSprite != null)
+                    new SpriteDrawable(ghostSprite).Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), TwoHandedGhostColor);
             }
             else if (_slotData.Item == null && (_slotData.SlotType == InventorySlotType.Equipment || _slotData.SlotType == InventorySlotType.MercenaryEquipment) && _placeholderDrawable != null)
             {

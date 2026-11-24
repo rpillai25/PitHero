@@ -235,6 +235,14 @@ namespace PitHero.UI
                     AddElement(slot);
                 }
             }
+
+            // Each shield cell watches its holder's weapon cell (two columns left) for a two-handed weapon (#317).
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null || slot.SlotData.EquipmentSlot != EquipmentSlot.WeaponShield2) continue;
+                slot.HandsPartner = FindSlot(slot.SlotData.SlotType, slot.SlotData.X - 2, slot.SlotData.Y);
+            }
         }
 
         /// <summary>Creates slot data for a given grid coordinate.</summary>
@@ -1084,6 +1092,20 @@ namespace PitHero.UI
                 return;
             }
 
+            // Two-handed weapons (#317): a bow landing in a weapon cell takes the shield hand too, so
+            // that holder's shield comes off first and lands in a bag cell after the swap. With no
+            // room for it the swap is refused.
+            if (!TryPlanShieldLift(b, a.SlotData.Item, a, out var shieldCell, out var shieldBagCell)
+                || (shieldCell == null && !TryPlanShieldLift(a, b.SlotData.Item, b, out shieldCell, out shieldBagCell)))
+                return;
+            IItem liftedShield = null;
+            if (shieldCell != null)
+            {
+                liftedShield = shieldCell.SlotData.Item;
+                shieldCell.SlotData.Item = null;
+                PushEquipCellToModel(shieldCell);
+            }
+
             // Swap outright — the items simply appear in their new slots. No tween: a ghost copy
             // flying from the old slot to the new one read as a drag after-effect.
             var tmp = a.SlotData.Item;
@@ -1113,6 +1135,13 @@ namespace PitHero.UI
                         a.SlotData.Item = tmp;
                         UpdateHeroDataFromSlot(a);
                         UpdateHeroDataFromSlot(b);
+                        if (liftedShield != null)
+                        {
+                            // The bow never went on, so the shield goes back on too.
+                            shieldCell.SlotData.Item = liftedShield;
+                            PushEquipCellToModel(shieldCell);
+                            liftedShield = null;
+                        }
                     }
                 }
             }
@@ -1133,6 +1162,9 @@ namespace PitHero.UI
                 if (bIsMercEquip)
                     UpdateMercenaryDataFromSlot(b);
             }
+
+            if (liftedShield != null)
+                shieldBagCell.SlotData.Item = liftedShield;
 
             PersistBagOrdering();
 
@@ -1571,7 +1603,7 @@ namespace PitHero.UI
                 var merc = slotData.MercenaryRef;
                 if (merc == null) return false;
                 if (!merc.CanEquipItem(item)) return false;
-                return IsItemValidForEquipSlot(item, slotData.EquipmentSlot);
+                return IsItemValidForEquipSlot(item, slotData.EquipmentSlot) && PassesHandsRule(item, slotData);
             }
 
             if (slotData.SlotType != InventorySlotType.Equipment) return true;
@@ -1580,7 +1612,70 @@ namespace PitHero.UI
             var hero = _heroComponent?.LinkedHero;
             if (hero != null && !hero.CanEquipItem(item)) return false;
 
-            return IsItemValidForEquipSlot(item, slotData.EquipmentSlot);
+            return IsItemValidForEquipSlot(item, slotData.EquipmentSlot) && PassesHandsRule(item, slotData);
+        }
+
+        /// <summary>
+        /// Two-handed weapons (#317): the shield cell stays empty beside one, and a two-handed weapon
+        /// never goes in the shield cell. A two-handed weapon dropped on the weapon cell is allowed —
+        /// <see cref="TryPlanShieldLift"/> moves the shield to the bag as part of the swap.
+        /// </summary>
+        private bool PassesHandsRule(IItem item, InventorySlotData slotData)
+        {
+            if (slotData.EquipmentSlot != EquipmentSlot.WeaponShield2)
+                return true;
+            if (GearCategoryUtils.IsTwoHanded(item))
+                return false;
+            var weaponCell = FindSlot(slotData.SlotType, slotData.X - 2, slotData.Y);
+            return !GearCategoryUtils.IsTwoHanded(weaponCell?.SlotData.Item);
+        }
+
+        /// <summary>
+        /// Plans the shield lift for a two-handed weapon landing in <paramref name="weaponCell"/>: finds the
+        /// holder's shield cell and a bag cell to receive the shield. <paramref name="sourceCell"/> is where
+        /// the weapon comes from; it may take the shield when the swap leaves it empty. Returns false when
+        /// the shield has nowhere to go (the swap is refused); true with null outs when nothing needs lifting.
+        /// </summary>
+        private bool TryPlanShieldLift(InventorySlot weaponCell, IItem incoming, InventorySlot sourceCell,
+            out InventorySlot shieldCell, out InventorySlot bagCell)
+        {
+            shieldCell = null;
+            bagCell = null;
+            var d = weaponCell.SlotData;
+            if (!GearCategoryUtils.IsTwoHanded(incoming) || d.EquipmentSlot != EquipmentSlot.WeaponShield1)
+                return true;
+            if (d.SlotType != InventorySlotType.Equipment && d.SlotType != InventorySlotType.MercenaryEquipment)
+                return true;
+            var partner = FindSlot(d.SlotType, d.X + 2, d.Y);
+            if (partner?.SlotData.Item == null)
+                return true;
+
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null || slot == weaponCell || slot == sourceCell) continue;
+                if (slot.SlotData.SlotType == InventorySlotType.Inventory && slot.SlotData.Item == null)
+                {
+                    bagCell = slot;
+                    break;
+                }
+            }
+            // A full bag still works when the weapon leaves its bag cell for an empty weapon slot.
+            if (bagCell == null && d.Item == null && sourceCell.SlotData.SlotType == InventorySlotType.Inventory)
+                bagCell = sourceCell;
+            if (bagCell == null)
+                return false;
+            shieldCell = partner;
+            return true;
+        }
+
+        /// <summary>Writes one equipment cell's item into the hero or mercenary model (no-op for bag cells).</summary>
+        private void PushEquipCellToModel(InventorySlot cell)
+        {
+            if (cell.SlotData.SlotType == InventorySlotType.Equipment)
+                UpdateHeroDataFromSlot(cell);
+            else if (cell.SlotData.SlotType == InventorySlotType.MercenaryEquipment)
+                UpdateMercenaryDataFromSlot(cell);
         }
 
         /// <summary>Checks whether an item's kind is valid for the given equipment slot type.</summary>
@@ -1601,7 +1696,7 @@ namespace PitHero.UI
         /// <summary>Checks if item is a weapon or shield.</summary>
         private bool IsWeaponOrShield(IItem item)
         {
-            return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnife || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.WeaponHammer || item.Kind == ItemKind.Shield;
+            return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnife || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.WeaponHammer || item.Kind == ItemKind.WeaponBow || item.Kind == ItemKind.Shield;
         }
 
         /// <summary>Updates hero equipment when equipment slot changed. Returns false if hero rejected the item.</summary>
@@ -1658,7 +1753,7 @@ namespace PitHero.UI
             {
                 targetSlot = EquipmentSlot.Armor;
             }
-            else if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnife || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff || gear.Kind == ItemKind.WeaponRod || gear.Kind == ItemKind.WeaponHammer)
+            else if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnife || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff || gear.Kind == ItemKind.WeaponRod || gear.Kind == ItemKind.WeaponHammer || gear.Kind == ItemKind.WeaponBow)
             {
                 targetSlot = EquipmentSlot.WeaponShield1;
             }

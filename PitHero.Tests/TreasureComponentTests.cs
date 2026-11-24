@@ -431,9 +431,29 @@ namespace PitHero.Tests
         [TestMethod]
         public void CaveLoot_AllJobsGear_ReceivesAllJobsWeight()
         {
-            // Verify shield/accessory ItemKinds return JobType.All from GetDefaultAllowedJobs
-            Assert.AreEqual(JobType.All, Gear.GetDefaultAllowedJobs(ItemKind.Shield));
+            // Accessories fit every job; shields every job but the Archer (#317)
             Assert.AreEqual(JobType.All, Gear.GetDefaultAllowedJobs(ItemKind.Accessory));
+            Assert.AreEqual(Gear.ShieldJobs, Gear.GetDefaultAllowedJobs(ItemKind.Shield));
+        }
+
+        [TestMethod]
+        public void CaveLoot_ShieldWeight_UnchangedForNonArcherHeroes()
+        {
+            // #317 took shields away from Archers. Every other hero must keep the all-jobs weight, so
+            // their parties' loot odds are exactly what they were.
+            var heroJobs = new[] { JobType.Knight, JobType.Monk, JobType.Mage, JobType.Priest, JobType.Thief };
+            for (int i = 0; i < heroJobs.Length; i++)
+            {
+                var ctx = new LootJobContext { HeroJob = heroJobs[i], MercJobs = JobType.Archer };
+                Assert.AreEqual(BalanceConfig.LootWeightAllJobs, TreasureComponent.GetLootWeight(ItemKind.Shield, in ctx), heroJobs[i].ToString());
+                Assert.AreEqual(BalanceConfig.LootWeightAllJobs, TreasureComponent.GetLootWeight(ItemKind.Accessory, in ctx));
+            }
+
+            // An archer hero can't carry one: shields weigh like any other party member's gear.
+            var archerWithKnight = new LootJobContext { HeroJob = JobType.Archer, MercJobs = JobType.Knight };
+            Assert.AreEqual(BalanceConfig.LootWeightMercJob, TreasureComponent.GetLootWeight(ItemKind.Shield, in archerWithKnight));
+            var archerAlone = new LootJobContext { HeroJob = JobType.Archer };
+            Assert.AreEqual(BalanceConfig.LootWeightNoPartyJob, TreasureComponent.GetLootWeight(ItemKind.Shield, in archerAlone));
         }
 
         [TestMethod]
