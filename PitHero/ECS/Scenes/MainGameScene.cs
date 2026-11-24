@@ -3721,6 +3721,8 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         public override void PresentationUpdate()
         {
+            Rendering.RenderStats.Sample();
+
             // Replay playback drives the engine clock from the presentation side (play/pause/seek)
             var replayPlayback = Services.Replay.ReplayPlaybackService.Current;
             bool replayActive = replayPlayback != null && replayPlayback.IsActive;

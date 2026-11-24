@@ -3,13 +3,16 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Nez;
 using Nez.Textures;
+using PitHero.Rendering;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Shared base for render-target compositing components. Handles Y-sort, bounds calculation,
     /// the per-frame RT blit, and disposal. Subclasses call InitCompositor() from OnAddedToEntity()
-    /// and supply a draw callback for their layer-specific rendering.
+    /// and supply a draw callback for their layer-specific rendering. The render target itself is
+    /// created on first use, so a subclass that draws another way (MultiSpriteAnimator's baked
+    /// frames) never allocates one.
     /// </summary>
     public abstract class SpriteCompositorBase : RenderableComponent
     {
@@ -19,6 +22,7 @@ namespace PitHero.ECS.Components
         protected Vector2 _rtEntityPivot;
 
         private CompositorRenderer _renderer;
+        private Action<Batcher, Vector2> _drawLayers;
 
         public override RectangleF Bounds
         {
@@ -42,27 +46,34 @@ namespace PitHero.ECS.Components
             _rtWidth       = rtWidth;
             _rtHeight      = rtHeight;
             _rtEntityPivot = rtEntityPivot;
-
-            _renderer = new CompositorRenderer(rtWidth, rtHeight, drawLayers);
-            _compositeSprite        = new Sprite(_renderer.RenderTexture.RenderTarget);
-            _compositeSprite.Origin = rtEntityPivot;
+            _drawLayers    = drawLayers;
         }
 
         public override void OnRemovedFromEntity()
         {
             _renderer?.RenderTexture?.Dispose();
             _renderer = null;
+            _compositeSprite = null;
         }
+
+        /// <summary>The entity position rounded to whole pixels — prevents sub-pixel shimmer when the entity moves.</summary>
+        protected Vector2 SnappedEntityPosition => new Vector2(
+            (float)Math.Round(Entity.Transform.Position.X),
+            (float)Math.Round(Entity.Transform.Position.Y));
 
         public override void Render(Batcher batcher, Camera camera)
         {
-            if (_renderer == null || _compositeSprite == null)
+            if (_drawLayers == null)
                 return;
 
-            // Round to integer pixels — prevents sub-pixel shimmer when the entity moves.
-            var entityPos = new Vector2(
-                (float)Math.Round(Entity.Transform.Position.X),
-                (float)Math.Round(Entity.Transform.Position.Y));
+            if (_renderer == null)
+            {
+                _renderer = new CompositorRenderer(_rtWidth, _rtHeight, _drawLayers);
+                _compositeSprite        = new Sprite(_renderer.RenderTexture.RenderTarget);
+                _compositeSprite.Origin = _rtEntityPivot;
+            }
+
+            var entityPos = SnappedEntityPosition;
 
             var prevRTs = Core.GraphicsDevice.GetRenderTargets();
             batcher.End();
@@ -70,6 +81,8 @@ namespace PitHero.ECS.Components
             _renderer.RenderComposite(entityPos, _rtEntityPivot);
 
             Core.GraphicsDevice.SetRenderTargets(prevRTs.Length > 0 ? prevRTs : null);
+            RenderStats.CompositorTargetSwitches += 2;
+            RenderStats.RtComposites++;
 
             batcher.Begin(BlendState.AlphaBlend, SamplerState.PointClamp,
                 DepthStencilState.None, RasterizerState.CullCounterClockwise,

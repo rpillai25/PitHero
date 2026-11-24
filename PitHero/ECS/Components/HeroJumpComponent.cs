@@ -81,10 +81,15 @@ namespace PitHero.ECS.Components
                 InitializeAnimators();
             }
 
-            foreach (var animator in _heroAnimators)
+            // A whole-body tint belongs on the composite, so the baked pose stays the same (issue #459)
+            if (_multiSpriteAnimator != null)
             {
-                animator?.SetColor(color);
+                _multiSpriteAnimator.SetColor(color);
+                return;
             }
+
+            for (int i = 0; i < _heroAnimators.Count; i++)
+                _heroAnimators[i]?.SetColor(color);
         }
 
         private void CreateShadowRenderer()

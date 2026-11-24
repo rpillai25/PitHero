@@ -732,6 +732,24 @@ namespace PitHero
         public const int RenderLayerGroundPropOverlay = 87; // Overlays drawn on a ground building (the Digging Field's tile cooldowns)
         // Actors layer — heroes, mercenaries, monsters, and treasures. Y-sorted within layer via LayerDepth.
         public const int RenderLayerActors = 60;
+
+        // Baked character frames (issue #459): layered characters bake each pose once into a shared atlas page
+        /// <summary>Width and height of one baked character frame page.</summary>
+        public const int CharacterFramePageSize = 1024;
+        /// <summary>Width of one baked pose cell (MultiSpriteAnimator.RT_WIDTH).</summary>
+        public const int CharacterFrameCellWidth = 32;
+        /// <summary>Height of one baked pose cell (MultiSpriteAnimator.RT_HEIGHT).</summary>
+        public const int CharacterFrameCellHeight = 48;
+        /// <summary>Most pages ever created; past this, characters fall back to their own render target.</summary>
+        public const int CharacterFrameMaxPages = 8;
+        /// <summary>Most poses one character keeps baked; past this its cache is flushed and re-baked on demand.</summary>
+        public const int CharacterFrameMaxPosesPerCharacter = 128;
+        /// <summary>When false, every character uses the old per-frame render target (for before/after measurement).</summary>
+        public const bool BakeCharacterFrames = true;
+        /// <summary>When true, logs draw calls and compositor render-target switches per frame every few seconds.</summary>
+        public const bool LogRenderStats = false;
+        /// <summary>Frames averaged in each render stats line.</summary>
+        public const int RenderStatsWindowFrames = 300;
         public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
         // Fog of war renders BEHIND actors so the party is never partially hidden by adjacent fog (#337).
