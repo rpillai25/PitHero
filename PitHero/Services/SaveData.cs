@@ -281,7 +281,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 45; // v45: Stats window digging totals (issue #456); v44: Stats window lifetime totals (issue #456); v43: gem dig pity counters dropped (the Digging Field draws from a 500-marble shuffle bag); v42: gem dig site pity counters (issue #452); v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
+        public const int CurrentVersion = 46; // v46: hero custom Shadow/Highlight tones for skin, hair and shirt (issue #467); v45: Stats window digging totals (issue #456); v44: Stats window lifetime totals (issue #456); v43: gem dig pity counters dropped (the Digging Field draws from a 500-marble shuffle bag); v42: gem dig site pity counters (issue #452); v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -318,6 +318,15 @@ namespace PitHero.Services
 
         /// <summary>Shirt color of the hero.</summary>
         public Color ShirtColor;
+
+        /// <summary>Player-picked skin Shadow (section 59, v46); unset in older files.</summary>
+        public HeroCustomTones SkinTones;
+
+        /// <summary>Player-picked hair Shadow and Highlight (section 59, v46); unset in older files.</summary>
+        public HeroCustomTones HairTones;
+
+        /// <summary>Player-picked shirt / skirt Shadow (section 59, v46); unset in older files.</summary>
+        public HeroCustomTones ShirtTones;
 
         // Hero RPG State
         /// <summary>Current job name (e.g. "Knight", "Mage", or "Knight-Mage").</summary>
@@ -1254,6 +1263,11 @@ namespace PitHero.Services
 
             // 58. Stats window digging totals (v45, issue #456): gems found and gem gold per GemType
             (Stats ?? new LifetimeStats()).WriteDigging(writer);
+
+            // 59. Hero custom tones (v46, issue #467): skin, hair, shirt — each a set flag, Shadow, Highlight
+            WriteCustomTones(writer, SkinTones);
+            WriteCustomTones(writer, HairTones);
+            WriteCustomTones(writer, ShirtTones);
         }
 
         /// <summary>
@@ -2032,6 +2046,21 @@ namespace PitHero.Services
             if (fileVersion >= 45)
                 Stats.ReadDigging(reader);
 
+            // 59. Hero custom tones (section added in v46, issue #467). Older heroes were made from presets,
+            // so every tone follows its ramp.
+            if (fileVersion >= 46)
+            {
+                SkinTones = ReadCustomTones(reader);
+                HairTones = ReadCustomTones(reader);
+                ShirtTones = ReadCustomTones(reader);
+            }
+            else
+            {
+                SkinTones = HeroCustomTones.None;
+                HairTones = HeroCustomTones.None;
+                ShirtTones = HeroCustomTones.None;
+            }
+
             // Keep Stacks unification (v34): auto-sell and auto-purchase now share one per-consumable
             // value. Older files carried two; reproduce the old EFFECTIVE sell floor (raised to the
             // purchase target only while purchasing was on and the item selected) and make both
@@ -2071,6 +2100,23 @@ namespace PitHero.Services
             h ^= shirt.PackedValue; h *= prime;
             int id = unchecked((int)h);
             return id != 0 ? id : 1;
+        }
+
+        /// <summary>Writes one part's custom tones: the set flag, then Shadow and Highlight (written either way).</summary>
+        private static void WriteCustomTones(IPersistableWriter writer, HeroCustomTones tones)
+        {
+            writer.Write(tones.IsSet);
+            WriteColor(writer, tones.Shadow);
+            WriteColor(writer, tones.Highlight);
+        }
+
+        /// <summary>Reads one part's custom tones written by <see cref="WriteCustomTones"/>.</summary>
+        private static HeroCustomTones ReadCustomTones(IPersistableReader reader)
+        {
+            bool isSet = reader.ReadBool();
+            var shadow = ReadColor(reader);
+            var highlight = ReadColor(reader);
+            return isSet ? new HeroCustomTones(shadow, highlight) : HeroCustomTones.None;
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

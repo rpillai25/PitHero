@@ -187,6 +187,14 @@ multiplying one gray ramp by one color. Each tone is its own gray atlas animatio
   tone's names back to front. The other tones show the same frame of their matching animation.
 - `HeroAnimationComponent` exposes `PartCount`, `GetToneSprite`, `GetToneColor` (cached per `Color`) and
   `AppendPortraitParts`; drawn on its own (hero creation preview) its `Render` draws every tone.
+- **Custom tones (issue #467)**: the hero creation screen's Skin, Hair Color and Shirt/Skirt rows end in a
+  *Custom* option whose palette button (`ColorPaletteButton`, `UIColorPalette` in the UI atlas) opens the
+  shared `ColorPickerDialog` (hue strip + saturation/value square; Midtone and Shadow, plus Highlight for hair;
+  Auto Shade remakes the others from the Midtone with the ramp). The picked Midtone is the design's color;
+  Shadow/Highlight live in `HeroCustomTones` (`HeroDesign.SkinTones/HairTones/ShirtTones`, save section 59,
+  v46) and reach the tint through `HeroAnimationComponent.CustomTones` /
+  `HeroToneProfiles.Tint(..., in HeroCustomTones)`, which swaps the ramp's color for the picked one and keeps
+  the chosen color's alpha. Mercenaries never have custom tones.
 - Art pipeline: `Male2`/`Female2.aseprite` hold each part as an Aseprite group of tone layers (aseprite-pixel-art
   skill `examples/tone_split.lua`); `prep_for_game.lua` grays each tone on its own and prints the `profile`
   lines the table is built from; `export_game_frames.lua` names group children `<Part><Tone>`.

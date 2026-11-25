@@ -212,6 +212,19 @@ AppearanceHairColor,Hair Color {0}
 AppearanceShirt,Shirt {0}
 AppearanceSkirt,Skirt {0}
 AppearanceEyeColor,Eye Color {0}
+AppearanceSkinCustom,Skin Custom
+AppearanceHairColorCustom,Hair Color Custom
+AppearanceShirtCustom,Shirt Custom
+AppearanceSkirtCustom,Skirt Custom
+AppearancePickColors,Pick custom colors
+ColorPickerSkinTitle,Custom Skin
+ColorPickerHairTitle,Custom Hair Color
+ColorPickerShirtTitle,Custom Shirt
+ColorPickerSkirtTitle,Custom Skirt
+ColorPickerHighlight,Highlight
+ColorPickerMidtone,Midtone
+ColorPickerShadow,Shadow
+ColorPickerAutoShade,Auto Shade
 AppearanceZoomIn,2x
 AppearanceZoomOut,1x
 AppearanceGenderMale,Male

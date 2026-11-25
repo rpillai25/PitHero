@@ -49,15 +49,29 @@ namespace PitHero.UI
         private int _previewScale = 1;
         private bool _openedAtDoubleSize; // the preview opens at 2x by pressing the zoom toggle once
 
+        // Custom colors (issue #467): each tinted part's color row cycles its presets, then Custom
+        // (index == preset count). Custom keeps a picked Midtone plus picked Shadow / Highlight tones,
+        // remembered while the player cycles away and back.
+        private enum ColorPart { Skin = 0, Hair = 1, Shirt = 2 }
+        private const int ColorPartCount = 3;
+        private readonly Color[] _customMidtones = new Color[ColorPartCount];
+        private readonly HeroCustomTones[] _customTones = new HeroCustomTones[ColorPartCount];
+        private readonly Label[] _colorLabels = new Label[ColorPartCount];
+        private readonly HoverableImageButton[] _paletteButtons = new HoverableImageButton[ColorPartCount];
+        private ColorPickerDialog _colorPicker;
+
         // UI labels that update when selections change
         private Label _nameLabel;
         private Label _genderLabel;
         private Label _jobLabel;
         private Label _hairstyleLabel;
-        private Label _skinLabel;
-        private Label _hairColorLabel;
         private Label _eyeColorLabel;
-        private Label _shirtLabel;
+
+        // Live preview layers, recolored in place while the color picker is dragged
+        private HeroBodyAnimationComponent _previewBody;
+        private HeroShirtAnimationComponent _previewShirt;
+        private HeroHeadAnimationComponent _previewHead;
+        private HeroHairAnimationComponent _previewHair;
         private TextButton _zoomButton;
         private PrototypeSpriteRenderer _previewBorder;
         private PrototypeSpriteRenderer _previewBackground;
@@ -176,13 +190,13 @@ namespace PitHero.UI
                 _nameLabel.SetText(_currentName);
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
-                _skinLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1));
-                _hairColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1));
                 _eyeColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1));
-                _shirtLabel.SetText(ShirtLabelText());
+                RefreshColorRows();
                 RebuildPreviewAppearance();
                 RefreshJobInfoWindow();
             };
+            // Leading column: the palette button of a color row set to Custom (empty elsewhere)
+            controlsTable.Add(new Container()).Width(ColorPaletteButton.Width).SetPadRight(2f);
             controlsTable.Add(new Label(_textService.DisplayText(TextType.UI, UITextKey.AppearanceNameLabel), skin)).SetPadRight(10f);
             controlsTable.Add(_nameLabel).Width(labelWidth);
             controlsTable.Add(rerollButton).Width(80f).Height(arrowHeight);
@@ -208,35 +222,14 @@ namespace PitHero.UI
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
                 RefreshJobInfoWindow();
             };
+            controlsTable.Add(new Container());
             controlsTable.Add(jobLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_jobLabel).Width(labelWidth);
             controlsTable.Add(jobRight).Size(arrowWidth, arrowHeight);
             controlsTable.Row();
 
             // --- Skin Color row ---
-            _skinLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1), skin);
-            var skinLeft = new TextButton("<", skin);
-            var skinRight = new TextButton(">", skin);
-            skinLeft.OnClicked += (btn) =>
-            {
-                _currentSkinIndex--;
-                if (_currentSkinIndex < 0)
-                    _currentSkinIndex = GameConfig.SkinColors.Count - 1;
-                _skinLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1));
-                RebuildPreviewAppearance();
-            };
-            skinRight.OnClicked += (btn) =>
-            {
-                _currentSkinIndex++;
-                if (_currentSkinIndex >= GameConfig.SkinColors.Count)
-                    _currentSkinIndex = 0;
-                _skinLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1));
-                RebuildPreviewAppearance();
-            };
-            controlsTable.Add(skinLeft).Size(arrowWidth, arrowHeight);
-            controlsTable.Add(_skinLabel).Width(labelWidth);
-            controlsTable.Add(skinRight).Size(arrowWidth, arrowHeight);
-            controlsTable.Row();
+            AddColorRow(controlsTable, skin, ColorPart.Skin, arrowWidth, arrowHeight, labelWidth);
 
             // --- Hairstyle row ---
             _hairstyleLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex), skin);
@@ -258,35 +251,14 @@ namespace PitHero.UI
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 RebuildPreviewAppearance();
             };
+            controlsTable.Add(new Container());
             controlsTable.Add(hairStyleLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_hairstyleLabel).Width(labelWidth);
             controlsTable.Add(hairStyleRight).Size(arrowWidth, arrowHeight);
             controlsTable.Row();
 
             // --- Hair Color row ---
-            _hairColorLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1), skin);
-            var hairColorLeft = new TextButton("<", skin);
-            var hairColorRight = new TextButton(">", skin);
-            hairColorLeft.OnClicked += (btn) =>
-            {
-                _currentHairColorIndex--;
-                if (_currentHairColorIndex < 0)
-                    _currentHairColorIndex = GameConfig.HairColors.Count - 1;
-                _hairColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1));
-                RebuildPreviewAppearance();
-            };
-            hairColorRight.OnClicked += (btn) =>
-            {
-                _currentHairColorIndex++;
-                if (_currentHairColorIndex >= GameConfig.HairColors.Count)
-                    _currentHairColorIndex = 0;
-                _hairColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1));
-                RebuildPreviewAppearance();
-            };
-            controlsTable.Add(hairColorLeft).Size(arrowWidth, arrowHeight);
-            controlsTable.Add(_hairColorLabel).Width(labelWidth);
-            controlsTable.Add(hairColorRight).Size(arrowWidth, arrowHeight);
-            controlsTable.Row();
+            AddColorRow(controlsTable, skin, ColorPart.Hair, arrowWidth, arrowHeight, labelWidth);
 
             // --- Eye Color row ---
             _eyeColorLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1), skin);
@@ -308,35 +280,14 @@ namespace PitHero.UI
                 _eyeColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1));
                 RebuildPreviewAppearance();
             };
+            controlsTable.Add(new Container());
             controlsTable.Add(eyeColorLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_eyeColorLabel).Width(labelWidth);
             controlsTable.Add(eyeColorRight).Size(arrowWidth, arrowHeight);
             controlsTable.Row();
 
             // --- Shirt (or Skirt) Color row ---
-            _shirtLabel = new Label(ShirtLabelText(), skin);
-            var shirtLeft = new TextButton("<", skin);
-            var shirtRight = new TextButton(">", skin);
-            shirtLeft.OnClicked += (btn) =>
-            {
-                _currentShirtIndex--;
-                if (_currentShirtIndex < 0)
-                    _currentShirtIndex = GameConfig.ShirtColors.Count - 1;
-                _shirtLabel.SetText(ShirtLabelText());
-                RebuildPreviewAppearance();
-            };
-            shirtRight.OnClicked += (btn) =>
-            {
-                _currentShirtIndex++;
-                if (_currentShirtIndex >= GameConfig.ShirtColors.Count)
-                    _currentShirtIndex = 0;
-                _shirtLabel.SetText(ShirtLabelText());
-                RebuildPreviewAppearance();
-            };
-            controlsTable.Add(shirtLeft).Size(arrowWidth, arrowHeight);
-            controlsTable.Add(_shirtLabel).Width(labelWidth);
-            controlsTable.Add(shirtRight).Size(arrowWidth, arrowHeight);
-            controlsTable.Row();
+            AddColorRow(controlsTable, skin, ColorPart.Shirt, arrowWidth, arrowHeight, labelWidth);
 
             topRow.Add(controlsTable).Top().Left();
 
@@ -412,15 +363,253 @@ namespace PitHero.UI
             _genderLabel.SetText(GenderDisplayText());
             _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
             _nameLabel.SetText(_currentName);
-            _shirtLabel.SetText(ShirtLabelText());
+            RefreshColorRows();
             RebuildPreviewAppearance();
         }
 
-        /// <summary>Gets the clothing row text: Skirt for a female hero, Shirt for a male one</summary>
-        private string ShirtLabelText()
+        // ── Color rows and custom colors (issue #467) ─────────────────────────────
+
+        /// <summary>
+        /// Adds a color row: [palette button] [&lt;] label [&gt;]. The arrows cycle the presets and then
+        /// Custom; the palette button shows only while the row is on Custom.
+        /// </summary>
+        private void AddColorRow(Table table, Skin skin, ColorPart part, float arrowWidth, float arrowHeight, float labelWidth)
         {
-            string key = _currentGender == Gender.Female ? UITextKey.AppearanceSkirt : UITextKey.AppearanceShirt;
-            return string.Format(_textService.DisplayText(TextType.UI, key), _currentShirtIndex + 1);
+            var label = new Label(string.Empty, skin);
+            _colorLabels[(int)part] = label;
+            var left = new TextButton("<", skin);
+            var right = new TextButton(">", skin);
+            left.OnClicked += (btn) => CycleColor(part, -1);
+            right.OnClicked += (btn) => CycleColor(part, 1);
+
+            var palette = ColorPaletteButton.Create(_textService.DisplayText(TextType.UI, UITextKey.AppearancePickColors));
+            palette.OnClicked += (btn) => OpenColorPicker(part);
+            _paletteButtons[(int)part] = palette;
+
+            table.Add(palette).Size(ColorPaletteButton.Width, ColorPaletteButton.Height).SetPadRight(2f);
+            table.Add(left).Size(arrowWidth, arrowHeight);
+            table.Add(label).Width(labelWidth);
+            table.Add(right).Size(arrowWidth, arrowHeight);
+            table.Row();
+            RefreshColorRow(part);
+        }
+
+        private int PresetCount(ColorPart part)
+        {
+            switch (part)
+            {
+                case ColorPart.Skin: return GameConfig.SkinColors.Count;
+                case ColorPart.Hair: return GameConfig.HairColors.Count;
+                default: return GameConfig.ShirtColors.Count;
+            }
+        }
+
+        private int GetColorIndex(ColorPart part)
+        {
+            switch (part)
+            {
+                case ColorPart.Skin: return _currentSkinIndex;
+                case ColorPart.Hair: return _currentHairColorIndex;
+                default: return _currentShirtIndex;
+            }
+        }
+
+        private void SetColorIndex(ColorPart part, int index)
+        {
+            switch (part)
+            {
+                case ColorPart.Skin: _currentSkinIndex = index; break;
+                case ColorPart.Hair: _currentHairColorIndex = index; break;
+                default: _currentShirtIndex = index; break;
+            }
+        }
+
+        /// <summary>True when the part's row is on its Custom option (the slot after the presets).</summary>
+        private bool IsCustom(ColorPart part) => GetColorIndex(part) == PresetCount(part);
+
+        /// <summary>The part's chosen (Midtone) color: the preset, or the picked Midtone on Custom.</summary>
+        private Color ChosenColor(ColorPart part)
+        {
+            if (IsCustom(part))
+                return _customMidtones[(int)part];
+            int index = GetColorIndex(part);
+            switch (part)
+            {
+                case ColorPart.Skin: return GameConfig.SkinColors[index];
+                case ColorPart.Hair: return GameConfig.HairColors[index];
+                default: return GameConfig.ShirtColors[index];
+            }
+        }
+
+        /// <summary>The part's picked Shadow / Highlight, or None when the row is on a preset.</summary>
+        private HeroCustomTones ChosenTones(ColorPart part)
+        {
+            return IsCustom(part) ? _customTones[(int)part] : HeroCustomTones.None;
+        }
+
+        /// <summary>The paperdoll layer whose tones the part's picker shows.</summary>
+        private HeroLayer ToneLayer(ColorPart part)
+        {
+            switch (part)
+            {
+                case ColorPart.Skin: return HeroLayer.Head;
+                case ColorPart.Hair: return HeroSpriteNames.HairLayer(_currentHairstyleIndex);
+                default: return HeroLayer.Clothing;
+            }
+        }
+
+        /// <summary>The tones the picker edits for a part, top to bottom: hair has a Highlight, skin and clothing do not.</summary>
+        private static HeroTone[] PickerTones(ColorPart part)
+        {
+            return part == ColorPart.Hair ? HairPickerTones : ShadowPickerTones;
+        }
+
+        private static readonly HeroTone[] HairPickerTones = { HeroTone.Highlight, HeroTone.Midtone, HeroTone.Shadow };
+        private static readonly HeroTone[] ShadowPickerTones = { HeroTone.Midtone, HeroTone.Shadow };
+
+        /// <summary>The ramp's color for one tone of a part made from a Midtone (the picker's starting point and Auto Shade).</summary>
+        private Color RampTone(ColorPart part, HeroTone tone, Color midtone)
+        {
+            return HeroToneProfiles.Tint(_currentGender, ToneLayer(part), tone, midtone);
+        }
+
+        /// <summary>Custom tones that reproduce the ramp for a Midtone (Highlight is unused off hair).</summary>
+        private HeroCustomTones RampTones(ColorPart part, Color midtone)
+        {
+            var highlight = part == ColorPart.Hair ? RampTone(part, HeroTone.Highlight, midtone) : midtone;
+            return new HeroCustomTones(RampTone(part, HeroTone.Shadow, midtone), highlight);
+        }
+
+        /// <summary>Steps a color row through its presets and Custom, seeding Custom from the color left behind.</summary>
+        private void CycleColor(ColorPart part, int step)
+        {
+            int optionCount = PresetCount(part) + 1;
+            var previous = ChosenColor(part);
+            int next = (GetColorIndex(part) + step + optionCount) % optionCount;
+            SetColorIndex(part, next);
+            if (IsCustom(part) && !_customTones[(int)part].IsSet)
+            {
+                // First visit: start from the preset the player just left, shaded as the ramp would
+                _customMidtones[(int)part] = previous;
+                _customTones[(int)part] = RampTones(part, previous);
+            }
+            RefreshColorRow(part);
+            RebuildPreviewAppearance();
+        }
+
+        private void RefreshColorRows()
+        {
+            for (int i = 0; i < ColorPartCount; i++)
+                RefreshColorRow((ColorPart)i);
+        }
+
+        /// <summary>Sets a color row's text ("Hair Color 3" / "Hair Color Custom") and shows its palette button on Custom.</summary>
+        private void RefreshColorRow(ColorPart part)
+        {
+            var label = _colorLabels[(int)part];
+            if (label == null)
+                return;
+            bool custom = IsCustom(part);
+            string key;
+            switch (part)
+            {
+                case ColorPart.Skin: key = custom ? UITextKey.AppearanceSkinCustom : UITextKey.AppearanceSkin; break;
+                case ColorPart.Hair: key = custom ? UITextKey.AppearanceHairColorCustom : UITextKey.AppearanceHairColor; break;
+                default:
+                    bool female = _currentGender == Gender.Female;
+                    key = custom
+                        ? (female ? UITextKey.AppearanceSkirtCustom : UITextKey.AppearanceShirtCustom)
+                        : (female ? UITextKey.AppearanceSkirt : UITextKey.AppearanceShirt);
+                    break;
+            }
+            string text = _textService.DisplayText(TextType.UI, key);
+            label.SetText(custom ? text : string.Format(text, GetColorIndex(part) + 1));
+            _paletteButtons[(int)part]?.SetVisible(custom);
+        }
+
+        /// <summary>Opens the shared color picker on a part's Midtone (and Highlight / Shadow), previewing edits live.</summary>
+        private void OpenColorPicker(ColorPart part)
+        {
+            if (_colorPicker != null || !IsCustom(part))
+                return;
+
+            int p = (int)part;
+            var tones = PickerTones(part);
+            var custom = _customTones[p];
+            var pickerTones = new ColorPickerTone[tones.Length];
+            int baseIndex = 0;
+            for (int i = 0; i < tones.Length; i++)
+            {
+                Color color;
+                string key;
+                switch (tones[i])
+                {
+                    case HeroTone.Highlight: color = custom.Highlight; key = UITextKey.ColorPickerHighlight; break;
+                    case HeroTone.Shadow: color = custom.Shadow; key = UITextKey.ColorPickerShadow; break;
+                    default: color = _customMidtones[p]; key = UITextKey.ColorPickerMidtone; baseIndex = i; break;
+                }
+                pickerTones[i] = new ColorPickerTone(_textService.DisplayText(TextType.UI, key), color);
+            }
+
+            string titleKey;
+            switch (part)
+            {
+                case ColorPart.Skin: titleKey = UITextKey.ColorPickerSkinTitle; break;
+                case ColorPart.Hair: titleKey = UITextKey.ColorPickerHairTitle; break;
+                default: titleKey = _currentGender == Gender.Female ? UITextKey.ColorPickerSkirtTitle : UITextKey.ColorPickerShirtTitle; break;
+            }
+
+            _colorPicker = new ColorPickerDialog(
+                _textService.DisplayText(TextType.UI, titleKey), _skin, pickerTones, baseIndex,
+                (midtone, index) => RampTone(part, tones[index], midtone),
+                colors => { StoreCustomColors(part, tones, colors); ApplyPreviewColors(); },
+                colors => { StoreCustomColors(part, tones, colors); CloseColorPicker(); },
+                CloseColorPicker);
+            // The dialogs are not modal: keep the appearance controls still while the picker is up
+            _controlsWindow.SetTouchable(Touchable.Disabled);
+            _colorPicker.Show(_stage);
+            PlaceColorPickerBesidePreview();
+        }
+
+        /// <summary>
+        /// Moves the picker right of the hero preview. The preview is a scene entity drawn over the UI, so a
+        /// centered picker sat under it and lost its swatches; the live preview must stay visible beside it.
+        /// </summary>
+        private void PlaceColorPickerBesidePreview()
+        {
+            const float gap = 6f;
+            // The preview's white border is 36 px wide at 1x, centered on the entity
+            float previewRight = _previewEntity.Position.X + 18f * _previewScale;
+            float x = previewRight + gap;
+            float maxX = _stage.GetWidth() - _colorPicker.GetWidth() - GameConfig.UIStageMargin;
+            if (x > maxX)
+                x = maxX;
+            _colorPicker.SetPosition(x, _colorPicker.GetY());
+        }
+
+        private void CloseColorPicker()
+        {
+            _colorPicker = null;
+            _controlsWindow.SetTouchable(Touchable.Enabled);
+            ApplyPreviewColors();
+        }
+
+        // Copies the picker's colors (in PickerTones order) into the part's custom Midtone and tones
+        private void StoreCustomColors(ColorPart part, HeroTone[] tones, Color[] colors)
+        {
+            int p = (int)part;
+            var shadow = _customTones[p].Shadow;
+            var highlight = _customTones[p].Highlight;
+            for (int i = 0; i < tones.Length && i < colors.Length; i++)
+            {
+                switch (tones[i])
+                {
+                    case HeroTone.Highlight: highlight = colors[i]; break;
+                    case HeroTone.Shadow: shadow = colors[i]; break;
+                    default: _customMidtones[p] = colors[i]; break;
+                }
+            }
+            _customTones[p] = new HeroCustomTones(shadow, highlight);
         }
 
         /// <summary>Switches the preview between normal and double size</summary>
@@ -474,9 +663,9 @@ namespace PitHero.UI
             }
             _tempAnimComponents.Clear();
 
-            var skinColor = GameConfig.SkinColors[_currentSkinIndex];
-            var hairColor = GameConfig.HairColors[_currentHairColorIndex];
-            var shirtColor = GameConfig.ShirtColors[_currentShirtIndex];
+            var skinColor = ChosenColor(ColorPart.Skin);
+            var hairColor = ChosenColor(ColorPart.Hair);
+            var shirtColor = ChosenColor(ColorPart.Shirt);
             var offset = PreviewOffset(); // Centered on the 32x48 background
             var gender = _currentGender;
 
@@ -484,6 +673,8 @@ namespace PitHero.UI
             var bodyAnimator = _previewEntity.AddComponent(new HeroBodyAnimationComponent(HeroSpriteNames.BodyTint(gender, skinColor), gender));
             bodyAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             bodyAnimator.SetLocalOffset(offset);
+            bodyAnimator.CustomTones = ChosenTones(ColorPart.Skin);
+            _previewBody = bodyAnimator;
 
             // Armor layer (female only)
             var armorAnimator = HeroArmorAnimationComponent.AddTo(_previewEntity, gender, offset);
@@ -493,12 +684,16 @@ namespace PitHero.UI
             var shirtAnimator = _previewEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor, gender));
             shirtAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             shirtAnimator.SetLocalOffset(offset);
+            shirtAnimator.CustomTones = ChosenTones(ColorPart.Shirt);
+            _previewShirt = shirtAnimator;
 
             // Head layer
             var headAnimator = _previewEntity.AddComponent(new HeroHeadAnimationComponent(skinColor, gender));
             headAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             headAnimator.SetLocalOffset(offset);
             headAnimator.ComponentColor = skinColor;
+            headAnimator.CustomTones = ChosenTones(ColorPart.Skin);
+            _previewHead = headAnimator;
 
             // Eye outline and whites
             var eyesBaseAnimator = _previewEntity.AddComponent(new HeroEyesBaseAnimationComponent(gender));
@@ -514,6 +709,30 @@ namespace PitHero.UI
             var hairAnimator = _previewEntity.AddComponent(new HeroHairAnimationComponent(hairColor, _currentHairstyleIndex, gender));
             hairAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             hairAnimator.SetLocalOffset(offset);
+            hairAnimator.CustomTones = ChosenTones(ColorPart.Hair);
+            _previewHair = hairAnimator;
+        }
+
+        /// <summary>
+        /// Recolors the preview's tinted layers in place (no rebuild), so dragging in the color picker
+        /// stays smooth and the animation does not restart.
+        /// </summary>
+        private void ApplyPreviewColors()
+        {
+            if (_previewBody == null)
+                return;
+            var skinColor = ChosenColor(ColorPart.Skin);
+            Recolor(_previewBody, HeroSpriteNames.BodyTint(_currentGender, skinColor), ChosenTones(ColorPart.Skin));
+            Recolor(_previewHead, skinColor, ChosenTones(ColorPart.Skin));
+            Recolor(_previewShirt, ChosenColor(ColorPart.Shirt), ChosenTones(ColorPart.Shirt));
+            Recolor(_previewHair, ChosenColor(ColorPart.Hair), ChosenTones(ColorPart.Hair));
+        }
+
+        private static void Recolor(HeroAnimationComponent layer, Color color, HeroCustomTones tones)
+        {
+            layer.ComponentColor = color;
+            layer.CustomTones = tones;
+            layer.SetColor(color);
         }
 
         /// <summary>Cycles the preview hero direction by the given step (-1 or +1)</summary>
@@ -664,13 +883,16 @@ namespace PitHero.UI
         {
             var design = new HeroDesign(
                 _currentName,
-                GameConfig.SkinColors[_currentSkinIndex],
-                GameConfig.HairColors[_currentHairColorIndex],
+                ChosenColor(ColorPart.Skin),
+                ChosenColor(ColorPart.Hair),
                 _currentHairstyleIndex,
-                GameConfig.ShirtColors[_currentShirtIndex],
+                ChosenColor(ColorPart.Shirt),
                 PrimaryJobNames[_currentJobIndex],
                 _currentGender,
-                GameConfig.EyeColors[_currentEyeColorIndex]
+                GameConfig.EyeColors[_currentEyeColorIndex],
+                ChosenTones(ColorPart.Skin),
+                ChosenTones(ColorPart.Hair),
+                ChosenTones(ColorPart.Shirt)
             );
 
             var designService = Core.Services.GetService<HeroDesignService>();

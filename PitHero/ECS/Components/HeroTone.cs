@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using RolePlayingFramework;
+using RolePlayingFramework.Heroes;
 using System;
 
 namespace PitHero.ECS.Components
@@ -400,6 +401,23 @@ namespace PitHero.ECS.Components
         public static Color Tint(Gender gender, HeroLayer layer, HeroTone tone, Color chosen)
         {
             return Get(gender, layer, tone).Apply(chosen);
+        }
+
+        /// <summary>
+        /// The tint of one tone with the player's custom tones (issue #467): a picked Shadow or Highlight
+        /// replaces the ramp's color and keeps the chosen color's alpha (per-layer fades change only alpha);
+        /// the Midtone and Light tones, and unset custom tones, go through <see cref="Tint(Gender, HeroLayer, HeroTone, Color)"/>.
+        /// </summary>
+        public static Color Tint(Gender gender, HeroLayer layer, HeroTone tone, Color chosen, in HeroCustomTones custom)
+        {
+            if (custom.IsSet)
+            {
+                if (tone == HeroTone.Shadow)
+                    return new Color(custom.Shadow.R, custom.Shadow.G, custom.Shadow.B, chosen.A);
+                if (tone == HeroTone.Highlight)
+                    return new Color(custom.Highlight.R, custom.Highlight.G, custom.Highlight.B, chosen.A);
+            }
+            return Tint(gender, layer, tone, chosen);
         }
 
         private static HeroToneProfile P(float hue, float sat, float val) => new HeroToneProfile(hue, sat, val);
