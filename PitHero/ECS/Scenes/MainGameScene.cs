@@ -3419,8 +3419,12 @@ namespace PitHero.ECS.Scenes
             bool inventoryOpen = heroUI != null && heroUI.IsWindowVisible;
 
             // While the Party window is open the docked bar is only a drop target: show it only while an
-            // item or skill is being dragged (issue #465). Its drop handlers do not check visibility.
+            // item or skill is being dragged (issue #465), and for a short linger after a drop lands on it so the
+            // new shortcut can be seen. Its drop handlers do not check visibility.
+            if (_uiStage != null)
+                _shortcutBar.TickDropLinger(Time.UnscaledDeltaTime, _uiStage.GetMousePosition());
             bool visible = !inventoryOpen
+                || _shortcutBar.DropLingerRemaining > 0f
                 || (InventoryDragManager.IsDragging
                     && (InventoryDragManager.DragItem != null || InventoryDragManager.DragSkill != null));
 

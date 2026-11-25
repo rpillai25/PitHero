@@ -28,6 +28,29 @@ namespace PitHero.UI
         /// <summary>Space under each slot for its key number (14px text + 2px offset), before scale.</summary>
         public const float KeyLabelSpace = 16f;
 
+        /// <summary>
+        /// Seconds left of the post-drop linger (<see cref="GameConfig.ShortcutBarDropLingerSeconds"/>): while the
+        /// Party window is open the docked bar stays visible this long after a drop lands on it.
+        /// </summary>
+        public float DropLingerRemaining { get; private set; }
+
+        /// <summary>
+        /// Counts the post-drop linger down by wall-clock time (UI only; never read by the simulation). Any
+        /// interaction with the bar while it lingers restarts the countdown: the mouse over the bar (hovering,
+        /// clicking) or a drag from one of its own slots, which restarts it again when it drops.
+        /// </summary>
+        public void TickDropLinger(float unscaledDeltaTime, Vector2 stageMouse)
+        {
+            if (DropLingerRemaining <= 0f)
+                return;
+            if (_dragSourceIndex >= 0 || ContainsStagePoint(stageMouse))
+                StartDropLinger();
+            else
+                DropLingerRemaining = System.Math.Max(0f, DropLingerRemaining - unscaledDeltaTime);
+        }
+
+        private void StartDropLinger() => DropLingerRemaining = GameConfig.ShortcutBarDropLingerSeconds;
+
         // Array of shortcut slot data (can be item reference or skill reference)
         private readonly ShortcutSlotData[] _shortcutSlots;
 
@@ -779,6 +802,9 @@ namespace PitHero.UI
             }
             // Dropped on own slot — no-op (restore already done above)
 
+            // A move or removal while the bar lingers keeps it up so the result can be seen
+            if (DropLingerRemaining > 0f)
+                StartDropLinger();
             _shortcutDragOverlay?.EndDrag();
             _dragSourceIndex = -1;
         }
@@ -844,6 +870,7 @@ namespace PitHero.UI
             else
                 Services.Replay.PlayerCommandService.Dispatch(new Services.Replay.PlayerCommand(
                     Services.Replay.PlayerCommandType.SetShortcutItem, index, inventorySource.SlotData.BagIndex.Value));
+            StartDropLinger();
             InventoryDragManager.EndDrag();
         }
 
@@ -926,6 +953,7 @@ namespace PitHero.UI
             else
                 Services.Replay.PlayerCommandService.Dispatch(Services.Replay.PlayerCommand.WithString(
                     Services.Replay.PlayerCommandType.SetShortcutSkill, skill.Id, index, HiredIndexOf(owner)));
+            StartDropLinger();
             InventoryDragManager.EndDrag();
         }
 

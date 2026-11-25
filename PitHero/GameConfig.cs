@@ -35,6 +35,11 @@ namespace PitHero
         public const float UIWindowBelowBarGap = 4f;
         /// <summary>Gap (before UI scale) between the shortcut grid and the Party window's left-docked elements while the inventory is open.</summary>
         public const float ShortcutDockGap = 16f;
+        /// <summary>
+        /// Seconds the docked shortcut bar stays on screen after an item or skill is dropped onto it while the
+        /// Party window is open (it is otherwise shown only during a drag), so the new shortcut can be seen.
+        /// </summary>
+        public static float ShortcutBarDropLingerSeconds = 5f;
         /// <summary>Distance from the bottom of the stage to the baseline HUD labels (Pit Lv / Gold).</summary>
         public const float HudBottomLabelOffsetY = 10f;
         /// <summary>Distance from the top of the stage to the top of the title-screen logo.</summary>
