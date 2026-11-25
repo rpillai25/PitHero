@@ -429,7 +429,7 @@ step per tick, any other move rebuilds from the start, so a seek or a rewind sho
 Approximate by design: a rebuilt effect spawns at the current root, and the Emitting flag only ends
 emission from the current tick on.
 
-**Sounds:** the viewer plays the sound events the playhead passes during forward play at 1X–2X
+**Sounds:** the viewer plays the sound events the playhead passes during forward play at 1X and a 2X fast-forward
 (`ReplayFrameViewSoundMaxSpeedIndex`) through `SoundEffectManager.PlayRecorded` — the exact variant,
 with the live camera's falloff and pan for positional ones; `Muted` is honored and nothing is recorded
 again. A move longer than `ReplayFrameViewSoundCatchupMaxTicks` (a seek, a skipped pause span), a
@@ -438,6 +438,16 @@ rewind, a pause or a higher rung is silent.
 **Timeline:** `ReplayFrameCursor` advances by wall time × speed × 60 with fractional carry, in either
 direction, clamped to `[0, TotalTicks]`, skipping recorded pause spans forward. Speeds come from
 `ReplayFrameViewSpeedSteps` (the simulation ladder plus view-only 16X / 32X; no artifact gate).
+**Speed and the transport buttons:** Play always runs at 1X. The speed button (`CycleSpeed`) only
+picks the rate (`SpeedIndex`, 2X and up, wrapping back to 2X; it never starts or stops anything) that
+the **fast-forward** button (the rewind icon mirrored, `ToggleFastForward`; pressing it again drops
+back to 1X play) and the rewind button play at. `PlaybackSpeed` is that rate while fast-forwarding
+or rewinding, else 1X; in Simulated mode it drives `Core.SimulationSpeed`. Pause, the end of the
+recording and Exit end a fast-forward; a seek keeps it. Both buttons latch: the scrubber sets their
+checked (pressed) face from `IsFastForwarding` / `IsRewinding` every frame, so they pop back up when
+the mode ends on its own. **SHIFT + right arrow** held fast-forwards (`BeginHoldFastForward` /
+`EndHoldFastForward`, either mode), the mirror of the rewind hold below: the button shows pressed,
+and releasing restores the state before the hold (paused, 1X play, or a fast-forward already running).
 **Rewind** is the cursor with `Direction = -1`: the `<<` button (pressing it again pauses) or
 SHIFT + left arrow held (polled by the scrubber; releasing either key restores the state before the
 hold; the camera ignores the arrow keys while SHIFT is down, so plain arrows still pan). Rewind stops
