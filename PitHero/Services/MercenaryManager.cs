@@ -386,8 +386,11 @@ namespace PitHero.Services
             if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                 yield break;
 
-            // Arrived at tavern position
+            // Arrived at tavern position: sit facing the table (the last walk step left the patron
+            // facing whichever way it entered the seat tile)
             mercComponent.IsWaitingInTavern = true;
+            if (TavernSeatConfig.IsSeatTile(tavernPosition))
+                mercEntity.GetComponent<ActorFacingComponent>()?.SetFacing(TavernSeatConfig.GetFacing(tavernPosition));
 
             // Add patron component so the kitchen system can serve this merc as a dining customer.
             // Patience starts immediately since the merc is now seated.

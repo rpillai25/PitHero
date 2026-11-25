@@ -239,6 +239,7 @@ namespace PitHero.AI
 
                 if (hpRestored > 0 || mpRestored > 0)
                     Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, targetEntity);
+                BouncyDigitComponent.ShowHeal(targetEntity, hpRestored);
 
                 // Every restore is announced — an MP-only potion used to be silent, which made a heal
                 // followed by an MP potion look like a free heal (issue #420)

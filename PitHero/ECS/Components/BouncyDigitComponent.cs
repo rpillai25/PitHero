@@ -67,6 +67,28 @@ namespace PitHero.ECS.Components
 
         public static Color HeroDigitColor = Color.Red;
         public static Color EnemyDigitColor = Color.White;
+        /// <summary>Heal amounts (potions and healing skills, in and out of battle).</summary>
+        public static Color HealDigitColor = new Color(64, 224, 64);
+
+        /// <summary>
+        /// Bounces <paramref name="amount"/> in <see cref="HealDigitColor"/> over <paramref name="entity"/>.
+        /// Out of battle a mercenary has no digit component (the battle adds and removes it), so one is
+        /// added on demand; the battle setup reuses it.
+        /// </summary>
+        public static void ShowHeal(Entity entity, int amount)
+        {
+            // Core.Instance: headless tests run these heal paths without a game (OnAddedToEntity reads Core.Services)
+            if (entity == null || entity.IsDestroyed || amount <= 0 || Core.Instance == null)
+                return;
+            var digit = entity.GetComponent<BouncyDigitComponent>();
+            if (digit == null)
+            {
+                digit = entity.AddComponent(new BouncyDigitComponent());
+                digit.SetRenderLayer(GameConfig.RenderLayerLowest);
+            }
+            digit.Init(amount, HealDigitColor, false);
+            digit.SetEnabled(true);
+        }
         private Color _critColor = new Color(255, 213, 16);
         private Color _initColor = Color.White;
         private Color _currentColor = Color.White;

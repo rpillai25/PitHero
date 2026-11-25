@@ -993,6 +993,7 @@ namespace PitHero.UI
                     : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
                 if (hpAfter > hpBefore)
                     Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, targetEntity);
+                PitHero.ECS.Components.BouncyDigitComponent.ShowHeal(targetEntity, hpAfter - hpBefore);
 
                 // Reset HealingSkillExhausted if MP restoration item is used
                 if (_heroComponent != null && consumable.MPRestoreAmount > 0)

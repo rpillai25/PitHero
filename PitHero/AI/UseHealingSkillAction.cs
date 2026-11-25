@@ -330,10 +330,12 @@ namespace PitHero.AI
             string targetName;
             int currentHP = 0;
             int maxHP = 0;
+            int hpBefore;
 
             if (isTargetHero)
             {
                 var hero = (RolePlayingFramework.Heroes.Hero)target;
+                hpBefore = hero.CurrentHP;
                 healed = hero.RestoreHP(healAmount);
                 targetName = hero.Name;
                 currentHP = hero.CurrentHP;
@@ -342,6 +344,7 @@ namespace PitHero.AI
             else
             {
                 var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
+                hpBefore = mercenary.CurrentHP;
                 healed = mercenary.RestoreHP(healAmount);
                 targetName = mercenary.Name;
                 currentHP = mercenary.CurrentHP;
@@ -352,6 +355,7 @@ namespace PitHero.AI
             {
                 if (targetEntity != null)
                     AttackEffects.PlaySkillOn(targetEntity, SkillEffect.Heal, GameConfig.SkillHealEffectDuration);
+                BouncyDigitComponent.ShowHeal(targetEntity, currentHP - hpBefore);
 
                 int casterMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).CurrentMP;
                 int casterMaxMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).MaxMP;

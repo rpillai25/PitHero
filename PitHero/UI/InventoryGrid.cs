@@ -921,6 +921,7 @@ namespace PitHero.UI
 
                 if (hero.CurrentHP > hpBefore)
                     Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, _heroComponent.Entity);
+                PitHero.ECS.Components.BouncyDigitComponent.ShowHeal(_heroComponent.Entity, hero.CurrentHP - hpBefore);
 
                 // Reset HealingSkillExhausted if MP restoration item is used
                 if (_heroComponent != null && consumable.MPRestoreAmount > 0)
