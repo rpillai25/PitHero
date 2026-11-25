@@ -189,7 +189,8 @@ multiplying one gray ramp by one color. Each tone is its own gray atlas animatio
   `AppendPortraitParts`; drawn on its own (hero creation preview) its `Render` draws every tone.
 - **Custom tones (issue #467)**: the hero creation screen's Skin, Hair Color and Shirt/Skirt rows end in a
   *Custom* option whose palette button (`ColorPaletteButton`, `UIColorPalette` in the UI atlas) opens the
-  shared `ColorPickerDialog` (hue strip + saturation/value square; Midtone and Shadow, plus Highlight for hair;
+  shared `ColorPickerDialog` (hue strip + saturation/value square + typed `#hex` / R / G / B fields, the skin's
+  "ph-default" `TextFieldStyle`; Midtone and Shadow, plus Highlight for hair;
   Auto Shade remakes the others from the Midtone with the ramp). The picked Midtone is the design's color;
   Shadow/Highlight live in `HeroCustomTones` (`HeroDesign.SkinTones/HairTones/ShirtTones`, save section 59,
   v46) and reach the tint through `HeroAnimationComponent.CustomTones` /

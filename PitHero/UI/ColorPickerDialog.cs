@@ -33,6 +33,10 @@ namespace PitHero.UI
         private const float SquareSize = 96f;
         private const float HueStripWidth = 14f;
         private const float ButtonHeight = 16f;
+        private const float FieldHeight = 18f;
+        private const float HexFieldWidth = 58f;
+        private const float ChannelFieldWidth = 32f;
+        private static readonly string[] ChannelNames = { "R", "G", "B" };
 
         private readonly Color[] _colors;
         private readonly Color[] _original;
@@ -45,7 +49,10 @@ namespace PitHero.UI
         private readonly ToneSwatch[] _swatches;
         private readonly SaturationValueSquare _square;
         private readonly HueStrip _hueStrip;
-        private readonly Label _hexLabel;
+        private readonly TextField _hexField;
+        private readonly TextField[] _channelFields = new TextField[3];
+        private string _hexText = string.Empty;
+        private readonly string[] _channelText = { string.Empty, string.Empty, string.Empty };
         private int _selected;
         private float _hue;
 
@@ -105,21 +112,39 @@ namespace PitHero.UI
             table.Add(_hueStrip).Size(HueStripWidth, SquareSize);
             table.Row();
 
-            // ── Hex readout and Auto Shade ──────────────────────────────────────────
+            // ── Typed values: #hex, R, G, B ─────────────────────────────────────────
+            // Edits apply as soon as they parse; a field shows the canonical value again once it loses focus.
             var infoRow = new Table();
-            _hexLabel = new Label(string.Empty, skin);
-            infoRow.Add(_hexLabel).Left().Expand();
+            infoRow.Add(new Label("#", skin)).SetPadRight(2f);
+            _hexField = new TextField(string.Empty, skin, "ph-default");
+            _hexField.SetMaxLength(6);
+            _hexField.SetTextFieldFilter(HexFilter.Instance);
+            _hexField.OnTextChanged += (field, text) => OnHexTyped(text);
+            _hexField.OnEnterPressed += ReleaseKeyboard;
+            infoRow.Add(_hexField).Size(HexFieldWidth, FieldHeight).SetPadRight(10f);
+            for (int c = 0; c < 3; c++)
+            {
+                int channel = c;
+                infoRow.Add(new Label(ChannelNames[c], skin)).SetPadRight(2f);
+                var field = new TextField(string.Empty, skin, "ph-default");
+                field.SetMaxLength(3);
+                field.SetTextFieldFilter(DigitFilter.Instance);
+                field.OnTextChanged += (f, text) => OnChannelTyped(channel, text);
+                field.OnEnterPressed += ReleaseKeyboard;
+                _channelFields[c] = field;
+                infoRow.Add(field).Size(ChannelFieldWidth, FieldHeight).SetPadRight(c < 2 ? 6f : 0f);
+            }
+            table.Add(infoRow).SetColspan(3).Left().SetPadTop(8f);
+            table.Row();
+
+            // ── Auto Shade / OK / Cancel ────────────────────────────────────────────
+            var buttonRow = new Table();
             if (_autoTone != null && tones.Length > 1)
             {
                 var autoButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ColorPickerAutoShade), skin, "ph-default");
                 autoButton.OnClicked += (b) => AutoShade();
-                infoRow.Add(autoButton).SetMinHeight(ButtonHeight);
+                buttonRow.Add(autoButton).SetMinHeight(ButtonHeight).SetPadRight(10f);
             }
-            table.Add(infoRow).SetColspan(3).Fill().SetPadTop(8f);
-            table.Row();
-
-            // ── OK / Cancel ─────────────────────────────────────────────────────────
-            var buttonRow = new Table();
             var okButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonOK), skin, "ph-default");
             okButton.OnClicked += (b) => Confirm();
             buttonRow.Add(okButton).Width(80f).SetMinHeight(ButtonHeight).SetPadRight(10f);
@@ -155,7 +180,7 @@ namespace PitHero.UI
                 _hue = h; // a gray has no hue: keep the strip where it was
             _hueStrip.Hue = _hue;
             _square.SetColor(_hue, s, v);
-            UpdateHex();
+            UpdateFields();
         }
 
         private void OnHueChanged(float hue)
@@ -172,9 +197,51 @@ namespace PitHero.UI
         {
             _colors[_selected] = HeroToneProfile.HsvToRgb(_hue, _square.Saturation, _square.Value, 255);
             _swatches[_selected].Color = _colors[_selected];
-            UpdateHex();
+            UpdateFields();
             _onChanged?.Invoke(_colors);
         }
+
+        // A full six-digit hex code sets the selected tone; anything shorter is still being typed
+        private void OnHexTyped(string text)
+        {
+            if (text == null || text.Length != 6)
+                return;
+            if (!int.TryParse(text, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out int rgb))
+                return;
+            SetTypedColor(new Color((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255));
+        }
+
+        // A channel value sets that channel of the selected tone, clamped to 0-255; an empty field waits
+        private void OnChannelTyped(int channel, string text)
+        {
+            if (string.IsNullOrEmpty(text) || !int.TryParse(text, out int value))
+                return;
+            value = Math.Clamp(value, 0, 255);
+            var c = _colors[_selected];
+            if (channel == 0) c.R = (byte)value;
+            else if (channel == 1) c.G = (byte)value;
+            else c.B = (byte)value;
+            SetTypedColor(c);
+        }
+
+        // Takes a typed color exactly (no HSV round trip) and moves the square and strip to it
+        private void SetTypedColor(Color color)
+        {
+            color.A = 255;
+            if (color == _colors[_selected])
+                return;
+            _colors[_selected] = color;
+            _swatches[_selected].Color = color;
+            HeroToneProfile.RgbToHsv(color, out float h, out float s, out float v);
+            if (s > 0f)
+                _hue = h;
+            _hueStrip.Hue = _hue;
+            _square.SetColor(_hue, s, v);
+            UpdateFields();
+            _onChanged?.Invoke(_colors);
+        }
+
+        private void ReleaseKeyboard(TextField field) => GetStage()?.SetKeyboardFocus(null);
 
         private void AutoShade()
         {
@@ -189,10 +256,48 @@ namespace PitHero.UI
             _onChanged?.Invoke(_colors);
         }
 
-        private void UpdateHex()
+        /// <summary>
+        /// Rewrites the hex and channel fields for the selected tone. TextField ignores SetText while it has
+        /// keyboard focus, so the field being typed in keeps its text; Draw catches it up once focus leaves.
+        /// </summary>
+        private void UpdateFields()
         {
             var c = _colors[_selected];
-            _hexLabel.SetText("#" + c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2"));
+            _hexText = c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2");
+            _channelText[0] = c.R.ToString();
+            _channelText[1] = c.G.ToString();
+            _channelText[2] = c.B.ToString();
+            _hexField.SetText(_hexText);
+            for (int i = 0; i < 3; i++)
+                _channelFields[i].SetText(_channelText[i]);
+        }
+
+        public override void Draw(Batcher batcher, float parentAlpha)
+        {
+            // A field left holding a partial or out-of-range value ("30", "300") shows the real value again
+            var focus = GetStage()?.GetKeyboardFocus();
+            if (!ReferenceEquals(focus, _hexField) && _hexField.GetText() != _hexText)
+                _hexField.SetText(_hexText);
+            for (int i = 0; i < 3; i++)
+            {
+                if (!ReferenceEquals(focus, _channelFields[i]) && _channelFields[i].GetText() != _channelText[i])
+                    _channelFields[i].SetText(_channelText[i]);
+            }
+            base.Draw(batcher, parentAlpha);
+        }
+
+        /// <summary>Accepts hexadecimal digits only.</summary>
+        private sealed class HexFilter : TextField.ITextFieldFilter
+        {
+            public static readonly HexFilter Instance = new HexFilter();
+            public bool AcceptChar(TextField textField, char c) => Uri.IsHexDigit(c);
+        }
+
+        /// <summary>Accepts decimal digits only (Nez's DigitsOnlyFilter also lets '-' through).</summary>
+        private sealed class DigitFilter : TextField.ITextFieldFilter
+        {
+            public static readonly DigitFilter Instance = new DigitFilter();
+            public bool AcceptChar(TextField textField, char c) => c >= '0' && c <= '9';
         }
 
         private void Confirm()
@@ -214,6 +319,11 @@ namespace PitHero.UI
         {
             _square.DisposeTexture();
             _hueStrip.DisposeTexture();
+            // Drop keyboard focus first: the stage would otherwise keep routing keys to a removed field
+            var stage = GetStage();
+            var focus = stage?.GetKeyboardFocus();
+            if (focus != null && (ReferenceEquals(focus, _hexField) || Array.IndexOf(_channelFields, focus as TextField) >= 0))
+                stage.SetKeyboardFocus(null);
             Remove();
         }
 

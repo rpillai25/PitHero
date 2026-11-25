@@ -61,7 +61,8 @@ namespace PitHero.UI
         private ColorPickerDialog _colorPicker;
 
         // UI labels that update when selections change
-        private Label _nameLabel;
+        private TextField _nameField;
+        private bool _nameTyped; // the player typed a name: switching gender keeps it
         private Label _genderLabel;
         private Label _jobLabel;
         private Label _hairstyleLabel;
@@ -174,7 +175,11 @@ namespace PitHero.UI
             const float labelWidth = 160f;
 
             // --- Name row ---
-            _nameLabel = new Label(_currentName, skin);
+            _nameField = new TextField(_currentName, skin, "ph-default");
+            _nameField.SetMaxLength(HeroNameMaxLength);
+            _nameField.SetTextFieldFilter(NameFilter.Instance);
+            _nameField.OnTextChanged += (field, text) => OnNameTyped(text);
+            _nameField.OnEnterPressed += (field) => _stage.SetKeyboardFocus(null);
             var rerollButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonReroll), skin);
             rerollButton.OnClicked += (btn) =>
             {
@@ -187,7 +192,8 @@ namespace PitHero.UI
                 _currentHairstyleIndex = GameRandom.UiRange(1, GameConfig.HeroHairstyleCount + 1);
                 _currentShirtIndex = GameRandom.UiRange(0, GameConfig.ShirtColors.Count);
                 _currentEyeColorIndex = GameRandom.UiRange(0, GameConfig.EyeColors.Count);
-                _nameLabel.SetText(_currentName);
+                _nameTyped = false;
+                _nameField.SetText(_currentName);
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 _eyeColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1));
@@ -198,7 +204,7 @@ namespace PitHero.UI
             // Leading column: the palette button of a color row set to Custom (empty elsewhere)
             controlsTable.Add(new Container()).Width(ColorPaletteButton.Width).SetPadRight(2f);
             controlsTable.Add(new Label(_textService.DisplayText(TextType.UI, UITextKey.AppearanceNameLabel), skin)).SetPadRight(10f);
-            controlsTable.Add(_nameLabel).Width(labelWidth);
+            controlsTable.Add(_nameField).Size(labelWidth, NameFieldHeight);
             controlsTable.Add(rerollButton).Width(80f).Height(arrowHeight);
             controlsTable.Row();
 
@@ -356,15 +362,44 @@ namespace PitHero.UI
             return _textService.DisplayText(TextType.UI, key);
         }
 
-        /// <summary>Switches gender, drawing a new name from that gender's pool, and refreshes the preview</summary>
+        /// <summary>
+        /// Switches gender and refreshes the preview. A generated name is redrawn from the new gender's pool;
+        /// a name the player typed is kept.
+        /// </summary>
         private void ToggleGender()
         {
             _currentGender = _currentGender == Gender.Female ? Gender.Male : Gender.Female;
             _genderLabel.SetText(GenderDisplayText());
-            _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
-            _nameLabel.SetText(_currentName);
+            if (!_nameTyped)
+            {
+                _currentName = NameGenerator.GenerateRandomName(_currentGender, GameRandom.Ui);
+                _nameField.SetText(_currentName);
+            }
             RefreshColorRows();
             RebuildPreviewAppearance();
+        }
+
+        // ── Editable name (issue #467) ────────────────────────────────────────────
+
+        /// <summary>Longest typed hero name; generated names run up to about 23 characters.</summary>
+        private const int HeroNameMaxLength = 24;
+        private const float NameFieldHeight = 20f;
+
+        // Keeps the last non-blank typed name; a blank field falls back to it (see Update)
+        private void OnNameTyped(string text)
+        {
+            string trimmed = text?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return;
+            _currentName = trimmed;
+            _nameTyped = true;
+        }
+
+        /// <summary>Letters, digits, spaces, apostrophes and hyphens.</summary>
+        private sealed class NameFilter : TextField.ITextFieldFilter
+        {
+            public static readonly NameFilter Instance = new NameFilter();
+            public bool AcceptChar(TextField textField, char c) => char.IsLetterOrDigit(c) || c == ' ' || c == '\'' || c == '-';
         }
 
         // ── Color rows and custom colors (issue #467) ─────────────────────────────
@@ -932,6 +967,11 @@ namespace PitHero.UI
                 // Preview sits above the direction buttons on the right side of the Appearance window
                 _previewEntity?.SetPosition(startX + AppearanceWindowWidth - 128f, stageH * 0.48f);
             }
+
+            // Once the name field loses focus, show the name the hero will get: a blank field, or one with
+            // stray outer spaces, goes back to the last real name
+            if (_nameField != null && !ReferenceEquals(_stage.GetKeyboardFocus(), _nameField) && _nameField.GetText() != _currentName)
+                _nameField.SetText(_currentName);
 
             // Open at double size: the same toggle the zoom button runs, once the layout has been placed
             if (!_openedAtDoubleSize)
