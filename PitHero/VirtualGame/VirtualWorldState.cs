@@ -581,8 +581,8 @@ namespace PitHero.VirtualGame
 
         private (int width, int centerX) CalculatePitWidth(int level)
         {
-            // Use the actual PitWidthManager logic: ((int)(level / 10)) * 2
-            int extensionTiles = ((int)(level / 10)) * 2;
+            // Same width rule as PitWidthManager: the level within the cycle, never the cumulative depth
+            int extensionTiles = PitWidthManager.ExtensionTilesForLevel(PitHero.Config.BiomeProgressionConfig.GetDisplayedLevelForDepth(level));
             int width = GameConfig.PitRectWidth + extensionTiles;
 
             int centerX = GameConfig.PitRectX + (width / 2);
