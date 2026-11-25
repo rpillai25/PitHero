@@ -146,6 +146,7 @@ namespace PitHero.UI
         {
             var windowStyle = skin.Get<WindowStyle>();
             var window = new Window(_textService.DisplayText(TextType.UI, UITextKey.WindowAppearance), windowStyle);
+            window.SetMovable(false); // fixed layout: re-centered on resize, never dragged
             _controlsWindow = window;
 
             const float windowWidth = AppearanceWindowWidth;
@@ -783,6 +784,7 @@ namespace PitHero.UI
         {
             var windowStyle = skin.Get<WindowStyle>();
             var jobInfoWindow = new Window("Job Info", windowStyle);
+            jobInfoWindow.SetMovable(false);
             _jobInfoWindow = jobInfoWindow;
 
             const float windowWidth = AppearanceWindowWidth;
