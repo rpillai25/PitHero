@@ -35,7 +35,7 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHair1MoveDown", defaultAnim, 
+            Assert.AreEqual("MaleHeroHair1MidtoneMoveDown", defaultAnim, 
                 "Hairstyle 1 should use 'MaleHeroHair1MoveDown'");
         }
 
@@ -52,7 +52,7 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHair2MoveDown", defaultAnim, 
+            Assert.AreEqual("MaleHeroHair2MidtoneMoveDown", defaultAnim, 
                 "Hairstyle 2 should use 'MaleHeroHair2MoveDown'");
         }
 
@@ -69,7 +69,7 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHair3MoveDown", defaultAnim, 
+            Assert.AreEqual("MaleHeroHair3MidtoneMoveDown", defaultAnim, 
                 "Hairstyle 3 should use 'MaleHeroHair3MoveDown'");
         }
 
@@ -82,14 +82,14 @@ namespace PitHero.Tests
 
             var animProperties = new[]
             {
-                ("AnimDown", "MaleHeroHair2MoveDown"),
-                ("AnimUp", "MaleHeroHair2MoveUp"),
-                ("AnimRight", "MaleHeroHair2MoveRight"),
-                ("AnimLeft", "MaleHeroHair2MoveRight"), // Left uses Right (flipped)
-                ("JumpAnimDown", "MaleHeroHair2JumpRight"),
-                ("JumpAnimLeft", "MaleHeroHair2JumpRight"),
-                ("JumpAnimRight", "MaleHeroHair2JumpRight"),
-                ("JumpAnimUp", "MaleHeroHair2JumpRight")
+                ("AnimDown", "MaleHeroHair2MidtoneMoveDown"),
+                ("AnimUp", "MaleHeroHair2MidtoneMoveUp"),
+                ("AnimRight", "MaleHeroHair2MidtoneMoveRight"),
+                ("AnimLeft", "MaleHeroHair2MidtoneMoveRight"), // Left uses Right (flipped)
+                ("JumpAnimDown", "MaleHeroHair2MidtoneJumpRight"),
+                ("JumpAnimLeft", "MaleHeroHair2MidtoneJumpRight"),
+                ("JumpAnimRight", "MaleHeroHair2MidtoneJumpRight"),
+                ("JumpAnimUp", "MaleHeroHair2MidtoneJumpRight")
             };
 
             foreach (var (propertyName, expectedValue) in animProperties)
@@ -116,7 +116,7 @@ namespace PitHero.Tests
             Assert.IsNotNull(defaultAnimProperty);
 
             var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
-            Assert.AreEqual("MaleHeroHair1MoveDown", defaultAnim, 
+            Assert.AreEqual("MaleHeroHair1MidtoneMoveDown", defaultAnim, 
                 "Default constructor should use hairstyle 1");
         }
 
@@ -134,7 +134,7 @@ namespace PitHero.Tests
                 Assert.IsNotNull(defaultAnimProperty, "DefaultAnimation property should exist");
                 var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
 
-                string expectedAnimation = $"MaleHeroHair{i}MoveDown";
+                string expectedAnimation = $"MaleHeroHair{i}MidtoneMoveDown";
                 Assert.AreEqual(expectedAnimation, defaultAnim,
                     $"Hairstyle {i} should use animation '{expectedAnimation}'");
             }

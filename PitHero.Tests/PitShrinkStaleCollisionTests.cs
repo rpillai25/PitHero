@@ -32,24 +32,23 @@ namespace PitHero.Tests
         // ── Edge formula parity ───────────────────────────────────────────────────
 
         [TestMethod]
-        public void CalculateRightEdgeForDepth_KnownValues()
+        public void CalculateRightEdgeForLevel_KnownValues()
         {
             int baseEdge = GameConfig.PitRectX + GameConfig.PitRectWidth; // 13
 
-            Assert.AreEqual(baseEdge, PitWidthManager.CalculateRightEdgeForDepth(1), "Depth 1-9 has no extension");
-            Assert.AreEqual(baseEdge, PitWidthManager.CalculateRightEdgeForDepth(9), "Depth 1-9 has no extension");
-            Assert.AreEqual(baseEdge + 2, PitWidthManager.CalculateRightEdgeForDepth(10), "Depth 10 extends 2 tiles");
-            Assert.AreEqual(baseEdge + 4, PitWidthManager.CalculateRightEdgeForDepth(26), "Depth 26 (tier 2 level 1) extends 4 tiles");
-            Assert.AreEqual(baseEdge + 6, PitWidthManager.CalculateRightEdgeForDepth(32), "Depth 32 (tier 2 level 7) extends 6 tiles");
-            Assert.AreEqual(baseEdge + 20, PitWidthManager.CalculateRightEdgeForDepth(100), "Depth 100 extends 20 tiles");
-            Assert.AreEqual(baseEdge + 20, PitWidthManager.CalculateRightEdgeForDepth(150), "Expansion caps at depth 100");
+            Assert.AreEqual(baseEdge, PitWidthManager.CalculateRightEdgeForLevel(1), "Levels 1-9 have no extension");
+            Assert.AreEqual(baseEdge, PitWidthManager.CalculateRightEdgeForLevel(9), "Levels 1-9 have no extension");
+            Assert.AreEqual(baseEdge + 2, PitWidthManager.CalculateRightEdgeForLevel(10), "Level 10 extends 2 tiles");
+            Assert.AreEqual(baseEdge + 4, PitWidthManager.CalculateRightEdgeForLevel(25), "Level 25 extends 4 tiles");
+            Assert.AreEqual(baseEdge + 20, PitWidthManager.CalculateRightEdgeForLevel(100), "Level 100 extends 20 tiles");
+            Assert.AreEqual(baseEdge + 20, PitWidthManager.CalculateRightEdgeForLevel(150), "Expansion caps at level 100");
         }
 
         [TestMethod]
-        public void CalculateRightEdgeForDepth_MatchesRegeneratedEdge()
+        public void CalculateRightEdgeForLevel_MatchesRegeneratedEdgeInEveryTier()
         {
-            // The shrink cleanup in SetPitLevel relies on this prediction matching what
-            // RegeneratePitWidth actually produces — verify across levels and tiers.
+            // The shrink cleanup in SetPitLevel relies on this prediction matching what RegeneratePitWidth
+            // actually produces. The width follows the level within the cycle, so the tier never changes it.
             int[] levels = { 1, 5, 7, 10, 15, 25 };
             int[] tiers = { 1, 2, 3 };
 
@@ -61,41 +60,38 @@ namespace PitHero.Tests
                     manager.SetPitTier(tiers[t]);
                     manager.SetPitLevel(levels[l]);
 
-                    int predicted = PitWidthManager.CalculateRightEdgeForDepth(
-                        BiomeProgressionConfig.GetEffectiveDepth(levels[l], tiers[t]));
-                    Assert.AreEqual(predicted, manager.CurrentPitRightEdge,
+                    Assert.AreEqual(PitWidthManager.CalculateRightEdgeForLevel(levels[l]), manager.CurrentPitRightEdge,
                         $"Predicted edge must match regenerated edge for level {levels[l]} tier {tiers[t]}");
                 }
             }
         }
 
-        // ── Regression: tier-2 death reset (the exact stuck-hero scenario) ────────
+        // ── A new cycle starts at the base width ──────────────────────────────────
 
         [TestMethod]
-        public void TierTwoDeathReset_ClearsStaleInnerWallColumn()
+        public void NewCycle_ResetsToBaseWidthAndClearsTheOldWall()
         {
-            // Reproduces the logged deadlock: tier 2 pit at level 7 (edge 19), hero dies,
-            // pit resets to level 1 (still extended in tier 2 → edge 17).
+            // Tier 1 level 25 (edge 17) wraps to tier 2 level 1: the pit is back to the base width and the
+            // old inner-wall column must be gone, or it seals the pit mouth (the #333 deadlock).
             var (manager, map) = CreatePitManager();
-            manager.SetPitTier(2);
 
-            manager.SetPitLevel(7);
-            Assert.AreEqual(19, manager.CurrentPitRightEdge, "Tier 2 level 7 pit right edge");
-            Assert.IsTrue(HasCollision(map, 18, 5), "Level 7 pit should have its inner wall at x=18");
+            manager.SetPitLevel(25);
+            Assert.AreEqual(17, manager.CurrentPitRightEdge, "Tier 1 level 25 pit right edge");
+            Assert.IsTrue(HasCollision(map, 16, 5), "Level 25 pit should have its inner wall at x=16");
 
+            manager.IncrementPitTier(1);
             manager.SetPitLevel(1);
-            Assert.AreEqual(17, manager.CurrentPitRightEdge, "Tier 2 level 1 pit right edge");
+            Assert.AreEqual(GameConfig.PitRectX + GameConfig.PitRectWidth, manager.CurrentPitRightEdge,
+                "Tier 2 level 1 pit is back to the base width");
 
-            // The old inner-wall column at x=18 must be gone — this stranded column previously
-            // sealed the pit mouth and deadlocked the hero after the crystal ceremony.
-            for (int y = 1; y <= 11; y++)
+            for (int x = 14; x <= 17; x++)
             {
-                Assert.IsFalse(HasCollision(map, 18, y), $"Stale inner wall collision must be cleared at (18,{y})");
-                Assert.IsFalse(HasCollision(map, 19, y), $"Stale outer floor collision must be cleared at (19,{y})");
+                for (int y = 1; y <= 11; y++)
+                {
+                    Assert.IsFalse(HasCollision(map, x, y), $"Stale extension collision must be cleared at ({x},{y})");
+                }
             }
-
-            // Sanity: the shrunken pit's own inner wall exists at x=16
-            Assert.IsTrue(HasCollision(map, 16, 5), "Level 1 tier 2 pit should have its inner wall at x=16");
+            Assert.IsTrue(HasCollision(map, 12, 5), "Base pit inner wall at x=12 must survive the reset");
         }
 
         [TestMethod]

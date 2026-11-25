@@ -471,9 +471,6 @@ namespace PitHero.Services
                         yield return null;
                     }
                 }
-
-                // Small delay between moves
-                yield return Coroutine.WaitForSeconds(0.05f);
             }
         }
 
@@ -563,9 +560,6 @@ namespace PitHero.Services
                         yield return null;
                     }
                 }
-
-                // Small delay between moves
-                yield return Coroutine.WaitForSeconds(0.05f);
             }
             }
 

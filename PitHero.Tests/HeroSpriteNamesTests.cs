@@ -53,10 +53,14 @@ namespace PitHero.Tests
                 {
                     if (Layers[l] == HeroLayer.Armor && !HeroSpriteNames.HasArmorLayer(Genders[g]))
                         continue;
-                    var names = HeroSpriteNames.Get(Genders[g], Layers[l]);
-                    var all = new[] { names.Down, names.Right, names.Up, names.Jump, names.SleepDown, names.SleepRight, names.PreviewSprite };
-                    for (int n = 0; n < all.Length; n++)
-                        Assert.IsTrue(atlas.Contains(all[n]), $"{all[n]} should be in Actors.atlas");
+                    var tones = HeroSpriteNames.Get(Genders[g], Layers[l]).Tones;
+                    for (int t = 0; t < tones.Length; t++)
+                    {
+                        var names = tones[t];
+                        var all = new[] { names.Down, names.Right, names.Up, names.Jump, names.SleepDown, names.SleepRight, names.PreviewSprite };
+                        for (int n = 0; n < all.Length; n++)
+                            Assert.IsTrue(atlas.Contains(all[n]), $"{all[n]} should be in Actors.atlas");
+                    }
                 }
             }
         }
@@ -64,8 +68,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void Clothing_ShouldBeShirtForMaleAndSkirtForFemale()
         {
-            Assert.AreEqual("MaleHeroShirtMoveDown", HeroSpriteNames.Get(Gender.Male, HeroLayer.Clothing).Down);
-            Assert.AreEqual("FemaleHeroSkirtMoveDown", HeroSpriteNames.Get(Gender.Female, HeroLayer.Clothing).Down);
+            Assert.AreEqual("MaleHeroShirtMidtoneMoveDown", HeroSpriteNames.Get(Gender.Male, HeroLayer.Clothing).Down);
+            Assert.AreEqual("FemaleHeroSkirtMidtoneMoveDown", HeroSpriteNames.Get(Gender.Female, HeroLayer.Clothing).Down);
         }
 
         [TestMethod]
@@ -108,7 +112,59 @@ namespace PitHero.Tests
             var component = new HeroHairAnimationComponent(Color.White, 2, Gender.Female);
             var property = typeof(HeroHairAnimationComponent)
                 .GetProperty("DefaultAnimation", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.AreEqual("FemaleHeroHair2MoveDown", property.GetValue(component) as string);
+            Assert.AreEqual("FemaleHeroHair2MidtoneMoveDown", property.GetValue(component) as string);
+        }
+
+        [TestMethod]
+        public void Tones_ShouldMatchTheSplitArt()
+        {
+            CollectionAssert.AreEqual(new[] { HeroTone.Shadow, HeroTone.Midtone, HeroTone.Highlight, HeroTone.Light },
+                ToneList(Gender.Male, HeroLayer.Hair1));
+            CollectionAssert.AreEqual(new[] { HeroTone.Shadow, HeroTone.Midtone, HeroTone.Highlight },
+                ToneList(Gender.Female, HeroLayer.Hair3));
+            CollectionAssert.AreEqual(new[] { HeroTone.Shadow, HeroTone.Midtone }, ToneList(Gender.Female, HeroLayer.Body));
+            CollectionAssert.AreEqual(new[] { HeroTone.Midtone }, ToneList(Gender.Male, HeroLayer.Body));
+            CollectionAssert.AreEqual(new[] { HeroTone.Midtone }, ToneList(Gender.Female, HeroLayer.Armor));
+            Assert.AreEqual("MaleHeroEyesBaseMoveDown", HeroSpriteNames.Get(Gender.Male, HeroLayer.EyesBase).Down);
+            Assert.AreEqual("male_hero_hair1_shadow_move_down_0", HeroSpriteNames.Get(Gender.Male, HeroLayer.Hair1).Tones[0].PreviewSprite);
+        }
+
+        [TestMethod]
+        public void SplitPart_ShouldAnswerWithItsMidtoneNames()
+        {
+            var names = HeroSpriteNames.Get(Gender.Female, HeroLayer.Head);
+            Assert.AreEqual(HeroTone.Midtone, names.Tone);
+            Assert.AreEqual("FemaleHeroHeadMidtoneMoveDown", names.Down);
+            Assert.IsTrue(System.Array.IndexOf(names.Tones, names) >= 0, "The part's own names should be one of its tones");
+        }
+
+        [TestMethod]
+        public void HeroComponent_ShouldExposeOnePartPerTone()
+        {
+            var hair = new HeroHairAnimationComponent(Color.Red, 1, Gender.Male);
+            Assert.AreEqual(4, hair.PartCount);
+            Assert.AreEqual(HeroTone.Light, hair.GetTone(3));
+            var eyesBase = new HeroEyesBaseAnimationComponent(Gender.Male);
+            Assert.AreEqual(1, eyesBase.PartCount);
+        }
+
+        [TestMethod]
+        public void MultiSpriteAnimator_ShouldListEveryTonePart()
+        {
+            var animator = new MultiSpriteAnimator(
+                new HeroBodyAnimationComponent(Color.Tan, Gender.Female),
+                new HeroArmorAnimationComponent(),
+                new HeroHairAnimationComponent(Color.Red, 1, Gender.Female));
+            Assert.AreEqual(2 + 1 + 4, animator.LayerCount);
+        }
+
+        private static HeroTone[] ToneList(Gender gender, HeroLayer layer)
+        {
+            var tones = HeroSpriteNames.Get(gender, layer).Tones;
+            var list = new HeroTone[tones.Length];
+            for (int i = 0; i < tones.Length; i++)
+                list[i] = tones[i].Tone;
+            return list;
         }
     }
 }

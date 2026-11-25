@@ -19,7 +19,7 @@ namespace PitHero.Rendering
     public sealed class CharacterPoseCache
     {
         /// <summary>Most layers a pose can have; deeper stacks are not baked.</summary>
-        public const int MaxLayers = 8;
+        public const int MaxLayers = 16; // a female hero with Hair1 has 13 tone layers (issue #462)
 
         private const int MaxPoses = GameConfig.CharacterFrameMaxPosesPerCharacter;
 

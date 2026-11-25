@@ -199,7 +199,7 @@ namespace PitHero.VirtualGame
 
             // Mirror the real PitWidthManager: when sizing down, restore the old extension
             // region first so no stale inner-wall collision column survives the shrink.
-            int newRightEdge = PitWidthManager.CalculateRightEdgeForDepth(BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier));
+            int newRightEdge = PitWidthManager.CalculateRightEdgeForLevel(_currentPitLevel);
             if (newRightEdge < previousRightEdge)
             {
                 ClearTilesFromXToEnd(newRightEdge);
@@ -258,12 +258,9 @@ namespace PitHero.VirtualGame
                 return;
             }
 
-            // Calculate how many inner floor tiles to extend (same logic as real PitWidthManager).
-            // Use effective depth so expansion continues across tiers, capped at depth 100.
-            int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier);
-            int expansionLevel = Math.Min(effectiveDepth, 100);
-            int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
-            Console.WriteLine($"[VirtualPitWidthManager] Level {_currentPitLevel} Tier {_currentPitTier} (effectiveDepth={effectiveDepth}): extending pit by {innerFloorTilesToExtend} inner floor tiles");
+            // Same width rule as the real PitWidthManager: the level within the current cycle
+            int innerFloorTilesToExtend = PitWidthManager.ExtensionTilesForLevel(_currentPitLevel);
+            Console.WriteLine($"[VirtualPitWidthManager] Level {_currentPitLevel} Tier {_currentPitTier}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
 
             if (innerFloorTilesToExtend <= 0)
             {

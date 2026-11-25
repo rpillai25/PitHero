@@ -9,11 +9,13 @@ using PitHero.Services.Replay;
 namespace PitHero.UI
 {
     /// <summary>
-    /// Bottom-of-screen replay transport: Exit, Play/Pause, rewind (frame view only), speed cycle, a
+    /// Bottom-of-screen replay transport: Exit, Play/Pause, rewind (frame view only), fast-forward, the
+    /// speed picker (the rate rewind and fast-forward run at; plain play is always 1X), a
     /// scrub slider with the current/total time and a status label (seeking progress, end of replay,
     /// divergence). Lives on the UI stage for the scene's lifetime and is shown only while a replay is
     /// active. The slider commits on release so dragging previews the target time without seeking every
-    /// frame. SHIFT + left arrow rewinds for as long as it is held (issue #431): the camera ignores the
+    /// frame. SHIFT + left arrow rewinds for as long as it is held (issue #431), SHIFT + right arrow
+    /// fast-forwards likewise: the camera ignores the
     /// arrow keys while SHIFT is down, so the two never fight over the key.
     /// </summary>
     public class ReplayScrubberPanel : Window
@@ -32,9 +34,11 @@ namespace PitHero.UI
         private bool _showingPauseIcon;
         private ImageButton _rewindButton;
         private Cell _rewindCell;              // collapsed to zero width outside the frame view
+        private ImageButton _fastForwardButton; // the rewind icon mirrored: plays forward at the selected speed
         private float _rewindWidth;
         private bool _rewindOffered = true;
         private bool _holdKeyDown;             // SHIFT + left arrow is held: the hold ends when either key comes up
+        private bool _holdFastForwardKeyDown;  // SHIFT + right arrow is held, likewise
         private TextButton _speedButton;
         private ReplayTimelineSlider _slider;
         private Label _timeLabel;
@@ -50,6 +54,7 @@ namespace PitHero.UI
 
         private const float ButtonTextPad = 14f; // horizontal room around a button's label
         private const float EdgePad = 10f;       // gap between the outermost controls and the window edge
+        private const float SpeedButtonTextPad = 8f; // the speed face hugs its label: 4 px each side clears the 4 px nine-patch border
 
         private static float TextButtonWidth(TextButton button)
         {
@@ -74,20 +79,32 @@ namespace PitHero.UI
         /// instances: the skin's "ph-default" face carries 25 px of side padding to centre text, which
         /// would push a 16 px icon out of a 30 px button.
         /// </summary>
-        private static ImageButtonStyle MakeIconStyle(string spriteName)
+        private static ImageButtonStyle MakeIconStyle(string spriteName, bool flipX = false, bool latching = false)
         {
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var icon = uiAtlas.GetSprite(spriteName);
-            return new ImageButtonStyle
+            var down = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4));
+            var style = new ImageButtonStyle
             {
                 Up = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4)),
-                Down = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4)),
+                Down = down,
                 Over = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4)),
-                ImageUp = new SpriteDrawable(icon),
-                ImageDisabled = new SpriteDrawable(icon) { TintColor = IconDisabledTint },
+                ImageUp = new SpriteDrawable(icon) { FlipX = flipX },
+                ImageDisabled = new SpriteDrawable(icon) { TintColor = IconDisabledTint, FlipX = flipX },
                 PressedOffsetX = 1,
                 PressedOffsetY = 1
             };
+            if (latching)
+            {
+                // Fast-forward and rewind stay pressed while they run: the checked face is the pressed face,
+                // hover included, with the icon kept at its pressed offset. IsChecked is driven from the
+                // playback state every frame (see SyncLatchedButtons), not by the clicks themselves
+                style.Checked = down;
+                style.CheckedOver = down;
+                style.CheckedOffsetX = 1;
+                style.CheckedOffsetY = 1;
+            }
+            return style;
         }
 
         /// <summary>Builds the panel. Positioned by MainGameScene.PositionReplayScrubber.</summary>
@@ -111,10 +128,14 @@ namespace PitHero.UI
             _showingPauseIcon = true;
             _playPauseButton.OnClicked += (_) => ReplayPlaybackService.Current?.TogglePause();
 
-            _rewindButton = new ImageButton(MakeIconStyle(RewindIconSprite));
+            _rewindButton = new ImageButton(MakeIconStyle(RewindIconSprite, latching: true));
             _rewindButton.OnClicked += (_) => ReplayPlaybackService.Current?.ToggleRewind();
 
-            _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.SpeedStepLabels[0]), skin, "ph-default");
+            _fastForwardButton = new ImageButton(MakeIconStyle(RewindIconSprite, flipX: true, latching: true));
+            _fastForwardButton.OnClicked += (_) => ReplayPlaybackService.Current?.ToggleFastForward();
+
+            // Only picks the rate the fast-forward and rewind buttons play at; it never starts or stops playback
+            _speedButton = new TextButton(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.SpeedStepLabels[1]), skin, "ph-compact");
             _speedButton.OnClicked += (_) => ReplayPlaybackService.Current?.CycleSpeed();
 
             _slider = new ReplayTimelineSlider(skin, useDeferredCommit: true);
@@ -133,11 +154,13 @@ namespace PitHero.UI
             Add(_playPauseButton).Width(IconButtonWidth).Height(ButtonHeight).SetPadRight(6f);
             _rewindWidth = IconButtonWidth;
             _rewindCell = Add(_rewindButton).Width(_rewindWidth).Height(ButtonHeight).SetPadRight(6f);
-            // The speed face grows to "32X" in the frame view: size for the widest label of either ladder
-            float speedWidth = TextButtonWidth(_speedButton);
+            Add(_fastForwardButton).Width(IconButtonWidth).Height(ButtonHeight).SetPadRight(6f);
+            // Hugs its text: the widest label of either ladder ("32X" in the frame view) plus just
+            // enough room to clear the nine-patch border, so the face never resizes as it cycles
+            float speedWidth = 0f;
             for (int i = 0; i < GameConfig.ReplayFrameViewSpeedStepLabels.Length; i++)
-                speedWidth = System.Math.Max(speedWidth, MeasureButtonText(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.ReplayFrameViewSpeedStepLabels[i])) + ButtonTextPad);
-            Add(_speedButton).Width(speedWidth + 8f).Height(ButtonHeight).SetPadRight(10f);
+                speedWidth = System.Math.Max(speedWidth, MeasureButtonText(string.Format(GetText(UITextKey.ReplaySpeedFormat), GameConfig.ReplayFrameViewSpeedStepLabels[i])));
+            Add(_speedButton).Width(speedWidth + SpeedButtonTextPad).Height(ButtonHeight).SetPadRight(10f);
             Add(_slider).Expand().Fill().Height(ButtonHeight).SetPadRight(10f);
             Add(_timeLabel).SetPadRight(10f);
             // Status strings are kept short (one or two words, "Diverged at m:ss") so the cell's
@@ -226,8 +249,10 @@ namespace PitHero.UI
             if (playback == null || !playback.IsActive)
                 return;
 
-            // Hold-to-rewind: SHIFT + left arrow, polled here so the order the two keys go down in does not matter
-            bool holdKeyDown = (Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift)) && Input.IsKeyDown(Keys.Left);
+            // Hold-to-rewind (SHIFT + left arrow) and hold-to-fast-forward (SHIFT + right arrow), polled here so
+            // the order the keys go down in does not matter. The camera ignores the arrows while SHIFT is down
+            bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
+            bool holdKeyDown = shiftDown && Input.IsKeyDown(Keys.Left);
             if (holdKeyDown != _holdKeyDown)
             {
                 _holdKeyDown = holdKeyDown;
@@ -235,6 +260,15 @@ namespace PitHero.UI
                     playback.BeginHoldRewind();
                 else
                     playback.EndHoldRewind();
+            }
+            bool holdFastForwardKeyDown = shiftDown && Input.IsKeyDown(Keys.Right);
+            if (holdFastForwardKeyDown != _holdFastForwardKeyDown)
+            {
+                _holdFastForwardKeyDown = holdFastForwardKeyDown;
+                if (holdFastForwardKeyDown)
+                    playback.BeginHoldFastForward();
+                else
+                    playback.EndHoldFastForward();
             }
 
             long total = playback.TotalTicks; // the slider ends at the session end
@@ -281,6 +315,7 @@ namespace PitHero.UI
                 _continueButton.SetDisabled(busy);
                 _playPauseButton.SetDisabled(busy);
                 _rewindButton.SetDisabled(busy);
+                _fastForwardButton.SetDisabled(busy);
                 _speedButton.SetDisabled(busy);
                 // The slider too during a Time Travel: the service ignores drags then anyway, and a knob that
                 // looks live but does nothing reads as a broken seek. A plain Simulated scrub keeps it, because
@@ -293,8 +328,21 @@ namespace PitHero.UI
                 _lastShownDivergence = -2;
             }
             SetRewindOffered(playback.RewindAvailable);
+            SyncLatchedButtons(playback);
 
             UpdateStatusLabel(playback, state);
+        }
+
+        /// <summary>
+        /// Fast-forward and rewind look pressed exactly while they run. Driven from the playback state
+        /// rather than the clicks, because each also ends on its own (rewind at the start, fast-forward
+        /// on pause or at the end, either one when the other takes over) and a click can be refused.
+        /// </summary>
+        private void SyncLatchedButtons(ReplayPlaybackService playback)
+        {
+            bool running = playback.State == ReplayPlaybackState.Playing || playback.State == ReplayPlaybackState.Seeking;
+            _fastForwardButton.IsChecked = running && playback.IsFastForwarding;
+            _rewindButton.IsChecked = running && playback.IsRewinding;
         }
 
         /// <summary>Shows the rewind button in the frame view, or collapses its cell (a re-simulation cannot run backwards).</summary>
@@ -309,11 +357,13 @@ namespace PitHero.UI
             Invalidate();
         }
 
-        /// <summary>The panel left the screen (replay over): let go of any held rewind.</summary>
+        /// <summary>The panel left the screen (replay over): let go of any held rewind or fast-forward.</summary>
         public void OnHidden()
         {
             _holdKeyDown = false;
+            _holdFastForwardKeyDown = false;
             ReplayPlaybackService.Current?.EndHoldRewind();
+            ReplayPlaybackService.Current?.EndHoldFastForward();
         }
 
         private void UpdateStatusLabel(ReplayPlaybackService playback, ReplayPlaybackState state)

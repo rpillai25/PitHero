@@ -151,6 +151,46 @@ bool OwnedByComposite { get; set; }
 Implementors must return `false` from `IsVisibleFromCamera` when `OwnedByComposite = true`
 so the DefaultRenderer skips them. See `HeroAnimationComponent` for the reference pattern.
 
+A layer that draws as several sprites with their own tints also implements `ICompositeLayerGroup`
+(`PartCount`, `GetPart(i)`). `MultiSpriteAnimator` lists its parts in place of the layer, so the pose
+cache, afterimages and replay capture see every part (`LayerCount`/`GetLayer` count parts).
+
+### Hero tone layers (issue #462)
+
+Tintable paperdoll parts are split into **tone layers** so a recolor keeps the art's shading instead of
+multiplying one gray ramp by one color. Each tone is its own gray atlas animation (folder
+`MaleHeroHair1ShadowMoveDown`, sprite `male_hero_hair1_shadow_move_down_0`):
+
+| Part | Tones |
+|---|---|
+| Hair1 | Shadow, Midtone, Highlight, Light |
+| Hair2–Hair4 | Shadow, Midtone, Highlight |
+| Shirt / Skirt, Head, female Body | Shadow, Midtone |
+| male Body, Armor, EyesBase, Eyes | not split (one Midtone) |
+
+- The chosen color is the **Midtone**. Every other tone's tint is the chosen color moved by the HSV offset
+  the artist painted between that tone and the Midtone (`HeroToneProfiles`, `ECS/Components/HeroTone.cs`:
+  hue shift capped at `HeroToneProfile.MaxHueShift`, saturation and value ratios; value past 1 is spent as
+  less saturation). **Light** (white glints, hair ties) is never tinted.
+- **Hair** ignores the painted offsets and uses `HairToneRamp` (OKLab, outside DB32): Shadow = midtone
+  lightness −0.21 (floor 0.22) with hue turned ≤12° toward purple; Highlight = +0.13 with hue turned ≤8° toward
+  yellow and 0.9× chroma. Too light for a full highlight → pure white highlight (yellow) and deeper shadow; too dark for a
+  full shadow → brighter highlight. The measured offsets left some presets flat (a highlight at value ×0.99).
+  `HeroToneProfileTests.HairPresets_*` checks every `GameConfig.HairColors` preset keeps visible contrast.
+- **Skin** (Head, female Body) uses `SkinToneRamp`: Shadow = midtone lightness −0.12 (floor 0.25 or 70% of a
+  darker midtone), chroma ×1.15, hue turned ≤8° toward warm orange. The painted offsets doubled saturation, so pale
+  blue skin got a royal-blue mask and saturated skins barely darkened. Skin presets 2 (lighter brown `#ad7550`) and 5
+  (red `#f47069`, was yellow) changed with it; skins 3–5 were lightened (`#6bdfa3`, `#9cb2ff`, `#f47069`) and strongly
+  colored skins (OKLab chroma ≥ 0.10→0.125) get up to 0.05 extra shadow step, so their shadows stay put and the
+  contrast grows. `HeroToneProfileTests.SkinPresets_*` pins the approved shadows.
+- `HeroSpriteNames.Get(...)` answers with the Midtone's names, which drive the animator; `.Tones` lists every
+  tone's names back to front. The other tones show the same frame of their matching animation.
+- `HeroAnimationComponent` exposes `PartCount`, `GetToneSprite`, `GetToneColor` (cached per `Color`) and
+  `AppendPortraitParts`; drawn on its own (hero creation preview) its `Render` draws every tone.
+- Art pipeline: `Male2`/`Female2.aseprite` hold each part as an Aseprite group of tone layers (aseprite-pixel-art
+  skill `examples/tone_split.lua`); `prep_for_game.lua` grays each tone on its own and prints the `profile`
+  lines the table is built from; `export_game_frames.lua` names group children `<Part><Tone>`.
+
 ---
 
 ### `SpriteCompositorBase` — shared RT-compositing base
@@ -194,7 +234,7 @@ built from independently-animated body-part components). Extends `SpriteComposit
 5. **Whole-body tints go on the composite `Color`, never on every layer** (death fades,
    `HeroJumpComponent.SetColor`, Vanish). A per-frame change to layer colors makes a new pose
    every frame and bakes every frame.
-6. Fallback: a pose that can't be baked (more than `CharacterPoseCache.MaxLayers` layers, atlas
+6. Fallback: a pose that can't be baked (more than `CharacterPoseCache.MaxLayers` = 16 layers, atlas
    full at `GameConfig.CharacterFrameMaxPages`, no graphics device) uses the base class's
    per-frame 32×48 render target, created on first use.
 7. Y-sort is applied each frame by `YSortManager` (SceneComponent).

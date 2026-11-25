@@ -28,4 +28,19 @@ namespace PitHero.ECS.Components
         /// </summary>
         bool OwnedByComposite { get; set; }
     }
+
+    /// <summary>
+    /// A composite layer drawn as several parts, each with its own sprite and tint (issue #462: the tone
+    /// layers of a hero paperdoll part). <see cref="MultiSpriteAnimator"/> lists the parts in place of the
+    /// layer, so the pose cache, afterimages and replay capture see every part. The part count is fixed for
+    /// the layer's lifetime; a part with no sprite on a frame draws nothing.
+    /// </summary>
+    public interface ICompositeLayerGroup
+    {
+        /// <summary>Number of parts, back to front.</summary>
+        int PartCount { get; }
+
+        /// <summary>The part at <paramref name="index"/>; same instance on every call.</summary>
+        ICompositeLayer GetPart(int index);
+    }
 }

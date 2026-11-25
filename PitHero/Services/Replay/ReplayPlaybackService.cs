@@ -55,7 +55,19 @@ namespace PitHero.Services.Replay
         public ReplayData Data { get; private set; }
 
         /// <summary>Current playback state.</summary>
-        public ReplayPlaybackState State { get; private set; } = ReplayPlaybackState.Idle;
+        public ReplayPlaybackState State
+        {
+            get => _state;
+            private set
+            {
+                _state = value;
+                // Fast-forward is a way of playing: pausing, reaching the end or leaving the replay ends it
+                // (a seek keeps it, so a scrub or a skipped pause span carries on at the same rate)
+                if (value != ReplayPlaybackState.Playing && value != ReplayPlaybackState.Seeking && value != ReplayPlaybackState.Starting)
+                    _fastForward = false;
+            }
+        }
+        private ReplayPlaybackState _state = ReplayPlaybackState.Idle;
 
         /// <summary>How the replay is shown right now (a resume path switches FrameView to Simulated).</summary>
         public ReplayPlaybackMode Mode { get; private set; } = ReplayPlaybackMode.Simulated;
@@ -72,8 +84,11 @@ namespace PitHero.Services.Replay
         /// <summary>Tick the current seek is heading for (valid while Seeking or Starting).</summary>
         public long SeekTarget { get; private set; }
 
-        /// <summary>Index into GameConfig.SpeedSteps.</summary>
-        public int SpeedIndex { get; private set; }
+        /// <summary>
+        /// Index into the current mode's speed ladder: the rate the fast-forward and rewind buttons play at.
+        /// Never 0 (1X): plain play is always 1X, so the speed button cycles 2X and up.
+        /// </summary>
+        public int SpeedIndex { get; private set; } = 1;
 
         /// <summary>Tick of the first detected divergence, or -1.</summary>
         public long DivergenceTick { get; private set; } = -1;
@@ -90,8 +105,14 @@ namespace PitHero.Services.Replay
         /// <summary>The speed ladder of the current mode: the view-only ladder in FrameView (nothing simulates, so 16X/32X cost nothing), the simulation ladder otherwise.</summary>
         private float[] SpeedLadder => Mode == ReplayPlaybackMode.FrameView ? GameConfig.ReplayFrameViewSpeedSteps : GameConfig.SpeedSteps;
 
-        /// <summary>Playback speed multiplier.</summary>
+        /// <summary>The selected fast-forward / rewind rate (the speed button's label).</summary>
         public float Speed => SpeedLadder[SpeedIndex];
+
+        /// <summary>The rate the playhead actually moves at: the selected rate while fast-forwarding or rewinding, else 1X.</summary>
+        public float PlaybackSpeed => IsFastForwarding || IsRewinding ? Speed : 1f;
+
+        /// <summary>True while the fast-forward button has playback running forward at <see cref="Speed"/>.</summary>
+        public bool IsFastForwarding => _fastForward && !IsRewinding;
 
         /// <summary>Player-facing rendering of <see cref="Speed"/> (1X / 2X / 4X / 8X, plus 16X / 32X in FrameView).</summary>
         public string SpeedLabel => Mode == ReplayPlaybackMode.FrameView ? GameConfig.ReplayFrameViewSpeedStepLabels[SpeedIndex] : GameConfig.SpeedStepLabels[SpeedIndex];
@@ -149,6 +170,11 @@ namespace PitHero.Services.Replay
         private string _savedFileName; // the saved replay being played (null for Replay Current Session): the self-cache target
         private bool _holdRewind; // the left arrow is held: releasing it restores the state before the hold
         private ReplayPlaybackState _stateBeforeHoldRewind = ReplayPlaybackState.Paused;
+        private bool _fastForwardBeforeHoldRewind;
+        private bool _fastForward; // the fast-forward button is engaged: forward play runs at Speed instead of 1X
+        private bool _holdFastForward; // SHIFT + right arrow is held: releasing it restores the state before the hold
+        private ReplayPlaybackState _stateBeforeHoldFastForward = ReplayPlaybackState.Paused;
+        private bool _fastForwardBeforeHoldFastForward;
 
         /// <summary>Creates the service and makes it the global instance.</summary>
         public ReplayPlaybackService()
@@ -161,6 +187,12 @@ namespace PitHero.Services.Replay
         {
             if (Current == this)
                 Current = null;
+        }
+
+        /// <summary>Puts the service in <paramref name="state"/> without any of the engine work a real transition does (tests).</summary>
+        public void SetStateForTest(ReplayPlaybackState state)
+        {
+            State = state;
         }
 
         /// <summary>
@@ -247,6 +279,7 @@ namespace PitHero.Services.Replay
             _isCurrentSession = isCurrentSession;
             _savedFileName = isCurrentSession ? null : fileName;
             _holdRewind = false;
+            _holdFastForward = false;
             _liveHeroId = Core.Services.GetService<GameStateService>()?.HeroId ?? 0;
             // Captured once per replay (a rebuild re-enters replay presentation with analytics already off)
             _analyticsWasEnabled = Services.Analytics.AnalyticsService.Enabled;
@@ -255,7 +288,8 @@ namespace PitHero.Services.Replay
             Data = data;
             TotalTicks = data.TotalTicks;
             _pauseSpans = ReplayPauseSpans.Build(data.Commands, data.TotalTicks, GameConfig.ReplayPauseSkipMinTicks);
-            SpeedIndex = 0;
+            SpeedIndex = 1;
+            _fastForward = false;
             DivergenceTick = -1;
             DivergenceKind = null;
             DivergenceIsDecision = false;
@@ -417,7 +451,7 @@ namespace PitHero.Services.Replay
             // Recorded sounds only accompany forward play at the low rungs: a scrub, a rewind, a pause
             // or a fast run would turn them into noise
             _viewer.SoundsEnabled = State == ReplayPlaybackState.Playing && cursor.Direction > 0
-                && SpeedIndex <= GameConfig.ReplayFrameViewSoundMaxSpeedIndex;
+                && (!_fastForward || SpeedIndex <= GameConfig.ReplayFrameViewSoundMaxSpeedIndex);
             switch (State)
             {
                 case ReplayPlaybackState.Playing:
@@ -426,7 +460,7 @@ namespace PitHero.Services.Replay
                     if (cursor.Direction < 0)
                     {
                         // Rewind: backwards at the same speed, stopping at the start
-                        cursor.Advance(Time.UnscaledDeltaTime, Speed, _pauseSpans);
+                        cursor.Advance(Time.UnscaledDeltaTime, PlaybackSpeed, _pauseSpans);
                         if (cursor.Cursor <= 0)
                             StopRewind(ReplayPlaybackState.Paused);
                         break;
@@ -436,7 +470,7 @@ namespace PitHero.Services.Replay
                         State = ReplayPlaybackState.AtEnd;
                         break;
                     }
-                    cursor.Advance(Time.UnscaledDeltaTime, Speed, _pauseSpans);
+                    cursor.Advance(Time.UnscaledDeltaTime, PlaybackSpeed, _pauseSpans);
                     if (cursor.Cursor >= TotalTicks)
                         State = ReplayPlaybackState.AtEnd;
                     break;
@@ -475,6 +509,7 @@ namespace PitHero.Services.Replay
             if (SpeedIndex >= GameConfig.SpeedSteps.Length)
                 SpeedIndex = GameConfig.SpeedSteps.Length - 1; // the view-only rungs cannot be simulated
             _holdRewind = false;
+            _holdFastForward = false;
             Debug.QuietMode = false; // scene rebuild logs are worth keeping; the seek that follows re-arms quiet mode
             Core.CosmeticUpdatesSuspended = false;
             PitHero.Util.SoundEffectManager.Muted = true; // silent through the rebuild and any seek; playback unmutes
@@ -622,7 +657,7 @@ namespace PitHero.Services.Replay
                         break;
                     }
                     Core.SimulationSuspended = false;
-                    Core.SimulationSpeed = Speed;
+                    Core.SimulationSpeed = PlaybackSpeed;
                     Core.MaxStepsPerFrame = GameConfig.HighSpeedMaxStepsPerFrame;
                     break;
                 }
@@ -677,7 +712,7 @@ namespace PitHero.Services.Replay
 
         // ── Player controls ──────────────────────────────────────────────────────────
 
-        /// <summary>Pauses or resumes playback (no effect while seeking or at the end). Resuming always plays forward.</summary>
+        /// <summary>Pauses or resumes playback (no effect while seeking or at the end). Resuming always plays forward at 1X.</summary>
         public void TogglePause()
         {
             if (State == ReplayPlaybackState.Playing)
@@ -689,14 +724,43 @@ namespace PitHero.Services.Replay
                 if (_viewer != null)
                     _viewer.Cursor.Direction = 1;
                 _holdRewind = false;
+                _fastForward = false;
                 State = ReplayPlaybackState.Playing;
             }
         }
 
-        /// <summary>Cycles to the next playback speed of the current mode's ladder.</summary>
+        /// <summary>
+        /// The speed button: picks the next fast-forward / rewind rate of the current mode's ladder, wrapping
+        /// from the top back to 2X (1X is plain play). It never starts or stops anything; a fast-forward or
+        /// rewind already running changes rate at once.
+        /// </summary>
         public void CycleSpeed()
         {
-            SpeedIndex = (SpeedIndex + 1) % SpeedLadder.Length;
+            int next = SpeedIndex + 1;
+            SpeedIndex = next >= SpeedLadder.Length ? 1 : next;
+        }
+
+        /// <summary>
+        /// The fast-forward button: plays forward at <see cref="Speed"/> from wherever the playhead is (a
+        /// rewind turns around, a pause resumes); pressing it while fast-forwarding drops back to 1X play.
+        /// </summary>
+        public void ToggleFastForward()
+        {
+            if (State == ReplayPlaybackState.Starting || State == ReplayPlaybackState.Seeking || State == ReplayPlaybackState.Idle)
+                return;
+            if (IsFastForwarding && State == ReplayPlaybackState.Playing)
+            {
+                _fastForward = false;
+                return;
+            }
+            if (State == ReplayPlaybackState.AtEnd || CurrentTick >= TotalTicks)
+                return;
+            if (_viewer != null)
+                _viewer.Cursor.Direction = 1;
+            _holdRewind = false;
+            State = ReplayPlaybackState.Playing;
+            _fastForward = true;
+            Trace("FastForward");
         }
 
         /// <summary>
@@ -723,6 +787,7 @@ namespace PitHero.Services.Replay
                 return;
             _holdRewind = true;
             _stateBeforeHoldRewind = IsRewinding ? ReplayPlaybackState.Paused : State;
+            _fastForwardBeforeHoldRewind = IsFastForwarding;
             StartRewind();
         }
 
@@ -736,6 +801,57 @@ namespace PitHero.Services.Replay
                 return;
             var resume = _stateBeforeHoldRewind == ReplayPlaybackState.Playing ? ReplayPlaybackState.Playing : ReplayPlaybackState.Paused;
             StopRewind(resume);
+            if (resume == ReplayPlaybackState.Playing && State == ReplayPlaybackState.Playing)
+                _fastForward = _fastForwardBeforeHoldRewind; // a hold during fast-forward goes back to fast-forward
+        }
+
+        /// <summary>
+        /// SHIFT + right arrow went down: fast-forward for as long as it is held (both modes), at the
+        /// selected speed. The mirror of <see cref="BeginHoldRewind"/>.
+        /// </summary>
+        public void BeginHoldFastForward()
+        {
+            if (_holdFastForward || State == ReplayPlaybackState.Starting || State == ReplayPlaybackState.Seeking || State == ReplayPlaybackState.Idle)
+                return;
+            if (State == ReplayPlaybackState.AtEnd || CurrentTick >= TotalTicks)
+                return;
+            _stateBeforeHoldFastForward = IsRewinding ? ReplayPlaybackState.Paused : State;
+            _fastForwardBeforeHoldFastForward = IsFastForwarding;
+            if (_viewer != null)
+                _viewer.Cursor.Direction = 1;
+            _holdRewind = false;
+            State = ReplayPlaybackState.Playing;
+            _fastForward = true;
+            _holdFastForward = true;
+            Trace("HoldFastForward");
+        }
+
+        /// <summary>
+        /// The right arrow (or SHIFT) came up: back to what the playhead was doing before the hold. Nothing
+        /// to undo when the fast-forward already ended on its own (the end reached, a pause, a rewind).
+        /// </summary>
+        public void EndHoldFastForward()
+        {
+            if (!_holdFastForward)
+                return;
+            _holdFastForward = false;
+            if (!IsFastForwarding)
+                return;
+            bool wasPlaying = _stateBeforeHoldFastForward == ReplayPlaybackState.Playing;
+            if (State == ReplayPlaybackState.Playing)
+            {
+                if (wasPlaying)
+                    _fastForward = _fastForwardBeforeHoldFastForward;
+                else
+                    State = ReplayPlaybackState.Paused; // clears the fast-forward
+            }
+            else if (State == ReplayPlaybackState.Seeking)
+            {
+                // A skipped pause span mid-hold (Simulated): land the seek in the state before the hold
+                _fastForward = wasPlaying && _fastForwardBeforeHoldFastForward;
+                if (!wasPlaying)
+                    _stateAfterSeek = ReplayPlaybackState.Paused;
+            }
         }
 
         private void StartRewind()
@@ -743,6 +859,7 @@ namespace PitHero.Services.Replay
             if (_viewer.Cursor.Cursor <= 0)
                 return;
             _viewer.Cursor.Direction = -1;
+            _fastForward = false;
             State = ReplayPlaybackState.Playing;
             Trace("Rewind");
         }
@@ -753,6 +870,7 @@ namespace PitHero.Services.Replay
             if (_viewer != null)
                 _viewer.Cursor.Direction = 1;
             _holdRewind = false;
+            _fastForward = false;
             State = CurrentTick >= TotalTicks ? ReplayPlaybackState.AtEnd : then;
         }
 
@@ -1020,6 +1138,7 @@ namespace PitHero.Services.Replay
             ExitViewer();
             _timeTravelInFlight = false;
             _holdRewind = false;
+            _holdFastForward = false;
             _savedFileName = null;
             State = ReplayPlaybackState.Idle;
             Data = null;

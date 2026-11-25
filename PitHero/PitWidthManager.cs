@@ -309,7 +309,7 @@ namespace PitHero
             // Must match its output exactly: an overestimate here skips the shrink cleanup and
             // strands the old pit's inner-wall collision column in the map, sealing off the pit
             // mouth (hero/mercenaries can never path back to the pit edge after a death reset).
-            int newRightEdge = CalculateRightEdgeForDepth(BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier));
+            int newRightEdge = CalculateRightEdgeForLevel(_currentPitLevel);
 
             // If sizing down, clear tiles first
             if (newRightEdge < previousRightEdge)
@@ -321,16 +321,24 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Calculates the pit right edge X that RegeneratePitWidth produces for the given effective
-        /// depth. The extension rewrites the base pit's inner-wall (x=12) and outer-floor (x=13)
-        /// columns as inner floor, so the edge grows by exactly the inner floor tile count:
-        /// edge = PitRectX + PitRectWidth + tiles. Expansion is capped at effective depth 100.
+        /// Inner floor tiles the pit gains at <paramref name="pitLevel"/>, the level within the current cycle
+        /// (1 to MaxBiomeLevel): 2 more every 10 levels, capped at level 100. Keyed on the cycle level, not the
+        /// effective depth, so every new cycle (tier) starts back at the base 10-tile floor.
         /// </summary>
-        public static int CalculateRightEdgeForDepth(int effectiveDepth)
+        public static int ExtensionTilesForLevel(int pitLevel)
         {
-            int expansionLevel = Math.Min(effectiveDepth, 100);
-            int innerFloorTilesToExtend = (expansionLevel / 10) * 2;
-            return GameConfig.PitRectX + GameConfig.PitRectWidth + innerFloorTilesToExtend;
+            int expansionLevel = Math.Clamp(pitLevel, 0, 100);
+            return (expansionLevel / 10) * 2;
+        }
+
+        /// <summary>
+        /// Calculates the pit right edge X that RegeneratePitWidth produces for the given cycle level.
+        /// The extension rewrites the base pit's inner-wall (x=12) and outer-floor (x=13) columns as inner
+        /// floor, so the edge grows by exactly the inner floor tile count: edge = PitRectX + PitRectWidth + tiles.
+        /// </summary>
+        public static int CalculateRightEdgeForLevel(int pitLevel)
+        {
+            return GameConfig.PitRectX + GameConfig.PitRectWidth + ExtensionTilesForLevel(pitLevel);
         }
 
         /// <summary>
@@ -409,17 +417,9 @@ namespace PitHero
                 return;
             }
 
-            // Calculate how many inner floor tiles to extend.
-            // Use effective depth so expansion continues across tiers, capped at depth 100.
-            int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier);
-            int expansionLevel = Math.Min(effectiveDepth, 100);
-            int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
-            Debug.Log($"[PitWidthManager] Level {_currentPitLevel} Tier {_currentPitTier} (effectiveDepth={effectiveDepth}): extending pit by {innerFloorTilesToExtend} inner floor tiles");
-
-            if (effectiveDepth > 100)
-            {
-                Debug.Log("[PitWidthManager] Expansion capped at effective depth 100. No further width increases.");
-            }
+            // Width follows the level within the current cycle, so each new cycle starts at the base width
+            int innerFloorTilesToExtend = ExtensionTilesForLevel(_currentPitLevel);
+            Debug.Log($"[PitWidthManager] Level {_currentPitLevel} Tier {_currentPitTier}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
 
             if (innerFloorTilesToExtend <= 0)
             {

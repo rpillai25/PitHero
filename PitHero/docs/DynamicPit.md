@@ -37,9 +37,14 @@ Falls back to static targets if service unavailable.
 
 ## Expansion Formula
 ```csharp
-int expansionLevel = Math.Min(pitLevel, 100);  // Cap expansion at level 100
-int extensionTiles = ((int)(expansionLevel / 10)) * 2;
+// PitWidthManager.ExtensionTilesForLevel (shared by the real and virtual managers)
+int expansionLevel = Math.Clamp(pitLevel, 0, 100);  // Cap expansion at level 100
+int extensionTiles = (expansionLevel / 10) * 2;
 ```
+
+`pitLevel` is the level within the current cycle (1 to MaxBiomeLevel), never the cumulative depth, so every
+new cycle (tier) starts back at the base 10-tile floor. Monster and loot scaling still use the effective depth.
+`CalculateRightEdgeForLevel` predicts the edge `SetPitLevel` shrinks to and must match `RegeneratePitWidth`.
 
 **Examples:**
 - Level 1-9: 0 extension tiles (original pit)

@@ -24,7 +24,7 @@ namespace PitHero.ECS.Components
     public class AfterimageTrailComponent : RenderableComponent, IUpdatable, IFrameCapturable, IYSortOffset
     {
         private const int MaxGhosts = 16;
-        private const int MaxLayers = 8;
+        private const int MaxLayers = PitHero.Rendering.CharacterPoseCache.MaxLayers;
 
         private struct Ghost
         {

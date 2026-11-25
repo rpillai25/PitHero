@@ -47,6 +47,7 @@ namespace PitHero.UI
         private int _currentShirtIndex;
         private int _currentEyeColorIndex;
         private int _previewScale = 1;
+        private bool _openedAtDoubleSize; // the preview opens at 2x by pressing the zoom toggle once
 
         // UI labels that update when selections change
         private Label _nameLabel;
@@ -708,6 +709,13 @@ namespace PitHero.UI
                 _jobInfoWindow?.SetPosition(startX + AppearanceWindowWidth + CreationWindowGap, windowY);
                 // Preview sits above the direction buttons on the right side of the Appearance window
                 _previewEntity?.SetPosition(startX + AppearanceWindowWidth - 128f, stageH * 0.48f);
+            }
+
+            // Open at double size: the same toggle the zoom button runs, once the layout has been placed
+            if (!_openedAtDoubleSize)
+            {
+                _openedAtDoubleSize = true;
+                TogglePreviewZoom();
             }
         }
 

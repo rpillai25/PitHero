@@ -86,15 +86,15 @@ namespace PitHero.Tests
             Assert.AreEqual(10, world.PitLevel);
             Assert.AreEqual(GameConfig.PitRectWidth + 2, world.PitBounds.Width, "Level 10 should expand by 2 tiles");
             
-            // Test level 40 (should be wider)
-            world.RegeneratePit(40);
-            Assert.AreEqual(40, world.PitLevel);
-            Assert.IsTrue(world.PitBounds.Width > GameConfig.PitRectWidth + 2, "Level 40 pit should be wider than level 10");
-            
-            // Test level 90 (maximum width)
-            world.RegeneratePit(90);
-            Assert.AreEqual(90, world.PitLevel);
-            Assert.IsTrue(world.PitBounds.Width >= world.PitBounds.Width, "Level 90 should have maximum width");
+            // Test level 20 (wider again)
+            world.RegeneratePit(20);
+            Assert.AreEqual(20, world.PitLevel);
+            Assert.AreEqual(GameConfig.PitRectWidth + 4, world.PitBounds.Width, "Level 20 should expand by 4 tiles");
+
+            // Depth 35 is level 10 of the second cycle: the width follows the cycle level, not the depth
+            world.RegeneratePit(35);
+            Assert.AreEqual(35, world.PitLevel);
+            Assert.AreEqual(GameConfig.PitRectWidth + 2, world.PitBounds.Width, "A new cycle starts narrow again");
             
             // Test that wizard orb is regenerated
             Assert.IsTrue(world.WizardOrbPosition.HasValue);

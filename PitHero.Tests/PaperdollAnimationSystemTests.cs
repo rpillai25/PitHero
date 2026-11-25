@@ -52,11 +52,11 @@ namespace PitHero.Tests
             var expectedAnimations = new[]
             {
                 "MaleHeroBodyMoveDown",
-                "MaleHeroShirtMoveDown",
-                "MaleHeroHeadMoveDown",
+                "MaleHeroShirtMidtoneMoveDown",
+                "MaleHeroHeadMidtoneMoveDown",
                 "MaleHeroEyesBaseMoveDown",
                 "MaleHeroEyesMoveDown",
-                "MaleHeroHair1MoveDown"
+                "MaleHeroHair1MidtoneMoveDown"
             };
 
             for (int i = 0; i < _paperdollLayers.Count; i++)
