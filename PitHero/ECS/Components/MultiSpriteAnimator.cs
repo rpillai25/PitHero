@@ -28,6 +28,7 @@ namespace PitHero.ECS.Components
         // Entity world-position maps to RT pixel (16, 39) — sprite top sits flush at RT y=0.
         private static readonly Vector2 RtEntityPivot = new Vector2(RT_WIDTH / 2f, 39f);
 
+        private readonly List<ICompositeLayer> _owners;
         private readonly List<ICompositeLayer> _layers;
         private CharacterPoseCache _poses;
         private readonly Sprite[] _poseSprites = new Sprite[CharacterPoseCache.MaxLayers];
@@ -35,7 +36,10 @@ namespace PitHero.ECS.Components
         private readonly bool[] _poseFlips = new bool[CharacterPoseCache.MaxLayers];
         private readonly Color[] _poseColors = new Color[CharacterPoseCache.MaxLayers];
 
-        /// <summary>Number of composited layers (read by the replay frame census).</summary>
+        /// <summary>
+        /// Number of composited layers (read by the replay frame census). A layer drawn as several parts
+        /// (<see cref="ICompositeLayerGroup"/>, the hero tone layers of issue #462) counts each part.
+        /// </summary>
         public int LayerCount => _layers.Count;
 
         /// <summary>Layer at <paramref name="index"/>, back to front.</summary>
@@ -44,20 +48,33 @@ namespace PitHero.ECS.Components
         /// <summary>Entity position (whole pixels) plus <see cref="RenderableComponent.LocalOffset"/>: where the body is drawn.</summary>
         public Vector2 DrawPosition => SnappedEntityPosition + _localOffset;
 
-        /// <param name="layers">Layers in back-to-front draw order; null entries are skipped.</param>
+        /// <param name="layers">Layers in back-to-front draw order; null entries are skipped. A layer that is an
+        /// <see cref="ICompositeLayerGroup"/> is replaced by its parts.</param>
         public MultiSpriteAnimator(params ICompositeLayer[] layers)
         {
+            _owners = new List<ICompositeLayer>(layers.Length);
             _layers = new List<ICompositeLayer>(layers.Length);
             for (int i = 0; i < layers.Length; i++)
             {
-                if (layers[i] != null) _layers.Add(layers[i]);
+                var layer = layers[i];
+                if (layer == null) continue;
+                _owners.Add(layer);
+                if (layer is ICompositeLayerGroup group)
+                {
+                    for (int p = 0; p < group.PartCount; p++)
+                        _layers.Add(group.GetPart(p));
+                }
+                else
+                {
+                    _layers.Add(layer);
+                }
             }
         }
 
         public override void OnAddedToEntity()
         {
-            for (int i = 0; i < _layers.Count; i++)
-                _layers[i].OwnedByComposite = true;
+            for (int i = 0; i < _owners.Count; i++)
+                _owners[i].OwnedByComposite = true;
 
             _poses = new CharacterPoseCache(RtEntityPivot);
             InitCompositor(RT_WIDTH, RT_HEIGHT, RtEntityPivot, DrawLayers);

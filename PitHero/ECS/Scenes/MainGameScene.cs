@@ -43,6 +43,8 @@ namespace PitHero.ECS.Scenes
         private Image _clockHudPanel; // Translucent nine-patch behind the clock
         private Image _goldIcon; // Coin sprite standing in for the word "Gold"
         private BattleMonsterHud _battleMonsterHud; // Portrait + HP bar per battle monster, right of the gold panel
+        private readonly Sprite[] _recordedPortraitSprites = new Sprite[Services.Replay.Frames.HudRecord.MaxPortraitParts];
+        private readonly Color[] _recordedPortraitColors = new Color[Services.Replay.Frames.HudRecord.MaxPortraitParts];
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private int _lastDisplayedPitTier = -1; // Track last displayed tier to avoid string churn
         private int _lastDisplayedFunds = -1; // Track last displayed funds to avoid string churn
@@ -2943,11 +2945,14 @@ namespace PitHero.ECS.Scenes
             if (_graphicalHUD == null || frame == null || sprites == null)
                 return;
             ref readonly var hud = ref frame.Hud;
-            _graphicalHUD.SetRecordedPortrait(
-                sprites.Get(hud.PortraitHead), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHeadColor),
-                sprites.Get(hud.PortraitEyesBase), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesBaseColor),
-                sprites.Get(hud.PortraitEyes), Rendering.RecordedFrameRenderer.Packed(hud.PortraitEyesColor),
-                sprites.Get(hud.PortraitHair), Rendering.RecordedFrameRenderer.Packed(hud.PortraitHairColor));
+            int portraitCount = Math.Min((int)hud.PortraitCount, Services.Replay.Frames.HudRecord.MaxPortraitParts);
+            for (int i = 0; i < portraitCount; i++)
+            {
+                var part = hud.GetPortraitPart(i);
+                _recordedPortraitSprites[i] = sprites.Get(part.Sprite);
+                _recordedPortraitColors[i] = Rendering.RecordedFrameRenderer.Packed(part.Color);
+            }
+            _graphicalHUD.SetRecordedPortrait(_recordedPortraitSprites, _recordedPortraitColors, portraitCount);
 
             // The battle-monster strip, from the recorded battle rather than the live one
             if (_battleMonsterHud != null)

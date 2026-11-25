@@ -777,11 +777,15 @@ namespace PitHero.Services.Replay.Frames
             var linked = _heroComponent?.LinkedHero;
             if (linked != null && _hero != null && !_hero.HasComponent<HeroDeathComponent>())
                 hud.Hero = new HudMember { Present = true, Hp = linked.CurrentHP, MaxHp = linked.MaxHP, Mp = linked.CurrentMP, MaxMp = linked.MaxMP, Level = linked.Level };
-            // The static portrait the live HUD draws: move-down frame 0 of each layer, with its tint
-            hud.PortraitHead = PortraitSpriteId(_heroHead, out hud.PortraitHeadColor);
-            hud.PortraitEyesBase = PortraitSpriteId(_heroEyesBase, out hud.PortraitEyesBaseColor);
-            hud.PortraitEyes = PortraitSpriteId(_heroEyes, out hud.PortraitEyesColor);
-            hud.PortraitHair = PortraitSpriteId(_heroHair, out hud.PortraitHairColor);
+            // The static portrait the live HUD draws: move-down frame 0 of every tone layer, with its tint
+            int portrait = 0;
+            if (AppendPortrait(_heroHead, ref portrait) && AppendPortrait(_heroEyesBase, ref portrait)
+                && AppendPortrait(_heroEyes, ref portrait) && AppendPortrait(_heroHair, ref portrait))
+            {
+                for (int i = 0; i < portrait; i++)
+                    hud.SetPortraitPart(i, new HudPortraitPart { Sprite = Context.SpriteId(_portraitSprites[i]), Color = _portraitColors[i].PackedValue });
+                hud.PortraitCount = (byte)portrait;
+            }
 
             _mercs ??= Service<MercenaryManager>();
             if (_mercs != null)
@@ -836,17 +840,13 @@ namespace PitHero.Services.Replay.Frames
             return hud;
         }
 
-        /// <summary>The first move-down frame of a paperdoll layer (what GraphicalHUD.RenderHeroSprites draws) as a stream id, or 0.</summary>
-        private ushort PortraitSpriteId(HeroAnimationComponent layer, out uint color)
+        private readonly Microsoft.Xna.Framework.Color[] _portraitColors = new Microsoft.Xna.Framework.Color[HudRecord.MaxPortraitParts];
+        private readonly Nez.Textures.Sprite[] _portraitSprites = new Nez.Textures.Sprite[HudRecord.MaxPortraitParts];
+
+        /// <summary>Appends a paperdoll part's portrait sprites (what GraphicalHUD.RenderHeroSprites draws); false when it has none.</summary>
+        private bool AppendPortrait(HeroAnimationComponent layer, ref int count)
         {
-            color = 0;
-            if (layer == null || layer.Animations == null)
-                return 0;
-            string name = layer.MoveDownAnimationName;
-            if (name == null || !layer.Animations.TryGetValue(name, out var animation) || animation.Sprites == null || animation.Sprites.Length == 0)
-                return 0;
-            color = layer.ComponentColor.PackedValue;
-            return Context.SpriteId(animation.Sprites[0]);
+            return layer != null && layer.Animations != null && layer.AppendPortraitParts(_portraitSprites, _portraitColors, ref count);
         }
 
         private static HudMember MercMember(Entity entity)

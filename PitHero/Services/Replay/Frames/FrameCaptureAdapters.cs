@@ -100,6 +100,12 @@ namespace PitHero.Services.Replay.Frames
                 case Kind.CompositeLayer:
                     if (((ICompositeLayer)rc).OwnedByComposite)
                         return;
+                    // A hero part drawn on its own draws every tone layer (issue #462)
+                    if (rc is HeroAnimationComponent toned && toned.PartCount > 1)
+                    {
+                        CaptureToneLayers(toned, ref w, ctx);
+                        return;
+                    }
                     if (rc is SpriteRenderer layerSprite)
                         CaptureSprite(layerSprite, ref w, ctx, ref cachedSprite, ref cachedSpriteId);
                     return;
@@ -177,6 +183,23 @@ namespace PitHero.Services.Replay.Frames
             var pos = sr.Entity.Transform.Position + sr.LocalOffset;
             w.WriteSprite(id, pos.X, pos.Y, sr.LayerDepth, sr.RenderLayer, sr.Color.PackedValue,
                 (byte)(FrameCaptureContext.SpriteFlags(sr.SpriteEffects, sr.RenderLayer) | ctx.GradedFlag(sr)));
+        }
+
+        /// <summary>One sprite op per tone layer of a hero part drawn outside a composite, as its Render draws them.</summary>
+        private static void CaptureToneLayers(HeroAnimationComponent part, ref FrameWriter w, FrameCaptureContext ctx)
+        {
+            var pos = part.Entity.Transform.Position + part.LocalOffset;
+            byte flags = (byte)(FrameCaptureContext.SpriteFlags(part.SpriteEffects, part.RenderLayer) | ctx.GradedFlag(part));
+            for (int i = 0; i < part.PartCount; i++)
+            {
+                var sprite = part.GetToneSprite(i);
+                if (sprite == null)
+                    continue;
+                ushort id = ctx.SpriteId(sprite);
+                if (id == SpriteKeyRegistry.None)
+                    continue;
+                w.WriteSprite(id, pos.X, pos.Y, part.LayerDepth, part.RenderLayer, part.GetToneColor(i).PackedValue, flags);
+            }
         }
 
         /// <summary>A prototype (pixel) renderer is a filled rectangle of its size and color.</summary>

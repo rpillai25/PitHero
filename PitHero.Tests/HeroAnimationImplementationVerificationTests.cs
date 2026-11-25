@@ -133,9 +133,9 @@ namespace PitHero.Tests
             var paperdollTests = new[]
             {
                 (typeof(HeroBodyAnimationComponent), "MaleHeroBodyMoveDown"),
-                (typeof(HeroHairAnimationComponent), "MaleHeroHair1MoveDown"),
-                (typeof(HeroShirtAnimationComponent), "MaleHeroShirtMoveDown"),
-                (typeof(HeroHeadAnimationComponent), "MaleHeroHeadMoveDown"),
+                (typeof(HeroHairAnimationComponent), "MaleHeroHair1MidtoneMoveDown"),
+                (typeof(HeroShirtAnimationComponent), "MaleHeroShirtMidtoneMoveDown"),
+                (typeof(HeroHeadAnimationComponent), "MaleHeroHeadMidtoneMoveDown"),
                 (typeof(HeroEyesAnimationComponent), "MaleHeroEyesMoveDown")
             };
             

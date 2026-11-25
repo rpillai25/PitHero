@@ -270,7 +270,7 @@ fonts drew every speech bubble and battle digit at double size in the replay. Th
 Beside the ops, every tick carries a **HUD record** (party hp/mp/level, gold, pit level/tier, in-game
 seconds floored to whole seconds so it does not churn, pause flag, and the hero's static portrait: the
 walk-down first frame of the head, eyes and hair layers as sprite ids with their tints, exactly what
-the live HUD draws; since v6 also the monsters of the battle in progress — portrait sprite and tint, HP and
+the live HUD draws — since v19 (#462) every tone layer of them, up to `HudRecord.MaxPortraitParts`; since v6 also the monsters of the battle in progress — portrait sprite and tint, HP and
 world position, up to `HudRecord.MaxMonsters` — which feed the battle-monster strip beside the gold
 display, `BattleMonsterHud`). **Events** arrive through hooks and are stored with their tick: tile mutations
 (`TiledMapService.TileChanging`, same-gid writes and the undrawn Collision/Top layers dropped, plus a

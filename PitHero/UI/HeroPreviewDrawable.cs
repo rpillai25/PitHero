@@ -11,11 +11,12 @@ namespace PitHero.UI
     /// <summary>Composite IDrawable that renders all hero sprite layers with tint colors for UI display.</summary>
     public class HeroPreviewDrawable : Nez.UI.IDrawable
     {
-        /// <summary>Number of hero sprite layers drawn back-to-front.</summary>
-        private const int LayerCount = 7;
+        /// <summary>Most sprites drawn back-to-front: every tone layer of the seven paperdoll parts (issue #462).</summary>
+        private const int MaxSprites = 16;
 
-        private readonly Sprite[] _sprites;
-        private readonly Color[] _tints;
+        private readonly Sprite[] _sprites = new Sprite[MaxSprites];
+        private readonly Color[] _tints = new Color[MaxSprites];
+        private int _count;
 
         public float LeftWidth { get; set; }
         public float RightWidth { get; set; }
@@ -27,21 +28,18 @@ namespace PitHero.UI
         /// <summary>Creates a composite drawable from the Actors atlas using saved hero design data.</summary>
         public HeroPreviewDrawable(SpriteAtlas actorsAtlas, Color skinColor, Color hairColor, Color shirtColor, int hairstyleIndex, Gender gender, Color eyeColor)
         {
-            _sprites = new Sprite[LayerCount];
-            _tints = new Color[LayerCount];
-
             // Draw order: back-to-front (index 0 drawn first = backmost)
-            SetLayer(actorsAtlas, 0, gender, HeroLayer.Body, HeroSpriteNames.BodyTint(gender, skinColor));
+            AddLayer(actorsAtlas, gender, HeroLayer.Body, HeroSpriteNames.BodyTint(gender, skinColor));
             if (HeroSpriteNames.HasArmorLayer(gender))
-                SetLayer(actorsAtlas, 1, gender, HeroLayer.Armor, Color.White);
-            SetLayer(actorsAtlas, 2, gender, HeroLayer.Clothing, shirtColor);
-            SetLayer(actorsAtlas, 3, gender, HeroLayer.Head, skinColor);
-            SetLayer(actorsAtlas, 4, gender, HeroLayer.EyesBase, Color.White);
-            SetLayer(actorsAtlas, 5, gender, HeroLayer.Eyes, eyeColor);
-            SetLayer(actorsAtlas, 6, gender, HeroSpriteNames.HairLayer(hairstyleIndex), hairColor);
+                AddLayer(actorsAtlas, gender, HeroLayer.Armor, Color.White);
+            AddLayer(actorsAtlas, gender, HeroLayer.Clothing, shirtColor);
+            AddLayer(actorsAtlas, gender, HeroLayer.Head, skinColor);
+            AddLayer(actorsAtlas, gender, HeroLayer.EyesBase, Color.White);
+            AddLayer(actorsAtlas, gender, HeroLayer.Eyes, eyeColor);
+            AddLayer(actorsAtlas, gender, HeroSpriteNames.HairLayer(hairstyleIndex), hairColor);
 
             // Set minimum size from the first valid sprite (all hero frames are 32x48)
-            for (int i = 0; i < LayerCount; i++)
+            for (int i = 0; i < _count; i++)
             {
                 if (_sprites[i] != null)
                 {
@@ -52,10 +50,16 @@ namespace PitHero.UI
             }
         }
 
-        private void SetLayer(SpriteAtlas actorsAtlas, int index, Gender gender, HeroLayer layer, Color tint)
+        // Adds every tone layer of a part, each tinted from the part's chosen color (issue #462)
+        private void AddLayer(SpriteAtlas actorsAtlas, Gender gender, HeroLayer layer, Color tint)
         {
-            _sprites[index] = actorsAtlas.GetSprite(HeroSpriteNames.Get(gender, layer).PreviewSprite);
-            _tints[index] = tint;
+            var tones = HeroSpriteNames.Get(gender, layer).Tones;
+            for (int i = 0; i < tones.Length && _count < MaxSprites; i++)
+            {
+                _sprites[_count] = actorsAtlas.GetSprite(tones[i].PreviewSprite);
+                _tints[_count] = HeroToneProfiles.Tint(gender, layer, tones[i].Tone, tint);
+                _count++;
+            }
         }
 
         /// <summary>Sets padding values for the drawable.</summary>
@@ -71,7 +75,7 @@ namespace PitHero.UI
         public void Draw(Batcher batcher, float x, float y, float width, float height, Color color)
         {
             var destRect = new Rectangle((int)x, (int)y, (int)width, (int)height);
-            for (int i = 0; i < LayerCount; i++)
+            for (int i = 0; i < _count; i++)
             {
                 if (_sprites[i] == null)
                     continue;

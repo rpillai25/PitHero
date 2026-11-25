@@ -45,7 +45,7 @@ LastNames,Turner,Sawyer,Weaver,Marsh,Ashford
 LastNames,Blackwood,Thornton,Greenhill,Whitlock,Ravensworth
 LastNames,Holloway,Ironside,Longshaw,Stonebridge,Hawksley
 LastNames,Redmayne,Fairbairn,Underhill,Bramble,Falconer
-LastNames,Winterbourne,Oakes,Vance,Alderton,Grimsby
+LastNames,Winterbourne,Oakes,Fenwick,Alderton,Grimsby
 
 MonsterPrefixes,Gru,Vrak,Skar,Morr,Ulg
 MonsterPrefixes,Thug,Zog,Nask,Brol,Krug

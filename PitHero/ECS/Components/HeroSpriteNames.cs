@@ -36,6 +36,21 @@ namespace PitHero.ECS.Components
         public string SleepRight;
         /// <summary>Name of the first move-down frame, used by static previews.</summary>
         public string PreviewSprite;
+
+        /// <summary>The tone this name set draws (issue #462); Midtone for a part that is not split.</summary>
+        public HeroTone Tone = HeroTone.Midtone;
+
+        /// <summary>The gender whose art these names belong to.</summary>
+        public Gender Gender;
+
+        /// <summary>The paperdoll part these names belong to.</summary>
+        public HeroLayer Layer;
+
+        /// <summary>
+        /// Every tone of the part, back to front, each with its own names. A part that is not split lists just
+        /// itself. The part's own names are its Midtone's, which drives the animator; the others follow its frame.
+        /// </summary>
+        public HeroLayerNames[] Tones;
     }
 
     /// <summary>
@@ -91,10 +106,34 @@ namespace PitHero.ECS.Components
 
         private static HeroLayerNames BuildNames(Gender gender, HeroLayer layer)
         {
+            var tones = HeroToneProfiles.TonesOf(gender, layer);
+            if (tones.Length == 1)
+            {
+                var single = BuildToneNames(gender, layer, null, HeroTone.Midtone);
+                single.Tones = new[] { single };
+                return single;
+            }
+
+            // Split part (issue #462): one name set per tone; the part itself answers with the Midtone's names
+            var toneNames = new HeroLayerNames[tones.Length];
+            HeroLayerNames primary = null;
+            for (int i = 0; i < tones.Length; i++)
+            {
+                toneNames[i] = BuildToneNames(gender, layer, tones[i].ToString(), tones[i]);
+                toneNames[i].Tones = toneNames;
+                if (tones[i] == HeroTone.Midtone)
+                    primary = toneNames[i];
+            }
+            return primary;
+        }
+
+        private static HeroLayerNames BuildToneNames(Gender gender, HeroLayer layer, string toneName, HeroTone tone)
+        {
             string prefix = gender == Gender.Female ? "FemaleHero" : "MaleHero";
             string filePrefix = gender == Gender.Female ? "female_hero" : "male_hero";
             string layerName = LayerName(gender, layer);
-            string name = prefix + layerName;
+            string name = prefix + layerName + toneName;
+            string fileName = FileLayerName(layerName) + (toneName != null ? "_" + toneName.ToLowerInvariant() : "");
             bool hasSleepArt = layer == HeroLayer.Eyes || layer == HeroLayer.EyesBase;
 
             return new HeroLayerNames
@@ -105,7 +144,10 @@ namespace PitHero.ECS.Components
                 Jump = name + "JumpRight",
                 SleepDown = hasSleepArt ? name + "SleepDown" : name + "MoveDown",
                 SleepRight = hasSleepArt ? name + "SleepRight" : name + "MoveRight",
-                PreviewSprite = filePrefix + "_" + FileLayerName(layerName) + "_move_down_0"
+                PreviewSprite = filePrefix + "_" + fileName + "_move_down_0",
+                Tone = tone,
+                Gender = gender,
+                Layer = layer
             };
         }
 

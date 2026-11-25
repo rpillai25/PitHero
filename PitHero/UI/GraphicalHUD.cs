@@ -58,41 +58,49 @@ namespace PitHero.UI
         private int _maxMp;
         private int _level;
 
-        // A recorded portrait (replay frame viewer, issue #431) replaces the live paperdoll while set
+        // A recorded portrait (replay frame viewer, issue #431) replaces the live paperdoll while set.
+        // Every tone layer of the head, eye base, eyes and hair, back to front (issue #462).
+        private const int MaxPortraitParts = Services.Replay.Frames.HudRecord.MaxPortraitParts;
         private bool _recordedPortrait;
-        private Sprite _recordedHead, _recordedEyesBase, _recordedEyes, _recordedHair;
-        private Color _recordedHeadColor, _recordedEyesBaseColor, _recordedEyesColor, _recordedHairColor;
+        private readonly Sprite[] _recordedSprites = new Sprite[MaxPortraitParts];
+        private readonly Color[] _recordedColors = new Color[MaxPortraitParts];
+        private int _recordedCount;
+        private readonly Sprite[] _liveSprites = new Sprite[MaxPortraitParts];
+        private readonly Color[] _liveColors = new Color[MaxPortraitParts];
 
         /// <summary>
-        /// Shows the portrait from a recorded frame instead of the live hero's paperdoll: the head, eye
-        /// and hair layer sprites at that tick with their recorded tints. Null sprites draw nothing.
+        /// Shows the portrait from a recorded frame instead of the live hero's paperdoll: the tone layer
+        /// sprites of the head, eyes and hair at that tick with their recorded tints. Null sprites draw nothing.
         /// </summary>
-        public void SetRecordedPortrait(Sprite head, Color headColor, Sprite eyesBase, Color eyesBaseColor, Sprite eyes, Color eyesColor, Sprite hair, Color hairColor)
+        public void SetRecordedPortrait(Sprite[] sprites, Color[] colors, int count)
         {
             _recordedPortrait = true;
-            _recordedHead = head;
-            _recordedHeadColor = headColor;
-            _recordedEyesBase = eyesBase;
-            _recordedEyesBaseColor = eyesBaseColor;
-            _recordedEyes = eyes;
-            _recordedEyesColor = eyesColor;
-            _recordedHair = hair;
-            _recordedHairColor = hairColor;
+            _recordedCount = 0;
+            for (int i = 0; i < count && i < MaxPortraitParts; i++)
+            {
+                _recordedSprites[i] = sprites[i];
+                _recordedColors[i] = colors[i];
+                _recordedCount++;
+            }
+            for (int i = _recordedCount; i < MaxPortraitParts; i++)
+                _recordedSprites[i] = null;
         }
 
         /// <summary>Back to the live hero's paperdoll.</summary>
         public void ClearRecordedPortrait()
         {
             _recordedPortrait = false;
-            _recordedHead = _recordedEyesBase = _recordedEyes = _recordedHair = null;
+            _recordedCount = 0;
+            System.Array.Clear(_recordedSprites, 0, MaxPortraitParts);
         }
 
-        /// <summary>The paperdoll layers of a portrait with their tints; <see cref="Present"/> false draws nothing.</summary>
+        /// <summary>The paperdoll sprites of a portrait with their tints; <see cref="Present"/> false draws nothing.</summary>
         public struct PortraitSnapshot
         {
             public bool Present;
-            public Sprite Head, EyesBase, Eyes, Hair;
-            public Color HeadColor, EyesBaseColor, EyesColor, HairColor;
+            public Sprite[] Sprites;
+            public Color[] Colors;
+            public int Count;
         }
 
         /// <summary>
@@ -103,18 +111,33 @@ namespace PitHero.UI
         public bool TryCapturePortrait(out PortraitSnapshot snapshot)
         {
             snapshot = default;
+            Sprite[] sprites;
+            Color[] colors;
+            int count;
             if (_recordedPortrait)
             {
-                snapshot.Head = _recordedHead; snapshot.HeadColor = _recordedHeadColor;
-                snapshot.EyesBase = _recordedEyesBase; snapshot.EyesBaseColor = _recordedEyesBaseColor;
-                snapshot.Eyes = _recordedEyes; snapshot.EyesColor = _recordedEyesColor;
-                snapshot.Hair = _recordedHair; snapshot.HairColor = _recordedHairColor;
-                snapshot.Present = _recordedHead != null || _recordedEyes != null || _recordedHair != null;
-                return snapshot.Present;
+                sprites = _recordedSprites;
+                colors = _recordedColors;
+                count = _recordedCount;
             }
-            if (!TryGetLivePortraitLayers(out snapshot.Head, out snapshot.HeadColor, out snapshot.EyesBase, out snapshot.EyesBaseColor, out snapshot.Eyes, out snapshot.EyesColor, out snapshot.Hair, out snapshot.HairColor))
+            else
+            {
+                if (!TryGetLivePortraitLayers(out count))
+                    return false;
+                sprites = _liveSprites;
+                colors = _liveColors;
+            }
+            bool any = false;
+            for (int i = 0; i < count; i++)
+                any |= sprites[i] != null;
+            if (!any)
                 return false;
             snapshot.Present = true;
+            snapshot.Count = count;
+            snapshot.Sprites = new Sprite[count];
+            snapshot.Colors = new Color[count];
+            System.Array.Copy(sprites, snapshot.Sprites, count);
+            System.Array.Copy(colors, snapshot.Colors, count);
             return true;
         }
 
@@ -122,9 +145,9 @@ namespace PitHero.UI
         public void SetRecordedPortrait(in PortraitSnapshot snapshot)
         {
             if (snapshot.Present)
-                SetRecordedPortrait(snapshot.Head, snapshot.HeadColor, snapshot.EyesBase, snapshot.EyesBaseColor, snapshot.Eyes, snapshot.EyesColor, snapshot.Hair, snapshot.HairColor);
+                SetRecordedPortrait(snapshot.Sprites, snapshot.Colors, snapshot.Count);
             else
-                SetRecordedPortrait(null, Color.White, null, Color.White, null, Color.White, null, Color.White);
+                SetRecordedPortrait(_liveSprites, _liveColors, 0);
         }
 
         /// <summary>
@@ -291,60 +314,38 @@ namespace PitHero.UI
         /// </summary>
         private void RenderHeroSprites(Batcher batcher, Vector2 hudPosition, int xOffset, int yOffset)
         {
+            var at = hudPosition + new Vector2(xOffset, yOffset);
             if (_recordedPortrait)
             {
-                var at = hudPosition + new Vector2(xOffset, yOffset);
-                DrawPortraitLayer(batcher, _recordedHead, _recordedHeadColor, at);
-                DrawPortraitLayer(batcher, _recordedEyesBase, _recordedEyesBaseColor, at);
-                DrawPortraitLayer(batcher, _recordedEyes, _recordedEyesColor, at);
-                DrawPortraitLayer(batcher, _recordedHair, _recordedHairColor, at);
+                for (int i = 0; i < _recordedCount; i++)
+                    DrawPortraitLayer(batcher, _recordedSprites[i], _recordedColors[i], at);
                 return;
             }
-            if (!TryGetLivePortraitLayers(out var headSprite, out var headColor, out var eyesBaseSprite, out var eyesBaseColor, out var eyesSprite, out var eyesColor, out var hairSprite, out var hairColor))
+            if (!TryGetLivePortraitLayers(out int count))
                 return;
-            var renderPosition = hudPosition + new Vector2(xOffset, yOffset);
             // Head first, eyes over it, hair on top, each cropped to the top 32x31 pixels of the frame
-            DrawPortraitLayer(batcher, headSprite, headColor, renderPosition);
-            DrawPortraitLayer(batcher, eyesBaseSprite, eyesBaseColor, renderPosition);
-            DrawPortraitLayer(batcher, eyesSprite, eyesColor, renderPosition);
-            DrawPortraitLayer(batcher, hairSprite, hairColor, renderPosition);
+            for (int i = 0; i < count; i++)
+                DrawPortraitLayer(batcher, _liveSprites[i], _liveColors[i], at);
         }
 
         /// <summary>
-        /// The live portrait's layers: frame 0 of the move-down animation of the bound entity's head, eye
-        /// and hair components with their tints. False when the entity or any layer is missing.
+        /// Fills the live portrait buffers: frame 0 of the move-down animation of every tone layer of the bound
+        /// entity's head, eye and hair components with their tints. False when the entity or any part is missing.
         /// </summary>
-        private bool TryGetLivePortraitLayers(out Sprite head, out Color headColor, out Sprite eyesBase, out Color eyesBaseColor, out Sprite eyes, out Color eyesColor, out Sprite hair, out Color hairColor)
+        private bool TryGetLivePortraitLayers(out int count)
         {
-            eyesBase = eyes = hair = null;
-            eyesBaseColor = eyesColor = hairColor = Color.White;
+            count = 0;
             if (_heroEntity == null)
-            {
-                head = null;
-                headColor = Color.White;
                 return false;
-            }
-
-            return TryGetFirstFrame(_heroEntity.GetComponent<HeroHeadAnimationComponent>(), out head, out headColor)
-                && TryGetFirstFrame(_heroEntity.GetComponent<HeroEyesBaseAnimationComponent>(), out eyesBase, out eyesBaseColor)
-                && TryGetFirstFrame(_heroEntity.GetComponent<HeroEyesAnimationComponent>(), out eyes, out eyesColor)
-                && TryGetFirstFrame(_heroEntity.GetComponent<HeroHairAnimationComponent>(), out hair, out hairColor);
+            return Append(_heroEntity.GetComponent<HeroHeadAnimationComponent>(), ref count)
+                && Append(_heroEntity.GetComponent<HeroEyesBaseAnimationComponent>(), ref count)
+                && Append(_heroEntity.GetComponent<HeroEyesAnimationComponent>(), ref count)
+                && Append(_heroEntity.GetComponent<HeroHairAnimationComponent>(), ref count);
         }
 
-        /// <summary>The first move-down frame of a paperdoll layer with its tint, or false when it has none.</summary>
-        private static bool TryGetFirstFrame(HeroAnimationComponent layer, out Sprite sprite, out Color color)
+        private bool Append(HeroAnimationComponent layer, ref int count)
         {
-            sprite = null;
-            color = Color.White;
-            if (layer == null || layer.Animations == null)
-                return false;
-            if (!layer.Animations.TryGetValue(layer.MoveDownAnimationName, out var animation))
-                return false;
-            if (animation.Sprites == null || animation.Sprites.Length == 0)
-                return false;
-            sprite = animation.Sprites[0];
-            color = layer.ComponentColor;
-            return true;
+            return layer != null && layer.Animations != null && layer.AppendPortraitParts(_liveSprites, _liveColors, ref count);
         }
 
         /// <summary>One recorded paperdoll layer, cropped to the top 32x31 pixels like the live portrait.</summary>

@@ -1,16 +1,28 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Sprites;
+using Nez.Textures;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Abstract base class for hero sprite animations based on facing direction using the Actors.atlas
     /// </summary>
-    public abstract class HeroAnimationComponent : PausableSpriteAnimator, IUpdatable, ICompositeLayer
+    public abstract class HeroAnimationComponent : PausableSpriteAnimator, IUpdatable, ICompositeLayer, ICompositeLayerGroup
     {
         private ActorFacingComponent _facing;
         private Direction _lastDirection = Direction.Down; // Default to down
         private readonly HeroLayerNames _names;
+
+        // Tone layers (issue #462): the Midtone plays as this animator; the other tones show the same frame
+        // of their own animation, each tinted from Color by its HeroToneProfile.
+        private readonly HeroLayerNames[] _tones;
+        private readonly TonePart[] _parts;
+        private readonly SpriteAnimation[] _toneAnimations;
+        private readonly Color[] _toneColors;
+        private string _tonesResolvedFor;
+        private uint _tintedFor;
+        private bool _tintsValid;
 
         // Animation names come from the layer's HeroSpriteNames entry
         protected string DefaultAnimation => _names.Down;
@@ -57,6 +69,161 @@ namespace PitHero.ECS.Components
         {
             _componentColor = color;
             _names = names;
+            _tones = names.Tones ?? new[] { names };
+            _parts = new TonePart[_tones.Length];
+            _toneAnimations = new SpriteAnimation[_tones.Length];
+            _toneColors = new Color[_tones.Length];
+            for (int i = 0; i < _tones.Length; i++)
+                _parts[i] = new TonePart(this, i);
+        }
+
+        /// <summary>Number of tone layers this part draws (1 when the part is not split).</summary>
+        public int PartCount => _tones.Length;
+
+        /// <summary>The composite view of one tone layer.</summary>
+        public ICompositeLayer GetPart(int index) => _parts[index];
+
+        /// <summary>The tone drawn by part <paramref name="index"/>.</summary>
+        public HeroTone GetTone(int index) => _tones[index].Tone;
+
+        /// <summary>
+        /// Appends the first move-down frame of every tone, tinted from <see cref="ComponentColor"/>: the static
+        /// HUD portrait. Stops when the arrays are full. False (nothing appended) when the Midtone has no frame.
+        /// </summary>
+        public bool AppendPortraitParts(Sprite[] sprites, Color[] colors, ref int count)
+        {
+            for (int i = 0; i < _tones.Length; i++)
+            {
+                if (ReferenceEquals(_tones[i], _names) && GetToneMoveDownFirstFrame(i) == null)
+                    return false;
+            }
+            for (int i = 0; i < _tones.Length && count < sprites.Length; i++)
+            {
+                var sprite = GetToneMoveDownFirstFrame(i);
+                if (sprite == null)
+                    continue;
+                sprites[count] = sprite;
+                colors[count] = ToneTint(i, ComponentColor);
+                count++;
+            }
+            return true;
+        }
+
+        /// <summary>The current frame of tone <paramref name="index"/>, or null when that tone has none.</summary>
+        public Sprite GetToneSprite(int index)
+        {
+            if (ReferenceEquals(_tones[index], _names))
+                return Sprite;
+            if (CurrentAnimation == null)
+                return null;
+            if (!ReferenceEquals(_tonesResolvedFor, CurrentAnimationName))
+                ResolveToneAnimations();
+            var animation = _toneAnimations[index];
+            if (animation?.Sprites == null || CurrentFrame >= animation.Sprites.Length)
+                return null;
+            return animation.Sprites[CurrentFrame];
+        }
+
+        /// <summary>The tint of tone <paramref name="index"/> for the current <see cref="RenderableComponent.Color"/>.</summary>
+        public Color GetToneColor(int index)
+        {
+            var color = Color;
+            if (!_tintsValid || color.PackedValue != _tintedFor)
+            {
+                for (int i = 0; i < _tones.Length; i++)
+                    _toneColors[i] = ToneTint(i, color);
+                _tintedFor = color.PackedValue;
+                _tintsValid = true;
+            }
+            return _toneColors[index];
+        }
+
+        /// <summary>The tint tone <paramref name="index"/> gets when the part's chosen color is <paramref name="chosen"/>.</summary>
+        public Color ToneTint(int index, Color chosen)
+        {
+            var names = _tones[index];
+            return HeroToneProfiles.Tint(names.Gender, names.Layer, names.Tone, chosen);
+        }
+
+        /// <summary>First move-down frame of tone <paramref name="index"/> (static portraits), or null.</summary>
+        public Sprite GetToneMoveDownFirstFrame(int index)
+        {
+            if (Animations == null || !Animations.TryGetValue(_tones[index].Down, out var animation))
+                return null;
+            return animation.Sprites != null && animation.Sprites.Length > 0 ? animation.Sprites[0] : null;
+        }
+
+        // Finds which of the Midtone's animations is playing and picks each tone's matching animation
+        private void ResolveToneAnimations()
+        {
+            string playing = CurrentAnimationName;
+            _tonesResolvedFor = playing;
+            for (int i = 0; i < _tones.Length; i++)
+            {
+                string name = MatchingName(_tones[i], playing);
+                SpriteAnimation animation = null;
+                if (name != null && Animations != null)
+                    Animations.TryGetValue(name, out animation);
+                _toneAnimations[i] = animation;
+            }
+        }
+
+        private string MatchingName(HeroLayerNames tone, string playing)
+        {
+            if (playing == _names.Down) return tone.Down;
+            if (playing == _names.Right) return tone.Right;
+            if (playing == _names.Up) return tone.Up;
+            if (playing == _names.Jump) return tone.Jump;
+            if (playing == _names.SleepDown) return tone.SleepDown;
+            if (playing == _names.SleepRight) return tone.SleepRight;
+            return null;
+        }
+
+        /// <summary>
+        /// Drawn on its own (outside a MultiSpriteAnimator, e.g. the hero creation preview): every tone,
+        /// back to front, at this renderer's transform.
+        /// </summary>
+        public override void Render(Batcher batcher, Camera camera)
+        {
+            if (_tones.Length == 1)
+            {
+                base.Render(batcher, camera);
+                return;
+            }
+            var position = Entity.Transform.Position + LocalOffset;
+            for (int i = 0; i < _tones.Length; i++)
+            {
+                var sprite = GetToneSprite(i);
+                if (sprite == null)
+                    continue;
+                batcher.Draw(sprite, position, GetToneColor(i), Entity.Transform.Rotation, sprite.Origin,
+                    Entity.Transform.Scale, SpriteEffects, _layerDepth);
+            }
+        }
+
+        /// <summary>One tone layer as seen by the composite: the owner's offset and flip, the tone's sprite and tint.</summary>
+        private sealed class TonePart : ICompositeLayer
+        {
+            private readonly HeroAnimationComponent _owner;
+            private readonly int _index;
+
+            public TonePart(HeroAnimationComponent owner, int index)
+            {
+                _owner = owner;
+                _index = index;
+            }
+
+            public Sprite Sprite => _owner.GetToneSprite(_index);
+            public Vector2 LocalOffset => _owner.LocalOffset;
+            public bool FlipX => _owner.FlipX;
+            public Color LayerColor => _owner.GetToneColor(_index);
+
+            /// <summary>Parts are not components; the owner carries the flag.</summary>
+            public bool OwnedByComposite
+            {
+                get => _owner.OwnedByComposite;
+                set => _owner.OwnedByComposite = value;
+            }
         }
 
         public override void OnAddedToEntity()
