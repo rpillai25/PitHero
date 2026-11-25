@@ -1306,7 +1306,7 @@ namespace PitHero.AI
             var entity = GetEntityForAlly(ally);
             if (entity == null) return null;
             // The heal swirl already played at the cast (ShowSkillCast), healed or not
-            return ShowDamageDigitOnEntity(entity, amount, Color.Green);
+            return ShowDamageDigitOnEntity(entity, amount, BouncyDigitComponent.HealDigitColor);
         }
 
         /// <inheritdoc/>
@@ -1404,7 +1404,7 @@ namespace PitHero.AI
             var entity = GetEntityForAlly(ally);
             if (entity == null) return null;
             Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, entity);
-            return ShowDamageDigitOnEntity(entity, amount, Color.Green);
+            return ShowDamageDigitOnEntity(entity, amount, BouncyDigitComponent.HealDigitColor);
         }
 
         /// <inheritdoc/>

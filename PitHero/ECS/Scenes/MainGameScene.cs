@@ -3408,7 +3408,6 @@ namespace PitHero.ECS.Scenes
 
             // Determine scale and visibility based on window mode
             float scale = 1f;
-            bool visible = true;
 
             if (WindowManager.IsHalfHeightMode())
             {
@@ -3416,14 +3415,20 @@ namespace PitHero.ECS.Scenes
                 scale = 2f;
             }
 
+            var heroUI = _settingsUI?.HeroUI;
+            bool inventoryOpen = heroUI != null && heroUI.IsWindowVisible;
+
+            // While the Party window is open the docked bar is only a drop target: show it only while an
+            // item or skill is being dragged (issue #465). Its drop handlers do not check visibility.
+            bool visible = !inventoryOpen
+                || (InventoryDragManager.IsDragging
+                    && (InventoryDragManager.DragItem != null || InventoryDragManager.DragSkill != null));
+
             _shortcutBar.SetVisible(visible);
             _shortcutBar.SetShortcutScale(scale);
 
             if (visible)
             {
-                var heroUI = _settingsUI?.HeroUI;
-                bool inventoryOpen = heroUI != null && heroUI.IsWindowVisible;
-
                 if (inventoryOpen)
                 {
                     // The Party window covers the bottom row, so dock the shortcuts just left of the window (and of
