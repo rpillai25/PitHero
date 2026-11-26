@@ -67,6 +67,23 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void UnlockJobSkillsUpTo_ReportsOnlyTheNewSkills()
+        {
+            var merc = NewKnightMerc();
+            merc.UnlockJobSkillsUpTo(1);
+
+            var learned = new List<ISkill>();
+            Assert.AreEqual(2, merc.UnlockJobSkillsUpTo(3, learned));
+            Assert.AreEqual(2, learned.Count);
+            Assert.AreEqual("knight.spin_slash", learned[0].Id);
+            Assert.AreEqual("knight.heavy_strike", learned[1].Id);
+
+            learned.Clear();
+            Assert.AreEqual(0, merc.UnlockJobSkillsUpTo(3, learned));
+            Assert.AreEqual(0, learned.Count, "nothing new, nothing to announce");
+        }
+
+        [TestMethod]
         public void SkillUnlockTarget_FollowsHeroClassSkills()
         {
             Assert.AreEqual(0, Mercenary.SkillUnlockTargetFor(null));

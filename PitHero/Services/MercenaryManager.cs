@@ -133,7 +133,37 @@ namespace PitHero.Services
             _lastSkillUnlockTarget = target;
 
             for (int i = 0; i < _mercenaryEntities.Count; i++)
-                _mercenaryEntities[i].GetComponent<MercenaryComponent>()?.LinkedMercenary?.UnlockJobSkillsUpTo(target);
+            {
+                var mercComp = _mercenaryEntities[i].GetComponent<MercenaryComponent>();
+                var merc = mercComp?.LinkedMercenary;
+                if (merc == null) continue;
+
+                // Tavern patrons unlock silently; only party members announce it
+                if (!mercComp.IsHired)
+                {
+                    merc.UnlockJobSkillsUpTo(target);
+                    continue;
+                }
+
+                _newlyUnlockedSkills.Clear();
+                if (merc.UnlockJobSkillsUpTo(target, _newlyUnlockedSkills) == 0) continue;
+                AnnounceUnlockedSkills(_mercenaryEntities[i], merc, _newlyUnlockedSkills);
+            }
+        }
+
+        // Reused by SyncMercenarySkillUnlocks to collect one merc's new skills
+        private readonly List<RolePlayingFramework.Skills.ISkill> _newlyUnlockedSkills = new List<RolePlayingFramework.Skills.ISkill>(4);
+
+        /// <summary>One console line per new skill and a single speech bubble on the mercenary (issue #471).</summary>
+        private static void AnnounceUnlockedSkills(Entity mercEntity, Mercenary merc, List<RolePlayingFramework.Skills.ISkill> skills)
+        {
+            if (Core.Instance == null) return;
+            var events = Core.Services?.GetService<GameEventService>();
+            for (int i = 0; i < skills.Count; i++)
+                events?.EmitLocalized(UITextKey.ConsoleAutoLearnedSkill,
+                    (merc.Name, GameConfig.ConsoleColorHeroName),
+                    (skills[i].Name, Color.White));
+            SpeechBubbleDialogue.SayMercLearnedSkill(mercEntity);
         }
 
         /// <summary>

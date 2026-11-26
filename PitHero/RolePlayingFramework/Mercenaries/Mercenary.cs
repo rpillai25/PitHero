@@ -499,9 +499,9 @@ namespace RolePlayingFramework.Mercenaries
         /// <summary>
         /// Unlocks job skills in sequence until <paramref name="targetCount"/> are learned (issue #471):
         /// actives first in job order, then passives. Never forgets a skill, so a lower target is a no-op.
-        /// Returns the number of skills newly learned.
+        /// Returns the number of skills newly learned; when <paramref name="newlyLearned"/> is given, they are appended to it.
         /// </summary>
-        public int UnlockJobSkillsUpTo(int targetCount)
+        public int UnlockJobSkillsUpTo(int targetCount, List<ISkill> newlyLearned = null)
         {
             int missing = targetCount - UnlockedJobSkillCount;
             if (missing <= 0) return 0;
@@ -516,6 +516,7 @@ namespace RolePlayingFramework.Mercenaries
                     var skill = skills[i];
                     if (skill.Kind != kind || _learnedSkills.ContainsKey(skill.Id)) continue;
                     _learnedSkills[skill.Id] = skill;
+                    newlyLearned?.Add(skill);
                     learned++;
                 }
             }

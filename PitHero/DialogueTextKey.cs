@@ -94,5 +94,8 @@ namespace PitHero
         // Knight Provoke shout (ThreatSystem.md)
         public const string KnightProvokeOverHere         = "KnightProvokeOverHere";
         public const string KnightProvokeFocusOnMe        = "KnightProvokeFocusOnMe";
+
+        // Mercenary skill unlock (issue #471)
+        public const string MercLearnedSkill              = "MercLearnedSkill";
     }
 }
