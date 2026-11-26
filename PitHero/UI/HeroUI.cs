@@ -931,7 +931,8 @@ namespace PitHero.UI
                     if (designService != null && designService.HasDesign)
                     {
                         var design = designService.GetDesign();
-                        _heroCrystalTab.UpdateHeroPreview(design.SkinColor, design.HairColor, design.ShirtColor, design.HairstyleIndex, design.Gender, design.EyeColor);
+                        _heroCrystalTab.UpdateHeroPreview(design.SkinColor, design.HairColor, design.ShirtColor, design.HairstyleIndex, design.Gender, design.EyeColor,
+                            design.SkinTones, design.HairTones, design.ShirtTones);
                     }
                 }
 

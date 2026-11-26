@@ -454,6 +454,9 @@ namespace PitHero.Services
                 data.HairstyleIndex = design.HairstyleIndex;
                 data.ShirtColor = design.ShirtColor;
                 data.EyeColor = design.EyeColor;
+                data.SkinTones = design.SkinTones;
+                data.HairTones = design.HairTones;
+                data.ShirtTones = design.ShirtTones;
                 // The job the design was created with. A NewGame replay start blob is captured at the
                 // top of Begin, before the hero entity exists, so the live-hero block below cannot
                 // supply one: without this the blob carries no job and the replay rebuilds the hero
@@ -1211,7 +1214,10 @@ namespace PitHero.Services
                     data.ShirtColor,
                     data.JobName,
                     data.HeroGender,
-                    data.EyeColor
+                    data.EyeColor,
+                    data.SkinTones,
+                    data.HairTones,
+                    data.ShirtTones
                 );
                 designService.SetDesign(design);
             }

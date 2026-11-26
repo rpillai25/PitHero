@@ -332,6 +332,22 @@ namespace PitHero.UI
             };
             skin.Add("ph-default", sliderStyle);
 
+            // --- TextFieldStyle (issue #467: hero name, color picker hex / RGB) ---
+            // The pressed button art reads as a sunken field; the hover art marks keyboard focus.
+            var textFieldCursor = new PrimitiveDrawable(brownFontColor);
+            textFieldCursor.MinWidth = 1f;
+            var textFieldStyle = new TextFieldStyle
+            {
+                Font = defaultFont,
+                FontColor = brownFontColor,
+                Background = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4)),
+                FocusedBackground = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4)),
+                Cursor = textFieldCursor,
+                Selection = new PrimitiveDrawable(new Color(120, 170, 230)),
+                MessageFontColor = GrayedFontColor
+            };
+            skin.Add("ph-default", textFieldStyle);
+
             _cachedSkin = skin;
             return _cachedSkin;
         }

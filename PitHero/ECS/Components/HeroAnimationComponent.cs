@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
 using Nez.Textures;
+using RolePlayingFramework.Heroes;
 
 namespace PitHero.ECS.Components
 {
@@ -142,7 +143,22 @@ namespace PitHero.ECS.Components
         public Color ToneTint(int index, Color chosen)
         {
             var names = _tones[index];
-            return HeroToneProfiles.Tint(names.Gender, names.Layer, names.Tone, chosen);
+            return HeroToneProfiles.Tint(names.Gender, names.Layer, names.Tone, chosen, in _customTones);
+        }
+
+        private HeroCustomTones _customTones;
+        /// <summary>
+        /// The player's picked Shadow / Highlight colors for this part (issue #467). Unset (the default)
+        /// makes every tone from the chosen color by its profile.
+        /// </summary>
+        public HeroCustomTones CustomTones
+        {
+            get => _customTones;
+            set
+            {
+                _customTones = value;
+                _tintsValid = false;
+            }
         }
 
         /// <summary>First move-down frame of tone <paramref name="index"/> (static portraits), or null.</summary>

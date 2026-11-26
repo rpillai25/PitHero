@@ -301,41 +301,44 @@ CharacterSelector
 GoldIcon
 	21,484,19,21
 	0.5,0.5
-UIRadioButton_Selected
+UIColorPalette
 	41,484,18,18
 	0.5,0.5
-UIRadioButton_Unselected
+UIRadioButton_Selected
 	60,484,18,18
 	0.5,0.5
-UIRadioButton_Unselected_Highlight
+UIRadioButton_Unselected
 	79,484,18,18
 	0.5,0.5
+UIRadioButton_Unselected_Highlight
+	98,484,18,18
+	0.5,0.5
 UICheckbox_Checked
-	98,484,16,16
-	0.5,0.5
-UICheckbox_Unchecked
-	115,484,16,16
-	0.5,0.5
-UICheckbox_Unchecked_Highlight
 	256,486,16,16
 	0.5,0.5
-UIScrubberPause
+UICheckbox_Unchecked
 	366,379,16,16
 	0.5,0.5
-UIScrubberPlay
+UICheckbox_Unchecked_Highlight
 	333,412,16,16
 	0.5,0.5
-UIScrubberRewind
+UIScrubberPause
 	399,346,16,16
 	0.5,0.5
+UIScrubberPlay
+	432,321,16,16
+	0.5,0.5
+UIScrubberRewind
+	457,288,16,16
+	0.5,0.5
 UISliderKnob
-	231,493,14,14
+	117,484,14,14
 	0.5,0.5
 UISliderKnobDown
-	432,321,14,14
+	231,493,14,14
 	0.5,0.5
 UISliderKnobOver
-	457,288,14,14
+	273,486,14,14
 	0.5,0.5
 NinePatchButton_Down
 	481,150,12,12
@@ -362,7 +365,7 @@ UITextHudNinepatch
 	498,209,9,9
 	0.5,0.5
 SpeechBubbleTail
-	498,219,9,8
+	117,499,9,8
 	0.5,0.5
 HPUnit2x
 	506,0,2,8

@@ -1957,6 +1957,7 @@ namespace PitHero.ECS.Scenes
             // Body layer
             var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(HeroSpriteNames.BodyTint(gender, design.SkinColor), gender));
             heroBodyAnimator.SetLocalOffset(offset);
+            heroBodyAnimator.CustomTones = design.SkinTones; // female body is skin; the male body has no shadow tone
 
             // Armor layer (female only)
             var heroArmorAnimator = HeroArmorAnimationComponent.AddTo(hero, gender, offset);
@@ -1964,11 +1965,13 @@ namespace PitHero.ECS.Scenes
             // Shirt or Skirt layer
             var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(design.ShirtColor, gender));
             heroShirtAnimator.SetLocalOffset(offset);
+            heroShirtAnimator.CustomTones = design.ShirtTones;
 
             // Head layer
             var heroHeadAnimator = hero.AddComponent(new HeroHeadAnimationComponent(design.SkinColor, gender));
             heroHeadAnimator.SetLocalOffset(offset);
             heroHeadAnimator.ComponentColor = design.SkinColor;
+            heroHeadAnimator.CustomTones = design.SkinTones;
 
             // Eye outline and whites, or the closed slits while asleep
             var heroEyesBaseAnimator = hero.AddComponent(new HeroEyesBaseAnimationComponent(gender));
@@ -1981,6 +1984,7 @@ namespace PitHero.ECS.Scenes
             // Hair layer
             var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(design.HairColor, design.HairstyleIndex, gender));
             heroHairAnimator.SetLocalOffset(offset);
+            heroHairAnimator.CustomTones = design.HairTones;
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
             var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator(

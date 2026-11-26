@@ -29,9 +29,22 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Hero gender; drives which first-name pool the name was drawn from</summary>
         public readonly Gender Gender;
 
+        /// <summary>Player-picked skin Shadow (issue #467); unset follows the skin ramp</summary>
+        public readonly HeroCustomTones SkinTones;
+
+        /// <summary>Player-picked hair Shadow and Highlight (issue #467); unset follows the hair ramp</summary>
+        public readonly HeroCustomTones HairTones;
+
+        /// <summary>Player-picked shirt / skirt Shadow (issue #467); unset follows the clothing profile</summary>
+        public readonly HeroCustomTones ShirtTones;
+
         /// <summary>Creates a new HeroDesign with the specified appearance and job choices</summary>
-        public HeroDesign(string name, Color skinColor, Color hairColor, int hairstyleIndex, Color shirtColor, string jobName = "Knight", Gender gender = Gender.Male, Color? eyeColor = null)
+        public HeroDesign(string name, Color skinColor, Color hairColor, int hairstyleIndex, Color shirtColor, string jobName = "Knight", Gender gender = Gender.Male, Color? eyeColor = null,
+            HeroCustomTones skinTones = default, HeroCustomTones hairTones = default, HeroCustomTones shirtTones = default)
         {
+            SkinTones = skinTones;
+            HairTones = hairTones;
+            ShirtTones = shirtTones;
             Name = name;
             Gender = gender;
             SkinColor = skinColor;
