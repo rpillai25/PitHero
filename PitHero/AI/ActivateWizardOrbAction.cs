@@ -80,7 +80,7 @@ namespace PitHero.AI
 
             if (warp != null)
             {
-                BeginWarp(hero, warp);
+                BeginWarp(hero, warp, wizardOrbEntity.Transform.Position);
                 return false; // the warp runs over the next ticks (StepWarp)
             }
 
@@ -89,8 +89,8 @@ namespace PitHero.AI
             return true;
         }
 
-        /// <summary>Lifts the party and starts the pit drain.</summary>
-        private void BeginWarp(HeroComponent hero, PitWarpService warp)
+        /// <summary>Lifts the party and starts the pit drain. A ring of light spreads from <paramref name="orbPosition"/>.</summary>
+        private void BeginWarp(HeroComponent hero, PitWarpService warp, Vector2 orbPosition)
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             int oldRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
@@ -115,7 +115,7 @@ namespace PitHero.AI
             }
 
             int tier = pitWidthManager?.CurrentPitTier ?? 1;
-            warp.Begin(hero.Entity, merc1, merc2, oldRightEdge, newRightEdge, level * 7919 + tier * 104729);
+            warp.Begin(hero.Entity, merc1, merc2, oldRightEdge, newRightEdge, level * 7919 + tier * 104729, orbPosition);
             Debug.Log($"[ActivateWizardOrb] Warp started from pit level {level}");
         }
 

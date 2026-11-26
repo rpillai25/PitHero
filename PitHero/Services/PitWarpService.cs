@@ -63,6 +63,7 @@ namespace PitHero.Services
         private readonly Member[] _members = new Member[MaxMembers];
         private int _memberCount;
         private int _tick;
+        private int _ringTick = -1; // ticks since the orb was touched; -1 = no ring
         private bool _regenerated;
 
         /// <summary>True from <see cref="Begin"/> until <see cref="End"/>.</summary>
@@ -86,6 +87,19 @@ namespace PitHero.Services
         public int RegionWidth { get; private set; }
         public int RegionHeight { get; private set; }
 
+        /// <summary>Centre of the light ring that spreads from the touched orb (world pixels).</summary>
+        public int RingX { get; private set; }
+        public int RingY { get; private set; }
+
+        /// <summary>Radius of the light ring this tick (world pixels); grows to the pit width.</summary>
+        public float RingRadius { get; private set; }
+
+        /// <summary>Opacity of the light ring this tick; 0 when there is no ring.</summary>
+        public float RingAlpha { get; private set; }
+
+        /// <summary>Ticks the light ring lasts: it fades out while spreading and is gone at full size. Always shorter than the warp.</summary>
+        public const int RingTotalTicks = GameConfig.PitWarpRingExpandTicks;
+
         /// <summary>True on the tick the pit should be regenerated (fully drained, not yet regenerated).</summary>
         public bool RegenerationDue => IsActive && !_regenerated && _tick >= RegenerationTick;
 
@@ -99,13 +113,16 @@ namespace PitHero.Services
         /// so a pit that grows or shrinks is swallowed whole. <paramref name="seed"/> picks the spin
         /// directions and bob offsets.
         /// </summary>
-        public void Begin(Entity hero, Entity merc1, Entity merc2, int oldRightEdge, int newRightEdge, int seed)
+        public void Begin(Entity hero, Entity merc1, Entity merc2, int oldRightEdge, int newRightEdge, int seed, Vector2? orbPosition = null)
         {
             if (IsActive)
                 End();
 
             _tick = 0;
             _regenerated = false;
+            _ringTick = orbPosition.HasValue ? 0 : -1;
+            RingX = orbPosition.HasValue ? (int)orbPosition.Value.X : 0;
+            RingY = orbPosition.HasValue ? (int)orbPosition.Value.Y : 0;
             _memberCount = 0;
             AddMember(hero, seed);
             AddMember(merc1, seed);
@@ -136,6 +153,9 @@ namespace PitHero.Services
             bool held = !_regenerated && _tick >= RegenerationTick;
             if (!held && _tick < TotalTicks)
                 _tick++;
+            // The light ring runs on its own clock: it never holds with the swirl
+            if (_ringTick >= 0 && _ringTick < RingTotalTicks)
+                _ringTick++;
             Apply();
         }
 
@@ -202,6 +222,9 @@ namespace PitHero.Services
             Twist = 0f;
             Pull = 0f;
             Spin = 0f;
+            _ringTick = -1;
+            RingRadius = 0f;
+            RingAlpha = 0f;
 
             if (landing.HasValue && _regenerated)
                 Sound()?.PlaySoundAt(SoundEffectType.Land, landing.Value);
@@ -209,6 +232,33 @@ namespace PitHero.Services
         }
 
         // ───────────────────────────── choreography (pure functions of the tick) ─────────────────────────────
+
+        /// <summary>Fraction of the way out the light ring is <paramref name="ringTick"/> ticks after the touch (0..1, easing out).</summary>
+        public static float RingProgressAt(int ringTick)
+        {
+            if (ringTick <= 0)
+                return 0f;
+            float t = MathHelper.Clamp(ringTick / (float)GameConfig.PitWarpRingExpandTicks, 0f, 1f);
+            float inv = 1f - t;
+            return 1f - inv * inv * inv;
+        }
+
+        /// <summary>Light ring radius <paramref name="ringTick"/> ticks after the touch: eases out to <paramref name="maxRadius"/>.</summary>
+        public static float RingRadiusAt(int ringTick, float maxRadius) => maxRadius * RingProgressAt(ringTick);
+
+        /// <summary>
+        /// Light ring opacity <paramref name="ringTick"/> ticks after the touch: full until it has covered
+        /// <see cref="GameConfig.PitWarpRingFadeFrom"/> of the way, then fading as it keeps spreading, gone at full size.
+        /// </summary>
+        public static float RingAlphaAt(int ringTick)
+        {
+            if (ringTick < 0 || ringTick >= RingTotalTicks)
+                return 0f;
+            float p = RingProgressAt(ringTick);
+            if (p <= GameConfig.PitWarpRingFadeFrom)
+                return 1f;
+            return MathHelper.Clamp(1f - (p - GameConfig.PitWarpRingFadeFrom) / (1f - GameConfig.PitWarpRingFadeFrom), 0f, 1f);
+        }
 
         /// <summary>Swirl angle at the pit centre for a warp tick.</summary>
         public static float TwistAt(int tick)
@@ -363,6 +413,8 @@ namespace PitHero.Services
             Twist = TwistAt(_tick);
             Pull = PullAt(_tick);
             Spin = _tick * GameConfig.PitWarpAbyssSpinPerTick;
+            RingRadius = _ringTick >= 0 ? RingRadiusAt(_ringTick, RegionWidth) : 0f;
+            RingAlpha = _ringTick >= 0 ? RingAlphaAt(_ringTick) : 0f;
 
             float baseHeight = BaseHeightAt(_tick);
             float bobWeight = BobWeightAt(_tick);

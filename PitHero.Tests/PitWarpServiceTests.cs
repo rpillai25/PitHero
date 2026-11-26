@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.Services;
 using PitHero.Services.Replay.Frames;
@@ -105,6 +106,10 @@ namespace PitHero.Tests
                 PitWarpY = 96,
                 PitWarpWidth = 352,
                 PitWarpHeight = 224,
+                OrbRingX = 240,
+                OrbRingY = 200,
+                OrbRingRadius = 180.5f,
+                OrbRingAlpha = 0.6f,
             };
             var w = new FrameWriter(new byte[HudRecord.Size]);
             hud.Write(ref w);
@@ -116,6 +121,61 @@ namespace PitHero.Tests
             var changed = hud;
             changed.PitWarpPull = 0.5f;
             Assert.AreNotEqual(hud, changed, "a changed warp re-emits the record");
+            changed = hud;
+            changed.OrbRingRadius = 181f;
+            Assert.AreNotEqual(hud, changed, "a spreading ring re-emits the record");
+        }
+
+        [TestMethod]
+        public void OrbRing_FadesWhileSpreading_GoneAtThePitWidth_WithinTheWarp()
+        {
+            Assert.IsTrue(PitWarpService.RingTotalTicks < PitWarpService.RegenerationTick + GameConfig.PitWarpSwirlOutTicks,
+                "the ring is done well before the party lands");
+            Assert.AreEqual(0f, PitWarpService.RingRadiusAt(0, 500f));
+            Assert.AreEqual(500f, PitWarpService.RingRadiusAt(GameConfig.PitWarpRingExpandTicks, 500f), 1e-3f);
+
+            // Full brightness for the first half of the way out, then fading while it keeps moving
+            float previousAlpha = 2f, previousRadius = -1f;
+            bool sawFadingWhileMoving = false;
+            for (int t = 0; t <= PitWarpService.RingTotalTicks; t++)
+            {
+                float radius = PitWarpService.RingRadiusAt(t, 500f);
+                float alpha = PitWarpService.RingAlphaAt(t);
+                if (radius <= 250f)
+                    Assert.AreEqual(1f, alpha, $"bright until halfway out (tick {t})");
+                Assert.IsTrue(alpha <= previousAlpha, $"fades monotonically (tick {t})");
+                if (alpha > 0f && alpha < 1f && radius > previousRadius)
+                    sawFadingWhileMoving = true;
+                previousAlpha = alpha;
+                previousRadius = radius;
+            }
+            Assert.IsTrue(sawFadingWhileMoving);
+            Assert.AreEqual(0f, PitWarpService.RingAlphaAt(PitWarpService.RingTotalTicks), "gone once it reaches full size");
+
+            var warp = new PitWarpService();
+            warp.Begin(null, null, null, oldRightEdge: 12, newRightEdge: 14, seed: 1, orbPosition: new Vector2(208f, 176f));
+            Assert.AreEqual(208, warp.RingX);
+            Assert.AreEqual(176, warp.RingY);
+            for (int i = 0; i < GameConfig.PitWarpRingExpandTicks - 1; i++)
+                warp.Step();
+            Assert.IsTrue(warp.RingRadius > warp.RegionWidth * 0.99f, "max radius is the width of the pit");
+            Assert.IsTrue(warp.RingAlpha > 0f && warp.RingAlpha < 0.1f, "nearly faded as it arrives");
+            warp.Step();
+            Assert.AreEqual(0f, warp.RingAlpha);
+            Assert.IsTrue(warp.IsActive, "the swirl carries on after the ring is gone");
+            warp.End();
+
+            warp.Begin(null, null, null, oldRightEdge: 12, newRightEdge: 14, seed: 1);
+            warp.Step();
+            Assert.AreEqual(0f, warp.RingAlpha, "no orb, no ring");
+        }
+
+        [TestMethod]
+        public void OrbMotes_OnlyFromAShownOrbThatIsNotRed()
+        {
+            Assert.IsTrue(PitHero.ECS.Components.WizardOrbMotesComponent.ShouldEmit(true, Color.White), "uncovered blue orb");
+            Assert.IsFalse(PitHero.ECS.Components.WizardOrbMotesComponent.ShouldEmit(false, Color.White), "still under the fog");
+            Assert.IsFalse(PitHero.ECS.Components.WizardOrbMotesComponent.ShouldEmit(true, Color.Red), "boss alive, or already touched");
         }
     }
 }

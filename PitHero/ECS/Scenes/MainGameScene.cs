@@ -88,6 +88,7 @@ namespace PitHero.ECS.Scenes
         private Rendering.CloudOverlayController _cloudOverlay;
         private Rendering.PitWarpPostProcessor _pitWarpPost; // the wizard-orb warp pit swirl (issue #469)
         private Services.PitWarpService _pitWarp;
+        private Rendering.PitWarpRingRenderer _pitWarpRing; // the light ring from the touched orb (issue #469)
         private Entity _cloudOverlayEntity;
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
@@ -305,6 +306,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(_pitWarp);
             AddRenderer(new RenderLayerExcludeRenderer(0, GameConfig.RenderLayerPitWarpParty));
             AddRenderer(new Rendering.PitWarpPartyRenderer());
+            _pitWarpRing = AddRenderer(new Rendering.PitWarpRingRenderer()); // the orb's light ring, under the party
 
             AddSceneComponent<YSortManager>();
 
@@ -3877,12 +3879,19 @@ namespace PitHero.ECS.Scenes
                 ref readonly var warpHud = ref frameViewer.CurrentFrame.Hud;
                 _pitWarpPost?.SetState(warpHud.PitWarpTwist, warpHud.PitWarpPull, warpHud.PitWarpSpin,
                     warpHud.PitWarpX, warpHud.PitWarpY, warpHud.PitWarpWidth, warpHud.PitWarpHeight);
+                _pitWarpRing?.SetState(warpHud.OrbRingX, warpHud.OrbRingY, warpHud.OrbRingRadius, warpHud.OrbRingAlpha);
             }
             else if (_pitWarp != null && _pitWarp.IsActive)
+            {
                 _pitWarpPost?.SetState(_pitWarp.Twist, _pitWarp.Pull, _pitWarp.Spin,
                     _pitWarp.RegionX, _pitWarp.RegionY, _pitWarp.RegionWidth, _pitWarp.RegionHeight);
+                _pitWarpRing?.SetState(_pitWarp.RingX, _pitWarp.RingY, _pitWarp.RingRadius, _pitWarp.RingAlpha);
+            }
             else
+            {
                 _pitWarpPost?.SetState(0f, 0f, 0f, 0, 0, 0, 0);
+                _pitWarpRing?.SetState(0f, 0f, 0f, 0f);
+            }
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
             // are open so they never obscure the tiles being edited; polling covers every enter/exit
             // path (button toggle, outside-click dismiss, cross-UI mutual exclusion).

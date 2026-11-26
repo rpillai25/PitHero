@@ -37,6 +37,8 @@ namespace PitHero.Rendering
             public bool Emitting;
             /// <summary>Ticks simulated since the start (-1 before the first step).</summary>
             public int SimulatedTicks = -1;
+            /// <summary>Ticks of the effect's age a capped rebuild did not simulate; its age is SimulatedTicks + SkippedTicks.</summary>
+            public long SkippedTicks;
             public Vector2 Root;
             internal int TouchedFrame;
         }
@@ -112,12 +114,18 @@ namespace PitHero.Rendering
             fx.TouchedFrame = _frameStamp;
             fx.Root = new Vector2(op.X, op.Y);
 
-            int target = op.ElapsedTicks;
-            if (target > GameConfig.ReplayFrameViewParticleRebuildMaxTicks)
-                target = GameConfig.ReplayFrameViewParticleRebuildMaxTicks;
-            if (target < fx.SimulatedTicks || target > fx.SimulatedTicks + 1)
+            // One tick on from the last state is one step, however old the effect. Anything else is a rebuild,
+            // which simulates at most the cap: the ticks before that are skipped (a continuous effect such as
+            // the orb motes looks the same either way), and the effect then steps on from there.
+            long target = op.ElapsedTicks;
+            long reached = fx.SimulatedTicks + fx.SkippedTicks;
+            if (target < reached || target > reached + 1)
+            {
                 Reset(fx, op.EffectKey, op.Density, startTick, config);
-            while (fx.SimulatedTicks < target)
+                if (target > GameConfig.ReplayFrameViewParticleRebuildMaxTicks)
+                    fx.SkippedTicks = target - GameConfig.ReplayFrameViewParticleRebuildMaxTicks;
+            }
+            while (fx.SimulatedTicks + fx.SkippedTicks < target)
                 Step(fx);
             // The recording knows when emission stopped (an impact pauses the fireball's trail); the
             // rebuild does not, so the flag only ends emission from here on
@@ -147,6 +155,7 @@ namespace PitHero.Rendering
             fx.ElapsedSeconds = 0f;
             fx.Emitting = true;
             fx.SimulatedTicks = 0;
+            fx.SkippedTicks = 0;
         }
 
         private static void Release(Effect fx)

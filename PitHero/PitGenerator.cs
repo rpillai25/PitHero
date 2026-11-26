@@ -825,6 +825,8 @@ namespace PitHero
                             renderer.SetRenderLayer(GameConfig.RenderLayerActors);
                             // The orb only counts as "found" once its tile is unfogged — keep it hidden until then.
                             entity.AddComponent(new FogHideableComponent(renderer));
+                            // Blue motes rise out of the orb while it is uncovered and usable (issue #469)
+                            entity.AddComponent(new WizardOrbMotesComponent(renderer));
                         }
                         else
                         {

@@ -83,7 +83,11 @@ orb warp runs, `PitWarpService` (simulation, stepped by `ActivateWizardOrbAction
 `PitWarpPostProcessor` (`PitWarp.fx`) twists every pit tile (the outer wall ring and rim too, fading out softly just past it, over the wider of the old and new pit) into a drain and back, and is disabled (zero cost)
 otherwise. In a replay the swirl comes from the frame's `HudRecord` (`PitWarp*` fields) and a second
 `RecordedFrameRenderer` pass draws the recorded warp-layer sprites after post-processing. Editing `PitWarp.fx`
-requires recompiling `PitWarp.fxb` the same way.
+requires recompiling `PitWarp.fxb` the same way. When the orb is touched, `PitWarpRingRenderer` (order 49, after
+post, under the party, additive) draws a blue ring of light spreading from the orb to the pit's width, fading from halfway out (gone at full size),
+on its own clock in `PitWarpService` (`Ring*`; `HudRecord.OrbRing*` in replays). An uncovered orb that is not red
+gives off rising blue motes (`WizardOrbMotesComponent`, the continuous `OrbMotes` particle effect); turning red
+pauses them.
 
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
 `RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999),

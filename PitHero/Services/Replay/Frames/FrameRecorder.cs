@@ -821,6 +821,10 @@ namespace PitHero.Services.Replay.Frames
                 hud.PitWarpY = (short)_warp.RegionY;
                 hud.PitWarpWidth = (short)_warp.RegionWidth;
                 hud.PitWarpHeight = (short)_warp.RegionHeight;
+                hud.OrbRingX = (short)_warp.RingX;
+                hud.OrbRingY = (short)_warp.RingY;
+                hud.OrbRingRadius = _warp.RingRadius;
+                hud.OrbRingAlpha = _warp.RingAlpha;
             }
 
             // The monsters of the battle in progress, for the HUD strip beside the gold display

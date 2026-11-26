@@ -427,7 +427,10 @@ minutes, and nobody needs the party HUD while a rebuild runs.
 code at the fixed step from a `System.Random` seeded by (effect key, start tick); forward play is one
 step per tick, any other move rebuilds from the start, so a seek or a rewind shows the same picture.
 Approximate by design: a rebuilt effect spawns at the current root, and the Emitting flag only ends
-emission from the current tick on.
+emission from the current tick on. A rebuild simulates at most `ReplayFrameViewParticleRebuildMaxTicks`
+(the older ticks are skipped) and then steps on one tick per frame, so a continuous effect (the wizard
+orb's motes, #469) never stalls. The recorded age is u16: past 65535 it wraps back to the cap
+(`FrameWriter.EncodeParticleAge`, format v22) rather than sticking, which costs one rebuild per wrap.
 
 **Sounds:** the viewer plays the sound events the playhead passes during forward play at 1X and a 2X fast-forward
 (`ReplayFrameViewSoundMaxSpeedIndex`) through `SoundEffectManager.PlayRecorded` — the exact variant,
