@@ -49,13 +49,14 @@ namespace PitHero.UI
         private int _previewScale = 1;
         private bool _openedAtDoubleSize; // the preview opens at 2x by pressing the zoom toggle once
 
-        // Custom colors (issue #467): each tinted part's color row cycles its presets, then Custom
-        // (index == preset count). Custom keeps a picked Midtone plus picked Shadow / Highlight tones,
-        // remembered while the player cycles away and back.
+        // Custom colors (issue #467): the arrows cycle presets only. The palette button opens the color picker
+        // seeded from the current preset (or the current custom colors); once a picked color differs the row is
+        // Custom (_isCustom) and keeps a picked Midtone plus Shadow / Highlight tones until an arrow is pressed.
         private enum ColorPart { Skin = 0, Hair = 1, Shirt = 2 }
         private const int ColorPartCount = 3;
         private readonly Color[] _customMidtones = new Color[ColorPartCount];
         private readonly HeroCustomTones[] _customTones = new HeroCustomTones[ColorPartCount];
+        private readonly bool[] _isCustom = new bool[ColorPartCount];
         private readonly Label[] _colorLabels = new Label[ColorPartCount];
         private readonly HoverableImageButton[] _paletteButtons = new HoverableImageButton[ColorPartCount];
         private ColorPickerDialog _colorPicker;
@@ -198,6 +199,7 @@ namespace PitHero.UI
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
                 _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 _eyeColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceEyeColor), _currentEyeColorIndex + 1));
+                System.Array.Clear(_isCustom, 0, ColorPartCount); // a reroll lands on presets
                 RefreshColorRows();
                 RebuildPreviewAppearance();
                 RefreshJobInfoWindow();
@@ -406,8 +408,8 @@ namespace PitHero.UI
         // ── Color rows and custom colors (issue #467) ─────────────────────────────
 
         /// <summary>
-        /// Adds a color row: [palette button] [&lt;] label [&gt;]. The arrows cycle the presets and then
-        /// Custom; the palette button shows only while the row is on Custom.
+        /// Adds a color row: [palette button] [&lt;] label [&gt;]. The arrows cycle the presets only; the
+        /// palette button (always shown) opens the color picker, and a changed color makes the row Custom.
         /// </summary>
         private void AddColorRow(Table table, Skin skin, ColorPart part, float arrowWidth, float arrowHeight, float labelWidth)
         {
@@ -460,8 +462,8 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>True when the part's row is on its Custom option (the slot after the presets).</summary>
-        private bool IsCustom(ColorPart part) => GetColorIndex(part) == PresetCount(part);
+        /// <summary>True when the player picked a color for the part; the arrows put it back on a preset.</summary>
+        private bool IsCustom(ColorPart part) => _isCustom[(int)part];
 
         /// <summary>The part's chosen (Midtone) color: the preset, or the picked Midtone on Custom.</summary>
         private Color ChosenColor(ColorPart part)
@@ -516,19 +518,15 @@ namespace PitHero.UI
             return new HeroCustomTones(RampTone(part, HeroTone.Shadow, midtone), highlight);
         }
 
-        /// <summary>Steps a color row through its presets and Custom, seeding Custom from the color left behind.</summary>
+        /// <summary>
+        /// Steps a color row through its presets. A custom row steps from the preset its color started from
+        /// (">" to the next one, "&lt;" to the one before) and stops being custom.
+        /// </summary>
         private void CycleColor(ColorPart part, int step)
         {
-            int optionCount = PresetCount(part) + 1;
-            var previous = ChosenColor(part);
-            int next = (GetColorIndex(part) + step + optionCount) % optionCount;
-            SetColorIndex(part, next);
-            if (IsCustom(part) && !_customTones[(int)part].IsSet)
-            {
-                // First visit: start from the preset the player just left, shaded as the ramp would
-                _customMidtones[(int)part] = previous;
-                _customTones[(int)part] = RampTones(part, previous);
-            }
+            int count = PresetCount(part);
+            SetColorIndex(part, (GetColorIndex(part) + step + count) % count);
+            _isCustom[(int)part] = false;
             RefreshColorRow(part);
             RebuildPreviewAppearance();
         }
@@ -539,7 +537,7 @@ namespace PitHero.UI
                 RefreshColorRow((ColorPart)i);
         }
 
-        /// <summary>Sets a color row's text ("Hair Color 3" / "Hair Color Custom") and shows its palette button on Custom.</summary>
+        /// <summary>Sets a color row's text: "Hair Color 3" on a preset, "Hair Color Custom" once a color was picked.</summary>
         private void RefreshColorRow(ColorPart part)
         {
             var label = _colorLabels[(int)part];
@@ -560,19 +558,32 @@ namespace PitHero.UI
             }
             string text = _textService.DisplayText(TextType.UI, key);
             label.SetText(custom ? text : string.Format(text, GetColorIndex(part) + 1));
-            _paletteButtons[(int)part]?.SetVisible(custom);
         }
 
-        /// <summary>Opens the shared color picker on a part's Midtone (and Highlight / Shadow), previewing edits live.</summary>
+        /// <summary>
+        /// Opens the shared color picker on a part's Midtone (and Highlight / Shadow), previewing edits live.
+        /// On a preset it starts from that preset as the ramp shades it, and the row turns Custom only once a
+        /// color differs from that start; on Custom it continues from the picked colors. Cancel puts back
+        /// whichever it was.
+        /// </summary>
         private void OpenColorPicker(ColorPart part)
         {
-            if (_colorPicker != null || !IsCustom(part))
+            if (_colorPicker != null)
                 return;
 
             int p = (int)part;
+            bool startedCustom = _isCustom[p];
+            if (!startedCustom)
+            {
+                var preset = ChosenColor(part);
+                _customMidtones[p] = preset;
+                _customTones[p] = RampTones(part, preset);
+            }
+
             var tones = PickerTones(part);
             var custom = _customTones[p];
             var pickerTones = new ColorPickerTone[tones.Length];
+            var startColors = new Color[tones.Length];
             int baseIndex = 0;
             for (int i = 0; i < tones.Length; i++)
             {
@@ -585,6 +596,7 @@ namespace PitHero.UI
                     default: color = _customMidtones[p]; key = UITextKey.ColorPickerMidtone; baseIndex = i; break;
                 }
                 pickerTones[i] = new ColorPickerTone(_textService.DisplayText(TextType.UI, key), color);
+                startColors[i] = color;
             }
 
             string titleKey;
@@ -598,8 +610,8 @@ namespace PitHero.UI
             _colorPicker = new ColorPickerDialog(
                 _textService.DisplayText(TextType.UI, titleKey), _skin, pickerTones, baseIndex,
                 (midtone, index) => RampTone(part, tones[index], midtone),
-                colors => { StoreCustomColors(part, tones, colors); ApplyPreviewColors(); },
-                colors => { StoreCustomColors(part, tones, colors); CloseColorPicker(); },
+                colors => { StoreCustomColors(part, tones, colors, startedCustom, startColors); ApplyPreviewColors(); },
+                colors => { StoreCustomColors(part, tones, colors, startedCustom, startColors); CloseColorPicker(); },
                 CloseColorPicker);
             _colorPicker.Show(_stage);
             PlaceColorPickerBesidePreview();
@@ -627,10 +639,21 @@ namespace PitHero.UI
             ApplyPreviewColors();
         }
 
-        // Copies the picker's colors (in PickerTones order) into the part's custom Midtone and tones
-        private void StoreCustomColors(ColorPart part, HeroTone[] tones, Color[] colors)
+        /// <summary>
+        /// Copies the picker's colors (in PickerTones order) into the part's custom Midtone and tones. The row is
+        /// Custom when it already was, or when any color now differs from where the picker started; the picker
+        /// reporting its starting colors back (Cancel) therefore restores a preset row.
+        /// </summary>
+        private void StoreCustomColors(ColorPart part, HeroTone[] tones, Color[] colors, bool startedCustom, Color[] startColors)
         {
             int p = (int)part;
+            bool changed = false;
+            for (int i = 0; i < colors.Length && i < startColors.Length; i++)
+                changed |= colors[i] != startColors[i];
+            bool wasCustom = _isCustom[p];
+            _isCustom[p] = startedCustom || changed;
+            if (_isCustom[p] != wasCustom)
+                RefreshColorRow(part);
             var shadow = _customTones[p].Shadow;
             var highlight = _customTones[p].Highlight;
             for (int i = 0; i < tones.Length && i < colors.Length; i++)
