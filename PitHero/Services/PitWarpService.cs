@@ -113,10 +113,12 @@ namespace PitHero.Services
 
             int rightEdge = oldRightEdge > newRightEdge ? oldRightEdge : newRightEdge;
             int ts = GameConfig.TileSize;
-            RegionX = GameConfig.PitRectX * ts;
-            RegionY = GameConfig.PitRectY * ts;
-            RegionWidth = (rightEdge + 1) * ts - RegionX;   // the whole pit rect, walls and rim included
-            RegionHeight = (GameConfig.PitRectY + GameConfig.PitRectHeight) * ts - RegionY;
+            // Every pit tile: the outer wall ring sits one tile outside PitRect on the left, top and bottom
+            // (column PitRectX-1, rows PitRectY-1 and PitRectY+PitRectHeight); the right edge column is rightEdge.
+            RegionX = (GameConfig.PitRectX - 1) * ts;
+            RegionY = (GameConfig.PitRectY - 1) * ts;
+            RegionWidth = (rightEdge + 1) * ts - RegionX;
+            RegionHeight = (GameConfig.PitRectY + GameConfig.PitRectHeight + 1) * ts - RegionY;
 
             IsActive = true;
             Apply();

@@ -556,6 +556,7 @@ namespace PitHero
         public const float PitWarpDrainStart = 0.15f;    // swirl-in progress at which the pit starts shrinking into the drain
         public const float PitWarpDrainFull = 0.9f;      // swirl-in progress at which the pit is fully drained (it is regenerated behind the abyss)
         public const float PitWarpAbyssSpinPerTick = 0.12f; // radians the abyss spiral arms turn per tick
+        public const float PitWarpEdgeFeatherPx = 20f;   // the swirl fades out over this many world pixels beyond the pit's outer edge
         public static readonly Microsoft.Xna.Framework.Color PitWarpAbyssColor = new Microsoft.Xna.Framework.Color(46, 22, 72);
 
         // Map "center" (MUST be outside pit)

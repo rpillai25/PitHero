@@ -80,7 +80,7 @@ switch it off. Editing `CloudOverlay.fx` requires recompiling `CloudOverlay.fxb`
 `RenderLayerExcludeRenderer(0, RenderLayerPitWarpParty)` instead of the auto-added `DefaultRenderer`. While the
 orb warp runs, `PitWarpService` (simulation, stepped by `ActivateWizardOrbAction`) moves the party composites to
 `RenderLayerPitWarpParty` and drives their float, bob and spin through `HeroJumpComponent` render offsets;
-`PitWarpPostProcessor` (`PitWarp.fx`) twists every pit tile (walls and rim too, over the wider of the old and new pit) into a drain and back, and is disabled (zero cost)
+`PitWarpPostProcessor` (`PitWarp.fx`) twists every pit tile (the outer wall ring and rim too, fading out softly just past it, over the wider of the old and new pit) into a drain and back, and is disabled (zero cost)
 otherwise. In a replay the swirl comes from the frame's `HudRecord` (`PitWarp*` fields) and a second
 `RecordedFrameRenderer` pass draws the recorded warp-layer sprites after post-processing. Editing `PitWarp.fx`
 requires recompiling `PitWarp.fxb` the same way.

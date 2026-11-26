@@ -51,10 +51,10 @@ namespace PitHero.Tests
             var warp = new PitWarpService();
             warp.Begin(null, null, null, oldRightEdge: 16, newRightEdge: 12, seed: 3);
             int ts = GameConfig.TileSize;
-            Assert.AreEqual(GameConfig.PitRectX * ts, warp.RegionX, "outer wall column included");
-            Assert.AreEqual(GameConfig.PitRectY * ts, warp.RegionY, "outer wall row included");
+            Assert.AreEqual((GameConfig.PitRectX - 1) * ts, warp.RegionX, "outer left wall column included");
+            Assert.AreEqual((GameConfig.PitRectY - 1) * ts, warp.RegionY, "outer top wall row included");
             Assert.AreEqual((16 + 1) * ts, warp.RegionX + warp.RegionWidth, "a shrinking pit still swirls the old, wider pit through its right edge column");
-            Assert.AreEqual((GameConfig.PitRectY + GameConfig.PitRectHeight) * ts, warp.RegionY + warp.RegionHeight);
+            Assert.AreEqual((GameConfig.PitRectY + GameConfig.PitRectHeight + 1) * ts, warp.RegionY + warp.RegionHeight, "outer bottom wall row included");
 
             warp.End();
             warp.Begin(null, null, null, oldRightEdge: 12, newRightEdge: 14, seed: 3);

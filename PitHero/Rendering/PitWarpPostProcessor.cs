@@ -69,7 +69,11 @@ namespace PitHero.Rendering
                 (topLeft.Y + bottomRight.Y) * 0.5f / h,
                 (bottomRight.X - topLeft.X) * 0.5f / w,
                 (bottomRight.Y - topLeft.Y) * 0.5f / h);
-            _effect.Set(region, _twist, _pull, _spin);
+            // The fade band beyond the edge, in normalized region units (world-space, so camera zoom cancels out)
+            var feather = new Vector2(
+                GameConfig.PitWarpEdgeFeatherPx / (_regionWidth * 0.5f),
+                GameConfig.PitWarpEdgeFeatherPx / (_regionHeight * 0.5f));
+            _effect.Set(region, feather, _twist, _pull, _spin);
             DrawFullscreenQuad(source, destination, _effect);
         }
 

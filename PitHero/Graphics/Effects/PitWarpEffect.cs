@@ -14,6 +14,7 @@ namespace PitHero.Rendering
         private static byte[] _shaderBytes;
 
         private readonly EffectParameter _regionParam;
+        private readonly EffectParameter _featherParam;
         private readonly EffectParameter _twistParam;
         private readonly EffectParameter _pullParam;
         private readonly EffectParameter _spinParam;
@@ -22,6 +23,7 @@ namespace PitHero.Rendering
         public PitWarpEffect() : base(Core.GraphicsDevice, _shaderBytes ??= LoadShaderBytes())
         {
             _regionParam = Parameters["Region"];
+            _featherParam = Parameters["Feather"];
             _twistParam = Parameters["Twist"];
             _pullParam = Parameters["Pull"];
             _spinParam = Parameters["Spin"];
@@ -30,9 +32,11 @@ namespace PitHero.Rendering
         }
 
         /// <summary>Sets the swirl parameters for this frame. Region is (centre u, centre v, half width, half height) in render-target UV.</summary>
-        public void Set(Vector4 region, float twist, float pull, float spin)
+        /// Feather is the soft fade band beyond the region's edge, in normalized region units per axis.
+        public void Set(Vector4 region, Vector2 feather, float twist, float pull, float spin)
         {
             _regionParam.SetValue(region);
+            _featherParam.SetValue(feather);
             _twistParam.SetValue(twist);
             _pullParam.SetValue(pull);
             _spinParam.SetValue(spin);
