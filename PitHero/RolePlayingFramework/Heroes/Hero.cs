@@ -63,6 +63,19 @@ namespace RolePlayingFramework.Heroes
         private readonly Dictionary<string, ISkill> _learnedSkills;
         public IReadOnlyDictionary<string, ISkill> LearnedSkills => _learnedSkills;
 
+        /// <summary>Number of the hero's job (class) skills learned; synergy skills are not counted (issue #471).</summary>
+        public int ClassSkillCount
+        {
+            get
+            {
+                int count = 0;
+                var skills = Job.Skills;
+                for (int i = 0; i < skills.Count; i++)
+                    if (_learnedSkills.ContainsKey(skills[i].Id)) count++;
+                return count;
+            }
+        }
+
         // Additional equip permissions from passives
         private readonly HashSet<Equipment.ItemKind> _extraEquipPermissions = new HashSet<Equipment.ItemKind>();
 

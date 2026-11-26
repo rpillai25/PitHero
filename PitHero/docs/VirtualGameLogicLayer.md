@@ -52,9 +52,12 @@ below, traversals show `healing=0`, understate survivability, and misstate diffi
    var hero = sim.Hero.LinkedHero;
    for (int i = 0; i < hero.Job.Skills.Count; i++) hero.TryPurchaseSkill(hero.Job.Skills[i]);
    ```
-2. **Mercenary skills** — call `merc.LearnAllJobSkills()` on any manually-constructed
-   `Mercenary` (live `MercenaryManager` does this on every tavern spawn).
-   Mercs hired via `TryHireRandomMercenary()` already have their skills.
+2. **Mercenary skills** — mercenaries unlock job skills one at a time to match the
+   hero's learned class skills (actives first, capped at 4; issue #471). For a fully
+   kitted merc call `merc.LearnAllJobSkills()` (or `UnlockJobSkillsUpTo(n)` to mirror a
+   hero with n class skills) on any manually-constructed `Mercenary`. Mercs hired via
+   `TryHireRandomMercenary()` unlock to the hero's count at hire time, so buy the hero's
+   skills first.
 3. **Potions** — stock `sim.Bag` (a live new game grants HP Potions).
 4. **Hero level** — `BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel)` gives the
    expected level for a pit; stats scale with level automatically via
@@ -144,7 +147,7 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
   unaffordable (live `InnExhausted` semantics).
 - **`TryHireRandomMercenary()`** mirrors `MercenaryManager.SpawnMercenary` + hire:
   weighted level distribution around the hero's level, random job from the six primary
-  jobs, `StatBlock(4, 3, 5, 1)`, `LearnAllJobSkills()`, cost via
+  jobs, `StatBlock(4, 3, 5, 1)`, job skills unlocked to the hero's class-skill count (`UnlockJobSkillsUpTo`, #471), cost via
   `BalanceConfig.CalculateMercenaryHireCost`, max 2 hired. Rolls use seeded `Nez.Random`.
   Names are deterministic (`"Merc1"`, `"Merc2"`, …).
 

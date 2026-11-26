@@ -46,6 +46,8 @@ namespace PitHero.Services
         private int _nextSpawnId; // Global spawn ID counter
         private bool _isRemovingMercenary; // Flag to prevent overlapping removal/spawn
         private bool _hiringBlocked; // Flag to prevent hiring during hero death/respawn
+        private HeroComponent _cachedHero; // hero the skill-unlock sync reads; re-found when its entity is destroyed
+        private int _lastSkillUnlockTarget = -1; // last hero-driven merc skill target applied (issue #471)
 
         public MercenaryManager()
         {
@@ -73,6 +75,9 @@ namespace PitHero.Services
         public void Update()
         {
             if (_scene == null) return;
+
+            // Runs before the pause check so a skill bought while paused shows on the mercs at once
+            SyncMercenarySkillUnlocks();
 
             // Check if game is paused
             var pauseService = Core.Services.GetService<PauseService>();
@@ -112,6 +117,23 @@ namespace PitHero.Services
                         GameConfig.MercenarySpawnIntervalMaxSeconds);
                 }
             }
+        }
+
+        /// <summary>
+        /// Keeps every mercenary (tavern and hired) at the hero's class-skill count, capped at four (issue #471).
+        /// Unlocks only ever grow: a lower target (a new hero after a job change) leaves learned skills in place.
+        /// </summary>
+        private void SyncMercenarySkillUnlocks()
+        {
+            if (_cachedHero == null || _cachedHero.Entity == null || _cachedHero.Entity.IsDestroyed)
+                _cachedHero = _scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+
+            int target = Mercenary.SkillUnlockTargetFor(_cachedHero?.LinkedHero);
+            if (target == _lastSkillUnlockTarget) return;
+            _lastSkillUnlockTarget = target;
+
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+                _mercenaryEntities[i].GetComponent<MercenaryComponent>()?.LinkedMercenary?.UnlockJobSkillsUpTo(target);
         }
 
         /// <summary>
@@ -221,7 +243,7 @@ namespace PitHero.Services
 
             // Create mercenary
             var mercenary = new Mercenary(name, job, mercLevel, baseStats, gender);
-            mercenary.LearnAllJobSkills();
+            mercenary.UnlockJobSkillsUpTo(Mercenary.SkillUnlockTargetFor(heroComponent?.LinkedHero));
 
             Analytics.AnalyticsService.LogMercArrived(mercenary, BalanceConfig.CalculateMercenaryHireCost(mercLevel));
 
@@ -1116,7 +1138,12 @@ namespace PitHero.Services
                 saved.BaseStrength, saved.BaseAgility,
                 saved.BaseVitality, saved.BaseMagic);
             var mercenary = new Mercenary(saved.Name, job, saved.Level, baseStats, saved.Gender);
-            mercenary.LearnAllJobSkills();
+            // Saves before v47 predate sequential unlocks (issue #471): those mercs had every skill
+            if (saved.UnlockedSkillCount < 0)
+                mercenary.LearnAllJobSkills();
+            else
+                mercenary.UnlockJobSkillsUpTo(saved.UnlockedSkillCount);
+            _lastSkillUnlockTarget = -1; // next Update tops the loaded merc up to the hero's current count
 
             // Restore partial experience toward next level (set directly to avoid re-triggering level-ups)
             if (saved.Experience > 0)

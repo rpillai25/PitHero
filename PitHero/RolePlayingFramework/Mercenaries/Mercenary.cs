@@ -469,6 +469,61 @@ namespace RolePlayingFramework.Mercenaries
             ApplyPassiveSkills();
         }
 
+        /// <summary>Most job skills the hero's progress can unlock for a mercenary (issue #471).</summary>
+        public const int MaxSkillUnlocks = 4;
+
+        /// <summary>
+        /// How many job skills a mercenary may have unlocked given the hero's progress (issue #471):
+        /// the hero's learned class skills (synergy skills don't count), capped at <see cref="MaxSkillUnlocks"/>.
+        /// </summary>
+        public static int SkillUnlockTargetFor(Heroes.Hero hero)
+        {
+            if (hero == null) return 0;
+            int count = hero.ClassSkillCount;
+            return count > MaxSkillUnlocks ? MaxSkillUnlocks : count;
+        }
+
+        /// <summary>Number of this mercenary's own job skills it has learned (issue #471).</summary>
+        public int UnlockedJobSkillCount
+        {
+            get
+            {
+                int count = 0;
+                var skills = Job.Skills;
+                for (int i = 0; i < skills.Count; i++)
+                    if (_learnedSkills.ContainsKey(skills[i].Id)) count++;
+                return count;
+            }
+        }
+
+        /// <summary>
+        /// Unlocks job skills in sequence until <paramref name="targetCount"/> are learned (issue #471):
+        /// actives first in job order, then passives. Never forgets a skill, so a lower target is a no-op.
+        /// Returns the number of skills newly learned.
+        /// </summary>
+        public int UnlockJobSkillsUpTo(int targetCount)
+        {
+            int missing = targetCount - UnlockedJobSkillCount;
+            if (missing <= 0) return 0;
+
+            int learned = 0;
+            var skills = Job.Skills;
+            for (int pass = 0; pass < 2 && learned < missing; pass++)
+            {
+                var kind = pass == 0 ? SkillKind.Active : SkillKind.Passive;
+                for (int i = 0; i < skills.Count && learned < missing; i++)
+                {
+                    var skill = skills[i];
+                    if (skill.Kind != kind || _learnedSkills.ContainsKey(skill.Id)) continue;
+                    _learnedSkills[skill.Id] = skill;
+                    learned++;
+                }
+            }
+            if (learned > 0)
+                ApplyPassiveSkills();
+            return learned;
+        }
+
         /// <summary>Per-turn passive HP/MP regen (called at the end of each battle round), including HPRegen/MPRegen buffs.</summary>
         public void TickRegeneration()
         {

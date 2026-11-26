@@ -217,7 +217,7 @@ namespace PitHero.VirtualGame
         ///   <item>Otherwise: rolls mercenary level via the same weighted distribution
         ///   as <c>MercenaryManager.DetermineMercenaryLevel</c> and job via the same
         ///   six-job pool; creates and returns the <see cref="Mercenary"/> with
-        ///   <see cref="Mercenary.LearnAllJobSkills"/> applied.</item>
+        ///   job skills unlocked to the hero's class-skill count (<see cref="Mercenary.UnlockJobSkillsUpTo"/>, #471).</item>
         /// </list>
         /// All RNG uses <c>Nez.Random</c> (seeded per-run by the constructor) so results
         /// are reproducible.
@@ -246,7 +246,8 @@ namespace PitHero.VirtualGame
             IJob   job    = VirtualMercenaryLevelRoller.GetRandomJob();
             var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
             var mercenary = new Mercenary(name, job, mercLevel, baseStats);
-            mercenary.LearnAllJobSkills();
+            // Mirrors MercenaryManager.SpawnMercenary: skills unlock to the hero's class-skill count (#471)
+            mercenary.UnlockJobSkillsUpTo(Mercenary.SkillUnlockTargetFor(_hero.LinkedHero));
 
             _mercenaries.Add(mercenary);
             return mercenary;

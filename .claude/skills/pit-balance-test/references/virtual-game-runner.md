@@ -36,7 +36,7 @@ Critical test classes for balance:
 The simulation is invoked from C# test code. **Read the Quick Start + gotchas in
 `PitHero/docs/VirtualGameLogicLayer.md` first** — in particular the "fully-equipped party"
 requirements (hero needs a JP-loaded `HeroCrystal` + purchased skills; manually-built
-mercs need `LearnAllJobSkills()`; stock potions in `sim.Bag`) or results will show
+mercs need `LearnAllJobSkills()`; hired mercs only match the hero's learned class-skill count, #471; stock potions in `sim.Bag`) or results will show
 `healing=0` and understate survivability.
 
 Canonical single-level pattern (real combat via the shared `BattleEngine`, issue #296):

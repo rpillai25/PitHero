@@ -445,9 +445,9 @@ namespace PitHero.Tests
             Assert.AreEqual(goldBefore - cost1, sim.Gold,
                 "Gold must be reduced by the calculated hire cost");
 
-            // Hired merc should have job skills (LearnAllJobSkills was called)
-            Assert.IsTrue(merc1.LearnedSkills.Count > 0,
-                "Hired merc must know its job skills");
+            // Hired merc unlocks job skills to the hero's class-skill count (#471): this hero has no crystal
+            Assert.AreEqual(0, merc1.LearnedSkills.Count,
+                "A hero with no class skills unlocks none for the merc");
 
             // Second hire
             var merc2 = sim.TryHireRandomMercenary();
