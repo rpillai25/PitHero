@@ -69,11 +69,28 @@ namespace PitHero.Rendering
         private int _itemCount;
         private readonly StringBuilder _text = new StringBuilder(256);
 
-        public RecordedFrameRenderer(ReplayFrameViewer viewer) : base(Order, null)
+        /// <summary>
+        /// True for the after-post-processing pass that draws only the party floating through the wizard-orb
+        /// warp (layer <see cref="GameConfig.RenderLayerPitWarpParty"/>, issue #469), so the recorded pit swirl
+        /// never twists it. The world pass skips that layer.
+        /// </summary>
+        private readonly bool _warpPartyPass;
+
+        public RecordedFrameRenderer(ReplayFrameViewer viewer) : this(viewer, warpPartyPass: false)
+        {
+        }
+
+        /// <summary>The world pass, or (<paramref name="warpPartyPass"/>) the warp party pass drawn after the post-processors.</summary>
+        public RecordedFrameRenderer(ReplayFrameViewer viewer, bool warpPartyPass) : base(warpPartyPass ? PitWarpPartyRenderer.Order : Order, null)
         {
             _viewer = viewer ?? throw new ArgumentNullException(nameof(viewer));
+            _warpPartyPass = warpPartyPass;
+            WantsToRenderAfterPostProcessors = warpPartyPass;
             ShouldDebugRender = false;
         }
+
+        /// <summary>True when this pass draws sprites on <paramref name="renderLayer"/>.</summary>
+        private bool OwnsLayer(int renderLayer) => (renderLayer == GameConfig.RenderLayerPitWarpParty) == _warpPartyPass;
 
         public override void Render(Scene scene)
         {
@@ -84,19 +101,28 @@ namespace PitHero.Rendering
             BeginRender(cam);
 
             _itemCount = 0;
-            if (tiles != null && tiles.IsBound)
-            {
-                AddTile(GameConfig.RenderLayerBase, TileBase, graded != null);
-                AddTile(GameConfig.RenderLayerDetail, TileDetail, graded != null);
-                AddTile(GameConfig.RenderLayerFogOfWar, TileFog, false);
-                AddTile(GameConfig.RenderLayerTop, TileTop, graded != null);
-            }
-            AddLiveWorldRenderables(scene, cam, graded);
             var particles = _viewer.Particles;
-            particles.BeginFrame();
-            if (frame != null)
-                AddFrameOps(frame, cam);
-            particles.EndFrame(); // emitters absent from this frame are gone
+            if (_warpPartyPass)
+            {
+                // Sprites only: tiles, live renderables, overlays and particles belong to the world pass
+                if (frame != null)
+                    AddFrameOps(frame, cam);
+            }
+            else
+            {
+                if (tiles != null && tiles.IsBound)
+                {
+                    AddTile(GameConfig.RenderLayerBase, TileBase, graded != null);
+                    AddTile(GameConfig.RenderLayerDetail, TileDetail, graded != null);
+                    AddTile(GameConfig.RenderLayerFogOfWar, TileFog, false);
+                    AddTile(GameConfig.RenderLayerTop, TileTop, graded != null);
+                }
+                AddLiveWorldRenderables(scene, cam, graded);
+                particles.BeginFrame();
+                if (frame != null)
+                    AddFrameOps(frame, cam);
+                particles.EndFrame(); // emitters absent from this frame are gone
+            }
 
             Array.Sort(_items, 0, _itemCount, Comparer);
 
@@ -216,6 +242,8 @@ namespace PitHero.Rendering
                             r.ReadSprite(out var op);
                             if ((op.Flags & FrameOpFlags.ScreenSpace) != 0)
                                 break;
+                            if (!OwnsLayer(op.RenderLayer))
+                                break;
                             if (op.X < left || op.X > right || op.Y < top || op.Y > bottom)
                                 break;
                             ref var item = ref NewItem();
@@ -238,6 +266,8 @@ namespace PitHero.Rendering
                             }
                             if ((flags & FrameOpFlags.ScreenSpace) != 0)
                                 break;
+                            if (!OwnsLayer(op.RenderLayer))
+                                break;
                             if (op.X < left || op.X > right || op.Y < top || op.Y > bottom)
                                 break;
                             ref var item = ref NewItem();
@@ -252,6 +282,8 @@ namespace PitHero.Rendering
                         case FrameOpCode.Text:
                         {
                             r.ReadText(out var op);
+                            if (_warpPartyPass)
+                                break;
                             if (RecordedFrameScreenRenderer.IsScreenPassText(in op))
                                 break;
                             AddOverlay(at, end);
@@ -260,6 +292,8 @@ namespace PitHero.Rendering
                         case FrameOpCode.Rect:
                         {
                             r.ReadRect(out var op);
+                            if (_warpPartyPass)
+                                break;
                             if ((op.Flags & FrameOpFlags.ScreenSpace) != 0)
                                 break;
                             AddOverlay(at, end);
@@ -271,6 +305,8 @@ namespace PitHero.Rendering
                         case FrameOpCode.Line:
                         {
                             r.ReadLine(out var op);
+                            if (!OwnsLayer(op.RenderLayer))
+                                break;
                             int minX = op.X1 < op.X2 ? op.X1 : op.X2, maxX = op.X1 < op.X2 ? op.X2 : op.X1;
                             int minY = op.Y1 < op.Y2 ? op.Y1 : op.Y2, maxY = op.Y1 < op.Y2 ? op.Y2 : op.Y1;
                             if (maxX < left || minX > right || maxY < top || minY > bottom)
@@ -287,6 +323,8 @@ namespace PitHero.Rendering
                         case FrameOpCode.RotSprite:
                         {
                             r.ReadRotSprite(out var op);
+                            if (!OwnsLayer(op.RenderLayer))
+                                break;
                             if (op.X < left || op.X > right || op.Y < top || op.Y > bottom)
                                 break;
                             ref var item = ref NewItem();
@@ -301,6 +339,8 @@ namespace PitHero.Rendering
                         case FrameOpCode.Particle:
                         {
                             r.ReadParticle(out var op);
+                            if (_warpPartyPass)
+                                break;
                             if (op.X < left || op.X > right || op.Y < top || op.Y > bottom)
                                 break;
                             var effect = _viewer.Particles.Touch(entity.Id, in op, frame.Tick);

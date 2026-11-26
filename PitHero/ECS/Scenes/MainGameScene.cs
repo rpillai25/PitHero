@@ -86,6 +86,8 @@ namespace PitHero.ECS.Scenes
         private AutoSaveIndicator _autoSaveIndicator; // SaveIcon shown in the lower-right corner while an autosave writes (issue #409)
         private Rendering.ColorGradingController _colorGrading;
         private Rendering.CloudOverlayController _cloudOverlay;
+        private Rendering.PitWarpPostProcessor _pitWarpPost; // the wizard-orb warp pit swirl (issue #469)
+        private Services.PitWarpService _pitWarp;
         private Entity _cloudOverlayEntity;
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
@@ -296,6 +298,14 @@ namespace PitHero.ECS.Scenes
 
             // The DigBot artifact's robot (issue #452): spawned and removed from sim state each step
             AddSceneComponent<DigBotSpawner>();
+            // The wizard-orb warp (issue #469): sim-side choreography, plus the world pass that leaves the
+            // floating party out (it is drawn after the pit swirl post-processor by PitWarpPartyRenderer).
+            // The explicit world renderer replaces the DefaultRenderer Scene.Begin would otherwise add.
+            _pitWarp = new Services.PitWarpService();
+            Core.Services.AddService(_pitWarp);
+            AddRenderer(new RenderLayerExcludeRenderer(0, GameConfig.RenderLayerPitWarpParty));
+            AddRenderer(new Rendering.PitWarpPartyRenderer());
+
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
@@ -314,6 +324,8 @@ namespace PitHero.ECS.Scenes
             // Final partial census report while the map service is still registered (issue #425 spike)
             if (GameConfig.ReplayFrameCensus)
                 Services.Replay.Frames.ReplayFrameCensus.Detach();
+            Core.Services.RemoveService(typeof(Services.PitWarpService));
+            _pitWarp = null;
             Core.Services.RemoveService(typeof(Rendering.ColorGradingController));
             _colorGrading?.Dispose();
             _colorGrading = null;
@@ -1523,6 +1535,9 @@ namespace PitHero.ECS.Scenes
             detailLayerRenderer.SetMaterial(_colorGrading.Material);
             topLayerRenderer.SetMaterial(_colorGrading.Material);
             _frameRecorder?.SetGradedMaterial(_colorGrading.Material); // graded sprites are flagged for the replay frame viewer
+
+            // The pit swirl of the wizard-orb warp (issue #469); disabled until a warp shows
+            _pitWarpPost ??= AddPostProcessor(new Rendering.PitWarpPostProcessor());
 
             SpawnTreeBands();
 
@@ -3486,6 +3501,9 @@ namespace PitHero.ECS.Scenes
                 return false;
             if (_heroPromotionService != null && _heroPromotionService.IsGrantingCrystal)
                 return false;
+            // Mid-warp the party is aloft and the pit half-drained (issue #469)
+            if (_pitWarp != null && _pitWarp.IsActive)
+                return false;
 
             var heroComp = FindEntity("hero")?.GetComponent<HeroComponent>();
             if (heroComp?.LinkedHero == null)
@@ -3853,6 +3871,18 @@ namespace PitHero.ECS.Scenes
                 _cloudOverlay?.Update(frameViewer.Cursor.FrameTick / 60f, frameViewer.CurrentFrame.Hud.InGameSeconds);
             else
                 _cloudOverlay?.Update();
+            // The pit warp swirl follows the record while a recorded frame is on screen, the live warp otherwise
+            if (recordedHud && frameViewer.CurrentFrame != null)
+            {
+                ref readonly var warpHud = ref frameViewer.CurrentFrame.Hud;
+                _pitWarpPost?.SetState(warpHud.PitWarpTwist, warpHud.PitWarpPull, warpHud.PitWarpSpin,
+                    warpHud.PitWarpX, warpHud.PitWarpY, warpHud.PitWarpWidth, warpHud.PitWarpHeight);
+            }
+            else if (_pitWarp != null && _pitWarp.IsActive)
+                _pitWarpPost?.SetState(_pitWarp.Twist, _pitWarp.Pull, _pitWarp.Spin,
+                    _pitWarp.RegionX, _pitWarp.RegionY, _pitWarp.RegionWidth, _pitWarp.RegionHeight);
+            else
+                _pitWarpPost?.SetState(0f, 0f, 0f, 0, 0, 0, 0);
             // Hide the clouds while the Farm/Construction sub-bars or their ground-editing sub-modes
             // are open so they never obscure the tiles being edited; polling covers every enter/exit
             // path (button toggle, outside-click dismiss, cross-UI mutual exclusion).

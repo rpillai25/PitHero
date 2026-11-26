@@ -74,6 +74,10 @@ namespace PitHero.AI
             if (_mercenary == null)
                 return;
 
+            // Floating through the wizard-orb warp (issue #469): the warp owns this mercenary until it lands
+            if (_mercenary.IsWarping)
+                return;
+
             // Recover if the follow target was destroyed (e.g. the mercenary ahead in the
             // follow chain died in battle) — fall back to following the hero and replan
             if (_mercenary.FollowTarget != null && _mercenary.FollowTarget.IsDestroyed)

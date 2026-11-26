@@ -132,7 +132,8 @@ namespace PitHero.Services.Replay.Frames
         /// </summary>
         public const int MaxPortraitParts = 8;
 
-        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 1 + MaxPortraitParts * HudPortraitPart.Size + 1 + MaxMonsters * HudMonster.Size;
+        public const int Size = 3 * HudMember.Size + 8 + 4 + 4 + 4 + 1 + 1 + MaxPortraitParts * HudPortraitPart.Size + 1 + MaxMonsters * HudMonster.Size
+            + 3 * 4 + 4 * 2; // pit warp (format v21): twist, pull, spin, region x/y/w/h
 
         /// <summary>How many of the monster slots are in use (0 outside a battle).</summary>
         public byte MonsterCount;
@@ -180,6 +181,10 @@ namespace PitHero.Services.Replay.Frames
         public int PitLevel, PitTier;
         public float InGameSeconds;
         public bool Paused;
+
+        /// <summary>The wizard-orb warp swirl on screen (issue #469): all zero outside a warp. Region is world pixels.</summary>
+        public float PitWarpTwist, PitWarpPull, PitWarpSpin;
+        public short PitWarpX, PitWarpY, PitWarpWidth, PitWarpHeight;
         /// <summary>How many portrait parts are in use (0 when the hero has no portrait on screen).</summary>
         public byte PortraitCount;
         private HudPortraitPart _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7;
@@ -223,6 +228,8 @@ namespace PitHero.Services.Replay.Frames
         public bool Equals(HudRecord o)
             => Hero.Equals(o.Hero) && Merc1.Equals(o.Merc1) && Merc2.Equals(o.Merc2) && Gold == o.Gold
                && PitLevel == o.PitLevel && PitTier == o.PitTier && InGameSeconds == o.InGameSeconds && Paused == o.Paused
+               && PitWarpTwist == o.PitWarpTwist && PitWarpPull == o.PitWarpPull && PitWarpSpin == o.PitWarpSpin
+               && PitWarpX == o.PitWarpX && PitWarpY == o.PitWarpY && PitWarpWidth == o.PitWarpWidth && PitWarpHeight == o.PitWarpHeight
                && PortraitEqual(in o)
                && MonstersEqual(in o);
         public override bool Equals(object obj) => obj is HudRecord r && Equals(r);
@@ -244,6 +251,13 @@ namespace PitHero.Services.Replay.Frames
             w.WriteU8(MonsterCount);
             for (int i = 0; i < MaxMonsters; i++)
                 GetMonster(i).Write(ref w);
+            w.WriteF32(PitWarpTwist);
+            w.WriteF32(PitWarpPull);
+            w.WriteF32(PitWarpSpin);
+            w.WriteI16(PitWarpX);
+            w.WriteI16(PitWarpY);
+            w.WriteI16(PitWarpWidth);
+            w.WriteI16(PitWarpHeight);
         }
 
         public static HudRecord Read(ref FrameReader r)
@@ -263,6 +277,13 @@ namespace PitHero.Services.Replay.Frames
             h.MonsterCount = r.ReadU8();
             for (int i = 0; i < MaxMonsters; i++)
                 h.SetMonster(i, HudMonster.Read(ref r));
+            h.PitWarpTwist = r.ReadF32();
+            h.PitWarpPull = r.ReadF32();
+            h.PitWarpSpin = r.ReadF32();
+            h.PitWarpX = r.ReadI16();
+            h.PitWarpY = r.ReadI16();
+            h.PitWarpWidth = r.ReadI16();
+            h.PitWarpHeight = r.ReadI16();
             return h;
         }
     }

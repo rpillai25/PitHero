@@ -35,6 +35,7 @@ namespace PitHero.Services.Replay.Frames
         private Scene _scene;
         private RecordedFrameRenderer _world;
         private RecordedFrameScreenRenderer _screen;
+        private RecordedFrameRenderer _warpParty; // the party aloft in a wizard-orb warp, drawn after the pit swirl (issue #469)
         private int _shownConsoleCount = -1;
         private EventConsolePanel _console;
 
@@ -120,8 +121,10 @@ namespace PitHero.Services.Replay.Frames
             scene.RenderableFilter = _filter;
             _world = new RecordedFrameRenderer(this);
             _screen = new RecordedFrameScreenRenderer(this, _world);
+            _warpParty = new RecordedFrameRenderer(this, warpPartyPass: true);
             scene.AddRenderer(_world);
             scene.AddRenderer(_screen);
+            scene.AddRenderer(_warpParty);
             Sprites.LearnAtlases();
             var map = Core.Services.GetService<PitHero.Util.TiledMapService>()?.CurrentMap;
             if (map != null && !Tiles.IsBound)
@@ -150,6 +153,11 @@ namespace PitHero.Services.Replay.Frames
             {
                 scene.RemoveRenderer(_screen);
                 _screen = null;
+            }
+            if (_warpParty != null)
+            {
+                scene.RemoveRenderer(_warpParty);
+                _warpParty = null;
             }
         }
 

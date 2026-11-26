@@ -16,6 +16,7 @@ Higher number = drawn first = further back.  Lower number = drawn later = in fro
 |---|---|---|
 | `RenderLayerCloudOverlay` | -10 | Volumetric scrolling cloud overlay — front-most world-space layer, covers everything below |
 | `RenderLayerTop` | 2 | Tilemap "Top" layer (tree-tops, overhangs) — covers everything |
+| `RenderLayerPitWarpParty` | 30 | The party floating through the wizard-orb warp (#469). Excluded from the world pass; drawn by `PitWarpPartyRenderer` **after** the post-processors so the pit swirl never twists it |
 | `RenderLayerActors` | 60 | Heroes, mercenaries, monsters, **placed buildings** (all Y-sorted via `LayerDepth`) |
 | `RenderLayerSingleTileObject` | 61 | Static 32×32 world objects: treasure chests, walls/obstacles (Y-sorted) |
 | `RenderLayerDroppedItems` | 65 | Dropped loot items |
@@ -74,6 +75,15 @@ rects: the tavern, x 63–106, and the pit, x 0 to the live `PitWidthManager.Cur
 them and feather back in over `CloudDeadZoneFeatherPx` outside. The tavern rect is set once; the pit rect is re-pushed by `CloudOverlayController.UpdatePitDeadZone` whenever the pit right edge changes. Set `CloudDeadZoneEnabled = false` to
 switch it off. Editing `CloudOverlay.fx` requires recompiling `CloudOverlay.fxb` via
 `Content/Shaders/compileShadersFNA.bat`.
+
+**Wizard-orb warp (#469).** `MainGameScene` draws the world with an explicit
+`RenderLayerExcludeRenderer(0, RenderLayerPitWarpParty)` instead of the auto-added `DefaultRenderer`. While the
+orb warp runs, `PitWarpService` (simulation, stepped by `ActivateWizardOrbAction`) moves the party composites to
+`RenderLayerPitWarpParty` and drives their float, bob and spin through `HeroJumpComponent` render offsets;
+`PitWarpPostProcessor` (`PitWarp.fx`) twists every pit tile (walls and rim too, over the wider of the old and new pit) into a drain and back, and is disabled (zero cost)
+otherwise. In a replay the swirl comes from the frame's `HudRecord` (`PitWarp*` fields) and a second
+`RecordedFrameRenderer` pass draws the recorded warp-layer sprites after post-processing. Editing `PitWarp.fx`
+requires recompiling `PitWarp.fxb` the same way.
 
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
 `RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999),
