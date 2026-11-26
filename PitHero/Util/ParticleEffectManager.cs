@@ -29,7 +29,12 @@ namespace PitHero.Util
         GemSparkle,
 
         /// <summary>Blue-white droplets thrown up and falling back where a fishing catch leaves the water.</summary>
-        Splash
+        Splash,
+
+        /// <summary>Blue motes drifting up out of an uncovered, usable wizard orb (issue #469). Continuous
+        /// (Duration -1): its owner, <see cref="PitHero.ECS.Components.WizardOrbMotesComponent"/>, pauses
+        /// emission when the orb turns red, and the emitter removes itself once the last mote fades.</summary>
+        OrbMotes
     }
 
     /// <summary>
@@ -39,8 +44,9 @@ namespace PitHero.Util
     /// Registry configs are shared instances — never mutate one at spawn time; a per-spawn
     /// variant needs its own enum member and .pex file, or a CloneConfig-based knob like
     /// SpawnEffect's densityScale.
-    /// Only finite-duration configs belong here: a Duration of -1 never fires
-    /// OnAllParticlesExpired, so the emitter would never clean itself up.
+    /// Fire-and-forget spawns need a finite-duration config: a Duration of -1 emits until someone calls
+    /// PauseEmission (OnAllParticlesExpired fires once the last particle is gone), so a continuous effect
+    /// needs an owner that stops it (OrbMotes and WizardOrbMotesComponent).
     /// </summary>
     public class ParticleEffectManager : GlobalManager
     {
@@ -111,7 +117,8 @@ namespace PitHero.Util
                     { ParticleEffectType.Fireball, content.LoadParticleEmitterConfig("Content/Particles/fireball.pex") },
                     { ParticleEffectType.Firestorm, content.LoadParticleEmitterConfig("Content/Particles/firestorm.pex") },
                     { ParticleEffectType.GemSparkle, content.LoadParticleEmitterConfig("Content/Particles/gem_sparkle.pex") },
-                    { ParticleEffectType.Splash, content.LoadParticleEmitterConfig("Content/Particles/splash.pex") }
+                    { ParticleEffectType.Splash, content.LoadParticleEmitterConfig("Content/Particles/splash.pex") },
+                    { ParticleEffectType.OrbMotes, content.LoadParticleEmitterConfig("Content/Particles/orb_motes.pex") }
                 };
 
                 Initialized = true;

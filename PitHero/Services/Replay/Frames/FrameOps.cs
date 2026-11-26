@@ -447,12 +447,12 @@ namespace PitHero.Services.Replay.Frames
             WriteU8(flags);
         }
 
-        /// <summary>Particle op from live values: the emitter's root position and its age in ticks (clamped to u16).</summary>
+        /// <summary>Particle op from live values: the emitter's root position and its age in ticks (u16, see <see cref="EncodeParticleAge"/>).</summary>
         public void WriteParticle(byte effectKey, float densityScale, float x, float y, long elapsedTicks, int renderLayer, float layerDepth, byte flags)
         {
             float d = MathF.Round(densityScale * 10f);
             byte density = d <= 0f ? (byte)0 : d >= byte.MaxValue ? byte.MaxValue : (byte)d;
-            ushort elapsed = elapsedTicks <= 0 ? (ushort)0 : elapsedTicks >= ushort.MaxValue ? ushort.MaxValue : (ushort)elapsedTicks;
+            ushort elapsed = EncodeParticleAge(elapsedTicks);
             WriteU8(FrameOpCode.Particle);
             WriteU8(effectKey);
             WriteU8(density);
@@ -462,6 +462,23 @@ namespace PitHero.Services.Replay.Frames
             WriteI16((short)renderLayer);
             WriteF32(layerDepth);
             WriteU8(flags);
+        }
+
+        /// <summary>
+        /// An emitter's age as recorded. Ages past u16 wrap back to the viewer's rebuild cap rather than
+        /// clamping (format v22): a continuous effect (the wizard orb's motes) keeps aging one tick per
+        /// frame, so the viewer steps it on instead of rebuilding it on every frame at a stuck age. Each wrap
+        /// (about every 18 minutes) costs one capped rebuild. No finite effect lives long enough to wrap.
+        /// </summary>
+        public static ushort EncodeParticleAge(long elapsedTicks)
+        {
+            if (elapsedTicks <= 0)
+                return 0;
+            if (elapsedTicks < ushort.MaxValue)
+                return (ushort)elapsedTicks;
+            long cap = GameConfig.ReplayFrameViewParticleRebuildMaxTicks;
+            long span = ushort.MaxValue - cap;
+            return (ushort)(cap + (elapsedTicks - ushort.MaxValue) % span);
         }
 
         /// <summary>Line op from live world values (ends snapped to pixels, thickness clamped to 1..255).</summary>

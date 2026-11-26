@@ -65,6 +65,13 @@ namespace PitHero.ECS.Components
     /// <summary>True if this mercenary is inside the pit</summary>
     public bool InsidePit { get; set; }
 
+    /// <summary>
+    /// True while the mercenary floats with the party through the wizard-orb warp (issue #469). Its AI
+    /// and follow logic hold still until the warp drops it on the new pit. Never saved: a warp does not
+    /// survive a save/load.
+    /// </summary>
+    public bool IsWarping { get; set; }
+
     /// <summary>Reference to the screen-space action queue visualization for this mercenary</summary>
     public ActionQueueVisualizationComponent ActionQueueVisualization { get; set; }
 

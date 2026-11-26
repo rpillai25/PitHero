@@ -47,7 +47,7 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            if (_mercComponent == null || !_mercComponent.IsHired)
+            if (_mercComponent == null || !_mercComponent.IsHired || _mercComponent.IsWarping)
             {
                 return;
             }

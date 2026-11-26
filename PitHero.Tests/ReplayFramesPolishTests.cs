@@ -39,7 +39,8 @@ namespace PitHero.Tests
             Assert.IsTrue(op.IsEmitting);
             Assert.AreEqual(FrameOpCode.Particle, r.ReadOpCode());
             r.ReadParticle(out var clamped);
-            Assert.AreEqual(ushort.MaxValue, clamped.ElapsedTicks, "ages beyond u16 clamp");
+            Assert.AreEqual(FrameWriter.EncodeParticleAge(70000), clamped.ElapsedTicks, "ages beyond u16 wrap back above the rebuild cap (format v22)");
+            Assert.IsTrue(clamped.ElapsedTicks >= GameConfig.ReplayFrameViewParticleRebuildMaxTicks);
             Assert.IsFalse(clamped.IsEmitting);
             Assert.IsTrue(r.AtEnd);
 
@@ -183,6 +184,46 @@ namespace PitHero.Tests
 
             pool.Clear();
             Assert.AreEqual(0, pool.Count);
+        }
+
+        [TestMethod]
+        public void ParticlePool_AnEffectOlderThanTheRebuildCap_KeepsSteppingOneTickPerFrame()
+        {
+            // Issue #469: the wizard orb's motes emit for as long as the orb sits uncovered
+            const long start = 0;
+            long age = GameConfig.ReplayFrameViewParticleRebuildMaxTicks + 3000;
+            var continuous = TestConfig();
+            continuous.Duration = -1f;
+            var pool = new RecordedParticlePool { ConfigSource = _ => continuous };
+            pool.BeginFrame();
+            var fx = pool.Touch(3, OpAt(start + age, start), start + age);
+            Assert.AreEqual(GameConfig.ReplayFrameViewParticleRebuildMaxTicks, fx.SimulatedTicks, "a seek simulates at most the cap");
+            Assert.IsTrue(fx.Particles.Count > 0);
+
+            for (int i = 1; i <= 5; i++)
+            {
+                var next = pool.Touch(3, OpAt(start + age + i, start), start + age + i);
+                Assert.AreSame(fx, next);
+                Assert.AreEqual(GameConfig.ReplayFrameViewParticleRebuildMaxTicks + i, fx.SimulatedTicks, "forward play steps once, it does not rebuild");
+            }
+        }
+
+        [TestMethod]
+        public void ParticleAge_WrapsPastU16AboveTheRebuildCap_InsteadOfSticking()
+        {
+            Assert.AreEqual(0, FrameWriter.EncodeParticleAge(-4));
+            Assert.AreEqual(1234, FrameWriter.EncodeParticleAge(1234));
+            Assert.AreEqual(ushort.MaxValue - 1, FrameWriter.EncodeParticleAge(ushort.MaxValue - 1));
+            int cap = GameConfig.ReplayFrameViewParticleRebuildMaxTicks;
+            Assert.AreEqual(cap, FrameWriter.EncodeParticleAge(ushort.MaxValue));
+            Assert.AreEqual(cap + 1, FrameWriter.EncodeParticleAge(ushort.MaxValue + 1L));
+            for (long t = 60_000; t < 200_000; t += 997)
+            {
+                ushort a = FrameWriter.EncodeParticleAge(t), b = FrameWriter.EncodeParticleAge(t + 1);
+                Assert.IsTrue(b == a + 1 || b == cap, $"one tick older is one more, or a wrap back to the cap (t={t})");
+                if (t >= ushort.MaxValue)
+                    Assert.IsTrue(a >= cap, "a wrapped age never drops below the cap, so the rebuild refills a steady effect");
+            }
         }
     }
 }

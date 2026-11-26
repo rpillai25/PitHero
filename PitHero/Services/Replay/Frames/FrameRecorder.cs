@@ -97,6 +97,7 @@ namespace PitHero.Services.Replay.Frames
         private InGameTimeService _time;
         private GameStateService _state;
         private PitWidthManager _pit;
+        private PitWarpService _warp;
         private MercenaryManager _mercs;
         private Entity _hero;
         private HeroComponent _heroComponent;
@@ -808,6 +809,23 @@ namespace PitHero.Services.Replay.Frames
                 hud.InGameSeconds = MathF.Floor(_time.AccumulatedSeconds); // the clock label shows minutes; whole seconds keep the record from changing every tick
             _pause ??= Service<PauseService>();
             hud.Paused = _pause != null && _pause.IsPaused;
+
+            // The wizard-orb warp swirl (issue #469): the post-processor reads it back while viewing
+            _warp ??= Service<PitWarpService>();
+            if (_warp != null && _warp.IsActive)
+            {
+                hud.PitWarpTwist = _warp.Twist;
+                hud.PitWarpPull = _warp.Pull;
+                hud.PitWarpSpin = _warp.Spin;
+                hud.PitWarpX = (short)_warp.RegionX;
+                hud.PitWarpY = (short)_warp.RegionY;
+                hud.PitWarpWidth = (short)_warp.RegionWidth;
+                hud.PitWarpHeight = (short)_warp.RegionHeight;
+                hud.OrbRingX = (short)_warp.RingX;
+                hud.OrbRingY = (short)_warp.RingY;
+                hud.OrbRingRadius = _warp.RingRadius;
+                hud.OrbRingAlpha = _warp.RingAlpha;
+            }
 
             // The monsters of the battle in progress, for the HUD strip beside the gold display
             var battleMonsters = PitHero.AI.HeroStateMachine.IsBattleInProgress ? PitHero.AI.HeroStateMachine.BattleMonsterEntities : null;

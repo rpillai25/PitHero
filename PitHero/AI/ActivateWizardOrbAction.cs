@@ -25,9 +25,23 @@ namespace PitHero.AI
             SetPostcondition(GoapConstants.PitInitialized, false);
         }
 
-        /// <summary>Execute in live scene.</summary>
+        /// <summary>The warp is one uninterruptible sequence once it starts: the party is aloft and the pit half-drained.</summary>
+        public override bool ShouldNotOverride()
+        {
+            return Core.Services.GetService<PitWarpService>()?.IsActive == true;
+        }
+
+        /// <summary>
+        /// Execute in live scene. Activating the orb starts the warp transition (issue #469) and the action
+        /// runs one warp tick per simulation step: the pit is regenerated when it is fully drained, and the
+        /// action completes when the party lands on the new pit.
+        /// </summary>
         public override bool Execute(HeroComponent hero)
         {
+            var warp = Core.Services.GetService<PitWarpService>();
+            if (warp != null && warp.IsActive)
+                return StepWarp(hero, warp);
+
             // Boss floors gate orb activation on the boss being dead; a stale plan can reach
             // this action without ever fighting the boss (AttackMonsterAction no-ops when no
             // monster is adjacent), so re-check at runtime before any side effects
@@ -64,6 +78,92 @@ namespace PitHero.AI
             // Clear all remaining fog first so player sees fully cleared pit
             ClearAllFogOfWarInPit();
 
+            if (warp != null)
+            {
+                BeginWarp(hero, warp, wizardOrbEntity.Transform.Position);
+                return false; // the warp runs over the next ticks (StepWarp)
+            }
+
+            // No warp service (headless callers): warp instantly
+            RegenerateAndReposition(hero);
+            return true;
+        }
+
+        /// <summary>Lifts the party and starts the pit drain. A ring of light spreads from <paramref name="orbPosition"/>.</summary>
+        private void BeginWarp(HeroComponent hero, PitWarpService warp, Vector2 orbPosition)
+        {
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int oldRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
+            int level = pitWidthManager?.CurrentPitLevel ?? 1;
+            int nextLevel = level + 1 > BiomeProgressionConfig.MaxBiomeLevel ? 1 : level + 1;
+            int newRightEdge = PitWidthManager.CalculateRightEdgeForLevel(nextLevel);
+
+            // Only the mercenaries inside the pit warp with the hero; the rest stay where they are
+            Entity merc1 = null, merc2 = null;
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var hired = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hired.Count; i++)
+                {
+                    var mercComponent = hired[i].GetComponent<MercenaryComponent>();
+                    if (mercComponent == null || !mercComponent.InsidePit)
+                        continue;
+                    if (merc1 == null) merc1 = hired[i];
+                    else if (merc2 == null) merc2 = hired[i];
+                }
+            }
+
+            int tier = pitWidthManager?.CurrentPitTier ?? 1;
+            warp.Begin(hero.Entity, merc1, merc2, oldRightEdge, newRightEdge, level * 7919 + tier * 104729, orbPosition);
+            Debug.Log($"[ActivateWizardOrb] Warp started from pit level {level}");
+        }
+
+        /// <summary>One warp tick: regenerate when the pit is drained, finish when the party has landed.</summary>
+        private bool StepWarp(HeroComponent hero, PitWarpService warp)
+        {
+            warp.Step();
+
+            if (warp.RegenerationDue)
+            {
+                if (!RegenerateAndReposition(hero))
+                {
+                    warp.End();
+                    return true; // Complete as failed
+                }
+                warp.OnPitRegenerated();
+            }
+
+            if (!warp.IsFinished)
+                return false;
+
+            warp.End();
+
+            // The party has touched down: it uncovers the fog around its landing tile like any step does.
+            // Not LastTilePosition: that is the hero's previous tile (back at the orb once the teleport registered)
+            ClearLandingFog(hero, GetStartTile());
+
+            // The landing tile's neighbours: anything adjacent after the drop
+            hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
+            hero.AdjacentToChest = hero.CheckAdjacentToChest();
+            Debug.Log("[ActivateWizardOrb] Warp complete - party landed on the new pit");
+            return true;
+        }
+
+        /// <summary>Clears the fog of war around <paramref name="tile"/> and starts the hero's fog cooldown if any cleared.</summary>
+        private static void ClearLandingFog(HeroComponent hero, Point tile)
+        {
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            if (tiledMapService?.ClearFogOfWarAroundTile(tile.X, tile.Y, hero) == true)
+                hero.TriggerFogCooldown();
+        }
+
+        /// <summary>
+        /// Queues and regenerates the next pit level, moves the party to its start tile and resets the
+        /// pit flags. Returns false when the pit could not be regenerated.
+        /// </summary>
+        private bool RegenerateAndReposition(HeroComponent hero)
+        {
             int pitLevelBeforeOrb = Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0;
             int heroLevel = hero.LinkedHero?.Level ?? 1;
 
@@ -73,7 +173,7 @@ namespace PitHero.AI
             if (!RegenerateQueuedPitLevel())
             {
                 Debug.Warn("[ActivateWizardOrb] Failed to regenerate pit level");
-                return true; // Complete as failed
+                return false;
             }
 
             // Reset ExploredPit before repositioning so the fog-clear inside RepositionHeroToStartPosition
@@ -297,6 +397,14 @@ namespace PitHero.AI
             return true;
         }
 
+        /// <summary>The tile the party lands on in the current pit: two tiles in from the right edge, on the centre row.</summary>
+        private static Point GetStartTile()
+        {
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
+            return new Point(pitRightEdge - 2, GameConfig.PitCenterTileY);
+        }
+
         /// <summary>
         /// Reposition hero to the starting position inside the pit (where they normally land when jumping in)
         /// </summary>
@@ -325,18 +433,14 @@ namespace PitHero.AI
 
                 // Disable movement for 1 second after repositioning
                 tileMover.Enabled = false;
-                Core.StartCoroutine(EnableMoverAfterDelay(tileMover));
+                if (Core.Services.GetService<PitWarpService>()?.IsActive != true) // the warp holds the party until it lands
+                    Core.StartCoroutine(EnableMoverAfterDelay(tileMover));
             }
 
-            // Clear fog of war around the landing position
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            bool fogCleared = tiledMapService?.ClearFogOfWarAroundTile(targetTile.X, targetTile.Y, hero) ?? false;
-
-            // Trigger fog cooldown if fog was cleared
-            if (fogCleared)
-            {
-                hero.TriggerFogCooldown();
-            }
+            // Clear fog of war around the landing position. During a warp the party is still aloft here:
+            // the fog lifts when it lands (StepWarp), as it does when the hero walks onto a tile
+            if (Core.Services.GetService<PitWarpService>()?.IsActive != true)
+                ClearLandingFog(hero, targetTile);
 
             // Check for adjacent monsters and chests after repositioning
             hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
@@ -411,7 +515,8 @@ namespace PitHero.AI
 
                     // Disable movement for 1 second after repositioning
                     tileMover.Enabled = false;
-                    Core.StartCoroutine(EnableMoverAfterDelay(tileMover));
+                    if (Core.Services.GetService<PitWarpService>()?.IsActive != true) // the warp holds the party until it lands
+                        Core.StartCoroutine(EnableMoverAfterDelay(tileMover));
                 }
 
                 // Update mercenary's last tile position to match hero's
