@@ -700,6 +700,7 @@ namespace PitHero.Services
                     savedMerc.HairstyleIndex = mercComp.HairstyleIndex;
                     savedMerc.ShirtColor = mercComp.ShirtColor;
                     savedMerc.EyeColor = mercComp.EyeColor;
+                    savedMerc.UnlockedSkillCount = merc.UnlockedJobSkillCount;
                     data.HiredMercenaries.Add(savedMerc);
                 }
             }

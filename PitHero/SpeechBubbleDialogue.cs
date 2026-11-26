@@ -378,6 +378,12 @@ namespace PitHero
             SaySingle(entity, DialogueTextKey.HeroCeremonyGrantStrength);
         }
 
+        /// <summary>Shows a mercenary's bubble when it unlocks a job skill (issue #471).</summary>
+        public static void SayMercLearnedSkill(Entity entity)
+        {
+            SaySingle(entity, DialogueTextKey.MercLearnedSkill);
+        }
+
         /// <summary>Shows the new-game intro prayer bubble at the hero statue (issue #396).</summary>
         public static void SayIntro(Entity entity)
         {
