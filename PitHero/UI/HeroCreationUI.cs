@@ -601,8 +601,6 @@ namespace PitHero.UI
                 colors => { StoreCustomColors(part, tones, colors); ApplyPreviewColors(); },
                 colors => { StoreCustomColors(part, tones, colors); CloseColorPicker(); },
                 CloseColorPicker);
-            // The dialogs are not modal: keep the appearance controls still while the picker is up
-            _controlsWindow.SetTouchable(Touchable.Disabled);
             _colorPicker.Show(_stage);
             PlaceColorPickerBesidePreview();
         }
@@ -626,7 +624,6 @@ namespace PitHero.UI
         private void CloseColorPicker()
         {
             _colorPicker = null;
-            _controlsWindow.SetTouchable(Touchable.Enabled);
             ApplyPreviewColors();
         }
 

@@ -53,6 +53,7 @@ namespace PitHero.UI
         private readonly TextField[] _channelFields = new TextField[3];
         private string _hexText = string.Empty;
         private readonly string[] _channelText = { string.Empty, string.Empty, string.Empty };
+        private DimBackdrop _backdrop;
         private int _selected;
         private float _hue;
 
@@ -160,10 +161,15 @@ namespace PitHero.UI
             SelectTone(baseIndex >= 0 && baseIndex < tones.Length ? baseIndex : 0);
         }
 
-        /// <summary>Shows the dialog centered on the stage, above everything else.</summary>
+        /// <summary>
+        /// Shows the dialog centered on the stage, above everything else, over a <see cref="DimBackdrop"/> that
+        /// dims the rest of the UI and blocks it until the picker closes.
+        /// </summary>
         public void Show(Stage stage)
         {
             SetPosition((stage.GetWidth() - GetWidth()) / 2f, UILayout.CenterY(GetHeight(), stage.GetHeight(), 0f));
+            _backdrop = new DimBackdrop();
+            _backdrop.Show(stage);
             stage.AddElement(this);
             SetVisible(true);
             ToFront();
@@ -324,6 +330,8 @@ namespace PitHero.UI
             var focus = stage?.GetKeyboardFocus();
             if (focus != null && (ReferenceEquals(focus, _hexField) || Array.IndexOf(_channelFields, focus as TextField) >= 0))
                 stage.SetKeyboardFocus(null);
+            _backdrop?.Remove();
+            _backdrop = null;
             Remove();
         }
 
