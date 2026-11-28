@@ -80,6 +80,7 @@ namespace PitHero.ECS.Scenes
         private Services.Replay.ReplayRecorder _replayRecorder; // Always-on session recording (replay system)
         private Services.Replay.Frames.FrameRecorder _frameRecorder; // Per-tick presentation frame stream (issue #424), behind ReplayFrameCaptureEnabled
         private ReplayScrubberPanel _replayScrubber; // Bottom transport shown while a replay plays
+        private bool _replayScrubberUserHidden; // SHIFT+H during a replay hides the scrubber (trailer capture); cleared when the replay ends
         private ReplayTimeTravelBanner _replayTimeTravelBanner; // "Time Travelling..." over the frozen frame while a rebuild seeks (issue #432)
         private Services.NewGameIntroService _newGameIntroService; // Scripted new-game opening at the hero statue (issue #396)
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
@@ -3783,20 +3784,31 @@ namespace PitHero.ECS.Scenes
             bool recordedHud = frameViewer != null;
             if (_replayScrubber != null)
             {
-                if (_replayScrubber.IsVisible() != replayActive)
+                // SHIFT+H hides the scrubber for clean trailer footage and brings it back. Live play's SHIFT+H
+                // (Hero window) never runs in a replay: SettingsUI skips its shortcuts while replay mode is on
+                if (!replayActive)
+                    _replayScrubberUserHidden = false;
+                else if (IsShiftDown() && !IsCtrlDown()
+                    && Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.H)
+                    && (_uiStage == null || _uiStage.GetKeyboardFocus() == null))
+                    _replayScrubberUserHidden = !_replayScrubberUserHidden;
+
+                bool showScrubber = replayActive && !_replayScrubberUserHidden;
+                if (_replayScrubber.IsVisible() != showScrubber)
                 {
-                    _replayScrubber.SetVisible(replayActive);
-                    if (replayActive)
+                    _replayScrubber.SetVisible(showScrubber);
+                    if (showScrubber)
                     {
                         _replayScrubber.ResetDisplayCache();
                         PositionReplayScrubber();
                         _replayScrubber.ToFront();
                     }
-                    else
+                    else if (!replayActive)
                     {
                         _replayScrubber.OnHidden();
                     }
                 }
+                // Keeps running while user-hidden so the SHIFT+arrow hold-rewind/fast-forward keys still work
                 if (replayActive)
                     _replayScrubber.Update();
             }
@@ -4756,6 +4768,12 @@ namespace PitHero.ECS.Scenes
         {
             return Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
                 || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
+        }
+
+        private static bool IsCtrlDown()
+        {
+            return Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftControl)
+                || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightControl);
         }
     }
 }
