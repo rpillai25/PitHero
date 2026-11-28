@@ -38,7 +38,7 @@ Equipment Name
 
 ### Tier Scaling (+N Gear)
 
-Gear found in subsequent dungeon cycles (pit tier 2+) is a scaled copy of a base item with a "+N" name suffix, produced by `Gear.CreateTierScaledCopy` with `depthDelta = (tier - 1) × MaxBiomeLevel`. A +N item is a stronger version of the *same* item — only stats the base item actually has are scaled (issue #341):
+Gear found in subsequent dungeon cycles (pit tier 2+) is a scaled copy of a base item with a "+N" name suffix, produced by `Gear.CreateTierScaledCopy` with `depthDelta = (scalingTier - 1) × BiomeLength` (scaling tier = one per 25-level biome of depth, issue #473). A +N item is a stronger version of the *same* item — only stats the base item actually has are scaled (issue #341):
 
 - **Attack / Defense:** if nonzero on the base, add `CalculateEquipmentAttackBonusDelta` / `CalculateEquipmentDefenseBonusDelta` (same depth formulas as above, using depthDelta). Zero stays zero.
 - **STR/AGI/VIT/MAG:** per-stat — nonzero base stats gain `CalculateEquipmentStatBonusDelta`; zero stats stay zero.

@@ -1739,13 +1739,14 @@ namespace PitHero.AI
 
             var item = lootService.DrawEpicItem();
 
-            // Tier-2+ runs upgrade the epic drop exactly like chest gear (TreasureComponent parity).
+            // Biomes past the first (by depth) upgrade the epic drop exactly like chest gear (TreasureComponent parity).
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            int pitTier = pitWidthManager?.CurrentPitTier ?? 1;
-            if (pitTier >= 2 && item is RolePlayingFramework.Equipment.Gear gear)
+            int scalingTier = Config.BiomeProgressionConfig.GetScalingTier(
+                pitWidthManager?.CurrentPitLevel ?? 1, pitWidthManager?.CurrentPitTier ?? 1);
+            if (scalingTier >= 2 && item is RolePlayingFramework.Equipment.Gear gear)
             {
-                int depthDelta = (pitTier - 1) * Config.BiomeProgressionConfig.MaxBiomeLevel;
-                item = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(gear, pitTier, depthDelta);
+                int depthDelta = Config.BiomeProgressionConfig.GetScalingDepthDelta(scalingTier);
+                item = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(gear, scalingTier, depthDelta);
             }
 
             TreasureSpawner.SpawnTreasureChestAtTile(scene, tile, item);

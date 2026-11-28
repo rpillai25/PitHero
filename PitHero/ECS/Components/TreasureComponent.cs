@@ -975,12 +975,16 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Initialize this treasure chest for a specific pit level.
         /// </summary>
-        /// <param name="pitLevel">Displayed pit level (1–25, biome-local).</param>
+        /// <param name="pitLevel">Displayed (cycle) pit level, 1–100. Rarity bands and pools key on its biome level (1–25).</param>
         /// <param name="jobContext">Party job composition for biased loot.</param>
-        /// <param name="pitTier">Pit tier — gear drops at tier ≥ 2 are upgraded via <see cref="RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy"/>.</param>
+        /// <param name="pitTier">Pit tier. Gear past the first biome of depth is upgraded via
+        /// <see cref="RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy"/> at the scaling tier
+        /// (<see cref="BiomeProgressionConfig.GetScalingTier"/>).</param>
         public void InitializeForPitLevel(int pitLevel, LootJobContext jobContext = default, int pitTier = 1)
         {
-            Level = DetermineTreasureLevel(pitLevel);
+            int biomeLevel = BiomeProgressionConfig.GetBiomeLevel(pitLevel);
+            int scalingTier = BiomeProgressionConfig.GetScalingTier(pitLevel, pitTier);
+            Level = DetermineTreasureLevel(biomeLevel);
 
             // Seed drop: any uncommon (level-2) roll has a chance to yield seeds instead of normal loot.
             // Seeds are not tier-scaled (they are consumables, not gear).
@@ -1031,7 +1035,7 @@ namespace PitHero.ECS.Components
                 }
             }
 
-            if (CaveBiomeConfig.IsCaveLevel(pitLevel))
+            if (CaveBiomeConfig.IsCaveLevel(biomeLevel))
             {
                 ContainedItem = GenerateCaveItemForTreasureLevel(Level, jobContext);
             }
@@ -1041,10 +1045,10 @@ namespace PitHero.ECS.Components
             }
 
             // Apply tier scaling to gear drops.  Potions/consumables are not Gear and pass through untouched.
-            if (pitTier >= 2 && ContainedItem is RolePlayingFramework.Equipment.Gear g)
+            if (scalingTier >= 2 && ContainedItem is RolePlayingFramework.Equipment.Gear g)
             {
-                int depthDelta = (pitTier - 1) * BiomeProgressionConfig.MaxBiomeLevel;
-                ContainedItem = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(g, pitTier, depthDelta);
+                int depthDelta = BiomeProgressionConfig.GetScalingDepthDelta(scalingTier);
+                ContainedItem = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(g, scalingTier, depthDelta);
             }
 
             // Chest color must match contents (#337): gear rarity drives color; consumables are always brown.
@@ -1063,8 +1067,11 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Rolls the gold pouch for an item chest: <paramref name="gateRoll"/> decides through the
         /// session gate bag (or the raw chance headlessly), then <paramref name="amountRoll"/> is
-        /// drawn only on a hit and fed to <see cref="BalanceConfig.CalculateChestGold"/>.
+        /// drawn only on a hit and fed to <see cref="BalanceConfig.CalculateChestGold"/>, which grows
+        /// per scaling tier (one per biome of depth) across the biome's 25 levels.
         /// </summary>
+        /// <param name="pitLevel">Displayed (cycle) pit level, 1–100.</param>
+        /// <param name="pitTier">Pit tier.</param>
         public static int RollChestGold(int pitLevel, int pitTier, LootBagSet bags, float gateRoll,
             System.Func<float> amountRoll)
         {
@@ -1073,8 +1080,9 @@ namespace PitHero.ECS.Components
                 : gateRoll < BalanceConfig.ChestGoldChanceMarbles / 20f;
             if (!hasGold)
                 return 0;
-            return BalanceConfig.CalculateChestGold(pitTier, pitLevel, BiomeProgressionConfig.MaxBiomeLevel,
-                CaveBiomeConfig.IsBossFloor(pitLevel), amountRoll());
+            int scalingTier = BiomeProgressionConfig.GetScalingTier(pitLevel, pitTier);
+            return BalanceConfig.CalculateChestGold(scalingTier, BiomeProgressionConfig.GetBiomeLevel(pitLevel),
+                BiomeProgressionConfig.BiomeLength, BiomeProgressionConfig.IsBossFloor(pitLevel), amountRoll());
         }
     }
 }

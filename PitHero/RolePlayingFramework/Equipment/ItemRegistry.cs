@@ -12,7 +12,7 @@ namespace RolePlayingFramework.Equipment
         /// <summary>
         /// Depth stride per pit tier — used when reconstructing tier-scaled gear names of the
         /// form "BaseName+N" (N = tier).  Defaults to 25; overridden at game startup from
-        /// BiomeProgressionConfig.MaxBiomeLevel so the value stays in sync with the biome loop.
+        /// BiomeProgressionConfig.BiomeLength so the value stays in sync with the biome length.
         /// Assign this from the PitHero side before any TryCreateItem call that may encounter
         /// a tier-scaled name; RolePlayingFramework must not reference PitHero.Config directly.
         /// </summary>

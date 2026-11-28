@@ -46,10 +46,10 @@ interpretation caveats that are not obvious from the raw data.
 ### Pit
 | `e` | Fields | Notes |
 |---|---|---|
-| `pit_generated` | `pitLevel`, `pitTier`, `isBossFloor`, `monsterCount`, `chestCount` | Fires on every pit (re)generation, including the initial load-time generation. `isBossFloor` comes from `CaveBiomeConfig.IsBossFloor` — see caveat below. `pitTier` is 1 until the player completes pit 25, after which it increments and `pitLevel` resets to 1 for the new tier. |
+| `pit_generated` | `pitLevel`, `pitTier`, `isBossFloor`, `monsterCount`, `chestCount` | Fires on every pit (re)generation, including the initial load-time generation. `isBossFloor` comes from `CaveBiomeConfig.IsBossFloor` — see caveat below. `pitTier` is 1 until the player completes pit 100 (25 before SimulationVersion 21 / issue #473), after which it increments and `pitLevel` resets to 1 for the new tier. |
 | `chest_spawned` | `pitLevel`, `pitTier`, `x`, `y`, `chestLevel` (1–5), `item`, `kind`, `rarity`, optional `seedType` + `seedCount`, optional `stencilPatternId`, `gold` | Contents decided at spawn time. `item` is `null` for seed chests and stencil chests. `stencilPatternId` is present (non-null) only for stencil chests (issue #362); when present the chest is always level 4 (purple). `gold` (issue #417) is the pouch carried alongside the item — 0 for no pouch and always 0 for seed/stencil chests; it arrives via `gold_gained (source:"chest")` when the chest is opened. |
 | `monster_spawned` | `pitLevel`, `pitTier`, `x`, `y`, `name`, `enemyId`, `level`, `maxHP`, `isBoss` | `level` is the enemy's own level (often a per-type preset — see caveats). |
-| `trap_triggered` | `pitLevel`, `x`, `y`, `damage` | Hero stepped on a hidden trap. `damage` is the clamped value actually applied (hero's HP is never reduced below 1 out-of-battle). Formula: `5 + (tier-1)*25*2 + pitLevel * 2` (effective depth scaling) before clamping. |
+| `trap_triggered` | `pitLevel`, `x`, `y`, `damage` | Hero stepped on a hidden trap. `damage` is the clamped value actually applied (hero's HP is never reduced below 1 out-of-battle). Formula: `5 + effectiveDepth * 2` (see the effective depth formula below) before clamping. |
 | `trap_disarmed` | `pitLevel`, `x`, `y` | A party member with the TrapSense passive auto-disarmed a trap when fog was cleared over it. No damage dealt. |
 | `orb_activated` | `fromPitLevel`, `toPitLevel`, `pitTier`, `heroLevel` | Wizard orb → next pit level. `pitTier` is the tier **at the moment of activation** (i.e. the tier about to be left when the orb advances into a new tier). Followed by a `party_snapshot` with `reason:"orb"`. |
 | `pit_jump` | `pitLevel`, `heroLevel`, `heroHP`, `heroMaxHP` | Hero jumped into the pit. Followed by a `party_snapshot` with `reason:"pit_jump"`. |
@@ -139,7 +139,7 @@ type via `MonsterScheduleConfig`).
 - **Enemy `level` tracks effective depth inside the Cave biome.** As of issue #291, enemy
   constructors honour `pitLevel` passed by `CaveBiomeConfig`; the per-type preset path
   (`EnemyLevelConfig.GetPresetLevel`) is still used for non-Cave content. Use `pitTier` and
-  `pitLevel` together to recover effective depth: `effectiveDepth = (pitTier-1)*25 + pitLevel`.
+  `pitLevel` together to recover effective depth: `effectiveDepth = (pitTier-1)*100 + pitLevel` (`*25` for sessions recorded before issue #473).
   Trap damage scales with this same depth formula: `5 + effectiveDepth * 2` before clamping.
 - **Load-time replay:** on `mode:"load"`, the pit is regenerated, so the first
   `pit_generated`/`chest_spawned`/`monster_spawned` burst right after `session_start`

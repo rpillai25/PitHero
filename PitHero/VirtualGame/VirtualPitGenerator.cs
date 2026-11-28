@@ -95,12 +95,15 @@ namespace PitHero.VirtualGame
 
         private void GenerateEntitiesForLevel(int depth, int displayedLevel, int tier, int minX, int minY, int maxX, int maxY)
         {
-            // Entity count formulas scale with cumulative depth so tier-2+ floors have more content.
+            // Chest/obstacle counts follow the cycle level like the live PitGenerator (and the pit width);
+            // monster density ramps across each biome (biome level 1-25).
             // Monsters come from the shared curve the live PitGenerator uses (issue #422).
-            PitPopulationConfig.GetMonsterRange(displayedLevel, out int minMonsters, out int maxMonsters);
-            int maxChests = Math.Clamp((int)Math.Round(2 + 8 * Math.Max(depth - 10, 0) / 90.0), 2, 10);
-            int minObstacles = Math.Clamp((int)Math.Round(5 + 35 * Math.Max(depth - 10, 0) / 90.0), 5, 40);
-            int maxObstacles = Math.Clamp((int)Math.Round(10 + 40 * Math.Max(depth - 10, 0) / 90.0), 10, 50);
+            int biomeLevel = BiomeProgressionConfig.GetBiomeLevel(displayedLevel);
+            int scalingTier = BiomeProgressionConfig.GetScalingTierForDepth(depth);
+            PitPopulationConfig.GetMonsterRange(biomeLevel, out int minMonsters, out int maxMonsters);
+            int maxChests = Math.Clamp((int)Math.Round(2 + 8 * Math.Max(displayedLevel - 10, 0) / 90.0), 2, 10);
+            int minObstacles = Math.Clamp((int)Math.Round(5 + 35 * Math.Max(displayedLevel - 10, 0) / 90.0), 5, 40);
+            int maxObstacles = Math.Clamp((int)Math.Round(10 + 40 * Math.Max(displayedLevel - 10, 0) / 90.0), 10, 50);
 
             // Seed with cumulative depth so tier-2 floors differ from tier-1 at same displayed level.
             var random = new Random(depth); // Deterministic based on cumulative depth
@@ -139,7 +142,7 @@ namespace PitHero.VirtualGame
             }
 
             // Generate treasures with Cave Biome progression.
-            // Biome keying uses displayedLevel; tier scaling is applied after item generation.
+            // Biome keying uses the biome level; scaling-tier gear upgrades are applied after item generation.
             // Live code uses Nez.Random (global); here we use the local deterministic
             // Random(depth) so pit layout and loot are both reproducible per cumulative depth,
             // independent of the combat RNG seed passed to VirtualGameSimulation.
@@ -150,10 +153,10 @@ namespace PitHero.VirtualGame
                 {
                     usedPositions.Add(pos.Value);
                     IItem item;
-                    if (CaveBiomeConfig.IsCaveLevel(displayedLevel))
+                    if (CaveBiomeConfig.IsCaveLevel(biomeLevel))
                     {
                         float roll = (float)random.NextDouble();
-                        int treasureLevel = _lootBags.DrawCaveTreasureLevel(displayedLevel, roll);
+                        int treasureLevel = _lootBags.DrawCaveTreasureLevel(biomeLevel, roll);
                         var lootCtx = LootContext;
                         item = TreasureComponent.GenerateCaveItemForTreasureLevelDeterministic(treasureLevel, in lootCtx, random, _lootBags);
                     }
@@ -165,10 +168,10 @@ namespace PitHero.VirtualGame
                     }
 
                     // Apply tier scaling to gear drops.  Potions pass through unchanged.
-                    if (tier >= 2 && item is RolePlayingFramework.Equipment.Gear gearItem)
+                    if (scalingTier >= 2 && item is RolePlayingFramework.Equipment.Gear gearItem)
                     {
-                        int depthDelta = (tier - 1) * BiomeProgressionConfig.MaxBiomeLevel;
-                        item = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(gearItem, tier, depthDelta);
+                        int depthDelta = BiomeProgressionConfig.GetScalingDepthDelta(scalingTier);
+                        item = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(gearItem, scalingTier, depthDelta);
                     }
 
                     // Gold pouch (issue #417): same two rolls in the same order as the live chest —
@@ -184,7 +187,7 @@ namespace PitHero.VirtualGame
 
             // Enemy level uses effective depth so tier-2+ enemies are stronger than tier-1 at the same displayed level.
             int caveScaledEnemyLevel = CaveBiomeConfig.GetScaledEnemyLevelForPitLevel(displayedLevel, tier);
-            bool isCaveBossFloor = CaveBiomeConfig.IsBossFloor(displayedLevel);
+            bool isCaveBossFloor = CaveBiomeConfig.IsBossFloor(biomeLevel);
 
             // Generate boss marker first on cave boss floors
             if (isCaveBossFloor && monsterCount > 0)
@@ -193,7 +196,7 @@ namespace PitHero.VirtualGame
                 if (bossPos.HasValue)
                 {
                     usedPositions.Add(bossPos.Value);
-                    EnemyId bossId = GetBossEnemyIdForLevel(displayedLevel);
+                    EnemyId bossId = GetBossEnemyIdForLevel(biomeLevel);
                     IEnemy bossEnemy = EnemyFactory.Create(bossId, caveScaledEnemyLevel);
                     // AddMonster(Point, IEnemy) routes to AddBossMonster internally when IsBoss=true
                     _worldState.AddMonster(bossPos.Value, bossEnemy);
@@ -203,9 +206,9 @@ namespace PitHero.VirtualGame
             }
 
             // Generate monsters from Cave Biome pool if in cave range
-            if (CaveBiomeConfig.IsCaveLevel(displayedLevel) && !isCaveBossFloor)
+            if (CaveBiomeConfig.IsCaveLevel(biomeLevel) && !isCaveBossFloor)
             {
-                EnemyId[] enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(displayedLevel);
+                EnemyId[] enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(biomeLevel);
                 for (int i = 0; i < monsterCount; i++)
                 {
                     var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);

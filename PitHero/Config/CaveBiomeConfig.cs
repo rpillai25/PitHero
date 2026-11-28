@@ -6,7 +6,9 @@ using RolePlayingFramework.Stats;
 namespace PitHero.Config
 {
     /// <summary>
-    /// Cave biome progression rules for pit levels 1 through 25.
+    /// Cave biome progression rules for biome levels 1 through 25. Until each biome gets its own roster
+    /// (issue #473 follow-up) the Forest, Castle and Underworld reuse these tables, keyed on the biome
+    /// level (BiomeProgressionConfig.GetBiomeLevel), never the displayed cycle level.
     /// </summary>
     public static class CaveBiomeConfig
     {
@@ -56,7 +58,7 @@ namespace PitHero.Config
         /// <summary>
         /// Gets enemy spawn level for Cave progression, with a boss bonus on boss floors.
         /// </summary>
-        /// <param name="pitLevel">Displayed pit level (1–25, biome-local).</param>
+        /// <param name="pitLevel">Displayed (cycle) pit level, 1–100.</param>
         /// <param name="pitTier">Pit tier (1 = first loop; default keeps all existing call sites at tier 1).</param>
         public static int GetScaledEnemyLevelForPitLevel(int pitLevel, int pitTier = 1)
         {
@@ -64,7 +66,7 @@ namespace PitHero.Config
             int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(pitLevel, pitTier);
             int baseLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(effectiveDepth);
             // Boss floors get a small +2 spike to preserve milestone difficulty without changing the base curve.
-            int bossBonus = IsBossFloor(pitLevel) ? 2 : 0;
+            int bossBonus = BiomeProgressionConfig.IsBossFloor(pitLevel) ? 2 : 0;
             // Clamp keeps levels in the global 1-99 bounds for safety at all call sites.
             return StatConstants.ClampLevel(baseLevel + bossBonus);
         }

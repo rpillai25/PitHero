@@ -62,8 +62,8 @@ namespace PitHero.VirtualGame
         /// </summary>
         public Services.LootBagSet LootBags { get; set; }
 
-        /// <summary>Pit tier for epic-drop gear scaling (mirrors live chest tier scaling).</summary>
-        public int CurrentPitTier { get; set; } = 1;
+        /// <summary>Scaling tier (one per biome of depth) for epic-drop gear scaling (mirrors live chest tier scaling).</summary>
+        public int CurrentScalingTier { get; set; } = 1;
 
         // ── Construction ──────────────────────────────────────────────────────────
 
@@ -219,10 +219,10 @@ namespace PitHero.VirtualGame
             if (mainBoss != null && mainBoss.CurrentHP <= 0 && LootBags != null)
             {
                 var epicItem = LootBags.DrawEpicItem((float)_epicRng.NextDouble());
-                if (CurrentPitTier >= 2 && epicItem is Gear epicGear)
+                if (CurrentScalingTier >= 2 && epicItem is Gear epicGear)
                 {
-                    int depthDelta = (CurrentPitTier - 1) * Config.BiomeProgressionConfig.MaxBiomeLevel;
-                    epicItem = Gear.CreateTierScaledCopy(epicGear, CurrentPitTier, depthDelta);
+                    int depthDelta = Config.BiomeProgressionConfig.GetScalingDepthDelta(CurrentScalingTier);
+                    epicItem = Gear.CreateTierScaledCopy(epicGear, CurrentScalingTier, depthDelta);
                 }
                 _world.AddTreasure(mainBossTile, epicItem);
             }

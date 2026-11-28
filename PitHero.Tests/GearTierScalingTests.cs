@@ -59,7 +59,7 @@ namespace PitHero.Tests
         public void CreateTierScaledCopy_Tier2_AttackIsHigherThanBase()
         {
             var gear = MakeBaseGear(atk: 10, rarity: ItemRarity.Normal);
-            int depthDelta = 1 * BiomeProgressionConfig.MaxBiomeLevel; // 25
+            int depthDelta = 1 * BiomeProgressionConfig.BiomeLength; // 25
 
             var scaled = Gear.CreateTierScaledCopy(gear, 2, depthDelta);
 
@@ -71,7 +71,7 @@ namespace PitHero.Tests
         public void CreateTierScaledCopy_Tier2_DefenseIsHigherThanBase()
         {
             var gear = MakeBaseGear(def: 5, rarity: ItemRarity.Normal);
-            int depthDelta = 1 * BiomeProgressionConfig.MaxBiomeLevel; // 25
+            int depthDelta = 1 * BiomeProgressionConfig.BiomeLength; // 25
 
             var scaled = Gear.CreateTierScaledCopy(gear, 2, depthDelta);
 
@@ -278,7 +278,7 @@ namespace PitHero.Tests
             Assert.IsTrue(ItemRegistry.TryCreateItem("RustyBlade", out var baseItem));
             var baseGear = (Gear)baseItem;
 
-            ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel;
+            ItemRegistry.TierDepthStride = BiomeProgressionConfig.BiomeLength;
             int depthDelta = 1 * ItemRegistry.TierDepthStride;
             var direct = Gear.CreateTierScaledCopy(baseGear, 2, depthDelta);
 
@@ -308,7 +308,7 @@ namespace PitHero.Tests
             var baseGear = (Gear)baseItem;
             var tier2Name = baseGear.Name + "+2"; // "RustyBlade+2" in every host
 
-            ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel; // ensure stride is set
+            ItemRegistry.TierDepthStride = BiomeProgressionConfig.BiomeLength; // ensure stride is set
             bool found = ItemRegistry.TryCreateItem(tier2Name, out var tier2Item);
 
             Assert.IsTrue(found, $"TryCreateItem('{tier2Name}') should succeed via +N parsing");
@@ -359,9 +359,9 @@ namespace PitHero.Tests
 
             Nez.Random.SetSeed(12345);
 
-            // Tier 2 drop at displayed level 11 (same RNG state = same base item, then scaled)
+            // Scaling tier 2 drop: Forest level 36 is biome level 11 one biome deeper (same RNG state = same base item, then scaled)
             var tier2Chest = new TreasureComponent();
-            tier2Chest.InitializeForPitLevel(11, emptyCtx, pitTier: 2);
+            tier2Chest.InitializeForPitLevel(36, emptyCtx, pitTier: 1);
 
             // If both drops produced Gear, tier-2 should be strictly stronger.
             if (tier1Chest.ContainedItem is Gear t1 && tier2Chest.ContainedItem is Gear t2)
@@ -377,19 +377,20 @@ namespace PitHero.Tests
         // ── VirtualPitGenerator depth-decomposition ───────────────────────────────────
 
         [TestMethod]
-        public void VirtualPitGenerator_Depth40_IsTier2CaveLevel15()
+        public void VirtualPitGenerator_Depth40_IsForestLevel40Tier1()
         {
-            // depth 40 = displayedLevel 15, tier 2
+            // depth 40 = displayed level 40 (Forest, biome level 15), tier 1
             int displayedLevel = BiomeProgressionConfig.GetDisplayedLevelForDepth(40);
             int tier = BiomeProgressionConfig.GetTierForDepth(40);
-            Assert.AreEqual(15, displayedLevel, "Depth 40 should map to displayed level 15");
-            Assert.AreEqual(2, tier, "Depth 40 should be tier 2");
+            Assert.AreEqual(40, displayedLevel, "Depth 40 should map to displayed level 40");
+            Assert.AreEqual(15, BiomeProgressionConfig.GetBiomeLevel(displayedLevel), "Level 40 is biome level 15");
+            Assert.AreEqual(1, tier, "Depth 40 should be tier 1");
         }
 
         [TestMethod]
         public void VirtualPitGenerator_RegenerateForLevel40_GeneratesAncientWyrmBoss()
         {
-            // depth 40 → displayed 15 → AncientWyrm boss floor
+            // depth 40 → displayed 40 → biome level 15 → AncientWyrm boss floor
             var world = new VirtualWorldState();
             var context = new VirtualGoapContext(world);
             context.PitWidthManager.Initialize();
@@ -402,13 +403,13 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void VirtualPitGenerator_RegenerateForLevel26_IsTier2CaveLevel1()
+        public void VirtualPitGenerator_RegenerateForLevel26_IsTier1ForestLevel26()
         {
-            // depth 26 = displayedLevel 1, tier 2 (first level of tier-2 loop)
+            // depth 26 = displayed level 26 (first Forest level), still tier 1
             int displayedLevel = BiomeProgressionConfig.GetDisplayedLevelForDepth(26);
             int tier = BiomeProgressionConfig.GetTierForDepth(26);
-            Assert.AreEqual(1, displayedLevel, "Depth 26 should map to displayed level 1");
-            Assert.AreEqual(2, tier, "Depth 26 should be tier 2");
+            Assert.AreEqual(26, displayedLevel, "Depth 26 should map to displayed level 26");
+            Assert.AreEqual(1, tier, "Depth 26 should be tier 1");
         }
 
         [TestMethod]

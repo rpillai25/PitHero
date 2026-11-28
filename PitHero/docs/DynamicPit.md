@@ -42,8 +42,8 @@ int expansionLevel = Math.Clamp(pitLevel, 0, 100);  // Cap expansion at level 10
 int extensionTiles = (expansionLevel / 10) * 2;
 ```
 
-`pitLevel` is the level within the current cycle (1 to MaxBiomeLevel), never the cumulative depth, so every
-new cycle (tier) starts back at the base 10-tile floor. Monster and loot scaling still use the effective depth.
+`pitLevel` is the level within the current 100-level cycle (1 to `BiomeProgressionConfig.CycleLength`), never the cumulative depth, so every
+new cycle (tier) starts back at the base 10-tile floor and the pit widens across all four biomes. Monster and loot scaling still use the effective depth.
 `CalculateRightEdgeForLevel` predicts the edge `SetPitLevel` shrinks to and must match `RegeneratePitWidth`.
 
 **Examples:**
@@ -93,3 +93,28 @@ The test suite includes:
 - Edge case handling
 
 Total: 32 tests (22 original + 10 new PitWidthManager tests)
+## Biomes (issue #473)
+
+The pit cycles through four biomes, 25 levels each: **Cave** 1–25, **Forest** 26–50, **Castle** 51–75,
+**Underworld** 76–100 (`BiomeProgressionConfig.GetBiome`). The tier increments only past level 100.
+
+- **Tiles.** `Content/Tilemaps/PitHeroDungeons.tmx` holds one 14x11 Base-layer block per biome, side by
+  side (Cave, Forest, Castle; it shares `PitHeroTiles.tsx`, firstgid 1). `PitWidthManager.SetPitLevel`
+  stamps the level's block into the main map's Base layer at tile (0,1) whenever the biome changes (new
+  game, load, orb advance, death reset) and re-records the expansion columns (x=11 inner floor, x=12
+  inner wall, x=13 outer floor) and the shrink snapshot of x=12–13 from it, so expansion copies the
+  biome's columns. Writes go through `TiledMapService.SetTile`, so replays record them as tile events.
+  `PitBiomeTileSet` parses the blocks from the TMX XML (no texture load). Collision is not stamped: every
+  block has the same pit shape. PitHero.tmx is authored with the Castle block, which a test pins.
+- **Walls.** Pit obstacles use the biome's wall tile from the tileset (0-based ids: Cave 191, Forest 211,
+  Castle 34; `PitBiomeTileSet.GetWallSprite`).
+- **Underworld.** Reuses the Cave block and wall, graded purple: `PitBiomeTintComponent` multiplies
+  `PitBiomeTileSet.UnderworldTint` over the pit tiles (render layer 95, between Base and Detail), and the
+  walls carry the same color. The tint is live-only and follows the HUD record's pit level in replays.
+- **Content.** Every biome reuses the Cave tables keyed on the **biome level** (1–25,
+  `GetBiomeLevel`): monster pools, boss floors (5/10/15/20/25), chest rarity bands, monster density.
+  Enemy levels use the effective depth; tier-scaled "+N" gear and chest gold use the **scaling tier**
+  (one per biome of depth, `GetScalingTier`), so loot keeps the per-25-level curve it had when each
+  25-level loop was its own tier. Chest/obstacle counts and pit width follow the cycle level.
+- **Saves.** v48 stores the cycle level; v47 and older (level, tier) pairs convert by effective depth
+  (`ConvertLegacyPitPosition`: legacy level 1 tier 2 → level 26 tier 1).

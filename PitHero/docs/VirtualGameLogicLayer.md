@@ -284,19 +284,21 @@ Full suite: `dotnet test PitHero.Tests/PitHero.Tests.csproj`. Baseline: **0 fail
 `RunLevelRange` accept a **cumulative depth** argument — the absolute depth since the start of
 the game, not a per-tier counter.
 
-- Depths **≤ 25** are tier 1 and behave identically to the pre-#291 behaviour.
-- Crossing depth 25 (i.e. the argument is 26) causes the simulation to auto-increment its
-  internal tier counter and record the tier base level (`TierBaseLevel = 26`). Subsequent
-  levels continue counting up, with enemy scaling derived from the full cumulative depth.
-- `RunLevelRange(1, 50)` therefore spans tier 1 (depths 1–25) and tier 2 (depths 26–50)
-  without any special configuration.
-- The mercenary hire floor activates at tier ≥ 2: `RunLevelRange` will attempt to hire
-  mercenaries from depth 26 onward even if the party is already full from tier 1, because
-  mercenaries from earlier tiers may have died or been dismissed.
+- Depths **≤ 100** are tier 1 (issue #473: one cycle is four 25-level biomes — Cave 1–25,
+  Forest 26–50, Castle 51–75, Underworld 76–100). Crossing a biome boundary does not change the tier.
+- Crossing depth 100 (i.e. the argument is 101) causes the simulation to auto-increment its
+  internal tier counter and record the tier base level. Subsequent levels continue counting up,
+  with enemy scaling derived from the full cumulative depth.
+- Content keys on the **biome level** (`BiomeProgressionConfig.GetBiomeLevel`, 1–25): pools, boss
+  floors, chest rarity and monster density repeat per biome. "+N" gear and chest gold use the
+  **scaling tier** (`GetScalingTierForDepth`, one per 25 levels of depth), so depths 26–50 still drop
+  "+2" gear as they did when they were tier 2 (before issue #473). Chest/obstacle counts follow the
+  cycle level, like the live PitGenerator.
+- The mercenary hire floor activates at tier ≥ 2.
 
-The effective depth formula used for balance joins is `(tier-1)*25 + pitLevel`, where
-`pitLevel` is the within-tier counter (1–25). Both values are present in analytics events
-(see `AnalyticsSchema.md`).
+The effective depth formula used for balance joins is `(tier-1)*100 + pitLevel`, where
+`pitLevel` is the within-cycle counter (1–100; `(tier-1)*25` for sessions before issue #473).
+Both values are present in analytics events (see `AnalyticsSchema.md`).
 
 ## Legacy Exploration Harness
 

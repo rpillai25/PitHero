@@ -283,7 +283,7 @@ namespace PitHero.Services
         /// periodic cleanup, not a policy of rejecting old saves; do not drop reader support for
         /// a shipped version without the owner explicitly asking for a new unification.
         /// </summary>
-        public const int CurrentVersion = 47; // v47: hired mercenary job-skill unlock counts (issue #471); v46: hero custom Shadow/Highlight tones for skin, hair and shirt (issue #467); v45: Stats window digging totals (issue #456); v44: Stats window lifetime totals (issue #456); v43: gem dig pity counters dropped (the Digging Field draws from a 500-marble shuffle bag); v42: gem dig site pity counters (issue #452); v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
+        public const int CurrentVersion = 48; // v48: pit level is the 100-level biome cycle (Cave/Forest/Castle/Underworld, issue #473) — older (level, tier) pairs of the 25-level loop convert by effective depth on read; v47: hired mercenary job-skill unlock counts (issue #471); v46: hero custom Shadow/Highlight tones for skin, hair and shirt (issue #467); v45: Stats window digging totals (issue #456); v44: Stats window lifetime totals (issue #456); v43: gem dig pity counters dropped (the Digging Field draws from a 500-marble shuffle bag); v42: gem dig site pity counters (issue #452); v41: crop watering priority order (issue #450); v40: hero and mercenary eye colors; v39: allied-monster job task progress is fractional (tilling credits a tenth of a farm task, issue #422)
 
         /// <summary>
         /// The oldest save file version this build can still load. Files below this (or above
@@ -414,7 +414,7 @@ namespace PitHero.Services
         public Dictionary<string, int> DiscoveredStencils;
 
         // Pit State
-        /// <summary>Current pit level (biome-local, 1–MaxBiomeLevel).</summary>
+        /// <summary>Current pit level (cycle level, 1–CycleLength = 100; v47 and older saved the 25-level loop, converted on read).</summary>
         public int PitLevel;
 
         /// <summary>Current pit tier (1–99, permanent, never decreases).</summary>
@@ -1742,6 +1742,14 @@ namespace PitHero.Services
             // 29. Pit tier
             PitTier = reader.ReadInt();
             TierBaseLevel = reader.ReadInt();
+            if (fileVersion < 48)
+            {
+                // v47 and older looped every 25 levels, one tier per loop (issue #473 made the cycle
+                // 100 levels across four biomes): keep the effective depth, so (1, 2) becomes (26, 1)
+                PitHero.Config.BiomeProgressionConfig.ConvertLegacyPitPosition(PitLevel, PitTier, out int cycleLevel, out int cycleTier);
+                PitLevel = cycleLevel;
+                PitTier = cycleTier;
+            }
 
             // 30. Auto shop options
             AutomateSeedPurchases = reader.ReadBool();
