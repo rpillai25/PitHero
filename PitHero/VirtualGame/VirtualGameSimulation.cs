@@ -464,7 +464,7 @@ namespace PitHero.VirtualGame
             _battleRunner.SetMercenaries(_mercenaries);
             // Boss epic chest parity (#382): shared bags + current tier for gear scaling.
             _battleRunner.LootBags = _lootBags;
-            _battleRunner.CurrentPitTier = _simPitWidthManager.CurrentPitTier;
+            _battleRunner.CurrentScalingTier = BiomeProgressionConfig.GetScalingTierForDepth(pitLevel);
 
             // Place hero at pit start and reset the per-level GOAP flags — without this,
             // a persistent multi-level run (RunLevelRange) would carry ActivatedWizardOrb
@@ -644,7 +644,7 @@ namespace PitHero.VirtualGame
             _world.ActivateWizardOrb();
             _hero.ActivatedWizardOrb = true;
 
-            // Queue next pit level (current + 1; wrap to level 1 and increment tier when past MaxBiomeLevel)
+            // Queue next pit level (current + 1; wrap to level 1 and increment tier past the 100-level cycle)
             var nextLevel = _world.PitLevel + 1;
             _pitQueue.QueueLevel(nextLevel);
 

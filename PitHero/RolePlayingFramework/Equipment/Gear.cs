@@ -166,7 +166,7 @@ namespace RolePlayingFramework.Equipment
         /// </summary>
         /// <param name="source">Base gear to scale from.</param>
         /// <param name="tier">Target pit tier (must be ≥ 2 to produce a new instance).</param>
-        /// <param name="depthDelta">Additional effective depth beyond tier-1 baseline (e.g. (tier-1) * MaxBiomeLevel).</param>
+        /// <param name="depthDelta">Additional effective depth beyond tier-1 baseline (e.g. (scalingTier-1) * BiomeLength).</param>
         public static Gear CreateTierScaledCopy(Gear source, int tier, int depthDelta)
         {
             if (source == null) return null;

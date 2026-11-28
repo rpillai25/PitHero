@@ -89,22 +89,24 @@ namespace PitHero
 
         /// <summary>
         /// Create a random enemy appropriate for the given pit level.
-        /// Cave levels 1-25 use explicit mapping with boss floors at 5/10/15/20/25.
-        /// Biome pool selection uses the displayed pitLevel; enemy scaling uses the effective depth via pitTier.
+        /// Every biome reuses the Cave mapping (biome levels 1-25, boss floors at 5/10/15/20/25) until it
+        /// gets its own roster (issue #473). Pool selection uses the biome level; enemy scaling uses the
+        /// effective depth of the displayed level and tier.
         /// </summary>
-        /// <param name="pitLevel">Displayed pit level (1–25, biome-local).</param>
+        /// <param name="pitLevel">Displayed (cycle) pit level, 1–100.</param>
         /// <param name="pitTier">Pit tier (default 1 keeps all existing call sites at tier-1 behaviour).</param>
         public (IEnemy enemy, Color color) CreateEnemyForPitLevel(int pitLevel, int pitTier = 1)
         {
-            if (CaveBiomeConfig.IsCaveLevel(pitLevel))
+            int biomeLevel = BiomeProgressionConfig.GetBiomeLevel(pitLevel);
+            if (CaveBiomeConfig.IsCaveLevel(biomeLevel))
             {
-                // Pool keying and boss checks use the DISPLAYED pitLevel (biome-local 1–25).
-                // Enemy level scaling uses the effective cumulative depth so tier-2+ enemies are stronger.
+                // Pool keying and boss checks use the biome level (1–25).
+                // Enemy level scaling uses the effective cumulative depth so deeper biomes and tiers are stronger.
                 int scaledLevel = CaveBiomeConfig.GetScaledEnemyLevelForPitLevel(pitLevel, pitTier);
-                if (CaveBiomeConfig.IsBossFloor(pitLevel))
+                if (CaveBiomeConfig.IsBossFloor(biomeLevel))
                 {
                     // Spawn unique boss for each boss floor
-                    return pitLevel switch
+                    return biomeLevel switch
                     {
                         5 => (new StoneGuardian(scaledLevel), Color.DarkGray),
                         10 => (new EarthElemental(scaledLevel), Color.Brown),
@@ -115,7 +117,7 @@ namespace PitHero
                     };
                 }
 
-                var enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(pitLevel);
+                var enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(biomeLevel);
                 if (enemyPool.Length == 0)
                 {
                     return (new Slime(scaledLevel), Color.LightGreen);
@@ -247,7 +249,7 @@ namespace PitHero
             var heroComponentForBoss = heroEntity?.GetComponent<HeroComponent>();
             if (heroComponentForBoss != null)
             {
-                heroComponentForBoss.BossDefeated = !CaveBiomeConfig.IsBossFloor(level);
+                heroComponentForBoss.BossDefeated = !BiomeProgressionConfig.IsBossFloor(level);
                 Debug.Log($"[PitGenerator] BossDefeated set to {heroComponentForBoss.BossDefeated} for level {level}");
             }
         }
@@ -364,14 +366,15 @@ namespace PitHero
 
             Debug.Log($"[PitGenerator] Valid placement area for level {level}: tiles ({validMinX},{validMinY}) to ({validMaxX},{validMaxY})");
 
-            // Calculate entity counts based on level
-            PitPopulationConfig.GetMonsterRange(level, out int minMonsters, out int maxMonsters);
+            // Calculate entity counts based on level. Monster density ramps across each biome (biome level
+            // 1-25); chests and obstacles keep growing across the whole 100-level cycle with the pit width.
+            PitPopulationConfig.GetMonsterRange(BiomeProgressionConfig.GetBiomeLevel(level), out int minMonsters, out int maxMonsters);
             int maxChests = MaxChests(level);
             int minObstacles = MinObstacles(level);
             int maxObstacles = MaxObstacles(level);
 
             // Calculate actual entity counts with variance
-            bool isBossFloor = CaveBiomeConfig.IsBossFloor(level);
+            bool isBossFloor = BiomeProgressionConfig.IsBossFloor(level);
             int obstacleCount = Nez.Random.Range(minObstacles, maxObstacles + 1);
             int chestCount = Nez.Random.Range(maxChests / 2, maxChests + 1);
             int monsterCount = isBossFloor ? 1 : Nez.Random.Range(minMonsters, maxMonsters + 1);
@@ -718,14 +721,20 @@ namespace PitHero
 
                 if (tag == GameConfig.TAG_OBSTACLE)
                 {
-                    // Use actual wall sprite for obstacles
-                    if (_actorsAtlas != null)
+                    // Obstacles use the biome's wall tile from the map tileset (issue #473); the
+                    // Underworld reuses the Cave wall, tinted purple like its tiles. The old atlas
+                    // wall is the fallback when the tileset is unavailable.
+                    var biome = BiomeProgressionConfig.GetBiome(pitLevel);
+                    var tmxMap = Core.Services.GetService<TiledMapService>()?.CurrentMap;
+                    var biomeWallSprite = PitHero.Util.PitBiomeTileSet.GetWallSprite(tmxMap, biome);
+                    if (biomeWallSprite != null || _actorsAtlas != null)
                     {
-                        var wallSprite = _actorsAtlas.GetSprite("wall");
+                        var wallSprite = biomeWallSprite ?? _actorsAtlas.GetSprite("wall");
                         if (wallSprite != null)
                         {
                             var renderer = entity.AddComponent(new YSortSpriteRenderer(wallSprite));
                             renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
+                            renderer.Color = PitHero.Util.PitBiomeTileSet.GetTint(biome);
                             // Pit walls follow the day/night color grade like the terrain they sit on.
                             var colorGrading = Core.Services.GetService<Rendering.ColorGradingController>();
                             if (colorGrading?.Material != null)

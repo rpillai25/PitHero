@@ -95,7 +95,7 @@ namespace PitHero.AI
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             int oldRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
             int level = pitWidthManager?.CurrentPitLevel ?? 1;
-            int nextLevel = level + 1 > BiomeProgressionConfig.MaxBiomeLevel ? 1 : level + 1;
+            int nextLevel = level + 1 > BiomeProgressionConfig.CycleLength ? 1 : level + 1;
             int newRightEdge = PitWidthManager.CalculateRightEdgeForLevel(nextLevel);
 
             // Only the mercenaries inside the pit warp with the hero; the rest stay where they are
@@ -196,7 +196,7 @@ namespace PitHero.AI
             // BossDefeated is false on boss floors until the boss is killed; true on all other floors
             var pitWidthManagerForBoss = Core.Services.GetService<PitWidthManager>();
             int newPitLevel = pitWidthManagerForBoss?.CurrentPitLevel ?? 1;
-            hero.BossDefeated = !CaveBiomeConfig.IsBossFloor(newPitLevel);
+            hero.BossDefeated = !BiomeProgressionConfig.IsBossFloor(newPitLevel);
 
             Debug.Log($"[ActivateWizardOrb] BossDefeated set to {hero.BossDefeated} for new pit level {newPitLevel}");
             Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit regenerated and hero repositioned");
@@ -234,7 +234,7 @@ namespace PitHero.AI
                 // The level value itself is passed through unchanged for now (step 4 will
                 // teach RegenerateForLevel to interpret it as cumulative depth).
                 int dequeued = nextLevel.Value;
-                if (dequeued > BiomeProgressionConfig.MaxBiomeLevel)
+                if (dequeued > BiomeProgressionConfig.CycleLength)
                 {
                     int newTier = BiomeProgressionConfig.GetTierForDepth(dequeued);
                     if (newTier > context.PitWidthManager.CurrentPitTier)
@@ -281,7 +281,7 @@ namespace PitHero.AI
 
             // BossDefeated is false on boss floors until the boss is killed; true on all other floors
             int newVirtualPitLevel = context.PitWidthManager.CurrentPitLevel;
-            context.HeroController.BossDefeated = !CaveBiomeConfig.IsBossFloor(newVirtualPitLevel);
+            context.HeroController.BossDefeated = !BiomeProgressionConfig.IsBossFloor(newVirtualPitLevel);
 
             context.LogDebug($"[ActivateWizardOrbAction] BossDefeated set to {context.HeroController.BossDefeated} for new pit level {newVirtualPitLevel}");
             context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit regenerated and hero repositioned");
@@ -325,7 +325,7 @@ namespace PitHero.AI
             return wizardOrbEntities[0]; // Should only be one wizard orb
         }
 
-        /// <summary>Queue next pit level for regeneration, wrapping to tier 1 when past MaxBiomeLevel.</summary>
+        /// <summary>Queue next pit level for regeneration, wrapping to level 1 of the next tier past the cycle (level 100).</summary>
         private void QueueNextPitLevel(int heroLevel)
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
@@ -336,7 +336,7 @@ namespace PitHero.AI
             }
 
             var nextLevel = pitWidthManager.CurrentPitLevel + 1;
-            if (nextLevel > BiomeProgressionConfig.MaxBiomeLevel)
+            if (nextLevel > BiomeProgressionConfig.CycleLength)
             {
                 // Wrap: increment tier then queue level 1. IncrementPitTier is idempotent at tier cap 99.
                 pitWidthManager.IncrementPitTier(heroLevel);

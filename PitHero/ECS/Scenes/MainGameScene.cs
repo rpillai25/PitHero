@@ -1724,8 +1724,14 @@ namespace PitHero.ECS.Scenes
         private void SetupPitWidthManager()
         {
             var pitWidthManager = new PitWidthManager();
+            // Biome tiles (issue #473): each pit level change stamps the biome's 14x11 block into the Base layer
+            pitWidthManager.BiomeBlockProvider = Util.PitBiomeTileSet.GetBaseBlock;
             Core.Services.AddService(pitWidthManager);
             pitWidthManager.Initialize();
+
+            // The Underworld's purple grade over the pit tiles (live, and from the HUD record in replays)
+            var biomeTintEntity = CreateEntity("pit-biome-tint");
+            biomeTintEntity.AddComponent(new PitBiomeTintComponent()).SetRenderLayer(GameConfig.RenderLayerPitBiomeTint);
             Debug.Log("[MainGameScene] PitWidthManager initialized and registered as service");
         }
 

@@ -48,8 +48,20 @@ namespace PitHero
         private int _currentPitRightEdge; // The rightmost x coordinate of the current pit
         private bool _isInitialized = false;
 
+        // Biome whose tile block is stamped into the Base layer (null until the first stamp, issue #473)
+        private PitBiome? _stampedBiome;
+
         // Interface dependencies
         private ITiledMapService _tiledMapService;
+
+        /// <summary>
+        /// Supplies a biome's 14x11 Base-layer block (row-major gids, see <see cref="PitBiomeTileSet"/>).
+        /// Null disables biome stamping (unit tests, headless use); the map then keeps its authored pit tiles.
+        /// </summary>
+        public Func<PitBiome, int[]> BiomeBlockProvider { get; set; }
+
+        /// <summary>The biome of the current pit level.</summary>
+        public PitBiome CurrentBiome => BiomeProgressionConfig.GetBiome(_currentPitLevel);
 
         public int CurrentPitLevel => _currentPitLevel;
         public int CurrentPitTier => _currentPitTier;
@@ -270,7 +282,7 @@ namespace PitHero
 
         /// <summary>
         /// Increments the pit tier by 1 (clamped at MaxPitTier) and records the hero level as the new tier base level.
-        /// Called when the pit level wraps from MaxBiomeLevel back to 1.
+        /// Called when the pit level wraps from the last cycle level (100) back to 1.
         /// </summary>
         public void IncrementPitTier(int heroLevelAtEntry)
         {
@@ -305,6 +317,10 @@ namespace PitHero
             Debug.Log($"[PitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
 
+            // Stamp the new level's biome tiles first: the shrink restore and the width extension
+            // below both copy from the biome's columns.
+            EnsureBiomeTiles(BiomeProgressionConfig.GetBiome(newLevel));
+
             // Calculate the right edge RegeneratePitWidth will actually produce for the new level.
             // Must match its output exactly: an overestimate here skips the shrink cleanup and
             // strands the old pit's inner-wall collision column in the map, sealing off the pit
@@ -321,8 +337,54 @@ namespace PitHero
         }
 
         /// <summary>
+        /// Stamps the biome's 14x11 tile block into the Base layer at (0,1) when it is not already there
+        /// (issue #473) and re-records the expansion column patterns (x=11 inner floor, x=12 inner wall,
+        /// x=13 outer floor) and the shrink-restore snapshot of x=12..13 from it, so the next width
+        /// change extends and restores the pit with the biome's tiles. Writes go through the tiled map
+        /// service, so the replay frame stream records them as tile events. Collision is unchanged:
+        /// every biome block has the same pit shape.
+        /// </summary>
+        private void EnsureBiomeTiles(PitBiome biome)
+        {
+            if (_stampedBiome == biome || BiomeBlockProvider == null || _tiledMapService == null)
+                return;
+            var block = BiomeBlockProvider(biome);
+            if (block == null || block.Length < PitBiomeTileSet.BlockWidth * PitBiomeTileSet.BlockHeight)
+            {
+                Debug.Warn($"[PitWidthManager] No tile block for biome {biome}; keeping the current pit tiles");
+                return;
+            }
+
+            for (int by = 0; by < PitBiomeTileSet.BlockHeight; by++)
+            {
+                int y = PitBiomeTileSet.StampTileY + by;
+                for (int bx = 0; bx < PitBiomeTileSet.BlockWidth; bx++)
+                {
+                    int x = PitBiomeTileSet.StampTileX + bx;
+                    int gid = block[by * PitBiomeTileSet.BlockWidth + bx];
+                    if (gid != 0)
+                        _tiledMapService.SetTile("Base", x, y, gid);
+                    else
+                        _tiledMapService.RemoveTile("Base", x, y);
+
+                    if (y >= 1 && y <= 11)
+                    {
+                        if (x == 11) _baseInnerFloor[y] = gid;
+                        else if (x == 12) _baseInnerWall[y] = gid;
+                        else if (x == 13) _baseOuterFloor[y] = gid;
+                    }
+                    if (x >= SnapshotMinX && x <= SnapshotMaxX && y >= SnapshotMinY && y <= SnapshotMaxY)
+                        _originalBaseTilesSnapshot[x * 100 + y] = gid;
+                }
+            }
+
+            _stampedBiome = biome;
+            Debug.Log($"[PitWidthManager] Stamped {biome} biome tiles into the pit");
+        }
+
+        /// <summary>
         /// Inner floor tiles the pit gains at <paramref name="pitLevel"/>, the level within the current cycle
-        /// (1 to MaxBiomeLevel): 2 more every 10 levels, capped at level 100. Keyed on the cycle level, not the
+        /// (1 to CycleLength = 100): 2 more every 10 levels, capped at level 100. Keyed on the cycle level, not the
         /// effective depth, so every new cycle (tier) starts back at the base 10-tile floor.
         /// </summary>
         public static int ExtensionTilesForLevel(int pitLevel)

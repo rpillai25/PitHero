@@ -228,13 +228,13 @@ namespace PitHero.Tests
                 "Same seed must reproduce the exact same balance metrics CSV");
         }
 
-        // ── Tier-2 tests (issue #291, step 8) ────────────────────────────────────────
+        // ── Second-biome tests (issue #291 step 8; issue #473 made depths 26-50 the Forest) ──
 
-        /// <summary>Cumulative depths in tier-2, with their displayed levels noted.</summary>
+        /// <summary>Cumulative depths in the second biome (the Forest), with their biome levels noted.</summary>
         /// <remarks>
-        /// 26 → displayed 1 (tier 2), 30 → displayed 5 (boss, tier 2),
-        /// 40 → displayed 15 (boss, tier 2), 45 → displayed 20 (boss, tier 2),
-        /// 50 → displayed 25 (boss, tier 2).
+        /// 26 → biome level 1, 30 → 5 (boss), 40 → 15 (boss), 45 → 20 (boss), 50 → 25 (boss).
+        /// Before issue #473 these depths were tier 2 of a 25-level loop; now they are pit levels
+        /// 26-50 of tier 1, and the loot keeps that difficulty through scaling tier 2.
         /// </remarks>
         private static readonly int[] Tier2SampleDepths = { 26, 30, 40, 45, 50 };
 
@@ -263,9 +263,9 @@ namespace PitHero.Tests
         }
 
         /// <summary>
-        /// Runs tier-2 depths {26, 30, 40, 45, 50} with a level-appropriate solo Knight
+        /// Runs second-biome depths {26, 30, 40, 45, 50} with a level-appropriate solo Knight
         /// and verifies each traversal produces battles and that PitTier/DisplayedLevel
-        /// columns are correctly populated in the returned metrics.
+        /// columns are correctly populated in the returned metrics (tier 1, Forest levels).
         /// CSV output is printed so balance reports can consume it.
         /// </summary>
         [TestMethod]
@@ -286,8 +286,12 @@ namespace PitHero.Tests
                     var metrics  = RunTier2Level(Seed, depth);
                     metrics.WriteRow(writer);
 
-                    Assert.AreEqual(2, metrics.PitTier,
-                        $"Depth {depth}: PitTier column must be 2");
+                    Assert.AreEqual(1, metrics.PitTier,
+                        $"Depth {depth}: PitTier column must be 1 (the tier increments only past level 100)");
+                    Assert.AreEqual(PitBiome.Forest, BiomeProgressionConfig.GetBiome(displayed),
+                        $"Depth {depth}: must be a Forest floor");
+                    Assert.AreEqual(2, BiomeProgressionConfig.GetScalingTierForDepth(depth),
+                        $"Depth {depth}: loot must scale as the second biome");
                     Assert.AreEqual(displayed, metrics.DisplayedLevel,
                         $"Depth {depth}: DisplayedLevel must be {displayed}");
                     Assert.AreEqual(Seed, metrics.RngSeed,
@@ -372,23 +376,21 @@ namespace PitHero.Tests
         }
 
         /// <summary>
-        /// Simulates a hero respawning at the tier-base level after death in tier 2.
-        /// A crossing sim with a level-appropriate hero establishes the TierBaseLevel;
-        /// then a fresh sim at that level (with full Knight skills and potions) runs the
-        /// first three non-boss floors of tier 2 (depths 26–28) and must not wipe.
-        /// This validates the game-design contract: a hero at the tier-base level can
-        /// re-progress through early tier-2 content.
+        /// Simulates a party re-entering the second biome (the Forest, depth 26) at the hero level
+        /// it had when it first crossed out of the Cave. Before issue #473 this crossing was a tier
+        /// wrap that recorded TierBaseLevel; now it is a biome change inside tier 1, so the tier and
+        /// TierBaseLevel stay put and the entry level is read off the crossing hero instead.
+        /// A fresh sim at that level (with full Knight skills and potions) runs the first non-boss
+        /// Forest floor and must not wipe: a party at the biome-entry level can re-progress.
         /// </summary>
         [TestMethod]
         [TestCategory("BalanceTraversal")]
         public void BalanceTraversal_RespawnAtTierBaseLevel_SurvivesEarlyTier2()
         {
-            // ── Part 1: establish TierBaseLevel via a crossing sim ────────────────────
-            // Use a hero at the expected level when *entering* tier 2 (depth 26 = pit 26
-            // equivalent).  This represents the hero's level at the crossing point and is
-            // the value IncrementPitTier will record as TierBaseLevel.  Configuring at
-            // EstimatePlayerLevelForPitLevel(26) ensures the respawn hero's level closely
-            // matches depth-26 content and the test remains balance-valid.
+            // ── Part 1: cross from the Cave into the Forest ───────────────────────────
+            // Use a hero at the expected level when entering the Forest (depth 26).
+            // EstimatePlayerLevelForPitLevel(26) keeps the re-entry hero matched to depth-26
+            // content so the test remains balance-valid.
             int crossingHeroLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(26);
             var crossingSim = new VirtualGameSimulation(Seed);
             var crossingCrystal = new HeroCrystal("CrossRef", new Knight(), crossingHeroLevel, new StatBlock(10, 8, 10, 4));
@@ -401,16 +403,15 @@ namespace PitHero.Tests
             for (int i = 0; i < 5; i++)
                 crossingSim.Bag.TryAdd(PotionItems.HPPotion());
 
-            // Running pit 25 then depth 26 triggers IncrementPitTier, recording TierBaseLevel.
+            // Running pit 25 then depth 26 changes the biome but not the tier.
             crossingSim.RunLevelRange(25, 26);
-            int tierBaseLevel = crossingSim.TierBaseLevel;
+            Assert.AreEqual(1, crossingSim.TierBaseLevel,
+                "A biome change is not a tier wrap: TierBaseLevel must not be recorded");
+            int tierBaseLevel = crossingSim.Hero.LinkedHero.Level;
 
-            Assert.IsTrue(tierBaseLevel >= 1,
-                "TierBaseLevel must be set (≥ 1) after crossing into tier 2");
-
-            // ── Part 2: respawn sim — hero at TierBaseLevel with a tier-appropriate party ──
-            // A player respawning in tier 2 would rehire mercs at the tier-base level
-            // (the live MercenaryManager enforces the minLevel floor).  We mirror that here
+            // ── Part 2: re-entry sim — hero at the Forest-entry level with a matching party ──
+            // A player re-entering the Forest would hire mercs near the hero level
+            // (tavern mercs scale with the hero).  We mirror that here
             // via ConfigureMercenaries with a Priest (healing) and Archer (damage) at the
             // same tierBaseLevel, following the withParty=true convention in RunLevel.
             var respawnSim = new VirtualGameSimulation(Seed);
@@ -424,9 +425,9 @@ namespace PitHero.Tests
             for (int i = 0; i < 5; i++)
                 respawnSim.Bag.TryAdd(PotionItems.HPPotion());
 
-            // Restore the tier state so the manager knows the correct minLevel for any
-            // additional hires that RunLevelRange may attempt between levels.
-            respawnSim.ConfigurePitTier(2, tierBaseLevel);
+            // Tier 1: a biome change keeps the tier, so the tavern applies no tier-base floor
+            // to any additional hires that RunLevelRange may attempt between levels.
+            respawnSim.ConfigurePitTier(1, 1);
 
             // Pre-configure a Priest + Archer at tierBaseLevel (mirrors live tavern spawn
             // where LearnAllJobSkills is called on every new mercenary).
@@ -436,16 +437,16 @@ namespace PitHero.Tests
             scout.LearnAllJobSkills();
             respawnSim.ConfigureMercenaries(new List<Mercenary> { cleric, scout });
 
-            // Run the first non-boss floor of tier 2 (depth 26; displayed 1).
+            // Run the first non-boss Forest floor (depth 26; biome level 1).
             // This is the minimum viable re-progression check: a base-level party must
-            // clear the very first floor of tier 2 after respawning.
+            // clear the very first floor of the Forest.
             var respawnResults = respawnSim.RunLevelRange(26, 26);
 
             // Emit CSV for visibility.
             var sb = new StringBuilder(512);
             using (var writer = new StringWriter(sb))
             {
-                writer.WriteLine($"# respawn-at-tier-base scenario: tierBaseLevel={tierBaseLevel}, depth 26");
+                writer.WriteLine($"# respawn-at-tier-base scenario: forestEntryLevel={tierBaseLevel}, depth 26");
                 VirtualRunMetrics.WriteCsvHeader(writer);
                 for (int i = 0; i < respawnResults.Count; i++)
                     respawnResults[i].WriteRow(writer);
@@ -455,16 +456,16 @@ namespace PitHero.Tests
             Assert.IsTrue(respawnResults.Count > 0,
                 "Respawn run must attempt at least one depth");
 
-            // All traversed depths must have PitTier == 2.
+            // All traversed depths stay in tier 1.
             for (int i = 0; i < respawnResults.Count; i++)
             {
-                Assert.AreEqual(2, respawnResults[i].PitTier,
-                    $"Respawn depth {respawnResults[i].PitLevel}: PitTier must be 2");
+                Assert.AreEqual(1, respawnResults[i].PitTier,
+                    $"Respawn depth {respawnResults[i].PitLevel}: PitTier must be 1");
             }
 
             var lastRespawn = respawnResults[respawnResults.Count - 1];
             Assert.IsFalse(lastRespawn.Wiped,
-                $"A 3-member party at tier-base level {tierBaseLevel} must survive depth 26 (displayed 1, tier 2)");
+                $"A 3-member party at Forest-entry level {tierBaseLevel} must survive depth 26 (Forest, biome level 1)");
         }
 
         /// <summary>

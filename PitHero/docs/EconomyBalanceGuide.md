@@ -161,8 +161,8 @@ Approximate menu after #417: Bread 35 · Grilled Corn 60 · Bisque 90 · Salad 8
   ```
 
   doubled on boss floors, capped at `ChestGoldCap = 5,000`. `cycleLength` is
-  `BiomeProgressionConfig.MaxBiomeLevel` (25 today; a multi-biome tier of ~100 floors spreads the
-  same +50% over its floors with no retuning). Seed, stencil and boss epic chests never carry gold.
+  `BiomeProgressionConfig.BiomeLength` (25) and `tier` is the **scaling tier** (one per biome of depth,
+  issue #473), so a 100-level cycle of four biomes keeps the per-biome curve. Seed, stencil and boss epic chests never carry gold.
 
   The **tier** drives the pouch; floors within a tier add at most 50%. A whole first cycle is pocket
   change next to the ~600 g/h starter farm, and the cap is a late-game milestone (tier 14+), not a

@@ -27,9 +27,9 @@ namespace PitHero
             Core.FixedStepSeconds = GameConfig.SimulationFixedStepSeconds;
             Core.MaxStepsPerFrame = GameConfig.SimulationMaxStepsPerFrame;
 
-            // Synchronize ItemRegistry tier stride with the biome loop length so that
+            // Synchronize ItemRegistry tier stride with the biome length (one scaling tier per biome) so that
             // tier-scaled gear names ("Item+2", "Item+3", …) resolve correctly on load.
-            ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel;
+            ItemRegistry.TierDepthStride = BiomeProgressionConfig.BiomeLength;
 
             Graphics.Instance.BitmapFont = Content.LoadBitmapFont(GameConfig.FontMainUI);
 

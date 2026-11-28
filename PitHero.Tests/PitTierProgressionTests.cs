@@ -65,8 +65,8 @@ namespace PitHero.Tests
                 }
 
                 // Verify the tier is correct for these depths.
-                Assert.AreEqual(2, BiomeProgressionConfig.GetTierForDepth(depth),
-                    $"Depth {depth} must be tier 2");
+                Assert.AreEqual(2, BiomeProgressionConfig.GetScalingTierForDepth(depth),
+                    $"Depth {depth} (the Forest) must be scaling tier 2");
             }
 
             Assert.IsTrue(foundTier2Gear,
